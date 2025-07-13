@@ -1,0 +1,24 @@
+{
+  "name": "sensor-game-hub-v6",
+  "version": "6.0.0",
+  "description": "완벽한 게임별 독립 세션 시스템을 갖춘 센서 게임 허브",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "test": "echo \"Test suite not implemented yet\""
+  },
+  "keywords": ["sensor", "game", "websocket", "mobile", "realtime"],
+  "author": "Sensor Game Hub Team",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "compression": "^1.7.4"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
