@@ -154,7 +154,10 @@ class SessionSDK extends EventTarget {
             }, (response) => {
                 if (response.success) {
                     this.state.session = response.session;
-                    this.log('✅ 세션 생성 성공:', response.session);
+                    this.log('✅ 세션 생성 성공 - 전체 응답:', response);
+                    this.log('✅ 세션 객체 상세:', JSON.stringify(response.session, null, 2));
+                    this.log('✅ sessionCode 값:', response.session?.sessionCode);
+                    this.log('✅ sessionCode 타입:', typeof response.session?.sessionCode);
                     this.emit('session-created', response.session);
                     resolve(response.session);
                 } else {

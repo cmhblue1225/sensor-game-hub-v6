@@ -622,10 +622,16 @@
             }
             
             async displaySessionInfo(session) {
-                this.elements.sessionCode.textContent = session.sessionCode;
+                console.log('🔍 displaySessionInfo 호출됨 - 세션 객체:', session);
+                console.log('🔍 session.sessionCode 값:', session.sessionCode);
+                console.log('🔍 session.sessionCode 타입:', typeof session.sessionCode);
+                console.log('🔍 전체 세션 객체 JSON:', JSON.stringify(session, null, 2));
+                
+                this.elements.sessionCode.textContent = session.sessionCode || '----';
                 
                 // QR 코드 생성
                 const sensorUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                console.log('🔍 생성할 QR URL:', sensorUrl);
                 
                 try {
                     const qrElement = await QRCodeGenerator.generateElement(sensorUrl, 200);
