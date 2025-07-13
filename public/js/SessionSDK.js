@@ -12,4 +12,573 @@ class SessionSDK extends EventTarget {
         super();
         
         // 설정값
-        this.config = {\n            serverUrl: options.serverUrl || window.location.origin,\n            gameId: options.gameId || 'unknown-game',\n            gameType: options.gameType || 'solo', // 'solo', 'dual', 'multi'\n            autoReconnect: options.autoReconnect !== false,\n            reconnectInterval: options.reconnectInterval || 3000,\n            maxReconnectAttempts: options.maxReconnectAttempts || 5,\n            debug: options.debug || false\n        };\n        \n        // 상태 관리\n        this.state = {\n            connected: false,\n            session: null,\n            reconnectAttempts: 0,\n            lastPing: 0\n        };\n        \n        // Socket.IO 연결\n        this.socket = null;\n        \n        // 이벤트 핸들러 저장소\n        this.eventHandlers = new Map();\n        \n        this.log('🔧 SessionSDK v6.0 초기화', this.config);\n        \n        // 자동 연결 시작\n        this.connect();\n    }\n    \n    /**\n     * 서버 연결\n     */\n    async connect() {\n        try {\n            this.log('🔌 서버 연결 중...');\n            \n            // Socket.IO 연결\n            this.socket = io(this.config.serverUrl, {\n                transports: ['websocket', 'polling'],\n                timeout: 10000\n            });\n            \n            this.setupSocketEvents();\n            \n            // 연결 대기\n            await this.waitForConnection();\n            \n            this.log('✅ 서버 연결 성공');\n            this.emit('connected');\n            \n        } catch (error) {\n            this.log('❌ 서버 연결 실패:', error.message);\n            this.emit('connection-error', { error: error.message });\n            \n            if (this.config.autoReconnect) {\n                this.scheduleReconnect();\n            }\n        }\n    }\n    \n    /**\n     * Socket.IO 이벤트 설정\n     */\n    setupSocketEvents() {\n        this.socket.on('connect', () => {\n            this.state.connected = true;\n            this.state.reconnectAttempts = 0;\n            this.log('✅ Socket 연결됨');\n        });\n        \n        this.socket.on('disconnect', (reason) => {\n            this.state.connected = false;\n            this.log('❌ Socket 연결 해제:', reason);\n            this.emit('disconnected', { reason });\n            \n            if (this.config.autoReconnect && reason !== 'io client disconnect') {\n                this.scheduleReconnect();\n            }\n        });\n        \n        this.socket.on('connect_error', (error) => {\n            this.log('❌ 연결 오류:', error.message);\n            this.emit('connection-error', { error: error.message });\n        });\n        \n        // 게임별 이벤트 핸들러\n        this.socket.on('sensor-connected', (data) => {\n            this.log('📱 센서 연결됨:', data);\n            this.emit('sensor-connected', data);\n        });\n        \n        this.socket.on('sensor-disconnected', (data) => {\n            this.log('📱 센서 연결 해제:', data);\n            this.emit('sensor-disconnected', data);\n        });\n        \n        this.socket.on('sensor-update', (data) => {\n            this.emit('sensor-data', data);\n        });\n        \n        this.socket.on('game-ready', (data) => {\n            this.log('🎮 게임 준비 완료:', data);\n            this.emit('game-ready', data);\n        });\n        \n        this.socket.on('game-started', (data) => {\n            this.log('🎮 게임 시작:', data);\n            this.emit('game-started', data);\n        });\n        \n        this.socket.on('host-disconnected', (data) => {\n            this.log('🖥️ 호스트 연결 해제:', data);\n            this.emit('host-disconnected', data);\n        });\n        \n        this.socket.on('sensor-error', (data) => {\n            this.log('❌ 센서 오류:', data);\n            this.emit('sensor-error', data);\n        });\n    }\n    \n    /**\n     * 게임 세션 생성 (게임에서 호출)\n     */\n    async createSession() {\n        if (!this.state.connected) {\n            throw new Error('서버에 연결되지 않았습니다.');\n        }\n        \n        this.log('🎮 세션 생성 중...', {\n            gameId: this.config.gameId,\n            gameType: this.config.gameType\n        });\n        \n        return new Promise((resolve, reject) => {\n            this.socket.emit('create-session', {\n                gameId: this.config.gameId,\n                gameType: this.config.gameType\n            }, (response) => {\n                if (response.success) {\n                    this.state.session = response.session;\n                    this.log('✅ 세션 생성 성공:', response.session);\n                    this.emit('session-created', response.session);\n                    resolve(response.session);\n                } else {\n                    this.log('❌ 세션 생성 실패:', response.error);\n                    reject(new Error(response.error));\n                }\n            });\n        });\n    }\n    \n    /**\n     * 센서 연결 (모바일에서 호출)\n     */\n    async connectSensor(sessionCode, deviceInfo = {}) {\n        if (!this.state.connected) {\n            throw new Error('서버에 연결되지 않았습니다.');\n        }\n        \n        this.log('📱 센서 연결 중...', { sessionCode, deviceInfo });\n        \n        return new Promise((resolve, reject) => {\n            this.socket.emit('connect-sensor', {\n                sessionCode,\n                deviceInfo: {\n                    userAgent: navigator.userAgent,\n                    platform: navigator.platform,\n                    screenSize: `${screen.width}x${screen.height}`,\n                    timestamp: Date.now(),\n                    ...deviceInfo\n                }\n            }, (response) => {\n                if (response.success) {\n                    this.state.connection = response.connection;\n                    this.log('✅ 센서 연결 성공:', response.connection);\n                    this.emit('sensor-connection-success', response.connection);\n                    resolve(response.connection);\n                } else {\n                    this.log('❌ 센서 연결 실패:', response.error);\n                    reject(new Error(response.error));\n                }\n            });\n        });\n    }\n    \n    /**\n     * 센서 데이터 전송 (모바일에서 호출)\n     */\n    sendSensorData(sensorData) {\n        if (!this.state.connected || !this.state.connection) {\n            this.log('❌ 센서 데이터 전송 실패: 연결되지 않음');\n            return false;\n        }\n        \n        this.socket.emit('sensor-data', {\n            sessionCode: this.state.connection.sessionId.split('_')[1], // Extract session code\n            sensorId: this.state.connection.sensorId,\n            sensorData: {\n                ...sensorData,\n                timestamp: Date.now()\n            }\n        });\n        \n        return true;\n    }\n    \n    /**\n     * 게임 시작 (게임에서 호출)\n     */\n    async startGame() {\n        if (!this.state.connected || !this.state.session) {\n            throw new Error('세션이 생성되지 않았습니다.');\n        }\n        \n        this.log('🎮 게임 시작 요청...');\n        \n        return new Promise((resolve, reject) => {\n            this.socket.emit('start-game', {\n                sessionId: this.state.session.sessionId\n            }, (response) => {\n                if (response.success) {\n                    this.log('✅ 게임 시작 성공:', response.game);\n                    this.emit('game-start-success', response.game);\n                    resolve(response.game);\n                } else {\n                    this.log('❌ 게임 시작 실패:', response.error);\n                    reject(new Error(response.error));\n                }\n            });\n        });\n    }\n    \n    /**\n     * 세션 정보 조회\n     */\n    getSession() {\n        return this.state.session;\n    }\n    \n    /**\n     * 연결 상태 조회\n     */\n    isConnected() {\n        return this.state.connected;\n    }\n    \n    /**\n     * 센서 연결 정보 조회\n     */\n    getSensorConnection() {\n        return this.state.connection;\n    }\n    \n    /**\n     * 핑 테스트\n     */\n    async ping() {\n        if (!this.state.connected) {\n            return null;\n        }\n        \n        const startTime = Date.now();\n        \n        return new Promise((resolve) => {\n            this.socket.emit('ping', (response) => {\n                const latency = Date.now() - startTime;\n                this.state.lastPing = latency;\n                resolve(latency);\n            });\n        });\n    }\n    \n    /**\n     * 연결 해제\n     */\n    disconnect() {\n        if (this.socket) {\n            this.socket.disconnect();\n            this.socket = null;\n        }\n        \n        this.state.connected = false;\n        this.state.session = null;\n        this.state.connection = null;\n        \n        this.log('🔌 연결 해제됨');\n    }\n    \n    /**\n     * 연결 대기\n     */\n    waitForConnection(timeout = 10000) {\n        return new Promise((resolve, reject) => {\n            if (this.socket.connected) {\n                resolve();\n                return;\n            }\n            \n            const timer = setTimeout(() => {\n                reject(new Error('연결 타임아웃'));\n            }, timeout);\n            \n            this.socket.once('connect', () => {\n                clearTimeout(timer);\n                resolve();\n            });\n            \n            this.socket.once('connect_error', (error) => {\n                clearTimeout(timer);\n                reject(error);\n            });\n        });\n    }\n    \n    /**\n     * 재연결 스케줄링\n     */\n    scheduleReconnect() {\n        if (this.state.reconnectAttempts >= this.config.maxReconnectAttempts) {\n            this.log('❌ 최대 재연결 시도 횟수 초과');\n            this.emit('max-reconnect-attempts-reached');\n            return;\n        }\n        \n        this.state.reconnectAttempts++;\n        \n        this.log(`🔄 재연결 시도 ${this.state.reconnectAttempts}/${this.config.maxReconnectAttempts} (${this.config.reconnectInterval}ms 후)`);\n        \n        setTimeout(() => {\n            this.connect();\n        }, this.config.reconnectInterval);\n    }\n    \n    /**\n     * 이벤트 리스너 추가 (편의 메서드)\n     */\n    on(eventName, handler) {\n        this.addEventListener(eventName, handler);\n        \n        // 핸들러 저장 (제거를 위해)\n        if (!this.eventHandlers.has(eventName)) {\n            this.eventHandlers.set(eventName, new Set());\n        }\n        this.eventHandlers.get(eventName).add(handler);\n    }\n    \n    /**\n     * 이벤트 리스너 제거 (편의 메서드)\n     */\n    off(eventName, handler) {\n        this.removeEventListener(eventName, handler);\n        \n        if (this.eventHandlers.has(eventName)) {\n            this.eventHandlers.get(eventName).delete(handler);\n        }\n    }\n    \n    /**\n     * 이벤트 발생 (편의 메서드)\n     */\n    emit(eventName, data = {}) {\n        const event = new CustomEvent(eventName, { detail: data });\n        this.dispatchEvent(event);\n    }\n    \n    /**\n     * 디버그 로그\n     */\n    log(...args) {\n        if (this.config.debug) {\n            console.log(`[SessionSDK]`, ...args);\n        }\n    }\n    \n    /**\n     * SDK 정리\n     */\n    destroy() {\n        this.disconnect();\n        \n        // 모든 이벤트 리스너 제거\n        for (const [eventName, handlers] of this.eventHandlers) {\n            for (const handler of handlers) {\n                this.removeEventListener(eventName, handler);\n            }\n        }\n        \n        this.eventHandlers.clear();\n        \n        this.log('🗑️ SessionSDK 정리됨');\n    }\n}\n\n// QR 코드 생성 유틸리티\nclass QRCodeGenerator {\n    static async generate(text, size = 200) {\n        if (typeof QRCode !== 'undefined') {\n            // QRCode 라이브러리가 있는 경우\n            const canvas = document.createElement('canvas');\n            await QRCode.toCanvas(canvas, text, { width: size, height: size });\n            return canvas.toDataURL();\n        } else {\n            // 폴백: QR 코드 서비스 사용\n            return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}`;\n        }\n    }\n    \n    static async generateElement(text, size = 200) {\n        const container = document.createElement('div');\n        container.className = 'qr-code-container';\n        container.style.textAlign = 'center';\n        \n        try {\n            if (typeof QRCode !== 'undefined') {\n                await QRCode.toCanvas(container, text, { \n                    width: size, \n                    height: size,\n                    color: {\n                        dark: '#3b82f6',\n                        light: '#ffffff'\n                    }\n                });\n            } else {\n                const img = document.createElement('img');\n                img.src = await this.generate(text, size);\n                img.alt = 'QR Code';\n                img.style.maxWidth = '100%';\n                container.appendChild(img);\n            }\n        } catch (error) {\n            console.error('QR 코드 생성 실패:', error);\n            container.innerHTML = `<p>QR 코드 생성 실패: ${text}</p>`;\n        }\n        \n        return container;\n    }\n}\n\n// 센서 데이터 수집 유틸리티\nclass SensorCollector {\n    constructor(options = {}) {\n        this.options = {\n            throttle: options.throttle || 50, // 50ms 간격\n            sensitivity: options.sensitivity || 1,\n            ...options\n        };\n        \n        this.isActive = false;\n        this.lastUpdate = 0;\n        this.handlers = new Set();\n        \n        this.sensorData = {\n            acceleration: { x: 0, y: 0, z: 0 },\n            rotationRate: { alpha: 0, beta: 0, gamma: 0 },\n            orientation: { alpha: 0, beta: 0, gamma: 0 }\n        };\n    }\n    \n    async start() {\n        if (!this.checkSensorSupport()) {\n            throw new Error('이 기기는 센서를 지원하지 않습니다.');\n        }\n        \n        // 권한 요청 (iOS 13+)\n        if (typeof DeviceMotionEvent.requestPermission === 'function') {\n            const permission = await DeviceMotionEvent.requestPermission();\n            if (permission !== 'granted') {\n                throw new Error('센서 권한이 거부되었습니다.');\n            }\n        }\n        \n        this.isActive = true;\n        \n        // Device Motion 이벤트\n        window.addEventListener('devicemotion', this.handleDeviceMotion.bind(this));\n        \n        // Device Orientation 이벤트\n        window.addEventListener('deviceorientation', this.handleDeviceOrientation.bind(this));\n        \n        console.log('📱 센서 수집 시작');\n    }\n    \n    stop() {\n        this.isActive = false;\n        \n        window.removeEventListener('devicemotion', this.handleDeviceMotion.bind(this));\n        window.removeEventListener('deviceorientation', this.handleDeviceOrientation.bind(this));\n        \n        console.log('📱 센서 수집 중지');\n    }\n    \n    handleDeviceMotion(event) {\n        if (!this.isActive) return;\n        \n        const now = Date.now();\n        if (now - this.lastUpdate < this.options.throttle) return;\n        \n        if (event.acceleration) {\n            this.sensorData.acceleration = {\n                x: (event.acceleration.x || 0) * this.options.sensitivity,\n                y: (event.acceleration.y || 0) * this.options.sensitivity,\n                z: (event.acceleration.z || 0) * this.options.sensitivity\n            };\n        }\n        \n        if (event.rotationRate) {\n            this.sensorData.rotationRate = {\n                alpha: (event.rotationRate.alpha || 0) * this.options.sensitivity,\n                beta: (event.rotationRate.beta || 0) * this.options.sensitivity,\n                gamma: (event.rotationRate.gamma || 0) * this.options.sensitivity\n            };\n        }\n        \n        this.lastUpdate = now;\n        this.notifyHandlers();\n    }\n    \n    handleDeviceOrientation(event) {\n        if (!this.isActive) return;\n        \n        this.sensorData.orientation = {\n            alpha: event.alpha || 0,\n            beta: event.beta || 0,\n            gamma: event.gamma || 0\n        };\n    }\n    \n    checkSensorSupport() {\n        return 'DeviceMotionEvent' in window && 'DeviceOrientationEvent' in window;\n    }\n    \n    onData(handler) {\n        this.handlers.add(handler);\n    }\n    \n    offData(handler) {\n        this.handlers.delete(handler);\n    }\n    \n    notifyHandlers() {\n        const data = { ...this.sensorData };\n        this.handlers.forEach(handler => handler(data));\n    }\n    \n    getCurrentData() {\n        return { ...this.sensorData };\n    }\n}\n\n// 전역 노출\nif (typeof window !== 'undefined') {\n    window.SessionSDK = SessionSDK;\n    window.QRCodeGenerator = QRCodeGenerator;\n    window.SensorCollector = SensorCollector;\n}\n\n// 모듈 노출\nif (typeof module !== 'undefined' && module.exports) {\n    module.exports = { SessionSDK, QRCodeGenerator, SensorCollector };\n}
+        this.config = {
+            serverUrl: options.serverUrl || window.location.origin,
+            gameId: options.gameId || 'unknown-game',
+            gameType: options.gameType || 'solo', // 'solo', 'dual', 'multi'
+            autoReconnect: options.autoReconnect !== false,
+            reconnectInterval: options.reconnectInterval || 3000,
+            maxReconnectAttempts: options.maxReconnectAttempts || 5,
+            debug: options.debug || false
+        };
+        
+        // 상태 관리
+        this.state = {
+            connected: false,
+            session: null,
+            reconnectAttempts: 0,
+            lastPing: 0
+        };
+        
+        // Socket.IO 연결
+        this.socket = null;
+        
+        // 이벤트 핸들러 저장소
+        this.eventHandlers = new Map();
+        
+        this.log('🔧 SessionSDK v6.0 초기화', this.config);
+        
+        // 자동 연결 시작
+        this.connect();
+    }
+    
+    /**
+     * 서버 연결
+     */
+    async connect() {
+        try {
+            this.log('🔌 서버 연결 중...');
+            
+            // Socket.IO 연결
+            this.socket = io(this.config.serverUrl, {
+                transports: ['websocket', 'polling'],
+                timeout: 10000
+            });
+            
+            this.setupSocketEvents();
+            
+            // 연결 대기
+            await this.waitForConnection();
+            
+            this.log('✅ 서버 연결 성공');
+            this.emit('connected');
+            
+        } catch (error) {
+            this.log('❌ 서버 연결 실패:', error.message);
+            this.emit('connection-error', { error: error.message });
+            
+            if (this.config.autoReconnect) {
+                this.scheduleReconnect();
+            }
+        }
+    }
+    
+    /**
+     * Socket.IO 이벤트 설정
+     */
+    setupSocketEvents() {
+        this.socket.on('connect', () => {
+            this.state.connected = true;
+            this.state.reconnectAttempts = 0;
+            this.log('✅ Socket 연결됨');
+        });
+        
+        this.socket.on('disconnect', (reason) => {
+            this.state.connected = false;
+            this.log('❌ Socket 연결 해제:', reason);
+            this.emit('disconnected', { reason });
+            
+            if (this.config.autoReconnect && reason !== 'io client disconnect') {
+                this.scheduleReconnect();
+            }
+        });
+        
+        this.socket.on('connect_error', (error) => {
+            this.log('❌ 연결 오류:', error.message);
+            this.emit('connection-error', { error: error.message });
+        });
+        
+        // 게임별 이벤트 핸들러
+        this.socket.on('sensor-connected', (data) => {
+            this.log('📱 센서 연결됨:', data);
+            this.emit('sensor-connected', data);
+        });
+        
+        this.socket.on('sensor-disconnected', (data) => {
+            this.log('📱 센서 연결 해제:', data);
+            this.emit('sensor-disconnected', data);
+        });
+        
+        this.socket.on('sensor-update', (data) => {
+            this.emit('sensor-data', data);
+        });
+        
+        this.socket.on('game-ready', (data) => {
+            this.log('🎮 게임 준비 완료:', data);
+            this.emit('game-ready', data);
+        });
+        
+        this.socket.on('game-started', (data) => {
+            this.log('🎮 게임 시작:', data);
+            this.emit('game-started', data);
+        });
+        
+        this.socket.on('host-disconnected', (data) => {
+            this.log('🖥️ 호스트 연결 해제:', data);
+            this.emit('host-disconnected', data);
+        });
+        
+        this.socket.on('sensor-error', (data) => {
+            this.log('❌ 센서 오류:', data);
+            this.emit('sensor-error', data);
+        });
+    }
+    
+    /**
+     * 게임 세션 생성 (게임에서 호출)
+     */
+    async createSession() {
+        if (!this.state.connected) {
+            throw new Error('서버에 연결되지 않았습니다.');
+        }
+        
+        this.log('🎮 세션 생성 중...', {
+            gameId: this.config.gameId,
+            gameType: this.config.gameType
+        });
+        
+        return new Promise((resolve, reject) => {
+            this.socket.emit('create-session', {
+                gameId: this.config.gameId,
+                gameType: this.config.gameType
+            }, (response) => {
+                if (response.success) {
+                    this.state.session = response.session;
+                    this.log('✅ 세션 생성 성공:', response.session);
+                    this.emit('session-created', response.session);
+                    resolve(response.session);
+                } else {
+                    this.log('❌ 세션 생성 실패:', response.error);
+                    reject(new Error(response.error));
+                }
+            });
+        });
+    }
+    
+    /**
+     * 센서 연결 (모바일에서 호출)
+     */
+    async connectSensor(sessionCode, deviceInfo = {}) {
+        if (!this.state.connected) {
+            throw new Error('서버에 연결되지 않았습니다.');
+        }
+        
+        this.log('📱 센서 연결 중...', { sessionCode, deviceInfo });
+        
+        return new Promise((resolve, reject) => {
+            this.socket.emit('connect-sensor', {
+                sessionCode,
+                deviceInfo: {
+                    userAgent: navigator.userAgent,
+                    platform: navigator.platform,
+                    screenSize: `${screen.width}x${screen.height}`,
+                    timestamp: Date.now(),
+                    ...deviceInfo
+                }
+            }, (response) => {
+                if (response.success) {
+                    this.state.connection = response.connection;
+                    this.log('✅ 센서 연결 성공:', response.connection);
+                    this.emit('sensor-connection-success', response.connection);
+                    resolve(response.connection);
+                } else {
+                    this.log('❌ 센서 연결 실패:', response.error);
+                    reject(new Error(response.error));
+                }
+            });
+        });
+    }
+    
+    /**
+     * 센서 데이터 전송 (모바일에서 호출)
+     */
+    sendSensorData(sensorData) {
+        if (!this.state.connected || !this.state.connection) {
+            this.log('❌ 센서 데이터 전송 실패: 연결되지 않음');
+            return false;
+        }
+        
+        this.socket.emit('sensor-data', {
+            sessionCode: this.state.connection.sessionId.split('_')[1], // Extract session code
+            sensorId: this.state.connection.sensorId,
+            sensorData: {
+                ...sensorData,
+                timestamp: Date.now()
+            }
+        });
+        
+        return true;
+    }
+    
+    /**
+     * 게임 시작 (게임에서 호출)
+     */
+    async startGame() {
+        if (!this.state.connected || !this.state.session) {
+            throw new Error('세션이 생성되지 않았습니다.');
+        }
+        
+        this.log('🎮 게임 시작 요청...');
+        
+        return new Promise((resolve, reject) => {
+            this.socket.emit('start-game', {
+                sessionId: this.state.session.sessionId
+            }, (response) => {
+                if (response.success) {
+                    this.log('✅ 게임 시작 성공:', response.game);
+                    this.emit('game-start-success', response.game);
+                    resolve(response.game);
+                } else {
+                    this.log('❌ 게임 시작 실패:', response.error);
+                    reject(new Error(response.error));
+                }
+            });
+        });
+    }
+    
+    /**
+     * 세션 정보 조회
+     */
+    getSession() {
+        return this.state.session;
+    }
+    
+    /**
+     * 연결 상태 조회
+     */
+    isConnected() {
+        return this.state.connected;
+    }
+    
+    /**
+     * 센서 연결 정보 조회
+     */
+    getSensorConnection() {
+        return this.state.connection;
+    }
+    
+    /**
+     * 핑 테스트
+     */
+    async ping() {
+        if (!this.state.connected) {
+            return null;
+        }
+        
+        const startTime = Date.now();
+        
+        return new Promise((resolve) => {
+            this.socket.emit('ping', (response) => {
+                const latency = Date.now() - startTime;
+                this.state.lastPing = latency;
+                resolve(latency);
+            });
+        });
+    }
+    
+    /**
+     * 연결 해제
+     */
+    disconnect() {
+        if (this.socket) {
+            this.socket.disconnect();
+            this.socket = null;
+        }
+        
+        this.state.connected = false;
+        this.state.session = null;
+        this.state.connection = null;
+        
+        this.log('🔌 연결 해제됨');
+    }
+    
+    /**
+     * 연결 대기
+     */
+    waitForConnection(timeout = 10000) {
+        return new Promise((resolve, reject) => {
+            if (this.socket.connected) {
+                resolve();
+                return;
+            }
+            
+            const timer = setTimeout(() => {
+                reject(new Error('연결 타임아웃'));
+            }, timeout);
+            
+            this.socket.once('connect', () => {
+                clearTimeout(timer);
+                resolve();
+            });
+            
+            this.socket.once('connect_error', (error) => {
+                clearTimeout(timer);
+                reject(error);
+            });
+        });
+    }
+    
+    /**
+     * 재연결 스케줄링
+     */
+    scheduleReconnect() {
+        if (this.state.reconnectAttempts >= this.config.maxReconnectAttempts) {
+            this.log('❌ 최대 재연결 시도 횟수 초과');
+            this.emit('max-reconnect-attempts-reached');
+            return;
+        }
+        
+        this.state.reconnectAttempts++;
+        
+        this.log(`🔄 재연결 시도 ${this.state.reconnectAttempts}/${this.config.maxReconnectAttempts} (${this.config.reconnectInterval}ms 후)`);
+        
+        setTimeout(() => {
+            this.connect();
+        }, this.config.reconnectInterval);
+    }
+    
+    /**
+     * 이벤트 리스너 추가 (편의 메서드)
+     */
+    on(eventName, handler) {
+        this.addEventListener(eventName, handler);
+        
+        // 핸들러 저장 (제거를 위해)
+        if (!this.eventHandlers.has(eventName)) {
+            this.eventHandlers.set(eventName, new Set());
+        }
+        this.eventHandlers.get(eventName).add(handler);
+    }
+    
+    /**
+     * 이벤트 리스너 제거 (편의 메서드)
+     */
+    off(eventName, handler) {
+        this.removeEventListener(eventName, handler);
+        
+        if (this.eventHandlers.has(eventName)) {
+            this.eventHandlers.get(eventName).delete(handler);
+        }
+    }
+    
+    /**
+     * 이벤트 발생 (편의 메서드)
+     */
+    emit(eventName, data = {}) {
+        const event = new CustomEvent(eventName, { detail: data });
+        this.dispatchEvent(event);
+    }
+    
+    /**
+     * 디버그 로그
+     */
+    log(...args) {
+        if (this.config.debug) {
+            console.log(`[SessionSDK]`, ...args);
+        }
+    }
+    
+    /**
+     * SDK 정리
+     */
+    destroy() {
+        this.disconnect();
+        
+        // 모든 이벤트 리스너 제거
+        for (const [eventName, handlers] of this.eventHandlers) {
+            for (const handler of handlers) {
+                this.removeEventListener(eventName, handler);
+            }
+        }
+        
+        this.eventHandlers.clear();
+        
+        this.log('🗑️ SessionSDK 정리됨');
+    }
+}
+
+// QR 코드 생성 유틸리티
+class QRCodeGenerator {
+    static async generate(text, size = 200) {
+        if (typeof QRCode !== 'undefined') {
+            // QRCode 라이브러리가 있는 경우
+            const canvas = document.createElement('canvas');
+            await QRCode.toCanvas(canvas, text, { width: size, height: size });
+            return canvas.toDataURL();
+        } else {
+            // 폴백: QR 코드 서비스 사용
+            return `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(text)}`;
+        }
+    }
+    
+    static async generateElement(text, size = 200) {
+        const container = document.createElement('div');
+        container.className = 'qr-code-container';
+        container.style.textAlign = 'center';
+        
+        try {
+            if (typeof QRCode !== 'undefined') {
+                await QRCode.toCanvas(container, text, { 
+                    width: size, 
+                    height: size,
+                    color: {
+                        dark: '#3b82f6',
+                        light: '#ffffff'
+                    }
+                });
+            } else {
+                const img = document.createElement('img');
+                img.src = await this.generate(text, size);
+                img.alt = 'QR Code';
+                img.style.maxWidth = '100%';
+                container.appendChild(img);
+            }
+        } catch (error) {
+            console.error('QR 코드 생성 실패:', error);
+            container.innerHTML = `<p>QR 코드 생성 실패: ${text}</p>`;
+        }
+        
+        return container;
+    }
+}
+
+// 센서 데이터 수집 유틸리티
+class SensorCollector {
+    constructor(options = {}) {
+        this.options = {
+            throttle: options.throttle || 50, // 50ms 간격
+            sensitivity: options.sensitivity || 1,
+            ...options
+        };
+        
+        this.isActive = false;
+        this.lastUpdate = 0;
+        this.handlers = new Set();
+        
+        this.sensorData = {
+            acceleration: { x: 0, y: 0, z: 0 },
+            rotationRate: { alpha: 0, beta: 0, gamma: 0 },
+            orientation: { alpha: 0, beta: 0, gamma: 0 }
+        };
+    }
+    
+    async start() {
+        if (!this.checkSensorSupport()) {
+            throw new Error('이 기기는 센서를 지원하지 않습니다.');
+        }
+        
+        // 권한 요청 (iOS 13+)
+        if (typeof DeviceMotionEvent.requestPermission === 'function') {
+            const permission = await DeviceMotionEvent.requestPermission();
+            if (permission !== 'granted') {
+                throw new Error('센서 권한이 거부되었습니다.');
+            }
+        }
+        
+        // DeviceOrientationEvent 권한도 확인 (iOS 13+)
+        if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+            const permission = await DeviceOrientationEvent.requestPermission();
+            if (permission !== 'granted') {
+                throw new Error('방향 센서 권한이 거부되었습니다.');
+            }
+        }
+        
+        this.isActive = true;
+        
+        // Device Motion 이벤트
+        window.addEventListener('devicemotion', this.handleDeviceMotion.bind(this));
+        
+        // Device Orientation 이벤트
+        window.addEventListener('deviceorientation', this.handleDeviceOrientation.bind(this));
+        
+        console.log('📱 센서 수집 시작');
+    }
+    
+    stop() {
+        this.isActive = false;
+        
+        window.removeEventListener('devicemotion', this.handleDeviceMotion.bind(this));
+        window.removeEventListener('deviceorientation', this.handleDeviceOrientation.bind(this));
+        
+        console.log('📱 센서 수집 중지');
+    }
+    
+    handleDeviceMotion(event) {
+        if (!this.isActive) return;
+        
+        const now = Date.now();
+        if (now - this.lastUpdate < this.options.throttle) return;
+        
+        if (event.acceleration) {
+            this.sensorData.acceleration = {
+                x: (event.acceleration.x || 0) * this.options.sensitivity,
+                y: (event.acceleration.y || 0) * this.options.sensitivity,
+                z: (event.acceleration.z || 0) * this.options.sensitivity
+            };
+        }
+        
+        if (event.rotationRate) {
+            this.sensorData.rotationRate = {
+                alpha: (event.rotationRate.alpha || 0) * this.options.sensitivity,
+                beta: (event.rotationRate.beta || 0) * this.options.sensitivity,
+                gamma: (event.rotationRate.gamma || 0) * this.options.sensitivity
+            };
+        }
+        
+        this.lastUpdate = now;
+        this.notifyHandlers();
+    }
+    
+    handleDeviceOrientation(event) {
+        if (!this.isActive) return;
+        
+        this.sensorData.orientation = {
+            alpha: event.alpha || 0,
+            beta: event.beta || 0,
+            gamma: event.gamma || 0
+        };
+    }
+    
+    checkSensorSupport() {
+        return 'DeviceMotionEvent' in window && 'DeviceOrientationEvent' in window;
+    }
+    
+    onData(handler) {
+        this.handlers.add(handler);
+    }
+    
+    offData(handler) {
+        this.handlers.delete(handler);
+    }
+    
+    notifyHandlers() {
+        const data = { ...this.sensorData };
+        this.handlers.forEach(handler => handler(data));
+    }
+    
+    getCurrentData() {
+        return { ...this.sensorData };
+    }
+}
+
+// 전역 노출
+if (typeof window !== 'undefined') {
+    window.SessionSDK = SessionSDK;
+    window.QRCodeGenerator = QRCodeGenerator;
+    window.SensorCollector = SensorCollector;
+}
+
+// 모듈 노출
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { SessionSDK, QRCodeGenerator, SensorCollector };
+}
