@@ -53,10 +53,16 @@ class SessionManager {
         this.sessions.set(sessionId, session);
         
         console.log(`🎮 새 세션 생성: ${sessionCode} (${gameType}) for ${gameId}`);
+        console.log(`🔍 반환할 세션 데이터:`, {
+            sessionId,
+            sessionCode,
+            gameType,
+            maxSensors: session.maxSensors
+        });
         
         return {
             sessionId,
-            sessionCode,
+            sessionCode: sessionCode,
             gameType,
             maxSensors: session.maxSensors
         };
