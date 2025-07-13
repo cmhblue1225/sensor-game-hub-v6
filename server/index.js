@@ -66,9 +66,149 @@ class GameServer {
      * HTTP 라우트 설정
      */
     setupRoutes() {
-        // 기본 루트
+        // 기본 루트 - 게임 선택 페이지로 리다이렉트
         this.app.get('/', (req, res) => {
-            res.redirect('/hub.html');
+            res.send(`
+                <!DOCTYPE html>
+                <html lang="ko">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>🚀 Sensor Game Hub v6.0</title>
+                    <style>
+                        body {
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            background: linear-gradient(135deg, #0f172a, #1e293b);
+                            color: #f8fafc;
+                            margin: 0;
+                            padding: 2rem;
+                            min-height: 100vh;
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                        }
+                        .container {
+                            max-width: 800px;
+                            text-align: center;
+                        }
+                        h1 {
+                            font-size: 3rem;
+                            margin-bottom: 1rem;
+                            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+                            -webkit-background-clip: text;
+                            -webkit-text-fill-color: transparent;
+                            background-clip: text;
+                        }
+                        .subtitle {
+                            font-size: 1.2rem;
+                            color: #cbd5e1;
+                            margin-bottom: 3rem;
+                        }
+                        .games-grid {
+                            display: grid;
+                            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                            gap: 2rem;
+                            margin-bottom: 3rem;
+                        }
+                        .game-card {
+                            background: rgba(30, 41, 59, 0.8);
+                            border: 1px solid #475569;
+                            border-radius: 1rem;
+                            padding: 2rem;
+                            text-decoration: none;
+                            color: inherit;
+                            transition: all 0.3s ease;
+                            backdrop-filter: blur(12px);
+                        }
+                        .game-card:hover {
+                            transform: translateY(-8px);
+                            border-color: #3b82f6;
+                            box-shadow: 0 10px 25px rgba(59, 130, 246, 0.3);
+                        }
+                        .game-icon {
+                            font-size: 3rem;
+                            margin-bottom: 1rem;
+                        }
+                        .game-title {
+                            font-size: 1.5rem;
+                            font-weight: 600;
+                            margin-bottom: 0.5rem;
+                        }
+                        .game-desc {
+                            color: #94a3b8;
+                            font-size: 0.9rem;
+                            line-height: 1.5;
+                        }
+                        .sensor-link {
+                            background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+                            color: white;
+                            padding: 1rem 2rem;
+                            border-radius: 0.5rem;
+                            text-decoration: none;
+                            font-weight: 600;
+                            display: inline-block;
+                            margin-top: 2rem;
+                            transition: transform 0.3s ease;
+                        }
+                        .sensor-link:hover {
+                            transform: translateY(-2px);
+                        }
+                        .info {
+                            margin-top: 3rem;
+                            padding: 2rem;
+                            background: rgba(59, 130, 246, 0.1);
+                            border: 1px solid rgba(59, 130, 246, 0.2);
+                            border-radius: 1rem;
+                        }
+                        .info h3 {
+                            color: #3b82f6;
+                            margin-bottom: 1rem;
+                        }
+                        .info p {
+                            color: #cbd5e1;
+                            margin-bottom: 0.5rem;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <h1>🚀 Sensor Game Hub v6.0</h1>
+                        <p class="subtitle">모바일 센서로 즐기는 혁신적인 게임 경험</p>
+                        
+                        <div class="games-grid">
+                            <a href="/games/solo" class="game-card">
+                                <div class="game-icon">🎯</div>
+                                <div class="game-title">Solo Game</div>
+                                <div class="game-desc">1개 센서로 플레이하는 공 조작 게임<br>목표 수집 및 콤보 시스템</div>
+                            </a>
+                            
+                            <a href="/games/dual" class="game-card">
+                                <div class="game-icon">🎮</div>
+                                <div class="game-title">Dual Game</div>
+                                <div class="game-desc">2개 센서로 협력하는 미션 게임<br>공동 목표 달성 시스템</div>
+                            </a>
+                            
+                            <a href="/games/multi" class="game-card">
+                                <div class="game-icon">👥</div>
+                                <div class="game-title">Multi Game</div>
+                                <div class="game-desc">최대 10명 실시간 경쟁<br>리더보드 및 타이머 시스템</div>
+                            </a>
+                        </div>
+                        
+                        <a href="/sensor.html" class="sensor-link">📱 모바일 센서 클라이언트</a>
+                        
+                        <div class="info">
+                            <h3>🎮 게임 방법</h3>
+                            <p>1. PC에서 원하는 게임 선택</p>
+                            <p>2. 화면에 표시되는 4자리 세션 코드 확인</p>
+                            <p>3. 모바일에서 센서 클라이언트 접속 후 코드 입력</p>
+                            <p>4. 센서 권한 허용 후 자동으로 게임 시작!</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `);
         });
         
         // 게임 라우트
