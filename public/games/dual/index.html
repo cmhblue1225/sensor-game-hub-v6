@@ -766,11 +766,10 @@
                 this.setupCanvas();
                 this.setupSDKEvents();
                 this.generateNewMission();
-                
-                // 즉시 세션 생성
-                await this.createGameSession();
-                
                 this.startGameLoop();
+                
+                // 서버 연결을 기다린 후 세션 생성
+                // SDK 이벤트 핸들러에서 처리됨
             }
             
             setupCanvas() {
@@ -791,10 +790,13 @@
             
             setupSDKEvents() {
                 // 서버 연결
-                this.sdk.on('connected', () => {
+                this.sdk.on('connected', async () => {
                     this.state.connected = true;
                     this.updateServerStatus(true);
                     this.updateGameStatus('서버 연결됨 - 세션 생성 중...');
+                    
+                    // 서버 연결 완료 후 세션 생성
+                    await this.createGameSession();
                 });
                 
                 this.sdk.on('disconnected', () => {
