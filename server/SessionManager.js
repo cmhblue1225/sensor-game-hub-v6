@@ -30,7 +30,11 @@ class SessionManager {
      * 새 세션 생성
      */
     createSession(gameId, gameType, hostSocketId, hostIP) {
+        console.log(`🔍 createSession 호출됨:`, { gameId, gameType, hostSocketId, hostIP });
+        
         const sessionCode = this.generateSessionCode();
+        console.log(`🔍 generateSessionCode 결과: "${sessionCode}" (타입: ${typeof sessionCode})`);
+        
         const sessionId = `${gameId}_${sessionCode}_${Date.now()}`;
         
         const session = {
@@ -53,19 +57,18 @@ class SessionManager {
         this.sessions.set(sessionId, session);
         
         console.log(`🎮 새 세션 생성: ${sessionCode} (${gameType}) for ${gameId}`);
-        console.log(`🔍 반환할 세션 데이터:`, {
-            sessionId,
-            sessionCode,
-            gameType,
-            maxSensors: session.maxSensors
-        });
         
-        return {
+        const returnData = {
             sessionId,
             sessionCode: sessionCode,
             gameType,
             maxSensors: session.maxSensors
         };
+        
+        console.log(`🔍 반환할 세션 데이터:`, returnData);
+        console.log(`🔍 sessionCode 값 재확인: "${returnData.sessionCode}" (타입: ${typeof returnData.sessionCode})`);
+        
+        return returnData;
     }
     
     /**
@@ -278,15 +281,21 @@ class SessionManager {
     generateSessionCode() {
         const chars = '0123456789';
         let code = '';
+        console.log(`🔍 세션 코드 생성 시작 - 길이: ${this.config.sessionCodeLength}`);
+        
         for (let i = 0; i < this.config.sessionCodeLength; i++) {
             code += chars.charAt(Math.floor(Math.random() * chars.length));
         }
         
+        console.log(`🔍 생성된 세션 코드: "${code}"`);
+        
         // 중복 확인
         if (this.findSessionByCode(code)) {
+            console.log(`⚠️ 중복 세션 코드 발견, 재생성: ${code}`);
             return this.generateSessionCode(); // 재귀적으로 다시 생성
         }
         
+        console.log(`✅ 최종 세션 코드: "${code}"`);
         return code;
     }
     

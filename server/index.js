@@ -290,6 +290,7 @@ class GameServer {
             // 게임 세션 생성 (게임에서 호출)
             socket.on('create-session', (data, callback) => {
                 try {
+                    console.log(`🔍 create-session 이벤트 수신:`, data);
                     const { gameId, gameType } = data;
                     
                     if (!gameId || !gameType) {
@@ -303,11 +304,18 @@ class GameServer {
                         socket.handshake.address
                     );
                     
-                    // 게임 클라이언트에 세션 정보 전송
-                    callback({
+                    console.log(`🔍 SessionManager에서 반환받은 세션:`, session);
+                    console.log(`🔍 반환받은 sessionCode: "${session.sessionCode}" (타입: ${typeof session.sessionCode})`);
+                    
+                    const responseData = {
                         success: true,
                         session: session
-                    });
+                    };
+                    
+                    console.log(`🔍 클라이언트에 전송할 응답:`, responseData);
+                    
+                    // 게임 클라이언트에 세션 정보 전송
+                    callback(responseData);
                     
                     console.log(`🎮 세션 생성됨: ${session.sessionCode} for ${gameId}`);
                     
