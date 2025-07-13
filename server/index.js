@@ -204,4 +204,153 @@ class GameServer {
                     
                     // 게임 호스트에 센서 연결 알림
                     const session = this.sessionManager.getSession(result.sessionId);
-                    socket.to(session.host.socketId).emit('sensor-connected', {\n                        sensorId: result.sensorId,\n                        gameType: session.gameType,\n                        connectedSensors: result.connectedSensors,\n                        maxSensors: result.maxSensors,\n                        isReady: result.isReady\n                    });\n                    \n                    // 모든 센서가 연결되면 게임 준비 완료 알림\n                    if (result.isReady) {\n                        socket.to(session.host.socketId).emit('game-ready', {\n                            sessionId: result.sessionId,\n                            gameType: session.gameType,\n                            connectedSensors: Array.from(session.sensors.keys())\n                        });\n                    }\n                    \n                    console.log(`📱 센서 연결됨: ${result.sensorId} → ${sessionCode}`);\n                    \n                } catch (error) {\n                    console.error(`❌ 센서 연결 실패:`, error.message);\n                    callback({\n                        success: false,\n                        error: error.message\n                    });\n                }\n            });\n            \n            // 센서 데이터 수신 (모바일에서 호출)\n            socket.on('sensor-data', (data) => {\n                try {\n                    const { sessionCode, sensorId, sensorData } = data;\n                    \n                    const result = this.sessionManager.updateSensorData(\n                        sessionCode,\n                        sensorId,\n                        sensorData\n                    );\n                    \n                    // 게임 호스트에 센서 데이터 전달\n                    socket.to(result.hostSocketId).emit('sensor-update', result.sensorData);\n                    \n                } catch (error) {\n                    console.error(`❌ 센서 데이터 처리 실패:`, error.message);\n                    socket.emit('sensor-error', { error: error.message });\n                }\n            });\n            \n            // 게임 시작 (게임에서 호출)\n            socket.on('start-game', (data, callback) => {\n                try {\n                    const { sessionId } = data;\n                    \n                    const gameInfo = this.sessionManager.startGame(sessionId);\n                    \n                    callback({\n                        success: true,\n                        game: gameInfo\n                    });\n                    \n                    // 모든 센서 클라이언트에 게임 시작 알림\n                    const session = this.sessionManager.getSession(sessionId);\n                    for (const sensor of session.sensors.values()) {\n                        socket.to(sensor.socketId).emit('game-started', {\n                            gameType: session.gameType,\n                            sensorId: sensor.id\n                        });\n                    }\n                    \n                    console.log(`🎮 게임 시작: ${session.code}`);\n                    \n                } catch (error) {\n                    console.error(`❌ 게임 시작 실패:`, error.message);\n                    callback({\n                        success: false,\n                        error: error.message\n                    });\n                }\n            });\n            \n            // 연결 해제 처리\n            socket.on('disconnect', () => {\n                console.log(`🔌 클라이언트 연결 해제: ${socket.id}`);\n                \n                const disconnections = this.sessionManager.disconnect(socket.id);\n                \n                // 연결 해제 알림 전송\n                disconnections.forEach(disconnection => {\n                    if (disconnection.type === 'host_disconnected') {\n                        // 모든 센서에 호스트 연결 해제 알림\n                        disconnection.affectedSensors.forEach(sensorId => {\n                            this.io.emit('host-disconnected', { sessionId: disconnection.sessionId });\n                        });\n                    } else if (disconnection.type === 'sensor_disconnected') {\n                        // 호스트에 센서 연결 해제 알림\n                        socket.to(disconnection.hostSocketId).emit('sensor-disconnected', {\n                            sensorId: disconnection.sensorId,\n                            remainingSensors: disconnection.remainingSensors\n                        });\n                    }\n                });\n            });\n            \n            // 핑 응답\n            socket.on('ping', (callback) => {\n                if (callback) callback({ pong: Date.now() });\n            });\n        });\n    }\n    \n    /**\n     * 서버 시작\n     */\n    start() {\n        this.server.listen(this.port, () => {\n            console.log(`🚀 Sensor Game Hub v6.0 서버 시작`);\n            console.log(`📍 포트: ${this.port}`);\n            console.log(`🌐 URL: http://localhost:${this.port}`);\n            console.log(`📱 센서: http://localhost:${this.port}/sensor.html`);\n            console.log(`🎮 게임: http://localhost:${this.port}/games/[solo|dual|multi]`);\n        });\n    }\n    \n    /**\n     * 서버 종료\n     */\n    stop() {\n        this.server.close(() => {\n            console.log('🛑 서버가 종료되었습니다.');\n        });\n    }\n}\n\n// 서버 시작\nconst server = new GameServer();\nserver.start();\n\n// 우아한 종료 처리\nprocess.on('SIGTERM', () => {\n    console.log('🛑 SIGTERM 신호 수신, 서버 종료 중...');\n    server.stop();\n});\n\nprocess.on('SIGINT', () => {\n    console.log('🛑 SIGINT 신호 수신, 서버 종료 중...');\n    server.stop();\n    process.exit(0);\n});\n\nmodule.exports = GameServer;
+                    socket.to(session.host.socketId).emit('sensor-connected', {
+                        sensorId: result.sensorId,
+                        gameType: session.gameType,
+                        connectedSensors: result.connectedSensors,
+                        maxSensors: result.maxSensors,
+                        isReady: result.isReady
+                    });
+                    
+                    // 모든 센서가 연결되면 게임 준비 완료 알림
+                    if (result.isReady) {
+                        socket.to(session.host.socketId).emit('game-ready', {
+                            sessionId: result.sessionId,
+                            gameType: session.gameType,
+                            connectedSensors: Array.from(session.sensors.keys())
+                        });
+                    }
+                    
+                    console.log(`📱 센서 연결됨: ${result.sensorId} → ${sessionCode}`);
+                    
+                } catch (error) {
+                    console.error(`❌ 센서 연결 실패:`, error.message);
+                    callback({
+                        success: false,
+                        error: error.message
+                    });
+                }
+            });
+            
+            // 센서 데이터 수신 (모바일에서 호출)
+            socket.on('sensor-data', (data) => {
+                try {
+                    const { sessionCode, sensorId, sensorData } = data;
+                    
+                    const result = this.sessionManager.updateSensorData(
+                        sessionCode,
+                        sensorId,
+                        sensorData
+                    );
+                    
+                    // 게임 호스트에 센서 데이터 전달
+                    socket.to(result.hostSocketId).emit('sensor-update', result.sensorData);
+                    
+                } catch (error) {
+                    console.error(`❌ 센서 데이터 처리 실패:`, error.message);
+                    socket.emit('sensor-error', { error: error.message });
+                }
+            });
+            
+            // 게임 시작 (게임에서 호출)
+            socket.on('start-game', (data, callback) => {
+                try {
+                    const { sessionId } = data;
+                    
+                    const gameInfo = this.sessionManager.startGame(sessionId);
+                    
+                    callback({
+                        success: true,
+                        game: gameInfo
+                    });
+                    
+                    // 모든 센서 클라이언트에 게임 시작 알림
+                    const session = this.sessionManager.getSession(sessionId);
+                    for (const sensor of session.sensors.values()) {
+                        socket.to(sensor.socketId).emit('game-started', {
+                            gameType: session.gameType,
+                            sensorId: sensor.id
+                        });
+                    }
+                    
+                    console.log(`🎮 게임 시작: ${session.code}`);
+                    
+                } catch (error) {
+                    console.error(`❌ 게임 시작 실패:`, error.message);
+                    callback({
+                        success: false,
+                        error: error.message
+                    });
+                }
+            });
+            
+            // 연결 해제 처리
+            socket.on('disconnect', () => {
+                console.log(`🔌 클라이언트 연결 해제: ${socket.id}`);
+                
+                const disconnections = this.sessionManager.disconnect(socket.id);
+                
+                // 연결 해제 알림 전송
+                disconnections.forEach(disconnection => {
+                    if (disconnection.type === 'host_disconnected') {
+                        // 모든 센서에 호스트 연결 해제 알림
+                        disconnection.affectedSensors.forEach(sensorId => {
+                            this.io.emit('host-disconnected', { sessionId: disconnection.sessionId });
+                        });
+                    } else if (disconnection.type === 'sensor_disconnected') {
+                        // 호스트에 센서 연결 해제 알림
+                        socket.to(disconnection.hostSocketId).emit('sensor-disconnected', {
+                            sensorId: disconnection.sensorId,
+                            remainingSensors: disconnection.remainingSensors
+                        });
+                    }
+                });
+            });
+            
+            // 핑 응답
+            socket.on('ping', (callback) => {
+                if (callback) callback({ pong: Date.now() });
+            });
+        });
+    }
+    
+    /**
+     * 서버 시작
+     */
+    start() {
+        this.server.listen(this.port, () => {
+            console.log(`🚀 Sensor Game Hub v6.0 서버 시작`);
+            console.log(`📍 포트: ${this.port}`);
+            console.log(`🌐 URL: http://localhost:${this.port}`);
+            console.log(`📱 센서: http://localhost:${this.port}/sensor.html`);
+            console.log(`🎮 게임: http://localhost:${this.port}/games/[solo|dual|multi]`);
+        });
+    }
+    
+    /**
+     * 서버 종료
+     */
+    stop() {
+        this.server.close(() => {
+            console.log('🛑 서버가 종료되었습니다.');
+        });
+    }
+}
+
+// 서버 시작
+const server = new GameServer();
+server.start();
+
+// 우아한 종료 처리
+process.on('SIGTERM', () => {
+    console.log('🛑 SIGTERM 신호 수신, 서버 종료 중...');
+    server.stop();
+});
+
+process.on('SIGINT', () => {
+    console.log('🛑 SIGINT 신호 수신, 서버 종료 중...');
+    server.stop();
+    process.exit(0);
+});
+
+module.exports = GameServer;
