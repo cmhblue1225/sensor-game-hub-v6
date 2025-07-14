@@ -1,0 +1,26 @@
+{
+  "id": "rhythm-blade",
+  "title": "Rhythm Blade Dual",
+  "description": "두 명이 협력하여 플레이하는 3D 리듬 게임!<br>플레이어1은 빨간 노트, 플레이어2는 파란 노트를 담당하며<br>완벽한 타이밍으로 함께 노트를 베어 높은 점수를 달성하세요!",
+  "category": "dual",
+  "icon": "⚔️",
+  "version": "2.0.0",
+  "author": "Claude",
+  "sensors": ["orientation", "motion"],
+  "maxPlayers": 2,
+  "difficulty": "medium",
+  "status": "active",
+  "featured": true,
+  "tags": ["rhythm", "3D", "cooperation", "VR-style", "music"],
+  "instructions": [
+    "두 명의 플레이어가 각자 모바일을 들고 참여합니다",
+    "플레이어1(왼쪽)은 빨간색 노트를, 플레이어2(오른쪽)은 파란색 노트를 담당합니다",
+    "모바일을 세이버처럼 휘둘러 다가오는 노트를 베세요",
+    "협력 노트(보라색)는 두 플레이어가 동시에 쳐야 합니다",
+    "완벽한 타이밍과 협력으로 최고 점수를 달성하세요!"
+  ],
+  "controls": {
+    "swing": "모바일을 세이버처럼 휘두르기",
+    "cooperation": "보라색 노트는 동시에 타격"
+  }
+}
