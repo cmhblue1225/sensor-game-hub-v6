@@ -618,6 +618,9 @@
                 this.scene.add(this.sabers.sensor1);
                 this.scene.add(this.sabers.sensor2);
                 
+                // ✅ 타이밍 가이드 라인 추가 (세이버 위치에 맞춤)
+                this.createTimingGuideLines();
+                
                 // 배경 환경 생성
                 this.createEnvironment();
             }
@@ -698,6 +701,52 @@
                     wall.rotation.y = i === 0 ? Math.PI / 2 : -Math.PI / 2;
                     this.scene.add(wall);
                 }
+            }
+            
+            createTimingGuideLines() {
+                // ✅ 타이밍 가이드 라인 생성 - 세이버가 있는 위치에 정확히 배치
+                console.log('🎯 타이밍 가이드 라인 생성 중...');
+                
+                // 왼쪽 플레이어 타이밍 라인 (빨간색) - 왼쪽 세이버와 같은 위치
+                const leftLineGeometry = new THREE.PlaneGeometry(0.05, 4);
+                const leftLineMaterial = new THREE.MeshBasicMaterial({
+                    color: 0xff0000,
+                    transparent: true,
+                    opacity: 0.8,
+                    side: THREE.DoubleSide
+                });
+                this.leftTimingLine = new THREE.Mesh(leftLineGeometry, leftLineMaterial);
+                this.leftTimingLine.position.set(-2, 1.5, 3); // 왼쪽 세이버와 동일한 z=3 위치
+                this.leftTimingLine.rotation.y = Math.PI / 2;
+                this.scene.add(this.leftTimingLine);
+                
+                // 오른쪽 플레이어 타이밍 라인 (파란색) - 오른쪽 세이버와 같은 위치
+                const rightLineGeometry = new THREE.PlaneGeometry(0.05, 4);
+                const rightLineMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x0000ff,
+                    transparent: true,
+                    opacity: 0.8,
+                    side: THREE.DoubleSide
+                });
+                this.rightTimingLine = new THREE.Mesh(rightLineGeometry, rightLineMaterial);
+                this.rightTimingLine.position.set(2, 1.5, 3); // 오른쪽 세이버와 동일한 z=3 위치
+                this.rightTimingLine.rotation.y = Math.PI / 2;
+                this.scene.add(this.rightTimingLine);
+                
+                // 중앙 협력 타이밍 라인 (보라색) - 협력 노트 경로
+                const centerLineGeometry = new THREE.PlaneGeometry(0.05, 4);
+                const centerLineMaterial = new THREE.MeshBasicMaterial({
+                    color: 0x8b5cf6,
+                    transparent: true,
+                    opacity: 0.8,
+                    side: THREE.DoubleSide
+                });
+                this.centerTimingLine = new THREE.Mesh(centerLineGeometry, centerLineMaterial);
+                this.centerTimingLine.position.set(0, 1.5, 3); // 중앙, z=3 위치
+                this.centerTimingLine.rotation.y = Math.PI / 2;
+                this.scene.add(this.centerTimingLine);
+                
+                console.log('✅ 타이밍 가이드 라인 생성 완료 - 세이버 위치(z=3)에 배치');
             }
             
             setupEventListeners() {
@@ -1167,6 +1216,9 @@
                 // 파티클 효과 업데이트
                 this.updateParticles();
                 
+                // ✅ 타이밍 라인 업데이트
+                this.updateTimingLines();
+                
                 // 게임 종료 체크
                 this.checkGameEnd();
             }
@@ -1217,6 +1269,62 @@
                     if (allDead) {
                         this.scene.remove(particleGroup);
                         this.particleEffects.splice(i, 1);
+                    }
+                }
+            }
+            
+            updateTimingLines() {
+                // ✅ 노트가 타이밍 라인(z=3)에 가까워질 때 라인 강조
+                const timingZone = 3; // 세이버가 있는 z 위치
+                const highlightDistance = 2; // 강조 시작 거리 (노트가 z=1부터 z=5까지에서 강조)
+                
+                let leftHighlight = false;
+                let rightHighlight = false;
+                let centerHighlight = false;
+                
+                // 각 노트를 확인하여 타이밍 라인에 가까운지 체크
+                this.notes.forEach(note => {
+                    const distanceToTiming = Math.abs(note.position.z - timingZone);
+                    
+                    if (distanceToTiming <= highlightDistance) {
+                        const noteData = note.userData;
+                        
+                        if (noteData.type === 'cooperation') {
+                            centerHighlight = true;
+                        } else if (noteData.lane === 'sensor1') {
+                            leftHighlight = true;
+                        } else if (noteData.lane === 'sensor2') {
+                            rightHighlight = true;
+                        }
+                    }
+                });
+                
+                // 타이밍 라인 강조 적용
+                if (this.leftTimingLine) {
+                    this.leftTimingLine.material.opacity = leftHighlight ? 1.0 : 0.5;
+                    if (leftHighlight) {
+                        // 강조 시 약간의 발광 효과
+                        this.leftTimingLine.material.emissive.setHex(0x220000);
+                    } else {
+                        this.leftTimingLine.material.emissive.setHex(0x000000);
+                    }
+                }
+                
+                if (this.rightTimingLine) {
+                    this.rightTimingLine.material.opacity = rightHighlight ? 1.0 : 0.5;
+                    if (rightHighlight) {
+                        this.rightTimingLine.material.emissive.setHex(0x000022);
+                    } else {
+                        this.rightTimingLine.material.emissive.setHex(0x000000);
+                    }
+                }
+                
+                if (this.centerTimingLine) {
+                    this.centerTimingLine.material.opacity = centerHighlight ? 1.0 : 0.5;
+                    if (centerHighlight) {
+                        this.centerTimingLine.material.emissive.setHex(0x220022);
+                    } else {
+                        this.centerTimingLine.material.emissive.setHex(0x000000);
                     }
                 }
             }
