@@ -618,9 +618,6 @@
                 this.scene.add(this.sabers.sensor1);
                 this.scene.add(this.sabers.sensor2);
                 
-                // ✅ 타이밍 가이드 라인 추가
-                this.createTimingGuideLines();
-                
                 // 배경 환경 생성
                 this.createEnvironment();
             }
@@ -701,80 +698,6 @@
                     wall.rotation.y = i === 0 ? Math.PI / 2 : -Math.PI / 2;
                     this.scene.add(wall);
                 }
-            }
-            
-            createTimingGuideLines() {
-                // ✅ 타이밍 가이드 라인 생성 - 플레이어가 언제 세이버를 휘둘러야 하는지 표시
-                
-                // 왼쪽 플레이어 타이밍 라인 (빨간색)
-                const leftLineGeometry = new THREE.PlaneGeometry(0.1, 6);
-                const leftLineMaterial = new THREE.MeshBasicMaterial({
-                    color: 0xff0000,
-                    transparent: true,
-                    opacity: 0.7,
-                    side: THREE.DoubleSide
-                });
-                this.leftTimingLine = new THREE.Mesh(leftLineGeometry, leftLineMaterial);
-                this.leftTimingLine.position.set(-2, 1.5, 2); // 왼쪽 세이버 앞쪽
-                this.leftTimingLine.rotation.y = Math.PI / 2;
-                this.scene.add(this.leftTimingLine);
-                
-                // 오른쪽 플레이어 타이밍 라인 (파란색)
-                const rightLineGeometry = new THREE.PlaneGeometry(0.1, 6);
-                const rightLineMaterial = new THREE.MeshBasicMaterial({
-                    color: 0x0000ff,
-                    transparent: true,
-                    opacity: 0.7,
-                    side: THREE.DoubleSide
-                });
-                this.rightTimingLine = new THREE.Mesh(rightLineGeometry, rightLineMaterial);
-                this.rightTimingLine.position.set(2, 1.5, 2); // 오른쪽 세이버 앞쪽
-                this.rightTimingLine.rotation.y = Math.PI / 2;
-                this.scene.add(this.rightTimingLine);
-                
-                // 중앙 협력 타이밍 라인 (보라색)
-                const centerLineGeometry = new THREE.PlaneGeometry(0.1, 6);
-                const centerLineMaterial = new THREE.MeshBasicMaterial({
-                    color: 0x8b5cf6,
-                    transparent: true,
-                    opacity: 0.7,
-                    side: THREE.DoubleSide
-                });
-                this.centerTimingLine = new THREE.Mesh(centerLineGeometry, centerLineMaterial);
-                this.centerTimingLine.position.set(0, 1.5, 2); // 중앙
-                this.centerTimingLine.rotation.y = Math.PI / 2;
-                this.scene.add(this.centerTimingLine);
-                
-                // 타이밍 라인들을 애니메이션으로 반짝이게 만들기
-                this.animateTimingLines();
-                
-                console.log('✅ 타이밍 가이드 라인 생성 완료');
-            }
-            
-            animateTimingLines() {
-                // ✅ 타이밍 라인 기본 펄스 애니메이션 (강조 기능과 병행)
-                let time = 0;
-                const pulseSpeed = 0.02; // 속도 줄임
-                
-                const pulse = () => {
-                    time += pulseSpeed;
-                    // 기본 반짝임 효과는 updateTimingLineHighlight에서 덮어쓰이지 않는 범위에서만 적용
-                    const basePulse = 0.1 + Math.sin(time * 2) * 0.1; // 미묘한 기본 반짝임
-                    
-                    // 현재 opacity가 기본값(0.4)일 때만 펄스 적용
-                    if (this.leftTimingLine && this.leftTimingLine.material.opacity <= 0.5) {
-                        this.leftTimingLine.material.opacity = 0.4 + basePulse;
-                    }
-                    if (this.rightTimingLine && this.rightTimingLine.material.opacity <= 0.5) {
-                        this.rightTimingLine.material.opacity = 0.4 + basePulse;
-                    }
-                    if (this.centerTimingLine && this.centerTimingLine.material.opacity <= 0.5) {
-                        this.centerTimingLine.material.opacity = 0.4 + basePulse;
-                    }
-                    
-                    requestAnimationFrame(pulse);
-                };
-                pulse();
             }
             
             setupEventListeners() {
@@ -1244,9 +1167,6 @@
                 // 파티클 효과 업데이트
                 this.updateParticles();
                 
-                // ✅ 타이밍 라인 강조 업데이트
-                this.updateTimingLineHighlight();
-                
                 // 게임 종료 체크
                 this.checkGameEnd();
             }
@@ -1298,49 +1218,6 @@
                         this.scene.remove(particleGroup);
                         this.particleEffects.splice(i, 1);
                     }
-                }
-            }
-            
-            updateTimingLineHighlight() {
-                // ✅ 노트가 타이밍 라인에 가까워질 때 라인 강조
-                const timingZone = 2; // 타이밍 라인 Z 위치
-                const highlightDistance = 3; // 강조 시작 거리
-                
-                let leftHighlight = false;
-                let rightHighlight = false;
-                let centerHighlight = false;
-                
-                // 각 노트를 확인하여 타이밍 라인에 가까운지 체크
-                this.notes.forEach(note => {
-                    const distanceToTiming = Math.abs(note.position.z - timingZone);
-                    
-                    if (distanceToTiming <= highlightDistance) {
-                        const noteData = note.userData;
-                        
-                        if (noteData.type === 'cooperation') {
-                            centerHighlight = true;
-                        } else if (noteData.lane === 'sensor1') {
-                            leftHighlight = true;
-                        } else if (noteData.lane === 'sensor2') {
-                            rightHighlight = true;
-                        }
-                    }
-                });
-                
-                // 타이밍 라인 강조 적용
-                if (this.leftTimingLine) {
-                    this.leftTimingLine.material.opacity = leftHighlight ? 1.0 : 0.4;
-                    this.leftTimingLine.material.emissive.setHex(leftHighlight ? 0x330000 : 0x000000);
-                }
-                
-                if (this.rightTimingLine) {
-                    this.rightTimingLine.material.opacity = rightHighlight ? 1.0 : 0.4;
-                    this.rightTimingLine.material.emissive.setHex(rightHighlight ? 0x000033 : 0x000000);
-                }
-                
-                if (this.centerTimingLine) {
-                    this.centerTimingLine.material.opacity = centerHighlight ? 1.0 : 0.4;
-                    this.centerTimingLine.material.emissive.setHex(centerHighlight ? 0x330033 : 0x000000);
                 }
             }
             
