@@ -657,9 +657,10 @@
                     sessionCode: null,
                     playerId: null,
                     isDefending: false,
-                    swingThreshold: 20,
-                    swingCooldown: 500,
-                    lastSwingTime: 0
+                    swingThreshold: 8, // 임계값 낮춤 (20 → 8)
+                    swingCooldown: 800, // 쿨다운 늘림 (500 → 800ms)
+                    lastSwingTime: 0,
+                    debugMode: true // 디버그 모드 추가
                 };
                 
                 // DOM 요소
@@ -1077,7 +1078,8 @@
             }
 
             detectSwordSwing(data) {
-                if (this.state.gameState !== 'fighting') return;
+                // 전투 중이거나 디버그 모드일 때만 공격 감지
+                if (this.state.gameState !== 'fighting' && !this.swordFight.debugMode) return;
 
                 const now = Date.now();
                 if (now - this.swordFight.lastSwingTime < this.swordFight.swingCooldown) return;
@@ -1090,6 +1092,11 @@
                     acceleration.y ** 2 + 
                     acceleration.z ** 2
                 );
+
+                // 디버그 모드에서 가속도 크기 표시
+                if (this.swordFight.debugMode && magnitude > 5) {
+                    console.log(`🗡️ 가속도 크기: ${magnitude.toFixed(1)} (임계값: ${this.swordFight.swingThreshold})`);
+                }
 
                 if (magnitude > this.swordFight.swingThreshold) {
                     this.performSwordAttack(acceleration);
@@ -1109,8 +1116,13 @@
                     attackType = 'vertical'; // Y축 움직임이 가장 클 때 수직 공격
                 } else if (absX > absY && absX > absZ) {
                     attackType = 'horizontal'; // X축 움직임이 가장 클 때 수평 공격
-                } else if (absZ > 20) {
+                } else if (absZ > 8) { // Z축 임계값도 낮춤 (20 → 8)
                     attackType = 'vertical'; // Z축 움직임이 클 때도 수직으로 판단
+                }
+
+                // 디버그 정보 출력
+                if (this.swordFight.debugMode) {
+                    console.log(`🗡️ 공격 감지: X=${absX.toFixed(1)}, Y=${absY.toFixed(1)}, Z=${absZ.toFixed(1)} → ${attackType}`);
                 }
 
                 // 공격 방향 정규화
@@ -1123,6 +1135,10 @@
                             attackType: attackType,
                             timestamp: Date.now()
                         });
+                        
+                        console.log(`📡 서버로 ${attackType} 공격 전송됨`);
+                    } else {
+                        console.warn('⚠️ 소켓 연결이 없어 공격 전송 실패');
                     }
 
                     // 시각적/햅틱 피드백
@@ -1130,6 +1146,10 @@
                     this.showMessage(`⚔️ ${attackType === 'vertical' ? '수직' : '수평'} 공격!`, 'success');
 
                     console.log(`⚔️ ${attackType} 공격 실행`);
+                } else {
+                    if (this.swordFight.debugMode) {
+                        console.log('🚫 공격 타입을 결정할 수 없음');
+                    }
                 }
             }
             
@@ -1191,9 +1211,10 @@
                     sessionCode: null,
                     playerId: null,
                     isDefending: false,
-                    swingThreshold: 20,
-                    swingCooldown: 500,
-                    lastSwingTime: 0
+                    swingThreshold: 8, // 임계값 낮춤
+                    swingCooldown: 800, // 쿨다운 늘림
+                    lastSwingTime: 0,
+                    debugMode: true // 디버그 모드 유지
                 };
                 
                 if (this.sensorCollector.isActive) {

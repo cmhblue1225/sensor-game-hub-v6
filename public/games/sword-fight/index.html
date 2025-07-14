@@ -1316,7 +1316,12 @@
             }
 
             handlePlayerAttack(data) {
-                if (this.gameState !== 'fighting') return;
+                console.log(`🎯 공격 수신: Player ${data.playerId}, 타입: ${data.attackType}, 게임상태: ${this.gameState}`);
+                
+                if (this.gameState !== 'fighting') {
+                    console.log(`⚠️ 전투 중이 아니어서 공격 무시 (현재 상태: ${this.gameState})`);
+                    return;
+                }
 
                 const playerId = `player${data.playerId}`;
                 const player = this.players[playerId];
@@ -1324,7 +1329,7 @@
 
                 // 공격 쿨다운 체크
                 if (now - player.lastAttackTime < this.attackCooldown) {
-                    console.log(`⚔️ ${playerId} 공격 쿨다운 중`);
+                    console.log(`⚔️ ${playerId} 공격 쿨다운 중 (${now - player.lastAttackTime}ms < ${this.attackCooldown}ms)`);
                     return;
                 }
 
@@ -1345,7 +1350,7 @@
                     this.processPendingAttacks();
                 }, this.simultaneousAttackWindow);
 
-                console.log(`⚔️ ${playerId} ${data.attackType} 공격!`);
+                console.log(`⚔️ ${playerId} ${data.attackType} 공격 처리 완료!`);
             }
 
             processPendingAttacks() {
