@@ -541,7 +541,7 @@
                 
                 // 센서 수집기
                 this.sensorCollector = new SensorCollector({
-                    throttle: 50, // 50ms 간격
+                    throttle: 33, // 33ms 간격 (30fps) - 성능 최적화
                     sensitivity: 1
                 });
                 

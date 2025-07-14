@@ -322,7 +322,7 @@ class SessionManager {
         switch (gameType) {
             case 'solo': return 1;
             case 'dual': return 2;
-            case 'multi': return 10;
+            case 'multi': return 8;
             default: return 1;
         }
     }

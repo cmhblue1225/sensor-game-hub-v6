@@ -709,9 +709,9 @@
                 
                 // 게임 설정
                 this.config = {
-                    maxPlayers: 10,
+                    maxPlayers: 8,
                     gameTime: 180, // 3분
-                    targetCount: 12,
+                    targetCount: 10,
                     targetRadius: 25,
                     targetValue: 100,
                     comboMultiplier: 1.5,
@@ -1260,13 +1260,23 @@
             }
             
             startGameLoop() {
-                const loop = () => {
-                    this.update();
-                    this.render();
+                let lastTime = 0;
+                const targetFPS = 60;
+                const interval = 1000 / targetFPS;
+                
+                const loop = (currentTime) => {
+                    const deltaTime = currentTime - lastTime;
+                    
+                    if (deltaTime >= interval) {
+                        this.update();
+                        this.render();
+                        lastTime = currentTime - (deltaTime % interval);
+                    }
+                    
                     this.gameLoop = requestAnimationFrame(loop);
                 };
                 
-                loop();
+                loop(0);
             }
             
             update() {
@@ -1316,8 +1326,8 @@
             }
             
             render() {
-                // 배경 클리어
-                this.ctx.fillStyle = 'rgba(15, 23, 42, 0.1)';
+                // 성능 최적화: 반투명 오버레이로 트레일 효과
+                this.ctx.fillStyle = 'rgba(15, 23, 42, 0.15)';
                 this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
                 
                 // 목표 렌더링
@@ -1447,13 +1457,19 @@
                 const player = this.players.get(sensorId);
                 if (!player || !player.isActive) return;
                 
+                // 스로틀링: 너무 빠른 업데이트 방지 (16ms = 60fps)
+                const now = Date.now();
+                if (!player.lastSensorUpdate) player.lastSensorUpdate = 0;
+                if (now - player.lastSensorUpdate < 16) return;
+                player.lastSensorUpdate = now;
+                
                 // 센서 데이터에서 움직임 추출
                 let deltaX = 0;
                 let deltaY = 0;
                 
                 if (sensorData.orientation) {
                     // 기울기로 움직임 제어 (감도 조정)
-                    const sensitivity = 3;
+                    const sensitivity = 1.5; // 민감도 낮춤 (3 → 1.5)
                     deltaX = (sensorData.orientation.gamma || 0) * sensitivity;
                     deltaY = (sensorData.orientation.beta || 0) * sensitivity;
                 }
