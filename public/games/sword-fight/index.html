@@ -185,6 +185,7 @@
             position: relative;
             z-index: 10;
             padding: 20px;
+            margin-top: 20px;
         }
 
         .arena-ground {
@@ -206,9 +207,10 @@
             justify-content: space-between;
             align-items: flex-end;
             width: 100%;
-            max-width: 800px;
-            height: 400px;
+            max-width: 600px;
+            height: 350px;
             position: relative;
+            margin: 0 auto;
         }
 
         .warrior {
@@ -224,13 +226,13 @@
         }
 
         .warrior-avatar {
-            width: 120px;
-            height: 200px;
+            width: 100px;
+            height: 180px;
             background: linear-gradient(180deg, 
                 var(--text-secondary), 
                 var(--surface)
             );
-            border-radius: 60px 60px 20px 20px;
+            border-radius: 50px 50px 20px 20px;
             position: relative;
             margin-bottom: 10px;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
@@ -253,12 +255,12 @@
         /* 검 */
         .warrior-sword {
             position: absolute;
-            top: 60px;
-            right: -20px;
-            width: 8px;
-            height: 80px;
+            top: 50px;
+            right: -15px;
+            width: 6px;
+            height: 70px;
             background: linear-gradient(180deg, var(--sword-silver), #9ca3af);
-            border-radius: 4px;
+            border-radius: 3px;
             transition: all 0.2s ease;
             transform-origin: bottom center;
             box-shadow: 0 0 10px rgba(229, 231, 235, 0.3);
@@ -267,13 +269,13 @@
         .warrior-sword::before {
             content: '';
             position: absolute;
-            bottom: -8px;
+            bottom: -6px;
             left: 50%;
             transform: translateX(-50%);
-            width: 20px;
-            height: 8px;
+            width: 16px;
+            height: 6px;
             background: var(--sword-gold);
-            border-radius: 4px;
+            border-radius: 3px;
         }
 
         /* 검사 애니메이션 */
@@ -331,7 +333,11 @@
             justify-content: space-between;
             align-items: center;
             width: 100%;
-            margin-bottom: 20px;
+            max-width: 800px;
+            margin: 0 auto 20px auto;
+            padding: 0 20px;
+            position: relative;
+            z-index: 50;
         }
 
         .health-bar {
@@ -698,12 +704,13 @@
             }
             
             .warriors-container {
-                height: 300px;
+                height: 280px;
+                max-width: 500px;
             }
             
             .warrior-avatar {
-                width: 100px;
-                height: 160px;
+                width: 85px;
+                height: 150px;
             }
             
             .game-state {
@@ -724,12 +731,13 @@
 
         @media (max-width: 480px) {
             .warriors-container {
-                height: 250px;
+                height: 220px;
+                max-width: 400px;
             }
             
             .warrior-avatar {
-                width: 80px;
-                height: 140px;
+                width: 70px;
+                height: 120px;
             }
             
             .health-bar {
@@ -779,35 +787,35 @@
             </div>
         </div>
 
+        <!-- 체력 바 (아레나 위쪽으로 이동) -->
+        <div class="health-container hidden" id="healthContainer">
+            <div class="health-bar">
+                <h3>Player 1</h3>
+                <div class="health-hearts" id="health1">
+                    <span class="health-heart">❤️</span>
+                    <span class="health-heart">❤️</span>
+                    <span class="health-heart">❤️</span>
+                    <span class="health-heart">❤️</span>
+                    <span class="health-heart">❤️</span>
+                </div>
+            </div>
+            <div class="health-bar">
+                <h3>Player 2</h3>
+                <div class="health-hearts" id="health2">
+                    <span class="health-heart">❤️</span>
+                    <span class="health-heart">❤️</span>
+                    <span class="health-heart">❤️</span>
+                    <span class="health-heart">❤️</span>
+                    <span class="health-heart">❤️</span>
+                </div>
+            </div>
+        </div>
+
         <!-- 전투 아레나 -->
         <div class="battle-arena">
             <!-- 게임 상태 표시 -->
             <div class="game-state state-waiting" id="gameState">
                 🎯 두 명의 검사 연결을 기다리는 중...
-            </div>
-
-            <!-- 체력 바 -->
-            <div class="health-container hidden" id="healthContainer">
-                <div class="health-bar">
-                    <h3>Player 1</h3>
-                    <div class="health-hearts" id="health1">
-                        <span class="health-heart">❤️</span>
-                        <span class="health-heart">❤️</span>
-                        <span class="health-heart">❤️</span>
-                        <span class="health-heart">❤️</span>
-                        <span class="health-heart">❤️</span>
-                    </div>
-                </div>
-                <div class="health-bar">
-                    <h3>Player 2</h3>
-                    <div class="health-hearts" id="health2">
-                        <span class="health-heart">❤️</span>
-                        <span class="health-heart">❤️</span>
-                        <span class="health-heart">❤️</span>
-                        <span class="health-heart">❤️</span>
-                        <span class="health-heart">❤️</span>
-                    </div>
-                </div>
             </div>
 
             <!-- 검사들 -->

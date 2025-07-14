@@ -838,6 +838,10 @@
                     // 센서 시작 버튼 활성화
                     this.elements.startSensorBtn.disabled = false;
                     
+                    // 방어 섹션 즉시 표시 및 방어 버튼 활성화
+                    this.elements.defenseSection.classList.add('visible');
+                    this.elements.defenseButton.disabled = false;
+                    
                     this.showMessage('검투에 연결되었습니다! 센서를 시작하세요.', 'success');
 
                     // Sword Fight 세션에 참여 알림
@@ -868,7 +872,7 @@
             }
 
             startDefense() {
-                if (!this.state.sessionConnected || this.state.gameState !== 'fighting') return;
+                if (!this.state.sessionConnected) return;
 
                 this.swordFight.isDefending = true;
                 this.elements.defenseButton.classList.add('defending');
