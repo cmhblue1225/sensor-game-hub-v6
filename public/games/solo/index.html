@@ -575,7 +575,10 @@
                 });
                 
                 // 세션 생성
-                this.sdk.on('session-created', (session) => {
+                this.sdk.on('session-created', (event) => {
+                    console.log('🔍 session-created 이벤트 원본:', event);
+                    const session = event.detail || event;
+                    console.log('🔍 추출한 세션 객체:', session);
                     this.state.sessionCode = session.sessionCode;
                     this.displaySessionInfo(session);
                     this.updateGameStatus('센서 연결 대기 중...');
