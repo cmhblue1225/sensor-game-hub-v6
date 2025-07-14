@@ -569,7 +569,14 @@
                     activityIndicator: document.getElementById('activityIndicator'),
                     sessionInputSection: document.getElementById('sessionInputSection'),
                     qrScannerSection: document.getElementById('qrScannerSection'),
-                    startSensorBtn: document.getElementById('startSensorBtn')
+                    startSensorBtn: document.getElementById('startSensorBtn'),
+                    // 센서 데이터 표시 요소들
+                    tiltX: document.getElementById('tiltX'),
+                    tiltY: document.getElementById('tiltY'),
+                    rotationZ: document.getElementById('rotationZ'),
+                    accelX: document.getElementById('accelX'),
+                    accelY: document.getElementById('accelY'),
+                    accelZ: document.getElementById('accelZ')
                 };
                 
                 this.initializeApp();
@@ -648,6 +655,7 @@
                 
                 // 센서 연결 성공
                 this.sdk.on('sensor-connection-success', (data) => {
+                    console.log('🔍 센서 연결 성공 데이터:', data);
                     this.state.sessionConnected = true;
                     this.state.currentSession = data;
                     
@@ -765,11 +773,13 @@
             
             async startSensorCollection() {
                 try {
+                    console.log('🔍 센서 수집 시작 시도...');
                     await this.sensorCollector.start();
                     this.state.sensorActive = true;
                     
                     // 센서 데이터 핸들러
                     this.sensorCollector.onData((data) => {
+                        console.log('🔍 센서 데이터 수신:', data);
                         this.updateSensorDisplay(data);
                         this.sendSensorData(data);
                         this.showActivity();
@@ -779,8 +789,10 @@
                     this.elements.startSensorBtn.textContent = '✅ 센서 활성화됨';
                     this.elements.startSensorBtn.disabled = true;
                     this.showMessage('센서 수집이 시작되었습니다.', 'success');
+                    console.log('✅ 센서 수집 시작 완료');
                     
                 } catch (error) {
+                    console.error('❌ 센서 시작 실패:', error);
                     this.showMessage(`센서 시작 실패: ${error.message}`, 'error');
                 }
             }
