@@ -812,7 +812,8 @@
                 });
                 
                 // 센서 연결 (첫 번째 센서가 내 플레이어)
-                this.sdk.on('sensor-connected', (data) => {
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;
                     console.log('📱 플레이어 참가:', data);
                     
                     if (!this.state.myPlayerId) {
@@ -834,7 +835,8 @@
                     }
                 });
                 
-                this.sdk.on('sensor-disconnected', (data) => {
+                this.sdk.on('sensor-disconnected', (event) => {
+                    const data = event.detail || event;
                     console.log('📱 플레이어 나감:', data);
                     
                     if (data.sensorId === this.state.myPlayerId) {

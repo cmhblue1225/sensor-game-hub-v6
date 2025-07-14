@@ -814,8 +814,10 @@
                 });
                 
                 // 센서 연결
-                this.sdk.on('sensor-connected', (data) => {
-                    console.log('📱 센서 연결됨:', data);
+                this.sdk.on('sensor-connected', (event) => {
+                    console.log('📱 센서 연결됨:', event);
+                    const data = event.detail || event;
+                    console.log('📱 추출된 센서 연결 데이터:', data);
                     
                     const sensorId = data.sensorId;
                     this.state.sensorsConnected[sensorId] = true;
@@ -833,7 +835,8 @@
                     }
                 });
                 
-                this.sdk.on('sensor-disconnected', (data) => {
+                this.sdk.on('sensor-disconnected', (event) => {
+                    const data = event.detail || event;
                     console.log('📱 센서 연결 해제:', data);
                     
                     if (data.sensorId) {

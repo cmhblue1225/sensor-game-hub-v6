@@ -585,7 +585,8 @@
                 });
                 
                 // 센서 연결
-                this.sdk.on('sensor-connected', (data) => {
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;
                     this.state.sensorConnected = true;
                     this.updateSensorStatus(true);
                     this.updateGameStatus('센서 연결됨 - 게임 준비 완료');
