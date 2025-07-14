@@ -9,22 +9,14 @@
     <style>
         :root {
             --primary: #3b82f6;
-            --primary-dark: #1d4ed8;
-            --secondary: #06b6d4;
             --success: #16a34a;
             --warning: #f59e0b;
             --error: #ef4444;
             --background: #0f172a;
             --surface: #1e293b;
-            --card: #334155;
             --text-primary: #f8fafc;
             --text-secondary: #cbd5e1;
-            --text-muted: #94a3b8;
             --border: #475569;
-            --male-color: #3b82f6;
-            --female-color: #ec4899;
-            --correct: #16a34a;
-            --incorrect: #ef4444;
         }
         
         * {
@@ -35,543 +27,216 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', sans-serif;
             background: linear-gradient(135deg, var(--background), #020617);
             color: var(--text-primary);
             min-height: 100vh;
             overflow-x: hidden;
             touch-action: manipulation;
-            -webkit-text-size-adjust: 100%;
         }
         
-        /* 헤더 */
-        .header {
-            background: var(--surface);
-            border-bottom: 1px solid var(--border);
-            padding: 1rem;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            backdrop-filter: blur(15px);
-        }
-        
-        .header-content {
+        .container {
             max-width: 600px;
             margin: 0 auto;
+            padding: 1rem;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: var(--surface);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
             text-align: center;
         }
         
         .logo {
-            font-size: 1.6rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
+            font-size: 2rem;
+            font-weight: bold;
             margin-bottom: 0.5rem;
         }
         
-        .subtitle {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-        }
-        
-        /* 메인 컨테이너 */
-        .container {
-            max-width: 600px;
-            margin: 0 auto;
-            padding: 1.5rem;
-            min-height: calc(100vh - 120px);
-        }
-        
-        /* 연결 상태 */
-        .connection-status {
+        .status {
             background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
-            padding: 1.25rem;
-            margin-bottom: 1.5rem;
-            text-align: center;
-        }
-        
-        .status-indicator {
-            width: 18px;
-            height: 18px;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 0.75rem;
-            background: var(--error);
-            transition: background-color 0.3s ease;
-        }
-        
-        .status-indicator.connected {
-            background: var(--success);
-            box-shadow: 0 0 15px var(--success);
-        }
-        
-        .status-text {
-            font-size: 1rem;
-            font-weight: 600;
-            display: inline-block;
-            vertical-align: middle;
-        }
-        
-        /* 세션 입력 */
-        .session-input-section {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
+            border-radius: 1rem;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
         }
         
-        .section-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            margin-bottom: 1rem;
-            color: var(--primary);
+        .connection-section {
+            background: var(--surface);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
         }
         
         .input-group {
             margin-bottom: 1rem;
         }
         
-        .input-label {
+        .input-group label {
             display: block;
-            font-size: 0.9rem;
-            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            background: var(--background);
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            text-align: center;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
             margin-bottom: 0.5rem;
         }
         
-        .session-input {
-            width: 100%;
-            padding: 1rem;
-            font-size: 1.3rem;
-            font-family: 'Courier New', monospace;
-            text-align: center;
-            background: var(--background);
-            border: 2px solid var(--border);
-            border-radius: 0.5rem;
-            color: var(--text-primary);
-            letter-spacing: 0.2em;
-            transition: border-color 0.3s ease;
-        }
-        
-        .session-input:focus {
-            outline: none;
-            border-color: var(--primary);
-        }
-        
-        .session-input::placeholder {
-            color: var(--text-muted);
-            letter-spacing: normal;
-        }
-        
-        .connect-button {
-            width: 100%;
-            padding: 1rem;
-            font-size: 1rem;
-            font-weight: 600;
+        .btn-primary {
             background: var(--primary);
             color: white;
-            border: none;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
         }
         
-        .connect-button:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
+        .btn-primary:hover {
+            background: #2563eb;
         }
         
-        .connect-button:active {
-            transform: translateY(0);
-        }
-        
-        .connect-button:disabled {
-            background: var(--border);
+        .btn:disabled {
+            opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
         }
         
-        /* QR 스캐너 */
-        .qr-scanner-section {
+        .game-section {
             background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-        }
-        
-        .qr-button {
-            width: 100%;
-            padding: 1rem;
-            font-size: 1rem;
-            font-weight: 600;
-            background: var(--secondary);
-            color: white;
-            border: none;
-            border-radius: 0.5rem;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        
-        .qr-button:hover {
-            background: #0891b2;
-            transform: translateY(-2px);
-        }
-        
-        /* 게임 정보 */
-        .game-info {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
+            border-radius: 1rem;
             padding: 1.5rem;
             margin-bottom: 1.5rem;
             display: none;
         }
         
-        .game-info.visible {
+        .game-section.visible {
             display: block;
-            animation: fadeIn 0.5s ease;
         }
         
-        .game-type-badge {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            font-size: 0.8rem;
-            font-weight: 600;
-            background: var(--primary);
-            color: white;
-            border-radius: 1rem;
+        .game-status {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .round-info {
+            font-size: 1.5rem;
+            font-weight: bold;
             margin-bottom: 1rem;
         }
         
-        .game-details {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-        
-        .detail-item {
-            text-align: center;
-        }
-        
-        .detail-label {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.25rem;
-        }
-        
-        .detail-value {
-            font-size: 1rem;
-            font-weight: 600;
-            color: var(--text-primary);
-        }
-
-        /* 게임플레이 섹션 */
-        .gameplay-section {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            display: none;
-            text-align: center;
-        }
-
-        .gameplay-section.visible {
-            display: block;
-            animation: fadeIn 0.5s ease;
-        }
-
-        .current-command {
-            margin-bottom: 2rem;
-        }
-
         .command-display {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            background: var(--background);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
             margin-bottom: 1.5rem;
         }
-
-        .commander-icon {
+        
+        .command-icon {
             font-size: 4rem;
-            margin-bottom: 0.5rem;
+            margin-bottom: 1rem;
         }
-
-        .commander-icon.male {
-            color: var(--male-color);
-        }
-
-        .commander-icon.female {
-            color: var(--female-color);
-        }
-
+        
         .command-text {
             font-size: 2rem;
             font-weight: bold;
-            padding: 0.8rem 1.5rem;
-            border-radius: 0.75rem;
-            border: 2px solid;
-            margin-bottom: 0.5rem;
         }
-
-        .command-text.male {
-            border-color: var(--male-color);
-            color: var(--male-color);
-        }
-
-        .command-text.female {
-            border-color: var(--female-color);
-            color: var(--female-color);
-        }
-
-        .round-info {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-bottom: 1rem;
-        }
-
-        .rule-reminder {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            background: rgba(255, 255, 255, 0.05);
-            padding: 0.8rem;
-            border-radius: 0.5rem;
-            margin-bottom: 1.5rem;
-            line-height: 1.4;
-        }
-
-        .rule-reminder.male {
-            border-left: 3px solid var(--male-color);
-        }
-
-        .rule-reminder.female {
-            border-left: 3px solid var(--female-color);
-        }
-
-        /* 방향 표시기 */
+        
         .direction-indicator {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             grid-template-rows: 1fr 1fr 1fr;
             gap: 0.5rem;
             max-width: 200px;
-            margin: 0 auto 2rem auto;
-            height: 200px;
+            margin: 0 auto 1.5rem;
         }
-
+        
         .direction-cell {
+            aspect-ratio: 1;
+            background: var(--background);
+            border: 2px solid var(--border);
+            border-radius: 0.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid var(--border);
-            border-radius: 0.5rem;
             font-size: 1.5rem;
             transition: all 0.3s ease;
         }
-
-        .direction-cell.center {
-            background: var(--primary);
-            color: white;
-            font-weight: bold;
-        }
-
+        
         .direction-cell.current {
-            background: var(--warning);
-            border-color: var(--warning);
-            color: var(--background);
-            font-weight: bold;
-            animation: pulse 1s infinite;
+            background: var(--primary);
+            border-color: var(--primary);
+            transform: scale(1.1);
         }
-
+        
         .direction-cell.correct {
-            background: var(--correct);
-            border-color: var(--correct);
-            color: white;
-            animation: success-flash 0.6s ease;
+            background: var(--success);
+            border-color: var(--success);
         }
-
+        
         .direction-cell.incorrect {
-            background: var(--incorrect);
-            border-color: var(--incorrect);
-            color: white;
-            animation: error-shake 0.6s ease;
+            background: var(--error);
+            border-color: var(--error);
         }
-
-        @keyframes pulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.1); }
+        
+        .sensor-data {
+            background: var(--background);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
         }
-
-        @keyframes success-flash {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+        
+        .sensor-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
         }
-
-        @keyframes error-shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
-        }
-
-        /* 점수 표시 */
+        
         .score-display {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 1rem;
-            border-radius: 0.75rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .my-score, .opponent-score {
-            text-align: center;
-        }
-
-        .score-label {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.25rem;
-        }
-
-        .score-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--text-primary);
-        }
-
-        .vs-divider {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: var(--text-muted);
-        }
-        
-        /* 센서 상태 */
-        .sensor-status {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            display: none;
-        }
-        
-        .sensor-status.visible {
-            display: block;
-            animation: fadeIn 0.5s ease;
-        }
-        
-        .sensor-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 1rem;
-            margin-top: 1rem;
-        }
-        
-        .sensor-item {
-            text-align: center;
-            padding: 1rem;
             background: var(--background);
             border-radius: 0.5rem;
-            border: 1px solid var(--border);
+            padding: 1rem;
         }
         
-        .sensor-label {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.5rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        .sensor-value {
-            font-size: 1.1rem;
-            font-weight: 600;
-            font-family: 'Courier New', monospace;
-            color: var(--primary);
-        }
-
-        /* 결과 표시 */
-        .result-section {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
-            padding: 2rem;
-            margin-bottom: 1.5rem;
-            display: none;
+        .score-item {
             text-align: center;
         }
-
-        .result-section.visible {
-            display: block;
-            animation: fadeIn 0.5s ease;
-        }
-
-        .result-title {
+        
+        .score-value {
             font-size: 2rem;
             font-weight: bold;
-            margin-bottom: 1rem;
-        }
-
-        .result-title.winner {
-            color: var(--success);
-        }
-
-        .result-title.loser {
-            color: var(--error);
-        }
-
-        .result-title.tie {
-            color: var(--warning);
-        }
-
-        .result-subtitle {
-            font-size: 1.2rem;
-            color: var(--text-secondary);
-            margin-bottom: 1.5rem;
-        }
-
-        .final-scores {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .final-score {
-            text-align: center;
-            padding: 1rem;
-            border-radius: 0.75rem;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .final-score-label {
-            font-size: 0.9rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.5rem;
-        }
-
-        .final-score-value {
-            font-size: 1.8rem;
-            font-weight: bold;
-            color: var(--text-primary);
+            color: var(--primary);
         }
         
-        /* 메시지 */
         .message {
             padding: 1rem;
-            margin-bottom: 1rem;
             border-radius: 0.5rem;
             text-align: center;
-            font-weight: 500;
+            font-weight: 600;
+            margin-bottom: 1rem;
             display: none;
+        }
+        
+        .message.visible {
+            display: block;
         }
         
         .message.success {
@@ -592,845 +257,472 @@
             color: var(--warning);
         }
         
-        .message.visible {
-            display: block;
-            animation: fadeIn 0.3s ease;
-        }
-        
-        /* 애니메이션 */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* 반응형 */
-        @media (max-width: 480px) {
-            .container {
-                padding: 1rem;
-            }
-            
-            .session-input-section,
-            .qr-scanner-section,
-            .game-info,
-            .sensor-status,
-            .gameplay-section {
-                padding: 1rem;
-            }
-            
-            .sensor-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .game-details {
-                grid-template-columns: 1fr;
-            }
-
-            .commander-icon {
-                font-size: 3rem;
-            }
-
-            .command-text {
-                font-size: 1.5rem;
-                padding: 0.6rem 1.2rem;
-            }
-
-            .direction-indicator {
-                max-width: 150px;
-                height: 150px;
-            }
-
-            .direction-cell {
-                font-size: 1.2rem;
-            }
-        }
-        
-        /* 숨김 클래스 */
         .hidden {
             display: none !important;
         }
     </style>
 </head>
 <body>
-    <!-- 헤더 -->
-    <div class="header">
-        <div class="header-content">
-            <div class="logo">🚩 Signal Flags Controller</div>
-            <div class="subtitle">깃발 신호를 따라하여 점수를 획득하세요</div>
-        </div>
-    </div>
-    
-    <!-- 메인 컨테이너 -->
     <div class="container">
-        <!-- 연결 상태 -->
-        <div class="connection-status">
-            <div class="status-indicator" id="statusIndicator"></div>
-            <span class="status-text" id="statusText">서버 연결 중...</span>
+        <!-- 헤더 -->
+        <div class="header">
+            <div class="logo">🚩 Signal Flags</div>
+            <div>센서 컨트롤러</div>
         </div>
         
         <!-- 메시지 -->
-        <div class="message" id="message"></div>
+        <div class="message" id="message">메시지가 여기 표시됩니다</div>
         
-        <!-- 세션 입력 -->
-        <div class="session-input-section" id="sessionInputSection">
-            <div class="section-title">🚩 Signal Flags 세션 연결</div>
+        <!-- 연결 상태 -->
+        <div class="status">
+            <div><strong>연결 상태:</strong> <span id="connectionStatus">서버 연결 중...</span></div>
+        </div>
+        
+        <!-- 세션 연결 -->
+        <div class="connection-section" id="connectionSection">
+            <h3>게임 참여</h3>
             <div class="input-group">
-                <label class="input-label">4자리 세션 코드 입력</label>
-                <input type="text" 
-                       class="session-input" 
-                       id="sessionInput" 
-                       placeholder="0000"
-                       maxlength="4"
-                       pattern="[0-9]{4}"
-                       inputmode="numeric">
+                <label>4자리 세션 코드</label>
+                <input type="text" id="sessionInput" placeholder="1234" maxlength="4">
             </div>
-            <button class="connect-button" id="connectButton" disabled>
-                🚩 깃발 게임 참여
-            </button>
+            <button class="btn btn-primary" id="connectBtn" disabled>🚩 게임 참여</button>
+            <button class="btn btn-primary" id="qrBtn">📱 QR 코드 스캔</button>
         </div>
         
-        <!-- QR 스캐너 -->
-        <div class="qr-scanner-section" id="qrScannerSection">
-            <div class="section-title">📷 QR 코드 스캔</div>
-            <button class="qr-button" id="qrButton">
-                📷 QR 코드 스캔하기
-            </button>
-            <div id="qr-reader" style="display: none; margin-top: 1rem;"></div>
-        </div>
-        
-        <!-- 게임 정보 -->
-        <div class="game-info" id="gameInfo">
-            <div class="section-title">🚩 Signal Flags 연결됨</div>
-            <div class="game-type-badge" id="gameTypeBadge">SIGNAL FLAGS</div>
-            <div class="game-details">
-                <div class="detail-item">
-                    <div class="detail-label">플레이어 ID</div>
-                    <div class="detail-value" id="sensorId">-</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">연결된 플레이어</div>
-                    <div class="detail-value" id="connectedSensors">0/2</div>
+        <!-- 게임 섹션 -->
+        <div class="game-section" id="gameSection">
+            <div class="game-status">
+                <div class="round-info" id="roundInfo">라운드 준비 중...</div>
+                <div class="command-display" id="commandDisplay">
+                    <div class="command-icon" id="commandIcon">🚩</div>
+                    <div class="command-text" id="commandText">준비하세요</div>
                 </div>
             </div>
-            <button class="connect-button" id="startSensorBtn" style="width: 100%; margin-top: 1rem;" disabled>
-                🚩 센서 준비하기
-            </button>
-        </div>
-
-        <!-- 게임플레이 섹션 -->
-        <div class="gameplay-section" id="gameplaySection">
-            <div class="section-title">🎮 게임 진행 중</div>
             
+            <!-- 방향 표시기 -->
+            <div class="direction-indicator">
+                <div class="direction-cell"></div>
+                <div class="direction-cell" data-direction="up">⬆️</div>
+                <div class="direction-cell"></div>
+                <div class="direction-cell" data-direction="left">⬅️</div>
+                <div class="direction-cell" data-direction="center">🎯</div>
+                <div class="direction-cell" data-direction="right">➡️</div>
+                <div class="direction-cell"></div>
+                <div class="direction-cell" data-direction="down">⬇️</div>
+                <div class="direction-cell"></div>
+            </div>
+            
+            <!-- 센서 데이터 -->
+            <div class="sensor-data" id="sensorData">
+                <div class="sensor-row">
+                    <span>현재 방향:</span>
+                    <span id="currentDirection">center</span>
+                </div>
+                <div class="sensor-row">
+                    <span>기울기 X:</span>
+                    <span id="tiltX">0°</span>
+                </div>
+                <div class="sensor-row">
+                    <span>기울기 Y:</span>
+                    <span id="tiltY">0°</span>
+                </div>
+                <div class="sensor-row">
+                    <span>움직임 크기:</span>
+                    <span id="movementSize">0°</span>
+                </div>
+            </div>
+            
+            <!-- 점수 표시 -->
             <div class="score-display">
-                <div class="my-score">
-                    <div class="score-label">내 점수</div>
+                <div class="score-item">
+                    <div>내 점수</div>
                     <div class="score-value" id="myScore">0</div>
                 </div>
-                <div class="vs-divider">VS</div>
-                <div class="opponent-score">
-                    <div class="score-label">상대 점수</div>
+                <div class="score-item">
+                    <div>상대 점수</div>
                     <div class="score-value" id="opponentScore">0</div>
-                </div>
-            </div>
-
-            <div class="current-command">
-                <div class="round-info" id="roundInfo">라운드 1 / 15</div>
-                <div class="command-display">
-                    <div class="commander-icon" id="commanderIcon">👨</div>
-                    <div class="command-text" id="commandText">준비하세요!</div>
-                </div>
-                <div class="rule-reminder" id="ruleReminder">
-                    👩 여성의 명령: 그대로 수행<br>
-                    👨 남성의 명령: 반대로 수행
-                </div>
-            </div>
-
-            <div class="direction-indicator" id="directionIndicator">
-                <div class="direction-cell" data-direction="none"></div>
-                <div class="direction-cell" data-direction="up">⬆️</div>
-                <div class="direction-cell" data-direction="none"></div>
-                <div class="direction-cell" data-direction="left">⬅️</div>
-                <div class="direction-cell center">📱</div>
-                <div class="direction-cell" data-direction="right">➡️</div>
-                <div class="direction-cell" data-direction="none"></div>
-                <div class="direction-cell" data-direction="down">⬇️</div>
-                <div class="direction-cell" data-direction="none"></div>
-            </div>
-        </div>
-
-        <!-- 결과 섹션 -->
-        <div class="result-section" id="resultSection">
-            <div class="result-title" id="resultTitle">🏆 승리!</div>
-            <div class="result-subtitle" id="resultSubtitle">축하합니다!</div>
-            <div class="final-scores">
-                <div class="final-score">
-                    <div class="final-score-label">내 점수</div>
-                    <div class="final-score-value" id="finalMyScore">0</div>
-                </div>
-                <div class="final-score">
-                    <div class="final-score-label">상대 점수</div>
-                    <div class="final-score-value" id="finalOpponentScore">0</div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- 센서 상태 -->
-        <div class="sensor-status" id="sensorStatus">
-            <div class="section-title">🚩 실시간 깃발 센서 데이터</div>
-            <div class="sensor-grid">
-                <div class="sensor-item">
-                    <div class="sensor-label">기울기 X</div>
-                    <div class="sensor-value" id="tiltX">0.0</div>
-                </div>
-                <div class="sensor-item">
-                    <div class="sensor-label">기울기 Y</div>
-                    <div class="sensor-value" id="tiltY">0.0</div>
-                </div>
-                <div class="sensor-item">
-                    <div class="sensor-label">현재 방향</div>
-                    <div class="sensor-value" id="currentDirection">center</div>
-                </div>
-                <div class="sensor-item">
-                    <div class="sensor-label">각도</div>
-                    <div class="sensor-value" id="currentAngle">0°</div>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Socket.IO -->
+
+    <!-- QR 스캐너 -->
+    <div id="qr-reader" style="display: none; width: 100%; margin: 1rem 0;"></div>
+
+    <!-- Scripts -->
     <script src="/socket.io/socket.io.js"></script>
-    
-    <!-- QR Code Scanner (optional) -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    
-    <!-- SessionSDK -->
     <script src="/js/SessionSDK.js"></script>
-    
-    <!-- Signal Flags Sensor Controller Script -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
     <script>
-        class SignalFlagsSensorController {
+        class SignalFlagsSensor {
             constructor() {
-                // SDK 초기화
-                this.sdk = new SessionSDK({
-                    gameId: 'signal-flags',
-                    gameType: 'client',
-                    debug: true
-                });
+                console.log('🚩 Signal Flags 센서 초기화 시작');
                 
-                // 센서 수집기
-                this.sensorCollector = new SensorCollector({
-                    throttle: 100, // 100ms 간격 (10fps)
-                    sensitivity: 1
-                });
+                // 기본 상태
+                this.isConnected = false;
+                this.sessionConnected = false;
+                this.gameActive = false;
+                this.hasResponded = false;
+                this.playerId = null;
                 
-                // 상태 관리
-                this.state = {
-                    connected: false,
-                    sessionConnected: false,
-                    sensorActive: false,
-                    currentSession: null,
-                    gameState: 'waiting', // waiting, ready, playing, finished
-                    currentDirection: 'center',
-                    playerId: null
-                };
-                
-                // Signal Flags 관련 상태
+                // 게임 데이터
                 this.gameData = {
                     sessionCode: null,
                     currentRound: 0,
                     currentCommand: null,
                     currentGender: null,
                     myScore: 0,
-                    opponentScore: 0,
-                    hasResponded: false
+                    opponentScore: 0
                 };
                 
-                // 간소화된 방향 감지 설정
-                this.directionConfig = {
-                    centerThreshold: 15,        // 중앙 인식 임계값 (더 관대하게)
-                    directionThreshold: 30,     // 방향 인식 임계값 (명확하게)
-                    minMovement: 20,            // 최소 움직임 크기
-                    responseDelay: 200          // 응답 지연 시간 (ms)
+                // 센서 설정 (매우 간단하게)
+                this.sensorConfig = {
+                    threshold: 25,      // 방향 인식 임계값
+                    responseDelay: 500  // 응답 후 대기 시간
                 };
-
-                // 게임 상태 추적
-                this.gameState = {
-                    isWaitingPosition: true,    // 중앙 대기 상태
-                    hasMovedToDirection: false, // 방향으로 이동했는지
-                    detectedDirection: null,    // 감지된 방향
-                    lastResponseTime: 0,        // 마지막 응답 시간
-                    roundStarted: false         // 라운드 시작 여부
+                
+                // 센서 상태
+                this.sensorState = {
+                    currentDirection: 'center',
+                    lastResponseTime: 0,
+                    isCalibrated: false,
+                    centerPosition: { beta: 0, gamma: 0 }
                 };
                 
                 // DOM 요소
                 this.elements = {
-                    statusIndicator: document.getElementById('statusIndicator'),
-                    statusText: document.getElementById('statusText'),
                     message: document.getElementById('message'),
+                    connectionStatus: document.getElementById('connectionStatus'),
+                    connectionSection: document.getElementById('connectionSection'),
                     sessionInput: document.getElementById('sessionInput'),
-                    connectButton: document.getElementById('connectButton'),
-                    qrButton: document.getElementById('qrButton'),
-                    gameInfo: document.getElementById('gameInfo'),
-                    gameTypeBadge: document.getElementById('gameTypeBadge'),
-                    sensorId: document.getElementById('sensorId'),
-                    connectedSensors: document.getElementById('connectedSensors'),
-                    sensorStatus: document.getElementById('sensorStatus'),
-                    sessionInputSection: document.getElementById('sessionInputSection'),
-                    qrScannerSection: document.getElementById('qrScannerSection'),
-                    startSensorBtn: document.getElementById('startSensorBtn'),
-                    gameplaySection: document.getElementById('gameplaySection'),
+                    connectBtn: document.getElementById('connectBtn'),
+                    qrBtn: document.getElementById('qrBtn'),
+                    gameSection: document.getElementById('gameSection'),
                     roundInfo: document.getElementById('roundInfo'),
-                    commanderIcon: document.getElementById('commanderIcon'),
+                    commandIcon: document.getElementById('commandIcon'),
                     commandText: document.getElementById('commandText'),
-                    ruleReminder: document.getElementById('ruleReminder'),
-                    directionIndicator: document.getElementById('directionIndicator'),
-                    myScore: document.getElementById('myScore'),
-                    opponentScore: document.getElementById('opponentScore'),
-                    resultSection: document.getElementById('resultSection'),
-                    resultTitle: document.getElementById('resultTitle'),
-                    resultSubtitle: document.getElementById('resultSubtitle'),
-                    finalMyScore: document.getElementById('finalMyScore'),
-                    finalOpponentScore: document.getElementById('finalOpponentScore'),
-                    // 센서 데이터 표시 요소들
+                    currentDirection: document.getElementById('currentDirection'),
                     tiltX: document.getElementById('tiltX'),
                     tiltY: document.getElementById('tiltY'),
-                    currentDirection: document.getElementById('currentDirection'),
-                    currentAngle: document.getElementById('currentAngle')
+                    movementSize: document.getElementById('movementSize'),
+                    myScore: document.getElementById('myScore'),
+                    opponentScore: document.getElementById('opponentScore')
                 };
                 
-                this.initializeApp();
+                // SDK 및 센서 초기화
+                this.initializeSDK();
+                this.initializeSensors();
+                this.setupEvents();
+                
+                console.log('✅ Signal Flags 센서 초기화 완료');
             }
             
-            async initializeApp() {
-                console.log('🚩 Signal Flags 센서 컨트롤러 초기화');
-                
-                this.setupEventListeners();
-                this.setupSDKEvents();
-                this.setupSignalFlagsEvents();
-                
-                // URL 파라미터에서 세션 코드 확인
-                const urlParams = new URLSearchParams(window.location.search);
-                const sessionCode = urlParams.get('session');
-                
-                if (sessionCode) {
-                    this.elements.sessionInput.value = sessionCode;
-                    this.showMessage('URL에서 세션 코드를 가져왔습니다.', 'success');
-                }
-                
-                // 센서 지원 확인
-                this.checkSensorSupport();
+            initializeSDK() {
+                this.sdk = new SessionSDK({
+                    gameType: 'dual',
+                    gameName: 'Signal Flags Sensor',
+                    debug: true
+                });
             }
             
-            setupEventListeners() {
-                // 세션 입력
-                this.elements.sessionInput.addEventListener('input', (e) => {
-                    const value = e.target.value.replace(/[^0-9]/g, '').slice(0, 4);
-                    e.target.value = value;
-                    
-                    this.elements.connectButton.disabled = value.length !== 4 || !this.state.connected;
-                });
-                
-                // 연결 버튼
-                this.elements.connectButton.addEventListener('click', () => {
-                    this.connectToSession();
-                });
-                
-                // QR 스캔 버튼
-                this.elements.qrButton.addEventListener('click', () => {
-                    this.scanQRCode();
-                });
-                
-                // 센서 시작 버튼
-                this.elements.startSensorBtn.addEventListener('click', () => {
-                    this.startSensorCollection();
-                });
-                
-                // 엔터키 처리
-                this.elements.sessionInput.addEventListener('keypress', (e) => {
-                    if (e.key === 'Enter' && !this.elements.connectButton.disabled) {
-                        this.connectToSession();
+            async initializeSensors() {
+                try {
+                    // 센서 권한 요청
+                    if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
+                        const permission = await DeviceOrientationEvent.requestPermission();
+                        if (permission !== 'granted') {
+                            this.showMessage('센서 권한이 필요합니다', 'error');
+                            return;
+                        }
                     }
-                });
-            }
-
-            setupSignalFlagsEvents() {
-                // Signal Flags 전용 소켓 이벤트
-                this.sdk.on('signal-flags-round-start', (data) => {
-                    this.handleRoundStart(data);
-                });
-
-                this.sdk.on('signal-flags-round-end', (data) => {
-                    this.handleRoundEnd(data);
-                });
-
-                this.sdk.on('signal-flags-game-end', (data) => {
-                    this.handleGameEnd(data);
-                });
-            }
-
-            handleRoundStart(data) {
-                this.gameData.currentRound = data.round;
-                this.gameData.currentCommand = data.command;
-                this.gameData.currentGender = data.gender;
-                this.gameData.hasResponded = false;
-
-                this.updateRoundDisplay();
-                this.resetDirectionIndicator();
-                
-                this.showMessage(`라운드 ${data.round}: ${data.gender === 'male' ? '남성' : '여성'}이 "${data.command}"를 외쳤습니다!`, 'warning');
-                
-                console.log(`🚩 라운드 ${data.round} 시작: ${data.gender} says "${data.command}"`);
-            }
-
-            handleRoundEnd(data) {
-                // 결과를 받아서 UI 업데이트
-                if (data.scores) {
-                    this.gameData.myScore = data.scores[`player${this.state.playerId}`] || 0;
-                    this.gameData.opponentScore = data.scores[`player${this.state.playerId === 1 ? 2 : 1}`] || 0;
-                    this.updateScoreDisplay();
+                    
+                    // 센서 이벤트 리스너
+                    window.addEventListener('deviceorientation', (event) => {
+                        this.handleSensorData(event);
+                    });
+                    
+                    console.log('✅ 센서 초기화 완료');
+                } catch (error) {
+                    console.error('❌ 센서 초기화 실패:', error);
+                    this.showMessage('센서 초기화 실패', 'error');
                 }
-            }
-
-            handleGameEnd(data) {
-                this.state.gameState = 'finished';
-                
-                const myFinalScore = data.finalScores[`player${this.state.playerId}`] || 0;
-                const opponentFinalScore = data.finalScores[`player${this.state.playerId === 1 ? 2 : 1}`] || 0;
-                
-                this.elements.finalMyScore.textContent = myFinalScore;
-                this.elements.finalOpponentScore.textContent = opponentFinalScore;
-                
-                let resultTitle, resultClass;
-                
-                if (data.winner === this.state.playerId) {
-                    resultTitle = '🏆 승리!';
-                    resultClass = 'winner';
-                } else if (data.winner === 0) {
-                    resultTitle = '🤝 무승부!';
-                    resultClass = 'tie';
-                } else {
-                    resultTitle = '😢 패배...';
-                    resultClass = 'loser';
-                }
-                
-                this.elements.resultTitle.textContent = resultTitle;
-                this.elements.resultTitle.className = `result-title ${resultClass}`;
-                this.elements.resultSubtitle.textContent = data.winner === 0 ? '훌륭한 경기였습니다!' : 
-                    data.winner === this.state.playerId ? '축하합니다!' : '다음에는 더 잘하실 거예요!';
-                
-                this.elements.gameplaySection.classList.remove('visible');
-                this.elements.resultSection.classList.add('visible');
-            }
-
-            updateRoundDisplay() {
-                this.elements.roundInfo.textContent = `라운드 ${this.gameData.currentRound} / 10`;
-                
-                // 성별 아이콘 업데이트
-                this.elements.commanderIcon.textContent = this.gameData.currentGender === 'male' ? '👨' : '👩';
-                this.elements.commanderIcon.className = `commander-icon ${this.gameData.currentGender}`;
-                
-                // 명령 텍스트 업데이트
-                this.elements.commandText.textContent = this.gameData.currentCommand.toUpperCase();
-                this.elements.commandText.className = `command-text ${this.gameData.currentGender}`;
-                
-                // 규칙 알림 업데이트
-                this.elements.ruleReminder.className = `rule-reminder ${this.gameData.currentGender}`;
-                if (this.gameData.currentGender === 'male') {
-                    this.elements.ruleReminder.innerHTML = 
-                        `👨 <strong>남성의 명령</strong>: ${this.gameData.currentCommand.toUpperCase()}의 <strong>반대</strong>로 수행하세요!`;
-                } else {
-                    this.elements.ruleReminder.innerHTML = 
-                        `👩 <strong>여성의 명령</strong>: ${this.gameData.currentCommand.toUpperCase()}를 <strong>그대로</strong> 수행하세요!`;
-                }
-            }
-
-            updateScoreDisplay() {
-                this.elements.myScore.textContent = this.gameData.myScore;
-                this.elements.opponentScore.textContent = this.gameData.opponentScore;
-            }
-
-            resetDirectionIndicator() {
-                const cells = this.elements.directionIndicator.querySelectorAll('.direction-cell');
-                cells.forEach(cell => {
-                    cell.classList.remove('current', 'correct', 'incorrect');
-                });
             }
             
-            setupSDKEvents() {
-                // SDK 연결 이벤트
+            setupEvents() {
+                // SDK 이벤트
                 this.sdk.on('connected', () => {
-                    this.state.connected = true;
-                    this.updateConnectionStatus('서버 연결됨', true);
-                    this.elements.connectButton.disabled = this.elements.sessionInput.value.length !== 4;
+                    this.isConnected = true;
+                    this.elements.connectionStatus.textContent = '서버 연결됨';
+                    this.elements.connectBtn.disabled = false;
+                    console.log('✅ 서버 연결됨');
                 });
                 
                 this.sdk.on('disconnected', () => {
-                    this.state.connected = false;
-                    this.state.sessionConnected = false;
-                    this.updateConnectionStatus('서버 연결 끊김', false);
-                    this.elements.connectButton.disabled = true;
-                    this.hideGameInfo();
+                    this.isConnected = false;
+                    this.sessionConnected = false;
+                    this.elements.connectionStatus.textContent = '서버 연결 끊김';
+                    this.hideGameSection();
                 });
                 
-                this.sdk.on('connection-error', (data) => {
-                    this.showMessage(`연결 오류: ${data.error}`, 'error');
-                });
-                
-                // 센서 연결 성공
                 this.sdk.on('sensor-connection-success', (data) => {
-                    console.log('🔍 센서 연결 성공 데이터:', data);
-                    this.state.sessionConnected = true;
-                    this.state.currentSession = data;
+                    this.sessionConnected = true;
+                    this.playerId = data.sensorId;
                     this.gameData.sessionCode = data.sessionCode;
-                    
-                    this.updateConnectionStatus(`Signal Flags 연결됨 (${data.sensorId})`, true);
-                    this.showGameInfo(data);
-                    
-                    // 센서 시작 버튼 활성화
-                    this.elements.startSensorBtn.disabled = false;
-                    
-                    this.showMessage('Signal Flags에 연결되었습니다! 센서를 시작하세요.', 'success');
-
-                    // Signal Flags 세션에 참여 알림
-                    if (this.sdk.socket) {
-                        this.sdk.socket.emit('join-signal-flags', {
-                            sessionCode: data.sessionCode,
-                            type: 'sensor'
-                        });
-                    }
+                    this.showGameSection();
+                    this.showMessage('게임에 연결되었습니다!', 'success');
+                    console.log('✅ 게임 연결 성공:', data);
                 });
                 
-                // 게임 시작
-                this.sdk.on('game-started', (data) => {
-                    this.state.gameState = 'playing';
-                    this.showMessage('Signal Flags가 시작되었습니다!', 'success');
-                    this.elements.gameTypeBadge.textContent = `SIGNAL FLAGS - 게임 중`;
-                    this.elements.gameplaySection.classList.add('visible');
+                // UI 이벤트
+                this.elements.sessionInput.addEventListener('input', () => {
+                    const value = this.elements.sessionInput.value;
+                    this.elements.connectBtn.disabled = value.length !== 4 || !this.isConnected;
                 });
                 
-                // 호스트 연결 해제
-                this.sdk.on('host-disconnected', () => {
-                    this.showMessage('게임 호스트가 연결을 해제했습니다.', 'warning');
-                    this.resetConnection();
+                this.elements.connectBtn.addEventListener('click', () => {
+                    this.connectToSession();
                 });
                 
-                // 센서 오류
-                this.sdk.on('sensor-error', (data) => {
-                    this.showMessage(`센서 오류: ${data.error}`, 'error');
+                this.elements.qrBtn.addEventListener('click', () => {
+                    this.scanQRCode();
                 });
-
-                // Signal Flags 전용 이벤트
-                this.setupSignalFlagsEvents();
+                
+                // Signal Flags 게임 이벤트
+                this.setupGameEvents();
             }
-
-            setupSignalFlagsEvents() {
-                // 소켓 연결 확인
-                if (!this.sdk.socket) {
-                    setTimeout(() => this.setupSignalFlagsEvents(), 100);
-                    return;
-                }
-
-                // 라운드 시작
-                this.sdk.socket.on('signal-flags-round-start', (data) => {
-                    console.log('🚩 라운드 시작:', data);
-                    this.gameData.currentRound = data.round;
-                    this.gameData.currentCommand = data.command;
-                    this.gameData.currentGender = data.gender;
-                    this.gameData.hasResponded = false;
-                    this.state.gameState = 'playing';
+            
+            setupGameEvents() {
+                // 소켓 연결 대기
+                const waitForSocket = () => {
+                    if (!this.sdk.socket) {
+                        setTimeout(waitForSocket, 100);
+                        return;
+                    }
                     
-                    // 게임 상태 완전 초기화
-                    this.gameState.isWaitingPosition = true;
-                    this.gameState.hasMovedToDirection = false;
-                    this.gameState.detectedDirection = null;
-                    this.gameState.lastResponseTime = 0;
-                    this.gameState.roundStarted = true;
+                    // 라운드 시작
+                    this.sdk.socket.on('signal-flags-round-start', (data) => {
+                        console.log('🚩 라운드 시작:', data);
+                        this.gameData.currentRound = data.round;
+                        this.gameData.currentCommand = data.command;
+                        this.gameData.currentGender = data.gender;
+                        this.hasResponded = false;
+                        this.gameActive = true;
+                        
+                        // 센서 상태 초기화
+                        this.sensorState.lastResponseTime = 0;
+                        
+                        this.updateUI();
+                        this.calibrateSensor();
+                        this.showMessage('📍 중앙 위치에서 대기하세요', 'warning');
+                        
+                        setTimeout(() => {
+                            this.showMessage(`${data.gender === 'male' ? '👨' : '👩'} ${data.command.toUpperCase()}!`, 'warning');
+                        }, 1000);
+                    });
                     
-                    this.updateRoundDisplay();
-                    this.resetDirectionIndicator();
-                    this.showMessage(`📍 중앙에서 대기하세요`, 'warning');
-                    
-                    setTimeout(() => {
-                        this.showMessage(`라운드 ${data.round}: ${data.gender === 'male' ? '👨' : '👩'} ${data.command.toUpperCase()}!`, 'warning');
-                    }, 1000);
-                });
-
-                // 라운드 종료
-                this.sdk.socket.on('signal-flags-round-end', (data) => {
-                    console.log('🏁 라운드 종료:', data);
-                    
-                    // 게임 상태 초기화
-                    this.gameState.roundStarted = false;
-                    this.resetGameState();
-                    
-                    // 내 응답 결과 확인
-                    const myResponse = data.responses[this.state.playerId];
-                    if (myResponse) {
-                        const cell = this.elements.directionIndicator.querySelector(`[data-direction="${myResponse.direction}"]`);
-                        if (cell) {
-                            cell.classList.add(myResponse.isCorrect ? 'correct' : 'incorrect');
+                    // 라운드 종료
+                    this.sdk.socket.on('signal-flags-round-end', (data) => {
+                        console.log('🏁 라운드 종료:', data);
+                        this.gameActive = false;
+                        
+                        // 결과 표시
+                        const myResponse = data.responses[this.playerId];
+                        if (myResponse) {
+                            if (myResponse.isCorrect) {
+                                this.showMessage(`✅ 정답! +1점`, 'success');
+                                this.vibrateDevice([100, 50, 100]);
+                            } else {
+                                this.showMessage(`❌ 오답!`, 'error');
+                                this.vibrateDevice([200]);
+                            }
+                        } else {
+                            this.showMessage(`⏰ 시간 초과!`, 'warning');
                         }
                         
-                        if (myResponse.isCorrect) {
-                            this.vibrateDevice([100, 50, 100]);
-                            this.showMessage(`✅ 정답! ${myResponse.direction.toUpperCase()}`, 'success');
+                        // 점수 업데이트
+                        this.gameData.myScore = data.scores[`player${this.getPlayerNumber()}`] || 0;
+                        this.gameData.opponentScore = data.scores[`player${this.getPlayerNumber() === 1 ? 2 : 1}`] || 0;
+                        this.updateUI();
+                        
+                        // 방향 표시기 초기화
+                        setTimeout(() => {
+                            this.resetDirectionIndicator();
+                        }, 2000);
+                    });
+                    
+                    // 게임 종료
+                    this.sdk.socket.on('signal-flags-game-end', (data) => {
+                        console.log('🏆 게임 종료:', data);
+                        this.gameActive = false;
+                        
+                        const winner = data.winner;
+                        const myPlayerNumber = this.getPlayerNumber();
+                        
+                        if (winner === 0) {
+                            this.showMessage('🤝 무승부!', 'warning');
+                        } else if (winner === myPlayerNumber) {
+                            this.showMessage('🏆 승리!', 'success');
                         } else {
-                            this.vibrateDevice([200]);
-                            this.showMessage(`❌ 오답! ${myResponse.direction.toUpperCase()}`, 'error');
+                            this.showMessage('😢 패배...', 'error');
                         }
-                    } else {
-                        this.showMessage(`⏰ 시간 초과!`, 'warning');
-                        this.vibrateDevice([300, 100, 300]);
+                    });
+                };
+                
+                waitForSocket();
+            }
+            
+            calibrateSensor() {
+                // 현재 위치를 중앙으로 설정
+                this.sensorState.isCalibrated = true;
+                console.log('📍 센서 캘리브레이션 완료');
+            }
+            
+            handleSensorData(event) {
+                if (!this.sessionConnected) return;
+                
+                const beta = event.beta || 0;   // 앞뒤 기울기
+                const gamma = event.gamma || 0; // 좌우 기울기
+                
+                // 현재 방향 계산
+                const direction = this.calculateDirection(beta, gamma);
+                const movementSize = Math.sqrt(beta * beta + gamma * gamma);
+                
+                // UI 업데이트
+                this.sensorState.currentDirection = direction;
+                this.elements.currentDirection.textContent = direction;
+                this.elements.tiltX.textContent = beta.toFixed(1) + '°';
+                this.elements.tiltY.textContent = gamma.toFixed(1) + '°';
+                this.elements.movementSize.textContent = movementSize.toFixed(1) + '°';
+                
+                this.updateDirectionIndicator(direction);
+                
+                // 게임 중일 때 응답 처리
+                if (this.gameActive && !this.hasResponded && this.canRespond()) {
+                    if (direction !== 'center' && movementSize > this.sensorConfig.threshold) {
+                        this.sendResponse(direction);
                     }
-                    
-                    // 점수 업데이트
-                    this.gameData.myScore = data.scores[`player${this.state.playerId}`] || 0;
-                    this.gameData.opponentScore = data.scores[`player${this.state.playerId === 1 ? 2 : 1}`] || 0;
-                    this.updateScoreDisplay();
+                }
+            }
+            
+            calculateDirection(beta, gamma) {
+                const threshold = this.sensorConfig.threshold;
+                
+                // 중앙 판정
+                if (Math.abs(beta) < threshold && Math.abs(gamma) < threshold) {
+                    return 'center';
+                }
+                
+                // 방향 판정 (더 큰 값을 기준으로)
+                if (Math.abs(beta) > Math.abs(gamma)) {
+                    return beta > 0 ? 'down' : 'up';
+                } else {
+                    return gamma > 0 ? 'right' : 'left';
+                }
+            }
+            
+            canRespond() {
+                const now = Date.now();
+                return now - this.sensorState.lastResponseTime > this.sensorConfig.responseDelay;
+            }
+            
+            sendResponse(direction) {
+                if (!this.sdk.socket || this.hasResponded) return;
+                
+                this.hasResponded = true;
+                this.sensorState.lastResponseTime = Date.now();
+                
+                // 서버에 응답 전송
+                this.sdk.socket.emit('signal-flags-response', {
+                    sessionCode: this.gameData.sessionCode,
+                    playerId: this.getPlayerNumber(),
+                    direction: direction,
+                    timestamp: Date.now()
                 });
-
-                // 게임 종료
-                this.sdk.socket.on('signal-flags-game-end', (data) => {
-                    console.log('🏆 게임 종료:', data);
-                    this.state.gameState = 'finished';
-                    this.showGameResult(data);
-                });
-
-                // 게임 재시작
-                this.sdk.socket.on('signal-flags-restart', (data) => {
-                    console.log('🔄 게임 재시작:', data);
-                    this.state.gameState = 'waiting';
-                    
-                    // 게임 데이터 초기화
-                    this.gameData = {
-                        sessionCode: this.gameData.sessionCode,
-                        currentRound: 0,
-                        currentCommand: null,
-                        currentGender: null,
-                        myScore: 0,
-                        opponentScore: 0,
-                        hasResponded: false
-                    };
-                    
-                    // 게임 상태 초기화
-                    this.gameState.isWaitingPosition = true;
-                    this.gameState.hasMovedToDirection = false;
-                    this.gameState.detectedDirection = null;
-                    this.gameState.lastResponseTime = 0;
-                    this.gameState.roundStarted = false;
-                    
-                    this.updateScoreDisplay();
-                    this.resetDirectionIndicator();
-                    this.elements.gameplaySection.classList.remove('visible');
-                    this.elements.resultSection.classList.remove('visible');
-                    this.showMessage('게임이 재시작되었습니다.', 'success');
-                });
+                
+                // 피드백
+                this.showMessage(`🚩 ${direction.toUpperCase()} 응답!`, 'success');
+                this.vibrateDevice(100);
+                
+                console.log(`📡 응답 전송: ${direction}`);
+            }
+            
+            getPlayerNumber() {
+                // 센서 ID에서 플레이어 번호 추출
+                if (this.playerId === 'sensor1') return 1;
+                if (this.playerId === 'sensor2') return 2;
+                return 1; // 기본값
             }
             
             async connectToSession() {
                 const sessionCode = this.elements.sessionInput.value.trim();
                 
                 if (!sessionCode || sessionCode.length !== 4) {
-                    this.showMessage('올바른 4자리 세션 코드를 입력하세요.', 'error');
+                    this.showMessage('4자리 세션 코드를 입력하세요', 'error');
                     return;
                 }
                 
                 try {
-                    this.elements.connectButton.disabled = true;
-                    this.elements.connectButton.textContent = '연결 중...';
+                    this.elements.connectBtn.disabled = true;
+                    this.elements.connectBtn.textContent = '연결 중...';
                     
                     await this.sdk.connectSensor(sessionCode, {
-                        userAgent: navigator.userAgent,
-                        screenSize: `${screen.width}x${screen.height}`,
-                        timestamp: Date.now(),
-                        gameType: 'signal-flags'
+                        gameType: 'signal-flags',
+                        timestamp: Date.now()
                     });
                     
                 } catch (error) {
                     this.showMessage(`연결 실패: ${error.message}`, 'error');
-                    this.elements.connectButton.disabled = false;
-                    this.elements.connectButton.textContent = '🚩 깃발 게임 참여';
+                    this.elements.connectBtn.disabled = false;
+                    this.elements.connectBtn.textContent = '🚩 게임 참여';
                 }
             }
             
             async scanQRCode() {
                 try {
-                    this.showMessage('QR 코드 스캐너 준비 중...', 'warning');
-                    
-                    // QR 스캐너 컨테이너 표시
                     const qrReaderDiv = document.getElementById('qr-reader');
                     qrReaderDiv.style.display = 'block';
                     
-                    // QR 스캐너 초기화
                     const qrCodeScanner = new Html5QrcodeScanner("qr-reader", {
                         fps: 10,
                         qrbox: { width: 250, height: 250 }
                     });
                     
-                    // 성공 콜백
                     const onScanSuccess = (decodedText) => {
                         try {
-                            console.log('QR 코드 스캔 성공:', decodedText);
-                            
-                            // URL에서 세션 코드 추출
                             const url = new URL(decodedText);
                             const sessionCode = url.searchParams.get('session');
                             
                             if (sessionCode && sessionCode.length === 4) {
                                 this.elements.sessionInput.value = sessionCode;
-                                this.showMessage('QR 코드에서 세션 코드를 가져왔습니다.', 'success');
+                                this.showMessage('QR 코드에서 세션 코드를 가져왔습니다', 'success');
                                 qrCodeScanner.clear();
                                 qrReaderDiv.style.display = 'none';
                             } else {
-                                this.showMessage('올바른 QR 코드가 아닙니다.', 'error');
+                                this.showMessage('올바른 QR 코드가 아닙니다', 'error');
                             }
                         } catch (err) {
-                            console.error('QR 코드 파싱 오류:', err);
-                            this.showMessage('QR 코드를 해석할 수 없습니다.', 'error');
+                            this.showMessage('QR 코드를 해석할 수 없습니다', 'error');
                         }
                     };
                     
-                    // 오류 콜백
-                    const onScanError = (error) => {
-                        // 스캔 오류는 일반적이므로 로그만 남기고 UI에는 표시하지 않음
-                        console.log(`QR 스캔 진행 중: ${error}`);
-                    };
-                    
-                    // QR 스캐너 렌더링
-                    qrCodeScanner.render(onScanSuccess, onScanError);
-                    
-                    this.showMessage('QR 코드를 카메라에 비춰주세요.', 'success');
+                    qrCodeScanner.render(onScanSuccess, () => {});
                     
                 } catch (error) {
-                    console.error('QR 스캔 실패:', error);
-                    this.showMessage('카메라에 접근할 수 없습니다. 권한을 확인해주세요.', 'error');
-                    
-                    // QR 스캐너 숨기기
-                    const qrReaderDiv = document.getElementById('qr-reader');
-                    if (qrReaderDiv) {
-                        qrReaderDiv.style.display = 'none';
-                    }
+                    this.showMessage('카메라에 접근할 수 없습니다', 'error');
                 }
             }
             
-            async startSensorCollection() {
-                try {
-                    console.log('🔍 센서 수집 시작 시도...');
-                    await this.sensorCollector.start();
-                    this.state.sensorActive = true;
-                    
-                    // 센서 데이터 핸들러
-                    this.sensorCollector.onData((data) => {
-                        this.updateSensorDisplay(data);
-                        this.sendSensorData(data);
-                        this.detectDirection(data);
-                    });
-                    
-                    this.elements.sensorStatus.classList.add('visible');
-                    this.elements.startSensorBtn.textContent = '🚩 센서 준비 완료';
-                    this.elements.startSensorBtn.disabled = true;
-                    this.showMessage('깃발 센서 수집이 시작되었습니다.', 'success');
-                    console.log('✅ 센서 수집 시작 완료');
-                    
-                } catch (error) {
-                    console.error('❌ 센서 시작 실패:', error);
-                    this.showMessage(`센서 시작 실패: ${error.message}`, 'error');
-                }
+            updateUI() {
+                this.elements.roundInfo.textContent = `라운드 ${this.gameData.currentRound} / 10`;
+                this.elements.commandIcon.textContent = this.gameData.currentGender === 'male' ? '👨' : '👩';
+                this.elements.commandText.textContent = this.gameData.currentCommand ? this.gameData.currentCommand.toUpperCase() : '준비하세요';
+                this.elements.myScore.textContent = this.gameData.myScore;
+                this.elements.opponentScore.textContent = this.gameData.opponentScore;
             }
-
-            detectDirection(data) {
-                if (!data.orientation) return;
-
-                const beta = data.orientation.beta || 0;  // 앞뒤 기울기 (-180 ~ 180)
-                const gamma = data.orientation.gamma || 0; // 좌우 기울기 (-90 ~ 90)
-
-                // 현재 위치 분석
-                const currentPosition = this.analyzePosition(beta, gamma);
-                
-                // UI 업데이트
-                this.state.currentDirection = currentPosition;
-                this.updateDirectionIndicator(currentPosition);
-
-                // 게임 중일 때만 응답 처리
-                if (this.state.gameState === 'playing' && this.gameState.roundStarted && !this.gameData.hasResponded) {
-                    this.handleMovementForGame(currentPosition, beta, gamma);
-                }
-
-                console.log(`🚩 위치: ${currentPosition} (β:${beta.toFixed(1)}° γ:${gamma.toFixed(1)}°)`);
-            }
-
-            analyzePosition(beta, gamma) {
-                // 중앙 판정 (더 관대하게)
-                if (Math.abs(beta) < this.directionConfig.centerThreshold && 
-                    Math.abs(gamma) < this.directionConfig.centerThreshold) {
-                    return 'center';
-                }
-
-                // 방향 판정 (명확한 움직임만)
-                if (Math.abs(beta) > this.directionConfig.directionThreshold || 
-                    Math.abs(gamma) > this.directionConfig.directionThreshold) {
-                    
-                    if (Math.abs(beta) > Math.abs(gamma)) {
-                        return beta > 0 ? 'down' : 'up';
-                    } else {
-                        return gamma > 0 ? 'right' : 'left';
-                    }
-                }
-
-                return 'center'; // 애매한 경우 중앙으로 처리
-            }
-
-            handleMovementForGame(currentPosition, beta, gamma) {
-                const now = Date.now();
-
-                // 응답 쿨다운 체크
-                if (now - this.gameState.lastResponseTime < this.directionConfig.responseDelay) {
-                    return;
-                }
-
-                // 단계 1: 중앙 대기 상태
-                if (this.gameState.isWaitingPosition && currentPosition === 'center') {
-                    console.log('✅ 중앙 대기 위치 확인됨');
-                    this.gameState.isWaitingPosition = false;
-                    return;
-                }
-
-                // 단계 2: 방향으로 이동 감지
-                if (!this.gameState.isWaitingPosition && 
-                    !this.gameState.hasMovedToDirection && 
-                    currentPosition !== 'center') {
-                    
-                    // 충분히 명확한 움직임인지 확인
-                    const movementMagnitude = Math.sqrt(beta * beta + gamma * gamma);
-                    
-                    if (movementMagnitude > this.directionConfig.minMovement) {
-                        console.log(`🎯 방향 이동 감지: ${currentPosition} (크기: ${movementMagnitude.toFixed(1)}°)`);
-                        
-                        this.gameState.hasMovedToDirection = true;
-                        this.gameState.detectedDirection = currentPosition;
-                        this.gameState.lastResponseTime = now;
-                        
-                        // 즉시 응답 전송
-                        this.sendResponse(currentPosition);
-                        
-                        // 상태 초기화 (다음 라운드 준비)
-                        setTimeout(() => {
-                            this.resetGameState();
-                        }, 1000);
-                    }
-                }
-            }
-
-            resetGameState() {
-                this.gameState.isWaitingPosition = true;
-                this.gameState.hasMovedToDirection = false;
-                this.gameState.detectedDirection = null;
-                console.log('🔄 게임 상태 초기화 - 중앙 대기 위치로');
-            }
-
+            
             updateDirectionIndicator(direction) {
-                const cells = this.elements.directionIndicator.querySelectorAll('.direction-cell');
-                
+                const cells = document.querySelectorAll('.direction-cell');
                 cells.forEach(cell => {
                     cell.classList.remove('current');
                     if (cell.dataset.direction === direction) {
@@ -1438,114 +730,24 @@
                     }
                 });
             }
-
-            sendResponse(direction) {
-                if (!this.state.sessionConnected) return;
-
-                this.gameData.hasResponded = true;
-                
-                // 서버에 응답 전송
-                if (this.sdk.socket) {
-                    this.sdk.socket.emit('signal-flags-response', {
-                        sessionCode: this.gameData.sessionCode,
-                        playerId: this.state.playerId,
-                        direction: direction,
-                        timestamp: Date.now()
-                    });
-                }
-
-                // 시각적 피드백
-                this.vibrateDevice(100);
-                this.showMessage(`🚩 ${direction.toUpperCase()} 방향으로 응답했습니다!`, 'success');
-                
-                console.log(`📡 응답 전송: ${direction}`);
+            
+            resetDirectionIndicator() {
+                const cells = document.querySelectorAll('.direction-cell');
+                cells.forEach(cell => {
+                    cell.classList.remove('current', 'correct', 'incorrect');
+                });
             }
             
-            sendSensorData(data) {
-                if (this.state.sessionConnected) {
-                    this.sdk.sendSensorData(data);
-                }
+            showGameSection() {
+                this.elements.connectionSection.style.display = 'none';
+                this.elements.gameSection.classList.add('visible');
             }
             
-            updateSensorDisplay(data) {
-                // 기울기 (orientation)
-                this.elements.tiltX.textContent = (data.orientation.beta || 0).toFixed(1);
-                this.elements.tiltY.textContent = (data.orientation.gamma || 0).toFixed(1);
-                this.elements.currentDirection.textContent = this.state.currentDirection;
-                
-                // 각도 계산
-                const beta = data.orientation.beta || 0;
-                const gamma = data.orientation.gamma || 0;
-                const totalAngle = Math.sqrt(beta * beta + gamma * gamma);
-                this.elements.currentAngle.textContent = totalAngle.toFixed(1) + '°';
+            hideGameSection() {
+                this.elements.connectionSection.style.display = 'block';
+                this.elements.gameSection.classList.remove('visible');
             }
             
-            updateConnectionStatus(text, connected) {
-                this.elements.statusText.textContent = text;
-                this.elements.statusIndicator.classList.toggle('connected', connected);
-            }
-            
-            showGameInfo(data) {
-                this.elements.gameTypeBadge.textContent = 'SIGNAL FLAGS';
-                this.elements.sensorId.textContent = data.sensorId || '-';
-                this.elements.connectedSensors.textContent = `${data.connectedSensors || 0}/2`;
-                
-                // 플레이어 ID 저장
-                const sensors = Array.from(this.sdk.connectedSensors || []).sort();
-                this.state.playerId = sensors.indexOf(data.sensorId) + 1;
-                
-                this.elements.gameInfo.classList.add('visible');
-                this.elements.sessionInputSection.style.display = 'none';
-                this.elements.qrScannerSection.style.display = 'none';
-            }
-            
-            hideGameInfo() {
-                this.elements.gameInfo.classList.remove('visible');
-                this.elements.sensorStatus.classList.remove('visible');
-                this.elements.gameplaySection.classList.remove('visible');
-                this.elements.resultSection.classList.remove('visible');
-                this.elements.sessionInputSection.style.display = 'block';
-                this.elements.qrScannerSection.style.display = 'block';
-            }
-            
-            resetConnection() {
-                this.state.sessionConnected = false;
-                this.state.sensorActive = false;
-                this.state.currentSession = null;
-                this.state.gameState = 'waiting';
-                this.state.currentDirection = 'center';
-                this.state.playerId = null;
-                
-                this.gameData = {
-                    sessionCode: null,
-                    currentRound: 0,
-                    currentCommand: null,
-                    currentGender: null,
-                    myScore: 0,
-                    opponentScore: 0,
-                    hasResponded: false
-                };
-                
-                if (this.sensorCollector.isActive) {
-                    this.sensorCollector.stop();
-                }
-                
-                this.updateConnectionStatus('서버 연결됨', this.state.connected);
-                this.hideGameInfo();
-                
-                this.elements.connectButton.disabled = this.elements.sessionInput.value.length !== 4 || !this.state.connected;
-                this.elements.connectButton.textContent = '🚩 깃발 게임 참여';
-                this.elements.sessionInput.value = '';
-            }
-            
-            checkSensorSupport() {
-                if (!this.sensorCollector.checkSensorSupport()) {
-                    this.showMessage('이 기기는 센서를 지원하지 않습니다.', 'error');
-                    this.elements.connectButton.disabled = true;
-                    this.elements.qrButton.disabled = true;
-                }
-            }
-
             vibrateDevice(pattern) {
                 if (navigator.vibrate) {
                     navigator.vibrate(pattern);
@@ -1558,13 +760,13 @@
                 
                 setTimeout(() => {
                     this.elements.message.classList.remove('visible');
-                }, 5000);
+                }, 4000);
             }
         }
         
         // 앱 시작
         document.addEventListener('DOMContentLoaded', () => {
-            new SignalFlagsSensorController();
+            new SignalFlagsSensor();
         });
     </script>
 </body>
