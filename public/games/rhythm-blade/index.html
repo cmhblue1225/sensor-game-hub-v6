@@ -374,6 +374,7 @@
                     phase: 'waiting',         // waiting, playing, paused, ended
                     score: 0,
                     combo: 0,
+                    maxCombo: 0,             // 최대 콤보 추적
                     totalNotes: 0,
                     hitNotes: 0,
                     startTime: 0,
@@ -920,11 +921,22 @@
                 
                 if (hit) {
                     this.gameState.combo++;
+                    // 최대 콤보 업데이트
+                    this.gameState.maxCombo = Math.max(this.gameState.maxCombo, this.gameState.combo);
                     this.updateCooperation(true);
                 } else {
-                    // ✅ 스윙했지만 히트하지 못한 경우
-                    this.gameState.combo = 0;
-                    this.updateCooperation(false);
+                    // ✅ 게임이 거의 끝나갈 때는 콤보 초기화를 방지
+                    const isGameEnding = this.noteSpawnIndex >= this.beatmap.length && this.notes.length <= 2;
+                    
+                    if (!isGameEnding) {
+                        // 일반적인 경우: 스윙했지만 히트하지 못한 경우 콤보 초기화
+                        this.gameState.combo = 0;
+                        this.updateCooperation(false);
+                    } else {
+                        // 게임 종료 직전: 콤보 유지하되 협력도만 감소
+                        console.log('🎯 게임 종료 직전 - 콤보 유지');
+                        this.cooperation.sync = Math.max(0, this.cooperation.sync - 5);
+                    }
                 }
                 
                 this.updateUI();
@@ -1187,7 +1199,8 @@
                 message += `점수: ${this.gameState.score.toLocaleString()}\n`;
                 message += `정확도: ${accuracy}%\n`;
                 message += `협력도: ${cooperationScore}%\n`;
-                message += `연속 콤보: ${this.gameState.combo}\n\n`;
+                message += `최대 콤보: ${this.gameState.maxCombo}\n`;
+                message += `현재 콤보: ${this.gameState.combo}\n\n`;
                 
                 // 성과 평가
                 if (accuracy >= 95 && cooperationScore >= 90) {
@@ -1212,6 +1225,7 @@
                     phase: 'playing',
                     score: 0,
                     combo: 0,
+                    maxCombo: 0,
                     totalNotes: this.beatmap.length,
                     hitNotes: 0,
                     startTime: Date.now()
