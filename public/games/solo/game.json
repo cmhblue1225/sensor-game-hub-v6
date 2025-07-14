@@ -1,0 +1,26 @@
+{
+  "id": "solo",
+  "title": "Solo Sensor Game",
+  "description": "1개 센서로 플레이하는 공 조작 게임<br>목표 수집 및 콤보 시스템",
+  "category": "solo",
+  "icon": "🎯",
+  "version": "6.0.0",
+  "author": "Sensor Game Hub Team",
+  "created": "2025-01-01T00:00:00Z",
+  "sensors": ["orientation", "motion"],
+  "maxPlayers": 1,
+  "difficulty": "easy",
+  "status": "active",
+  "featured": true,
+  "tags": ["target", "collection", "combo", "precision"],
+  "instructions": [
+    "모바일을 기울여서 공을 조작하세요",
+    "파란색 목표를 수집하여 점수를 획득하세요",
+    "연속으로 수집하면 콤보 보너스가 적용됩니다",
+    "빨간색 장애물을 피하세요"
+  ],
+  "controls": {
+    "tilt": "공 이동",
+    "motion": "특수 동작"
+  }
+}

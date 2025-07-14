@@ -1,0 +1,31 @@
+{
+  "id": "multi",
+  "title": "Multi Player Arena",
+  "description": "최대 8명 실시간 경쟁<br>리더보드 및 타이머 시스템",
+  "category": "multi",
+  "icon": "👥",
+  "version": "6.0.0", 
+  "author": "Sensor Game Hub Team",
+  "created": "2025-01-01T00:00:00Z",
+  "sensors": ["orientation", "motion"],
+  "maxPlayers": 8,
+  "difficulty": "hard",
+  "status": "active",
+  "featured": true,
+  "tags": ["multiplayer", "competitive", "realtime", "leaderboard"],
+  "instructions": [
+    "최대 8명이 동시에 플레이할 수 있습니다",
+    "모바일을 기울여 플레이어를 조작하세요",
+    "목표를 수집하여 점수를 획득하세요",
+    "가장 높은 점수를 달성하여 승리하세요"
+  ],
+  "controls": {
+    "tilt": "플레이어 이동",
+    "motion": "가속 부스트"
+  },
+  "gameSettings": {
+    "gameTime": 60,
+    "targetCount": 10,
+    "maxSensitivity": 1.5
+  }
+}
