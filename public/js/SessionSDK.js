@@ -211,14 +211,17 @@ class SessionSDK extends EventTarget {
             return false;
         }
         
-        this.socket.emit('sensor-data', {
+        const sendData = {
             sessionCode: this.state.connection.sessionId.split('_')[1], // Extract session code
             sensorId: this.state.connection.sensorId,
             sensorData: {
                 ...sensorData,
                 timestamp: Date.now()
             }
-        });
+        };
+        
+        this.log('📤 센서 데이터 전송:', sendData);
+        this.socket.emit('sensor-data', sendData);
         
         return true;
     }

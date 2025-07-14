@@ -799,7 +799,10 @@
             
             sendSensorData(data) {
                 if (this.state.sessionConnected) {
+                    console.log('🔍 센서 데이터 전송:', data);
                     this.sdk.sendSensorData(data);
+                } else {
+                    console.log('⚠️ 세션 연결되지 않음 - 센서 데이터 전송 불가');
                 }
             }
             

@@ -652,18 +652,22 @@
             }
             
             processSensorData(data) {
+                console.log('🔍 PC에서 센서 데이터 수신:', data);
                 const sensorData = data.data;
+                console.log('🔍 추출된 센서 데이터:', sensorData);
                 
                 // 기울기 데이터 (orientation)
                 if (sensorData.orientation) {
                     this.sensorData.tilt.x = sensorData.orientation.beta || 0;
                     this.sensorData.tilt.y = sensorData.orientation.gamma || 0;
                     this.sensorData.rotation = sensorData.orientation.alpha || 0;
+                    console.log('🔍 기울기 데이터 업데이트:', this.sensorData.tilt, this.sensorData.rotation);
                 }
                 
                 // 가속도 데이터
                 if (sensorData.acceleration) {
                     this.sensorData.acceleration = sensorData.acceleration;
+                    console.log('🔍 가속도 데이터 업데이트:', this.sensorData.acceleration);
                 }
                 
                 // UI 업데이트
