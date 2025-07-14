@@ -854,18 +854,21 @@
                     }
                 });
                 
-                // 센서 데이터 (실제 게임에서는 사용하지 않음 - 자동 수집)
+                // 센서 데이터 (실제 센서로 플레이어 조종)
                 this.sdk.on('sensor-data', (event) => {
                     const data = event.detail || event;
-                    // 멀티플레이어에서는 자동으로 목표 수집
-                    this.simulatePlayerMovement(data.sensorId);
+                    if (this.state.playing && !this.state.paused) {
+                        this.processSensorData(data);
+                    }
                 });
                 
                 // 게임 준비 완료
                 this.sdk.on('game-ready', (data) => {
                     console.log('🎮 게임 준비 완료:', data);
                     this.hideSessionPanel();
-                    this.startGame();
+                    // 게임 시작 버튼 활성화
+                    this.elements.forceStartBtn.disabled = false;
+                    this.updateGameStatus('게임 시작 준비 완료! 시작 버튼을 눌러주세요.');
                 });
                 
                 // 오류 처리
@@ -1269,12 +1272,7 @@
             update() {
                 if (!this.state.playing || this.state.paused) return;
                 
-                // 플레이어 시뮬레이션 (실제로는 센서 데이터로 움직임)
-                this.players.forEach(player => {
-                    if (Math.random() < 0.05) { // 5% 확률로 목표 수집 시도
-                        this.simulatePlayerMovement(player.id);
-                    }
-                });
+                // 플레이어는 센서 데이터로만 움직임 (자동 시뮬레이션 제거)
                 
                 // 목표 애니메이션
                 this.targets.forEach(target => {
@@ -1437,6 +1435,42 @@
             
             updateServerStatus(connected) {
                 this.elements.serverStatus.classList.toggle('connected', connected);
+            }
+            
+            processSensorData(data) {
+                const sensorData = data.data;
+                const sensorId = data.sensorId;
+                
+                if (!sensorData || !sensorId) return;
+                
+                // 해당 플레이어 찾기
+                const player = this.players.get(sensorId);
+                if (!player || !player.isActive) return;
+                
+                // 센서 데이터에서 움직임 추출
+                let deltaX = 0;
+                let deltaY = 0;
+                
+                if (sensorData.orientation) {
+                    // 기울기로 움직임 제어 (감도 조정)
+                    const sensitivity = 3;
+                    deltaX = (sensorData.orientation.gamma || 0) * sensitivity;
+                    deltaY = (sensorData.orientation.beta || 0) * sensitivity;
+                }
+                
+                // 플레이어 위치 업데이트
+                player.position.x += deltaX;
+                player.position.y += deltaY;
+                
+                // 화면 경계 확인
+                player.position.x = Math.max(15, Math.min(this.canvas.width - 15, player.position.x));
+                player.position.y = Math.max(15, Math.min(this.canvas.height - 15, player.position.y));
+                
+                // 콤보 초기화 타이머 리셋
+                clearTimeout(player.comboTimer);
+                player.comboTimer = setTimeout(() => {
+                    player.combo = 0;
+                }, 2000);
             }
             
             updateSensorStatus(connected) {
