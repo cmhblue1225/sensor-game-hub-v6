@@ -60,12 +60,20 @@
 2. **Dual Game** (`/games/dual/`): 2인 협력 게임  
 3. **Multi Game** (`/games/multi/`): 8인 멀티플레이어 경쟁 게임
 
-## 개발 규칙
+## 개발 규칙 (필수!)
 - 반드시 `DEVELOPER_GUIDE.md`를 참조하여 개발
-- SessionSDK 이벤트는 `event.detail || event` 패턴으로 처리
+- **SessionSDK 이벤트는 `event.detail || event` 패턴으로 처리** (매우 중요!)
+- **서버 연결 완료 후 세션 생성**: `connected` 이벤트 기다리기
+- **QR 코드 생성 시 폴백 처리** 추가 (라이브러리 로드 실패 대응)
 - 허브로 돌아가는 링크는 `href="/"`로 설정
 - 모든 파일 경로는 절대 경로 사용
 - 게임 내 UI는 기존 테마 CSS 변수 사용
+
+## ⚠️ 자주 발생하는 실수들
+1. **즉시 세션 생성**: 생성자에서 바로 `createSession()` 호출 → 연결 오류
+2. **CustomEvent 무시**: `(session) =>` 대신 `(event) => event.detail || event` 사용
+3. **QR 라이브러리 의존**: 로드 실패 시 대안 없음 → 폴백 API 사용
+4. **센서 데이터 직접 접근**: `data.orientation` 대신 `(event.detail || event).data.orientation`
 
 다음에 어떤 게임을 개발하고 싶은지 알려주시면, 구체적인 개발 계획과 코드를 제공하겠습니다.
 ```
@@ -93,9 +101,10 @@
    - `public/games/[게임폴더명]/game.json`
 
 2. **필수 구현 요소**:
-   - SessionSDK 통합
-   - 센서 데이터 처리
+   - SessionSDK 통합 (`connected` 이벤트 후 세션 생성!)
+   - 센서 데이터 처리 (`event.detail || event` 패턴 필수!)
    - 게임 UI (세션 코드, QR 코드, 점수 등)
+   - QR 코드 폴백 처리 (라이브러리 로드 실패 대응)
    - 허브로 돌아가기 버튼
 
 3. **센서 활용**:
@@ -234,25 +243,77 @@
 
 다음 문제를 해결해주세요:
 
-## 일반적인 문제들
+## 실제 발생하는 문제들과 해결법
 
-### 1. 센서 데이터가 오지 않는 경우
-**문제**: `sensor-data` 이벤트에서 데이터가 undefined
-**해결**: 이벤트 처리 시 `event.detail || event` 패턴 사용
+### 1. "서버에 연결되지 않았습니다" 오류
+**문제**: 게임 시작 시 세션 생성 실패
+```
+Error: 서버에 연결되지 않았습니다.
+at SessionSDK.createSession (SessionSDK.js:142:19)
+```
+**원인**: 서버 연결 완료 전 세션 생성 시도
+**해결**: `connected` 이벤트 기다리기
 ```javascript
-sdk.on('sensor-data', (event) => {
-    const data = event.detail || event;  // CustomEvent 처리
-    processSensorData(data);
-});
+// ❌ 잘못된 방법
+constructor() {
+    this.sdk = new SessionSDK({...});
+    this.sdk.createSession(); // 연결 전 생성 시도
+}
+
+// ✅ 올바른 방법
+constructor() {
+    this.sdk = new SessionSDK({...});
+    this.setupEvents();
+}
+
+setupEvents() {
+    this.sdk.on('connected', () => {
+        this.createSession(); // 연결 완료 후 생성
+    });
+}
 ```
 
 ### 2. 세션 코드가 undefined인 경우
-**문제**: QR 코드에 "undefined" 표시
-**해결**: session-created 이벤트에서 올바른 데이터 추출
+**문제**: QR 코드에 "undefined" 표시, 콘솔에 CustomEvent 객체
+**원인**: CustomEvent 객체를 직접 사용
+**해결**: `event.detail || event` 패턴 사용
 ```javascript
+// ❌ 잘못된 방법
 sdk.on('session-created', (session) => {
-    console.log('세션 코드:', session.sessionCode);
-    displaySessionCode(session.sessionCode);
+    console.log(session.sessionCode); // undefined
+});
+
+// ✅ 올바른 방법
+sdk.on('session-created', (event) => {
+    const session = event.detail || event; // CustomEvent 처리
+    console.log(session.sessionCode); // 정상 작동
+});
+```
+
+### 3. "QRCode is not defined" 오류
+**문제**: QR 코드 생성 시 라이브러리 오류
+**원인**: CDN에서 QRCode 라이브러리 로드 실패
+**해결**: 폴백 API 사용
+```javascript
+// ✅ 안전한 구현
+if (typeof QRCode !== 'undefined') {
+    // QRCode 라이브러리 사용
+    QRCode.toCanvas(canvas, url, callback);
+} else {
+    // 폴백: 외부 API 사용
+    const img = document.createElement('img');
+    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
+    container.appendChild(img);
+}
+```
+
+### 4. 센서 데이터가 오지 않는 경우
+**문제**: `processSensorData` 함수에서 undefined 오류
+**해결**: 모든 SDK 이벤트에서 `event.detail || event` 패턴 사용
+```javascript
+sdk.on('sensor-data', (event) => {
+    const data = event.detail || event;  // 필수 패턴!
+    processSensorData(data);
 });
 ```
 

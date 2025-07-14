@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎮 My Game</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --border: #475569;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+        }
+        
+        .game-ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .ui-panel {
+            position: absolute;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            backdrop-filter: blur(12px);
+            pointer-events: all;
+        }
+        
+        .session-panel {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            min-width: 400px;
+        }
+        
+        .session-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .session-code {
+            font-size: 3rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: var(--primary);
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px solid var(--primary);
+            border-radius: 0.75rem;
+            letter-spacing: 0.3em;
+        }
+        
+        .qr-container {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.75rem;
+            display: inline-block;
+        }
+        
+        .control-panel {
+            bottom: 1rem;
+            left: 1rem;
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="game-ui">
+        <!-- 세션 대기 패널 -->
+        <div class="ui-panel session-panel" id="sessionPanel">
+            <div class="session-title">🎮 My Game</div>
+            <div style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.6;">
+                센서로 플레이하는 재미있는 게임!
+            </div>
+            
+            <div class="session-code" id="sessionCode">----</div>
+            
+            <div class="qr-container" id="qrContainer">
+                <div style="color: #666; padding: 2rem;">QR 코드 생성 중...</div>
+            </div>
+            
+            <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 1rem;">
+                📱 모바일로 QR 코드를 스캔하거나<br>
+                센서 클라이언트에서 세션 코드를 입력하세요
+            </div>
+        </div>
+        
+        <!-- 컨트롤 패널 -->
+        <div class="ui-panel control-panel hidden" id="controlPanel">
+            <button class="btn btn-secondary" onclick="game.resetGame()">🔄 재시작</button>
+            <a href="/" class="btn btn-secondary">🏠 허브로</a>
+        </div>
+    </div>
+    
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- QR Code Generator (폴백 처리 포함) -->
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- SessionSDK -->
+    <script src="/js/SessionSDK.js"></script>
+    
+    <script>
+        class MyGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // 캔버스 크기 설정
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                // ✅ 올바른 SDK 초기화
+                this.sdk = new SessionSDK({
+                    gameId: 'my-game',        // 게임 폴더명과 동일하게
+                    gameType: 'solo',         // 'solo', 'dual', 'multi'
+                    debug: true
+                });
+                
+                // 게임 상태
+                this.gameState = 'waiting'; // waiting, playing, paused
+                
+                // 센서 데이터
+                this.sensorData = {
+                    tiltX: 0,
+                    tiltY: 0
+                };
+                
+                this.setupEventListeners();
+                this.gameLoop();
+            }
+            
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+            
+            setupEventListeners() {
+                // ✅ 중요: 서버 연결 완료 후 세션 생성
+                this.sdk.on('connected', () => {
+                    console.log('✅ 서버 연결 완료, 세션 생성 중...');
+                    this.createSession();
+                });
+                
+                // ✅ 중요: CustomEvent 처리 패턴
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;  // 필수 패턴!
+                    console.log('세션 생성됨:', session);
+                    this.displaySessionInfo(session);
+                });
+                
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;     // 필수 패턴!
+                    console.log('센서 연결됨:', data);
+                    this.onSensorConnected();
+                });
+                
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;     // 필수 패턴!
+                    this.processSensorData(data);
+                });
+                
+                this.sdk.on('game-ready', (event) => {
+                    const data = event.detail || event;     // 필수 패턴!
+                    console.log('게임 준비 완료');
+                    this.startGame();
+                });
+                
+                // 키보드 컨트롤 (테스트용)
+                window.addEventListener('keydown', (e) => {
+                    if (this.gameState !== 'playing') return;
+                    
+                    switch(e.key) {
+                        case 'ArrowLeft': this.sensorData.tiltX = -30; break;
+                        case 'ArrowRight': this.sensorData.tiltX = 30; break;
+                        case 'ArrowUp': this.sensorData.tiltY = -30; break;
+                        case 'ArrowDown': this.sensorData.tiltY = 30; break;
+                    }
+                });
+                
+                window.addEventListener('keyup', (e) => {
+                    if (e.key.startsWith('Arrow')) {
+                        this.sensorData.tiltX = 0;
+                        this.sensorData.tiltY = 0;
+                    }
+                });
+            }
+            
+            async createSession() {
+                try {
+                    await this.sdk.createSession();
+                } catch (error) {
+                    console.error('세션 생성 실패:', error);
+                }
+            }
+            
+            // ✅ QR 코드 안전한 생성 (폴백 처리 포함)
+            displaySessionInfo(session) {
+                document.getElementById('sessionCode').textContent = session.sessionCode;
+                
+                const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                
+                if (typeof QRCode !== 'undefined') {
+                    QRCode.toCanvas(document.createElement('canvas'), qrUrl, (error, canvas) => {
+                        if (!error) {
+                            canvas.style.width = '200px';
+                            canvas.style.height = '200px';
+                            document.getElementById('qrContainer').innerHTML = '';
+                            document.getElementById('qrContainer').appendChild(canvas);
+                        } else {
+                            console.error('QR 코드 생성 실패:', error);
+                            this.showQRCodeFallback(qrUrl);
+                        }
+                    });
+                } else {
+                    console.warn('QRCode 라이브러리가 로드되지 않았습니다. 폴백 사용.');
+                    this.showQRCodeFallback(qrUrl);
+                }
+            }
+            
+            showQRCodeFallback(qrUrl) {
+                // QR 코드 서비스 API 사용
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
+                const img = document.createElement('img');
+                img.src = qrApiUrl;
+                img.style.width = '200px';
+                img.style.height = '200px';
+                img.alt = 'QR Code';
+                
+                document.getElementById('qrContainer').innerHTML = '';
+                document.getElementById('qrContainer').appendChild(img);
+            }
+            
+            onSensorConnected() {
+                console.log('센서 연결됨');
+            }
+            
+            processSensorData(data) {
+                if (this.gameState !== 'playing') return;
+                
+                const sensorData = data.data;
+                if (sensorData.orientation) {
+                    // 기울기 데이터 처리
+                    this.sensorData.tiltX = (sensorData.orientation.gamma || 0) * 0.5;
+                    this.sensorData.tiltY = (sensorData.orientation.beta || 0) * 0.5;
+                    
+                    // 범위 제한
+                    this.sensorData.tiltX = Math.max(-45, Math.min(45, this.sensorData.tiltX));
+                    this.sensorData.tiltY = Math.max(-45, Math.min(45, this.sensorData.tiltY));
+                }
+            }
+            
+            startGame() {
+                this.gameState = 'playing';
+                
+                // UI 전환
+                document.getElementById('sessionPanel').classList.add('hidden');
+                document.getElementById('controlPanel').classList.remove('hidden');
+                
+                console.log('🎮 게임 시작!');
+            }
+            
+            update() {
+                if (this.gameState !== 'playing') return;
+                
+                // 여기에 게임 로직 구현
+                // this.sensorData.tiltX, this.sensorData.tiltY 사용
+            }
+            
+            render() {
+                const ctx = this.ctx;
+                
+                // 배경 지우기
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 여기에 게임 렌더링 구현
+                if (this.gameState === 'playing') {
+                    // 게임 오브젝트들 그리기
+                    ctx.fillStyle = '#3b82f6';
+                    ctx.fillRect(100, 100, 50, 50);
+                }
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            resetGame() {
+                this.gameState = 'playing';
+                // 게임 상태 초기화
+            }
+        }
+        
+        // 게임 시작
+        const game = new MyGame();
+    </script>
+</body>
+</html>
