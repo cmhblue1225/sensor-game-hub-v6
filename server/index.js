@@ -192,7 +192,7 @@ class GameServer {
                             <a href="/games/multi" class="game-card">
                                 <div class="game-icon">👥</div>
                                 <div class="game-title">Multi Game</div>
-                                <div class="game-desc">최대 10명 실시간 경쟁<br>리더보드 및 타이머 시스템</div>
+                                <div class="game-desc">최대 8명 실시간 경쟁<br>리더보드 및 타이머 시스템</div>
                             </a>
                         </div>
                         
