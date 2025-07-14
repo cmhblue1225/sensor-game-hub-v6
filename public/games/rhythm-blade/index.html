@@ -333,19 +333,25 @@
         
         <!-- ✅ 개선된 게임 설명 -->
         <div class="game-instructions hidden" id="gameInstructions">
-            <div class="instruction-title">게임 방법</div>
+            <div class="instruction-title">🎵 Rhythm Blade 게임 방법</div>
+            <div class="instruction-item">🎶 음악에 맞춰 정확한 타이밍으로 노트를 베세요!</div>
             <div class="instruction-item">🔴 플레이어1(왼쪽): 빨간 노트, 오른쪽으로 스윙</div>
             <div class="instruction-item">🔵 플레이어2(오른쪽): 파란 노트, 왼쪽으로 스윙</div>
             <div class="instruction-item">🤝 보라색: 협력 노트 (500ms내 동시 타격)</div>
+            <div class="instruction-item">🎵 128 BPM 일렉트로닉 뮤직으로 리듬감 UP!</div>
             <div class="instruction-item">⌨️ 테스트: Q(왼쪽), E(오른쪽), Space(협력)</div>
         </div>
     </div>
     
-    <!-- 🎵 배경 음악 -->
-    <audio id="bgMusic" loop>
-        <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.wav" type="audio/wav">
-        <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
-        <!-- 폴백: 무료 리듬 음악 URL -->
+    <!-- 🎵 배경 음악 - NCS 무료 음악 -->
+    <audio id="bgMusic" loop preload="auto">
+        <!-- NCS - Invincible -->
+        <source src="https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/000/436/invincible-1594303577-xVcWl8s6uH.mp3" type="audio/mpeg">
+        <!-- 대체 NCS 음악 -->
+        <source src="https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/000/152/1654766391_N6uRkX7YQX_Elektronomia---Summersong-2018-NCS-Release.mp3" type="audio/mpeg">
+        <!-- 폴백: 무료 일렉트로닉 음악 -->
+        <source src="https://www.bensound.com/bensound-music/bensound-energy.mp3" type="audio/mpeg">
+        <!-- 최종 폴백: 로컬 생성 비트 -->
         <source src="data:audio/wav;base64,UklGRiQDAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQADAAA=" type="audio/wav">
     </audio>
     
@@ -402,11 +408,11 @@
                     cooperationBonus: 1.0    // 협력 보너스 배수
                 };
                 
-                // 🎵 음악 시스템
+                // 🎵 음악 시스템 - NCS 일렉트로닉 뮤직
                 this.bgMusic = document.getElementById('bgMusic');
                 this.musicLoaded = false;
-                this.bpm = 120; // BPM (Beats Per Minute)
-                this.beatInterval = 60 / this.bpm; // 비트 간격 (초)
+                this.bpm = 128; // BPM (Beats Per Minute) - 일렉트로닉 음악 표준
+                this.beatInterval = 60 / this.bpm; // 비트 간격 (약 0.47초)
                 
                 this.initializeMusic();
                 
@@ -449,92 +455,113 @@
             }
             
             generateRhythmBeatmap() {
-                // 🎵 120 BPM 리듬에 맞는 비트맵 생성
-                // 1비트 = 0.5초, 1/2비트 = 0.25초, 1/4비트 = 0.125초
-                const beat = this.beatInterval; // 0.5초 (120 BPM)
-                const halfBeat = beat / 2; // 0.25초
-                const quarterBeat = beat / 4; // 0.125초
+                // 🎵 128 BPM 일렉트로닉 뮤직에 맞는 비트맵 생성
+                // 1비트 = 0.47초, 1/2비트 = 0.23초, 1/4비트 = 0.12초, 1/8비트 = 0.06초
+                const beat = this.beatInterval; // 약 0.47초 (128 BPM)
+                const halfBeat = beat / 2; // 약 0.23초
+                const quarterBeat = beat / 4; // 약 0.12초
+                const eighthBeat = beat / 8; // 약 0.06초 (빠른 연타용)
                 
                 const beatmap = [];
                 
-                // 🎵 인트로 (4비트) - 2초
+                // 🎵 빌드업 인트로 (8비트) - 0-4초
                 beatmap.push(
-                    { time: beat * 2, lane: "sensor1", type: "normal" },     // 1초
-                    { time: beat * 3, lane: "sensor2", type: "normal" },     // 1.5초
-                    { time: beat * 4, lane: "sensor1", type: "normal" }      // 2초
+                    { time: beat * 1, lane: "sensor1", type: "normal" },
+                    { time: beat * 2, lane: "sensor2", type: "normal" },
+                    { time: beat * 3, lane: "sensor1", type: "normal" },
+                    { time: beat * 4, lane: "sensor2", type: "normal" },
+                    { time: beat * 5, lane: "both", type: "cooperation" },
+                    { time: beat * 6, lane: "sensor1", type: "normal" },
+                    { time: beat * 7, lane: "sensor2", type: "normal" },
+                    { time: beat * 8, lane: "both", type: "cooperation" }
                 );
                 
-                // 🎵 첫 번째 구간 (8비트) - 2-6초
-                for (let i = 0; i < 4; i++) {
-                    const baseTime = beat * (5 + i * 2);
-                    beatmap.push(
-                        { time: baseTime, lane: "sensor1", type: "normal" },
-                        { time: baseTime + beat, lane: "sensor2", type: "normal" }
-                    );
+                // 🎵 메인 드롭 구간 1 (16비트) - 4-8초
+                for (let i = 0; i < 16; i++) {
+                    const baseTime = beat * (9 + i);
+                    const pattern = i % 4;
+                    
+                    if (pattern === 0 || pattern === 2) {
+                        beatmap.push({ time: baseTime, lane: "sensor1", type: "normal" });
+                    } else if (pattern === 1) {
+                        beatmap.push({ time: baseTime, lane: "sensor2", type: "normal" });
+                    } else { // pattern === 3, 협력 노트
+                        beatmap.push({ time: baseTime, lane: "both", type: "cooperation" });
+                    }
                 }
                 
-                // 🎵 첫 번째 협력 구간 (2비트) - 6-7초
+                // 🎵 브레이크다운 (차분한 구간) - 8-10초
+                const breakdownStart = beat * 25;
                 beatmap.push(
-                    { time: beat * 12, lane: "both", type: "cooperation" },
-                    { time: beat * 13, lane: "both", type: "cooperation" }
+                    { time: breakdownStart, lane: "sensor1", type: "normal" },
+                    { time: breakdownStart + beat, lane: "sensor2", type: "normal" },
+                    { time: breakdownStart + beat * 2, lane: "both", type: "cooperation" },
+                    { time: breakdownStart + beat * 3, lane: "sensor1", type: "normal" },
+                    { time: breakdownStart + beat * 4, lane: "sensor2", type: "normal" }
                 );
                 
-                // 🎵 빠른 리듬 구간 (8비트) - 7-11초
-                for (let i = 0; i < 8; i++) {
-                    const baseTime = beat * (14 + i);
-                    const lane = i % 2 === 0 ? "sensor1" : "sensor2";
-                    beatmap.push({ time: baseTime, lane: lane, type: "normal" });
-                }
-                
-                // 🎵 복합 리듬 구간 (6비트) - 11-14초
-                const complexStart = beat * 22;
-                beatmap.push(
-                    { time: complexStart, lane: "sensor1", type: "normal" },
-                    { time: complexStart + halfBeat, lane: "sensor2", type: "normal" },
-                    { time: complexStart + beat, lane: "sensor1", type: "normal" },
-                    { time: complexStart + beat * 1.5, lane: "sensor2", type: "normal" },
-                    { time: complexStart + beat * 2, lane: "both", type: "cooperation" },
-                    { time: complexStart + beat * 3, lane: "sensor1", type: "normal" },
-                    { time: complexStart + beat * 3.5, lane: "sensor2", type: "normal" },
-                    { time: complexStart + beat * 4, lane: "both", type: "cooperation" }
-                );
-                
-                // 🎵 고속 연타 구간 (4비트) - 14-16초
-                const fastStart = beat * 28;
-                for (let i = 0; i < 8; i++) {
+                // 🎵 고속 연타 빌드업 (더블타임) - 10-12초
+                const doubleTimeStart = beat * 30;
+                for (let i = 0; i < 16; i++) {
                     const lane = i % 2 === 0 ? "sensor1" : "sensor2";
                     beatmap.push({
-                        time: fastStart + (halfBeat * i),
+                        time: doubleTimeStart + (halfBeat * i),
                         lane: lane,
                         type: "normal"
                     });
                 }
                 
-                // 🎵 클라이맥스 협력 구간 (4비트) - 16-18초
-                const climaxStart = beat * 32;
+                // 🎵 메인 드롭 구간 2 (더 복잡한 패턴) - 12-16초
+                const mainDrop2 = beat * 38;
+                const complexPatterns = [
+                    { offset: 0, lane: "sensor1", type: "normal" },
+                    { offset: quarterBeat, lane: "sensor2", type: "normal" },
+                    { offset: halfBeat, lane: "sensor1", type: "normal" },
+                    { offset: halfBeat + quarterBeat, lane: "both", type: "cooperation" },
+                    { offset: beat, lane: "sensor2", type: "normal" },
+                    { offset: beat + quarterBeat, lane: "sensor1", type: "normal" },
+                    { offset: beat + halfBeat, lane: "sensor2", type: "normal" },
+                    { offset: beat * 2 - quarterBeat, lane: "both", type: "cooperation" }
+                ];
+                
+                for (let cycle = 0; cycle < 8; cycle++) {
+                    complexPatterns.forEach(pattern => {
+                        beatmap.push({
+                            time: mainDrop2 + (beat * 2 * cycle) + pattern.offset,
+                            lane: pattern.lane,
+                            type: pattern.type
+                        });
+                    });
+                }
+                
+                // 🎵 최종 클라이맥스 (초고속 연타) - 16-18초
+                const finalClimax = beat * 54;
+                for (let i = 0; i < 32; i++) {
+                    const lane = i % 3 === 0 ? "both" : (i % 2 === 0 ? "sensor1" : "sensor2");
+                    const noteType = lane === "both" ? "cooperation" : "normal";
+                    
+                    beatmap.push({
+                        time: finalClimax + (quarterBeat * i),
+                        lane: lane,
+                        type: noteType
+                    });
+                }
+                
+                // 🎵 아웃트로 (웅장한 피날레) - 18-20초
+                const outro = beat * 62;
                 beatmap.push(
-                    { time: climaxStart, lane: "both", type: "cooperation" },
-                    { time: climaxStart + halfBeat, lane: "sensor1", type: "normal" },
-                    { time: climaxStart + beat, lane: "sensor2", type: "normal" },
-                    { time: climaxStart + beat * 1.5, lane: "both", type: "cooperation" },
-                    { time: climaxStart + beat * 2, lane: "sensor1", type: "normal" },
-                    { time: climaxStart + beat * 2.5, lane: "sensor2", type: "normal" },
-                    { time: climaxStart + beat * 3, lane: "both", type: "cooperation" }
+                    { time: outro, lane: "both", type: "cooperation" },
+                    { time: outro + halfBeat, lane: "both", type: "cooperation" },
+                    { time: outro + beat, lane: "both", type: "cooperation" },
+                    { time: outro + beat + halfBeat, lane: "sensor1", type: "normal" },
+                    { time: outro + beat * 2, lane: "sensor2", type: "normal" },
+                    { time: outro + beat * 2.5, lane: "both", type: "cooperation" },
+                    { time: outro + beat * 3, lane: "both", type: "cooperation" },
+                    { time: outro + beat * 4, lane: "both", type: "cooperation" } // 최종 노트
                 );
                 
-                // 🎵 피날레 (4비트) - 18-20초
-                const finaleStart = beat * 36;
-                beatmap.push(
-                    { time: finaleStart, lane: "sensor1", type: "normal" },
-                    { time: finaleStart + quarterBeat, lane: "sensor2", type: "normal" },
-                    { time: finaleStart + halfBeat, lane: "sensor1", type: "normal" },
-                    { time: finaleStart + halfBeat + quarterBeat, lane: "sensor2", type: "normal" },
-                    { time: finaleStart + beat, lane: "both", type: "cooperation" },
-                    { time: finaleStart + beat * 2, lane: "both", type: "cooperation" },
-                    { time: finaleStart + beat * 3, lane: "both", type: "cooperation" }
-                );
-                
-                console.log(`🎵 리듬 비트맵 생성 완료: ${beatmap.length}개 노트, ${(finaleStart + beat * 3).toFixed(1)}초`);
+                const totalDuration = (outro + beat * 4).toFixed(1);
+                console.log(`🎵 일렉트로닉 비트맵 생성 완료: ${beatmap.length}개 노트, ${totalDuration}초 (128 BPM)`);
                 return beatmap;
             }
             
