@@ -278,7 +278,7 @@
     <script src="/socket.io/socket.io.js"></script>
     
     <!-- QR Code Generator -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
     
     <!-- SessionSDK -->
     <script src="/js/SessionSDK.js"></script>
@@ -334,7 +334,8 @@
                     this.createSession();
                 });
                 
-                this.sdk.on('session-created', (session) => {
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;
                     console.log('세션 생성됨:', session);
                     this.displaySessionInfo(session);
                 });
@@ -387,14 +388,36 @@
                 
                 // QR 코드 생성
                 const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
-                QRCode.toCanvas(document.createElement('canvas'), qrUrl, (error, canvas) => {
-                    if (!error) {
-                        canvas.style.width = '200px';
-                        canvas.style.height = '200px';
-                        document.getElementById('qrContainer').innerHTML = '';
-                        document.getElementById('qrContainer').appendChild(canvas);
-                    }
-                });
+                
+                if (typeof QRCode !== 'undefined') {
+                    QRCode.toCanvas(document.createElement('canvas'), qrUrl, (error, canvas) => {
+                        if (!error) {
+                            canvas.style.width = '200px';
+                            canvas.style.height = '200px';
+                            document.getElementById('qrContainer').innerHTML = '';
+                            document.getElementById('qrContainer').appendChild(canvas);
+                        } else {
+                            console.error('QR 코드 생성 실패:', error);
+                            this.showQRCodeFallback(qrUrl);
+                        }
+                    });
+                } else {
+                    console.warn('QRCode 라이브러리가 로드되지 않았습니다. 폴백 사용.');
+                    this.showQRCodeFallback(qrUrl);
+                }
+            }
+            
+            showQRCodeFallback(qrUrl) {
+                // QR 코드 서비스 API 사용
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
+                const img = document.createElement('img');
+                img.src = qrApiUrl;
+                img.style.width = '200px';
+                img.style.height = '200px';
+                img.alt = 'QR Code';
+                
+                document.getElementById('qrContainer').innerHTML = '';
+                document.getElementById('qrContainer').appendChild(img);
             }
             
             onSensorConnected() {
