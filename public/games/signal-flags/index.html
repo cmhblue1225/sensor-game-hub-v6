@@ -816,9 +816,9 @@
 
                 // 게임 설정
                 this.config = {
-                    totalRounds: 15,
-                    responseTime: 3000, // 3초
-                    roundInterval: 4000, // 4초
+                    totalRounds: 10,
+                    responseTime: 5000, // 5초
+                    roundInterval: 2000, // 2초 (빠른 진행)
                     commands: ['up', 'down', 'left', 'right'],
                     genders: ['male', 'female']
                 };
@@ -1267,7 +1267,7 @@
             }
 
             updateRoundDisplay() {
-                this.elements.roundInfo.textContent = `라운드 ${this.gameData.currentRound} / ${this.gameData.maxRounds}`;
+                this.elements.roundInfo.textContent = `라운드 ${this.gameData.currentRound} / 10`;
                 this.elements.currentRound.textContent = this.gameData.currentRound;
                 
                 // 성별 아이콘 업데이트
@@ -1356,9 +1356,10 @@
 
                 console.log(`🎯 Player ${data.playerId} 응답: ${data.direction} (정답: ${expectedDirection}) ${isCorrect ? '✅' : '❌'}`);
 
-                // 두 플레이어 모두 응답했거나 시간이 지나면 라운드 종료
+                // 두 플레이어 모두 응답했으면 즉시 라운드 종료
                 if (this.gameData.playerResponses.size === 2) {
-                    setTimeout(() => this.endRound(), 500);
+                    console.log('🏁 두 플레이어 모두 응답 완료 - 즉시 라운드 종료');
+                    setTimeout(() => this.endRound(), 300); // 300ms로 단축
                 }
             }
 

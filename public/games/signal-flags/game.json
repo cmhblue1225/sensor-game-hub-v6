@@ -15,10 +15,10 @@
   "instructions": [
     "두 명이 각자 센서 클라이언트에 연결하세요",
     "센서를 깃발처럼 팔을 쭉 뻗어 가운데에서 시작하세요",
-    "음성 지시를 듣고 3초 이내에 올바른 방향으로 움직이세요",
+    "음성 지시를 듣고 5초 이내에 올바른 방향으로 움직이세요",
     "👩 여성의 명령: 그대로 수행 (Left → 왼쪽으로)",
     "👨 남성의 명령: 반대로 수행 (Left → 오른쪽으로)",
-    "15라운드 후 더 많은 점수를 얻은 플레이어가 승리!"
+    "10라운드 후 더 많은 점수를 얻은 플레이어가 승리!"
   ],
   "controls": {
     "up": "팔을 위로 뻗기",
@@ -37,11 +37,11 @@
     "customSensorClient": true
   },
   "gameplay": {
-    "totalRounds": 15,
-    "responseTime": "3초",
-    "roundInterval": "4초",
+    "totalRounds": 10,
+    "responseTime": "5초",
+    "roundInterval": "2초",
     "scoringSystem": "정답 1점, 오답/시간초과 0점",
-    "winCondition": "15라운드 후 최고 점수",
+    "winCondition": "10라운드 후 최고 점수",
     "specialRules": {
       "female": "명령 그대로 수행",
       "male": "명령과 반대로 수행"

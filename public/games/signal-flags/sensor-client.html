@@ -845,28 +845,21 @@
                     hasResponded: false
                 };
                 
-                // 향상된 방향 감지 설정
+                // 간소화된 방향 감지 설정
                 this.directionConfig = {
-                    threshold: 25,              // 기울기 임계값
-                    movementThreshold: 15,      // 움직임 감지 임계값
-                    cooldown: 800,              // 방향 변경 쿨다운 (ms)
-                    lastDirectionTime: 0,
-                    stabilityTime: 300,         // 안정성 확인 시간 (ms)
-                    requiredStability: 200      // 필요한 안정성 지속 시간 (ms)
+                    centerThreshold: 15,        // 중앙 인식 임계값 (더 관대하게)
+                    directionThreshold: 30,     // 방향 인식 임계값 (명확하게)
+                    minMovement: 20,            // 최소 움직임 크기
+                    responseDelay: 200          // 응답 지연 시간 (ms)
                 };
 
-                // 센서 상태 추적
-                this.sensorState = {
-                    previousPosition: { beta: 0, gamma: 0 },
-                    currentPosition: { beta: 0, gamma: 0 },
-                    positionHistory: [],
-                    maxHistorySize: 10,
-                    isMoving: false,
-                    movementStartTime: 0,
-                    lastStablePosition: 'center',
-                    stablePositionTime: 0,
-                    movementDirection: null,
-                    movementMagnitude: 0
+                // 게임 상태 추적
+                this.gameState = {
+                    isWaitingPosition: true,    // 중앙 대기 상태
+                    hasMovedToDirection: false, // 방향으로 이동했는지
+                    detectedDirection: null,    // 감지된 방향
+                    lastResponseTime: 0,        // 마지막 응답 시간
+                    roundStarted: false         // 라운드 시작 여부
                 };
                 
                 // DOM 요소
@@ -1030,7 +1023,7 @@
             }
 
             updateRoundDisplay() {
-                this.elements.roundInfo.textContent = `라운드 ${this.gameData.currentRound} / 15`;
+                this.elements.roundInfo.textContent = `라운드 ${this.gameData.currentRound} / 10`;
                 
                 // 성별 아이콘 업데이트
                 this.elements.commanderIcon.textContent = this.gameData.currentGender === 'male' ? '👨' : '👩';
@@ -1146,21 +1139,29 @@
                     this.gameData.hasResponded = false;
                     this.state.gameState = 'playing';
                     
-                    // 센서 상태 초기화
-                    this.sensorState.lastStablePosition = 'center';
-                    this.sensorState.stablePositionTime = Date.now();
-                    this.sensorState.movementDirection = null;
-                    this.sensorState.movementMagnitude = 0;
-                    this.directionConfig.lastDirectionTime = 0;
+                    // 게임 상태 완전 초기화
+                    this.gameState.isWaitingPosition = true;
+                    this.gameState.hasMovedToDirection = false;
+                    this.gameState.detectedDirection = null;
+                    this.gameState.lastResponseTime = 0;
+                    this.gameState.roundStarted = true;
                     
                     this.updateRoundDisplay();
                     this.resetDirectionIndicator();
-                    this.showMessage(`라운드 ${data.round}: ${data.gender === 'male' ? '👨' : '👩'} ${data.command.toUpperCase()}!`, 'warning');
+                    this.showMessage(`📍 중앙에서 대기하세요`, 'warning');
+                    
+                    setTimeout(() => {
+                        this.showMessage(`라운드 ${data.round}: ${data.gender === 'male' ? '👨' : '👩'} ${data.command.toUpperCase()}!`, 'warning');
+                    }, 1000);
                 });
 
                 // 라운드 종료
                 this.sdk.socket.on('signal-flags-round-end', (data) => {
                     console.log('🏁 라운드 종료:', data);
+                    
+                    // 게임 상태 초기화
+                    this.gameState.roundStarted = false;
+                    this.resetGameState();
                     
                     // 내 응답 결과 확인
                     const myResponse = data.responses[this.state.playerId];
@@ -1171,11 +1172,15 @@
                         }
                         
                         if (myResponse.isCorrect) {
-                            this.gameData.myScore++;
                             this.vibrateDevice([100, 50, 100]);
+                            this.showMessage(`✅ 정답! ${myResponse.direction.toUpperCase()}`, 'success');
                         } else {
                             this.vibrateDevice([200]);
+                            this.showMessage(`❌ 오답! ${myResponse.direction.toUpperCase()}`, 'error');
                         }
+                    } else {
+                        this.showMessage(`⏰ 시간 초과!`, 'warning');
+                        this.vibrateDevice([300, 100, 300]);
                     }
                     
                     // 점수 업데이트
@@ -1195,6 +1200,8 @@
                 this.sdk.socket.on('signal-flags-restart', (data) => {
                     console.log('🔄 게임 재시작:', data);
                     this.state.gameState = 'waiting';
+                    
+                    // 게임 데이터 초기화
                     this.gameData = {
                         sessionCode: this.gameData.sessionCode,
                         currentRound: 0,
@@ -1204,6 +1211,13 @@
                         opponentScore: 0,
                         hasResponded: false
                     };
+                    
+                    // 게임 상태 초기화
+                    this.gameState.isWaitingPosition = true;
+                    this.gameState.hasMovedToDirection = false;
+                    this.gameState.detectedDirection = null;
+                    this.gameState.lastResponseTime = 0;
+                    this.gameState.roundStarted = false;
                     
                     this.updateScoreDisplay();
                     this.resetDirectionIndicator();
@@ -1327,154 +1341,91 @@
             detectDirection(data) {
                 if (!data.orientation) return;
 
-                const now = Date.now();
                 const beta = data.orientation.beta || 0;  // 앞뒤 기울기 (-180 ~ 180)
                 const gamma = data.orientation.gamma || 0; // 좌우 기울기 (-90 ~ 90)
 
-                // 센서 상태 업데이트
-                this.sensorState.previousPosition = { ...this.sensorState.currentPosition };
-                this.sensorState.currentPosition = { beta, gamma };
-
-                // 위치 히스토리 업데이트
-                this.sensorState.positionHistory.push({ 
-                    beta, gamma, timestamp: now 
-                });
+                // 현재 위치 분석
+                const currentPosition = this.analyzePosition(beta, gamma);
                 
-                if (this.sensorState.positionHistory.length > this.sensorState.maxHistorySize) {
-                    this.sensorState.positionHistory.shift();
+                // UI 업데이트
+                this.state.currentDirection = currentPosition;
+                this.updateDirectionIndicator(currentPosition);
+
+                // 게임 중일 때만 응답 처리
+                if (this.state.gameState === 'playing' && this.gameState.roundStarted && !this.gameData.hasResponded) {
+                    this.handleMovementForGame(currentPosition, beta, gamma);
                 }
 
-                // 움직임 감지 로직
-                const movement = this.calculateMovement();
-                const detectedDirection = this.analyzeMovementPattern(movement);
-
-                // 현재 방향 업데이트
-                this.state.currentDirection = detectedDirection;
-                this.updateDirectionIndicator(detectedDirection);
-
-                // 게임 중이고 아직 응답하지 않았다면 움직임 분석
-                if (this.state.gameState === 'playing' && !this.gameData.hasResponded) {
-                    this.handleGameMovement(detectedDirection, movement);
-                }
-
-                console.log(`🚩 센서 상태: ${detectedDirection} (움직임: ${movement.magnitude.toFixed(1)}°)`);
+                console.log(`🚩 위치: ${currentPosition} (β:${beta.toFixed(1)}° γ:${gamma.toFixed(1)}°)`);
             }
 
-            calculateMovement() {
-                const prev = this.sensorState.previousPosition;
-                const curr = this.sensorState.currentPosition;
-                
-                const deltaBeta = curr.beta - prev.beta;
-                const deltaGamma = curr.gamma - prev.gamma;
-                
-                const magnitude = Math.sqrt(deltaBeta * deltaBeta + deltaGamma * deltaGamma);
-                
-                return {
-                    deltaBeta,
-                    deltaGamma,
-                    magnitude,
-                    isSignificant: magnitude > this.directionConfig.movementThreshold
-                };
-            }
-
-            analyzeMovementPattern(movement) {
-                const { beta, gamma } = this.sensorState.currentPosition;
-                
-                // 현재 위치 기반 방향 판정
-                let currentDirection = 'center';
-                
-                // 임계값을 초과하는 기울기가 있는지 확인
-                if (Math.abs(beta) > this.directionConfig.threshold || Math.abs(gamma) > this.directionConfig.threshold) {
-                    if (Math.abs(beta) > Math.abs(gamma)) {
-                        // 세로 움직임이 더 클 때
-                        currentDirection = beta > 0 ? 'down' : 'up';
-                    } else {
-                        // 가로 움직임이 더 클 때
-                        currentDirection = gamma > 0 ? 'right' : 'left';
-                    }
+            analyzePosition(beta, gamma) {
+                // 중앙 판정 (더 관대하게)
+                if (Math.abs(beta) < this.directionConfig.centerThreshold && 
+                    Math.abs(gamma) < this.directionConfig.centerThreshold) {
+                    return 'center';
                 }
 
-                // 움직임 패턴 분석
-                if (movement.isSignificant) {
-                    // 실제로 움직임이 있는 경우만 방향 변경을 고려
-                    const movementDirection = this.getMovementDirection(movement);
+                // 방향 판정 (명확한 움직임만)
+                if (Math.abs(beta) > this.directionConfig.directionThreshold || 
+                    Math.abs(gamma) > this.directionConfig.directionThreshold) {
                     
-                    if (movementDirection !== 'center' && movementDirection === currentDirection) {
-                        // 움직임 방향과 현재 위치가 일치하면 유효한 움직임
-                        return currentDirection;
+                    if (Math.abs(beta) > Math.abs(gamma)) {
+                        return beta > 0 ? 'down' : 'up';
+                    } else {
+                        return gamma > 0 ? 'right' : 'left';
                     }
                 }
 
-                return currentDirection;
+                return 'center'; // 애매한 경우 중앙으로 처리
             }
 
-            getMovementDirection(movement) {
-                const { deltaBeta, deltaGamma } = movement;
-                
-                if (Math.abs(deltaBeta) > Math.abs(deltaGamma)) {
-                    return deltaBeta > 0 ? 'down' : 'up';
-                } else {
-                    return deltaGamma > 0 ? 'right' : 'left';
-                }
-            }
-
-            handleGameMovement(detectedDirection, movement) {
+            handleMovementForGame(currentPosition, beta, gamma) {
                 const now = Date.now();
-                
-                // 쿨다운 체크
-                if (now - this.directionConfig.lastDirectionTime < this.directionConfig.cooldown) {
+
+                // 응답 쿨다운 체크
+                if (now - this.gameState.lastResponseTime < this.directionConfig.responseDelay) {
                     return;
                 }
 
-                // center에서 다른 방향으로의 명확한 움직임인지 확인
-                if (detectedDirection !== 'center' && 
-                    this.sensorState.lastStablePosition === 'center' && 
-                    movement.isSignificant) {
+                // 단계 1: 중앙 대기 상태
+                if (this.gameState.isWaitingPosition && currentPosition === 'center') {
+                    console.log('✅ 중앙 대기 위치 확인됨');
+                    this.gameState.isWaitingPosition = false;
+                    return;
+                }
+
+                // 단계 2: 방향으로 이동 감지
+                if (!this.gameState.isWaitingPosition && 
+                    !this.gameState.hasMovedToDirection && 
+                    currentPosition !== 'center') {
                     
-                    // 움직임이 충분히 명확하고 일관된지 확인
-                    if (this.isConsistentMovement(detectedDirection)) {
-                        this.directionConfig.lastDirectionTime = now;
-                        this.sensorState.lastStablePosition = detectedDirection;
-                        this.sendResponse(detectedDirection);
+                    // 충분히 명확한 움직임인지 확인
+                    const movementMagnitude = Math.sqrt(beta * beta + gamma * gamma);
+                    
+                    if (movementMagnitude > this.directionConfig.minMovement) {
+                        console.log(`🎯 방향 이동 감지: ${currentPosition} (크기: ${movementMagnitude.toFixed(1)}°)`);
                         
-                        console.log(`🎯 유효한 움직임 감지: ${detectedDirection} (크기: ${movement.magnitude.toFixed(1)}°)`);
+                        this.gameState.hasMovedToDirection = true;
+                        this.gameState.detectedDirection = currentPosition;
+                        this.gameState.lastResponseTime = now;
+                        
+                        // 즉시 응답 전송
+                        this.sendResponse(currentPosition);
+                        
+                        // 상태 초기화 (다음 라운드 준비)
+                        setTimeout(() => {
+                            this.resetGameState();
+                        }, 1000);
                     }
-                }
-                
-                // 중앙으로 돌아온 경우
-                if (detectedDirection === 'center' && this.sensorState.lastStablePosition !== 'center') {
-                    this.sensorState.lastStablePosition = 'center';
-                    this.sensorState.stablePositionTime = now;
                 }
             }
 
-            isConsistentMovement(direction) {
-                // 최근 위치 히스토리를 분석하여 일관된 움직임인지 확인
-                const recentHistory = this.sensorState.positionHistory.slice(-5);
-                if (recentHistory.length < 3) return false;
-                
-                let consistentCount = 0;
-                for (const pos of recentHistory) {
-                    const posDirection = this.getPositionDirection(pos.beta, pos.gamma);
-                    if (posDirection === direction) {
-                        consistentCount++;
-                    }
-                }
-                
-                return consistentCount >= 3; // 최근 5개 중 3개 이상이 같은 방향
-            }
-
-            getPositionDirection(beta, gamma) {
-                if (Math.abs(beta) < this.directionConfig.threshold && 
-                    Math.abs(gamma) < this.directionConfig.threshold) {
-                    return 'center';
-                }
-                
-                if (Math.abs(beta) > Math.abs(gamma)) {
-                    return beta > 0 ? 'down' : 'up';
-                } else {
-                    return gamma > 0 ? 'right' : 'left';
-                }
+            resetGameState() {
+                this.gameState.isWaitingPosition = true;
+                this.gameState.hasMovedToDirection = false;
+                this.gameState.detectedDirection = null;
+                console.log('🔄 게임 상태 초기화 - 중앙 대기 위치로');
             }
 
             updateDirectionIndicator(direction) {
