@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎵 Rhythm Sync - Sensor Game Hub</title>
+    <style>
+        :root {
+            --primary: #8b5cf6;
+            --secondary: #a855f7;
+            --accent: #ec4899;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --background: #0f0f23;
+            --surface: #1a1a2e;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --border: #475569;
+            --rhythm-glow: #c084fc;
+            --beat-color: #fbbf24;
+            --sync-perfect: #10b981;
+            --sync-good: #84cc16;
+            --sync-miss: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, var(--background), #020617);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 배경 리듬 효과 */
+        .rhythm-background {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .beat-pulse {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border: 3px solid var(--beat-color);
+            border-radius: 50%;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            animation: beat-pulse 1s ease-out infinite;
+            opacity: 0;
+        }
+
+        @keyframes beat-pulse {
+            0% { 
+                transform: translate(-50%, -50%) scale(0.1);
+                opacity: 1;
+                border-color: var(--beat-color);
+            }
+            50% {
+                border-color: var(--primary);
+            }
+            100% { 
+                transform: translate(-50%, -50%) scale(2);
+                opacity: 0;
+                border-color: var(--accent);
+            }
+        }
+
+        /* 상단 UI */
+        .game-header {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .session-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 0.6rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .session-info {
+            background: rgba(26, 26, 46, 0.9);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 1rem;
+            padding: 1rem;
+            display: none;
+            max-width: 300px;
+        }
+
+        .session-info.visible {
+            display: block;
+        }
+
+        .session-code {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 0.8rem;
+            letter-spacing: 0.2em;
+        }
+
+        .connection-status {
+            display: flex;
+            justify-content: space-between;
+            gap: 0.8rem;
+        }
+
+        .sensor-status {
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.4rem;
+            font-weight: 600;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .sensor-status.connected {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+
+        .sensor-status.disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+
+        /* 게임 메인 영역 */
+        .game-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            z-index: 10;
+        }
+
+        /* 리듬 비주얼라이저 */
+        .rhythm-visualizer {
+            width: 100%;
+            max-width: 800px;
+            height: 300px;
+            background: rgba(26, 26, 46, 0.8);
+            border: 2px solid var(--primary);
+            border-radius: 1.5rem;
+            margin-bottom: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .rhythm-track {
+            position: absolute;
+            width: 100%;
+            height: 60px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                var(--rhythm-glow) 48%, 
+                var(--primary) 50%, 
+                var(--rhythm-glow) 52%, 
+                transparent 100%);
+        }
+
+        .beat-indicator {
+            position: absolute;
+            width: 4px;
+            height: 80px;
+            background: var(--beat-color);
+            top: 50%;
+            transform: translateY(-50%);
+            left: 50%;
+            border-radius: 2px;
+            animation: beat-glow 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes beat-glow {
+            0% { box-shadow: 0 0 10px var(--beat-color); }
+            100% { box-shadow: 0 0 20px var(--beat-color), 0 0 30px var(--beat-color); }
+        }
+
+        .rhythm-pattern {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pattern-beat {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin: 0 5px;
+            background: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .pattern-beat.active {
+            background: var(--beat-color);
+            transform: scale(1.5);
+            box-shadow: 0 0 15px var(--beat-color);
+        }
+
+        .pattern-beat.hit {
+            background: var(--sync-perfect);
+            transform: scale(1.2);
+        }
+
+        /* 플레이어 상태 */
+        .players-section {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        .player-card {
+            flex: 1;
+            background: rgba(26, 26, 46, 0.8);
+            border: 2px solid var(--border);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .player-card.connected {
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .player-card.active {
+            border-color: var(--primary);
+            background: rgba(139, 92, 246, 0.1);
+            animation: player-glow 0.5s ease-in-out infinite alternate;
+        }
+
+        @keyframes player-glow {
+            0% { box-shadow: 0 0 10px var(--primary); }
+            100% { box-shadow: 0 0 20px var(--primary), 0 0 30px var(--primary); }
+        }
+
+        .player-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .player-score {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .sync-meter {
+            width: 100%;
+            height: 8px;
+            background: var(--surface);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .sync-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--sync-miss), var(--sync-good), var(--sync-perfect));
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .rhythm-status {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* 게임 컨트롤 */
+        .game-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .control-btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 0.8rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-btn.primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .control-btn.primary:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* 게임 상태 표시 */
+        .game-status {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .round-info {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .game-message {
+            font-size: 1.2rem;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* 동조율 표시 */
+        .sync-display {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(26, 26, 46, 0.9);
+            border: 2px solid var(--primary);
+            border-radius: 1rem;
+            padding: 1rem 2rem;
+            z-index: 100;
+        }
+
+        .sync-percentage {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--sync-perfect);
+            text-align: center;
+        }
+
+        .sync-label {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            text-align: center;
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .session-title {
+                font-size: 1.4rem;
+            }
+            
+            .session-code {
+                font-size: 2rem;
+            }
+            
+            .players-section {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
+            .rhythm-visualizer {
+                height: 200px;
+            }
+        }
+
+        /* 숨김 */
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 배경 리듬 효과 -->
+        <div class="rhythm-background" id="rhythmBackground">
+            <!-- 동적으로 생성되는 비트 펄스 -->
+        </div>
+
+        <!-- 상단 헤더 -->
+        <div class="game-header">
+            <div class="session-title">🎵 Rhythm Sync</div>
+            <div class="session-info" id="sessionInfo">
+                <div class="session-code" id="sessionCode">----</div>
+                <div class="connection-status">
+                    <div class="sensor-status disconnected" id="sensor1Status">
+                        플레이어 1
+                    </div>
+                    <div class="sensor-status disconnected" id="sensor2Status">
+                        플레이어 2
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 게임 메인 영역 -->
+        <div class="game-main">
+            <!-- 리듬 비주얼라이저 -->
+            <div class="rhythm-visualizer" id="rhythmVisualizer">
+                <div class="rhythm-track"></div>
+                <div class="beat-indicator" id="beatIndicator"></div>
+                <div class="rhythm-pattern" id="rhythmPattern">
+                    <!-- 동적으로 생성되는 비트 패턴 -->
+                </div>
+            </div>
+
+            <!-- 플레이어 상태 -->
+            <div class="players-section">
+                <div class="player-card" id="player1Card">
+                    <div class="player-name">플레이어 1</div>
+                    <div class="player-score" id="player1Score">0</div>
+                    <div class="sync-meter">
+                        <div class="sync-fill" id="player1Sync"></div>
+                    </div>
+                    <div class="rhythm-status" id="player1Status">대기 중...</div>
+                </div>
+                <div class="player-card" id="player2Card">
+                    <div class="player-name">플레이어 2</div>
+                    <div class="player-score" id="player2Score">0</div>
+                    <div class="sync-meter">
+                        <div class="sync-fill" id="player2Sync"></div>
+                    </div>
+                    <div class="rhythm-status" id="player2Status">대기 중...</div>
+                </div>
+            </div>
+
+            <!-- 게임 상태 -->
+            <div class="game-status">
+                <div class="round-info" id="roundInfo">게임 준비 중...</div>
+                <div class="game-message" id="gameMessage">두 명의 플레이어가 연결되면 게임이 시작됩니다</div>
+            </div>
+
+            <!-- 게임 컨트롤 -->
+            <div class="game-controls">
+                <button class="control-btn primary" id="startBtn" disabled>🎵 게임 시작</button>
+                <button class="control-btn primary" id="resetBtn" disabled>🔄 다시 시작</button>
+            </div>
+        </div>
+
+        <!-- 동조율 표시 -->
+        <div class="sync-display hidden" id="syncDisplay">
+            <div class="sync-percentage" id="syncPercentage">0%</div>
+            <div class="sync-label">동조율</div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/SessionSDK.js"></script>
+
+    <script>
+        class RhythmSyncGame {
+            constructor() {
+                console.log('🎵 Rhythm Sync 게임 초기화 시작');
+                
+                // 게임 상태
+                this.gameState = {
+                    isPlaying: false,
+                    currentRound: 0,
+                    totalRounds: 5,
+                    bpm: 120, // 분당 박자수
+                    currentBeat: 0,
+                    patternLength: 8,
+                    startTime: 0,
+                    roundStartTime: 0
+                };
+                
+                // 플레이어 데이터
+                this.players = {
+                    player1: {
+                        connected: false,
+                        score: 0,
+                        lastHit: 0,
+                        syncRate: 0,
+                        rhythmHistory: []
+                    },
+                    player2: {
+                        connected: false,
+                        score: 0,
+                        lastHit: 0,
+                        syncRate: 0,
+                        rhythmHistory: []
+                    }
+                };
+                
+                // 리듬 패턴
+                this.currentPattern = [];
+                this.beatInterval = null;
+                this.patternBeats = [];
+                
+                // 동조 계산
+                this.syncThreshold = 200; // ms
+                this.perfectThreshold = 100; // ms
+                
+                // DOM 요소
+                this.elements = {
+                    sessionInfo: document.getElementById('sessionInfo'),
+                    sessionCode: document.getElementById('sessionCode'),
+                    sensor1Status: document.getElementById('sensor1Status'),
+                    sensor2Status: document.getElementById('sensor2Status'),
+                    rhythmVisualizer: document.getElementById('rhythmVisualizer'),
+                    beatIndicator: document.getElementById('beatIndicator'),
+                    rhythmPattern: document.getElementById('rhythmPattern'),
+                    player1Card: document.getElementById('player1Card'),
+                    player2Card: document.getElementById('player2Card'),
+                    player1Score: document.getElementById('player1Score'),
+                    player2Score: document.getElementById('player2Score'),
+                    player1Sync: document.getElementById('player1Sync'),
+                    player2Sync: document.getElementById('player2Sync'),
+                    player1Status: document.getElementById('player1Status'),
+                    player2Status: document.getElementById('player2Status'),
+                    roundInfo: document.getElementById('roundInfo'),
+                    gameMessage: document.getElementById('gameMessage'),
+                    startBtn: document.getElementById('startBtn'),
+                    resetBtn: document.getElementById('resetBtn'),
+                    syncDisplay: document.getElementById('syncDisplay'),
+                    syncPercentage: document.getElementById('syncPercentage'),
+                    rhythmBackground: document.getElementById('rhythmBackground')
+                };
+                
+                // SDK 초기화
+                this.initializeSDK();
+                this.setupEvents();
+                this.generateRhythmPattern();
+                
+                console.log('✅ Rhythm Sync 게임 초기화 완료');
+            }
+            
+            initializeSDK() {
+                this.sdk = new SessionSDK({
+                    gameId: 'rhythm-sync',
+                    gameType: 'dual'
+                });
+            }
+            
+            setupEvents() {
+                // SDK 이벤트
+                this.sdk.on('connected', () => {
+                    console.log('✅ 서버 연결됨');
+                    this.createSession();
+                });
+                
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;
+                    console.log('🎵 세션 생성됨:', session);
+                    this.displaySessionInfo(session);
+                });
+                
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;
+                    console.log('🎮 센서 연결됨:', data);
+                    this.handleSensorConnection(data);
+                });
+                
+                this.sdk.on('sensor-disconnected', (event) => {
+                    const data = event.detail || event;
+                    console.log('❌ 센서 연결 해제됨:', data);
+                    this.handleSensorDisconnection(data);
+                });
+                
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;
+                    this.handleSensorData(data);
+                });
+                
+                // UI 이벤트
+                this.elements.startBtn.addEventListener('click', () => {
+                    this.startGame();
+                });
+                
+                this.elements.resetBtn.addEventListener('click', () => {
+                    this.resetGame();
+                });
+            }
+            
+            createSession() {
+                this.sdk.createSession({
+                    maxPlayers: 2,
+                    gameMode: 'rhythm-sync'
+                });
+            }
+            
+            displaySessionInfo(session) {
+                this.elements.sessionCode.textContent = session.sessionCode;
+                this.elements.sessionInfo.classList.add('visible');
+                
+                // QR 코드 생성 (기존 SessionSDK 기능 활용)
+                if (this.sdk.generateQRCode) {
+                    this.sdk.generateQRCode(session.sessionCode);
+                }
+            }
+            
+            handleSensorConnection(data) {
+                const playerId = data.sensorId === 'sensor1' ? 'player1' : 'player2';
+                this.players[playerId].connected = true;
+                
+                // UI 업데이트
+                const statusElement = data.sensorId === 'sensor1' ? 
+                    this.elements.sensor1Status : this.elements.sensor2Status;
+                const cardElement = data.sensorId === 'sensor1' ? 
+                    this.elements.player1Card : this.elements.player2Card;
+                
+                statusElement.textContent = `플레이어 ${data.sensorId === 'sensor1' ? '1' : '2'}`;
+                statusElement.classList.remove('disconnected');
+                statusElement.classList.add('connected');
+                cardElement.classList.add('connected');
+                
+                // 두 플레이어 모두 연결되었는지 확인
+                this.checkGameReady();
+            }
+            
+            handleSensorDisconnection(data) {
+                const playerId = data.sensorId === 'sensor1' ? 'player1' : 'player2';
+                this.players[playerId].connected = false;
+                
+                // UI 업데이트
+                const statusElement = data.sensorId === 'sensor1' ? 
+                    this.elements.sensor1Status : this.elements.sensor2Status;
+                const cardElement = data.sensorId === 'sensor1' ? 
+                    this.elements.player1Card : this.elements.player2Card;
+                
+                statusElement.textContent = `플레이어 ${data.sensorId === 'sensor1' ? '1' : '2'}`;
+                statusElement.classList.remove('connected');
+                statusElement.classList.add('disconnected');
+                cardElement.classList.remove('connected');
+                
+                // 게임 중이었다면 일시정지
+                if (this.gameState.isPlaying) {
+                    this.pauseGame();
+                }
+                
+                this.checkGameReady();
+            }
+            
+            checkGameReady() {
+                const bothConnected = this.players.player1.connected && this.players.player2.connected;
+                this.elements.startBtn.disabled = !bothConnected;
+                this.elements.resetBtn.disabled = !bothConnected;
+                
+                if (bothConnected) {
+                    this.elements.gameMessage.textContent = '🎵 준비 완료! 게임을 시작하세요';
+                } else {
+                    this.elements.gameMessage.textContent = '두 명의 플레이어가 연결되면 게임이 시작됩니다';
+                }
+            }
+            
+            handleSensorData(data) {
+                if (!this.gameState.isPlaying) return;
+                
+                const playerId = data.sensorId === 'sensor1' ? 'player1' : 'player2';
+                const sensorData = data.data;
+                
+                // 센서 움직임으로 리듬 감지
+                const movement = this.calculateMovement(sensorData);
+                const timestamp = Date.now();
+                
+                // 리듬 히트 감지
+                if (movement > 15) { // 임계값 이상의 움직임
+                    this.handleRhythmHit(playerId, timestamp);
+                }
+                
+                // 플레이어 상태 업데이트
+                this.updatePlayerStatus(playerId, movement);
+            }
+            
+            calculateMovement(sensorData) {
+                const { orientation, acceleration } = sensorData;
+                
+                // 가속도와 방향 변화를 종합하여 움직임 강도 계산
+                const accelMagnitude = Math.sqrt(
+                    (acceleration?.x || 0) ** 2 + 
+                    (acceleration?.y || 0) ** 2 + 
+                    (acceleration?.z || 0) ** 2
+                );
+                
+                const orientationChange = Math.abs(orientation?.beta || 0) + 
+                                        Math.abs(orientation?.gamma || 0);
+                
+                return Math.max(accelMagnitude, orientationChange);
+            }
+            
+            handleRhythmHit(playerId, timestamp) {
+                const player = this.players[playerId];
+                const timeSinceStart = timestamp - this.gameState.roundStartTime;
+                const beatInterval = 60000 / this.gameState.bpm; // ms per beat
+                
+                // 가장 가까운 비트 찾기
+                const nearestBeat = Math.round(timeSinceStart / beatInterval);
+                const beatTime = nearestBeat * beatInterval;
+                const timeDiff = Math.abs(timeSinceStart - beatTime);
+                
+                // 동조 판정
+                if (timeDiff <= this.syncThreshold) {
+                    let points = 0;
+                    let accuracy = '';
+                    
+                    if (timeDiff <= this.perfectThreshold) {
+                        points = 100;
+                        accuracy = 'PERFECT!';
+                    } else if (timeDiff <= this.syncThreshold / 2) {
+                        points = 75;
+                        accuracy = 'GREAT!';
+                    } else {
+                        points = 50;
+                        accuracy = 'GOOD!';
+                    }
+                    
+                    player.score += points;
+                    player.lastHit = timestamp;
+                    player.rhythmHistory.push({
+                        timestamp: timestamp,
+                        accuracy: timeDiff,
+                        points: points
+                    });
+                    
+                    // UI 업데이트
+                    this.updatePlayerScore(playerId, points, accuracy);
+                    this.calculateSyncRate();
+                }
+            }
+            
+            updatePlayerScore(playerId, points, accuracy) {
+                const scoreElement = playerId === 'player1' ? 
+                    this.elements.player1Score : this.elements.player2Score;
+                const statusElement = playerId === 'player1' ? 
+                    this.elements.player1Status : this.elements.player2Status;
+                
+                scoreElement.textContent = this.players[playerId].score;
+                statusElement.textContent = `${accuracy} +${points}`;
+                
+                // 카드 강조 효과
+                const cardElement = playerId === 'player1' ? 
+                    this.elements.player1Card : this.elements.player2Card;
+                cardElement.classList.add('active');
+                setTimeout(() => {
+                    cardElement.classList.remove('active');
+                }, 500);
+            }
+            
+            calculateSyncRate() {
+                const player1Hits = this.players.player1.rhythmHistory.slice(-5);
+                const player2Hits = this.players.player2.rhythmHistory.slice(-5);
+                
+                if (player1Hits.length > 0 && player2Hits.length > 0) {
+                    // 최근 5개 히트의 타이밍 차이 계산
+                    let totalDiff = 0;
+                    let comparisons = 0;
+                    
+                    for (let i = 0; i < Math.min(player1Hits.length, player2Hits.length); i++) {
+                        const diff = Math.abs(player1Hits[i].timestamp - player2Hits[i].timestamp);
+                        totalDiff += diff;
+                        comparisons++;
+                    }
+                    
+                    const avgDiff = totalDiff / comparisons;
+                    const syncRate = Math.max(0, 100 - (avgDiff / 10)); // 0-100%
+                    
+                    // UI 업데이트
+                    this.updateSyncDisplay(syncRate);
+                }
+            }
+            
+            updateSyncDisplay(syncRate) {
+                this.elements.syncPercentage.textContent = `${Math.round(syncRate)}%`;
+                this.elements.syncDisplay.classList.remove('hidden');
+                
+                // 플레이어별 동조율 표시
+                this.elements.player1Sync.style.width = `${syncRate}%`;
+                this.elements.player2Sync.style.width = `${syncRate}%`;
+            }
+            
+            updatePlayerStatus(playerId, movement) {
+                const statusElement = playerId === 'player1' ? 
+                    this.elements.player1Status : this.elements.player2Status;
+                
+                if (movement > 15) {
+                    statusElement.textContent = '🎵 리듬 중...';
+                } else {
+                    statusElement.textContent = '대기 중...';
+                }
+            }
+            
+            generateRhythmPattern() {
+                this.currentPattern = [];
+                this.patternBeats = [];
+                
+                // 랜덤 리듬 패턴 생성
+                for (let i = 0; i < this.gameState.patternLength; i++) {
+                    const isActive = Math.random() > 0.3; // 70% 확률로 비트 생성
+                    this.currentPattern.push(isActive);
+                }
+                
+                // 패턴 시각화
+                this.renderRhythmPattern();
+            }
+            
+            renderRhythmPattern() {
+                this.elements.rhythmPattern.innerHTML = '';
+                
+                this.currentPattern.forEach((isActive, index) => {
+                    const beat = document.createElement('div');
+                    beat.className = 'pattern-beat';
+                    if (isActive) {
+                        beat.classList.add('active');
+                    }
+                    beat.dataset.beat = index;
+                    this.elements.rhythmPattern.appendChild(beat);
+                    this.patternBeats.push(beat);
+                });
+            }
+            
+            startGame() {
+                this.gameState.isPlaying = true;
+                this.gameState.currentRound++;
+                this.gameState.roundStartTime = Date.now();
+                
+                // UI 업데이트
+                this.elements.roundInfo.textContent = 
+                    `라운드 ${this.gameState.currentRound} / ${this.gameState.totalRounds}`;
+                this.elements.gameMessage.textContent = '🎵 리듬에 맞춰 센서를 움직이세요!';
+                this.elements.startBtn.disabled = true;
+                
+                // 리듬 시작
+                this.startRhythmLoop();
+                this.startBackgroundEffects();
+                
+                console.log('🎵 게임 시작');
+            }
+            
+            startRhythmLoop() {
+                const beatInterval = 60000 / this.gameState.bpm; // ms
+                let currentBeat = 0;
+                
+                this.beatInterval = setInterval(() => {
+                    // 비트 인디케이터 애니메이션
+                    this.elements.beatIndicator.style.animation = 'none';
+                    setTimeout(() => {
+                        this.elements.beatIndicator.style.animation = 'beat-glow 0.5s ease-in-out infinite alternate';
+                    }, 10);
+                    
+                    // 패턴 비트 강조
+                    if (currentBeat < this.patternBeats.length) {
+                        this.patternBeats.forEach(beat => beat.classList.remove('hit'));
+                        if (this.currentPattern[currentBeat]) {
+                            this.patternBeats[currentBeat].classList.add('hit');
+                        }
+                    }
+                    
+                    currentBeat++;
+                    this.gameState.currentBeat = currentBeat;
+                    
+                    // 라운드 종료 체크
+                    if (currentBeat >= this.gameState.patternLength * 2) {
+                        this.endRound();
+                    }
+                }, beatInterval);
+            }
+            
+            startBackgroundEffects() {
+                const createBeatPulse = () => {
+                    const pulse = document.createElement('div');
+                    pulse.className = 'beat-pulse';
+                    this.elements.rhythmBackground.appendChild(pulse);
+                    
+                    setTimeout(() => {
+                        if (pulse.parentNode) {
+                            pulse.parentNode.removeChild(pulse);
+                        }
+                    }, 1000);
+                };
+                
+                // BPM에 맞춰 펄스 생성
+                const pulseInterval = 60000 / this.gameState.bpm;
+                this.pulseInterval = setInterval(createBeatPulse, pulseInterval);
+            }
+            
+            endRound() {
+                clearInterval(this.beatInterval);
+                clearInterval(this.pulseInterval);
+                
+                // 라운드 결과 계산
+                const finalSync = this.calculateFinalSyncRate();
+                
+                if (this.gameState.currentRound >= this.gameState.totalRounds) {
+                    this.endGame();
+                } else {
+                    // 다음 라운드 준비
+                    setTimeout(() => {
+                        this.generateRhythmPattern();
+                        this.elements.startBtn.disabled = false;
+                        this.elements.gameMessage.textContent = '다음 라운드를 시작하세요!';
+                        this.gameState.isPlaying = false;
+                    }, 2000);
+                }
+                
+                console.log('🏁 라운드 종료, 동조율:', finalSync);
+            }
+            
+            calculateFinalSyncRate() {
+                const player1Avg = this.calculatePlayerAverage('player1');
+                const player2Avg = this.calculatePlayerAverage('player2');
+                const finalSync = (player1Avg + player2Avg) / 2;
+                
+                this.updateSyncDisplay(finalSync);
+                return finalSync;
+            }
+            
+            calculatePlayerAverage(playerId) {
+                const history = this.players[playerId].rhythmHistory;
+                if (history.length === 0) return 0;
+                
+                const avgAccuracy = history.reduce((sum, hit) => sum + hit.accuracy, 0) / history.length;
+                return Math.max(0, 100 - (avgAccuracy / 10));
+            }
+            
+            endGame() {
+                this.gameState.isPlaying = false;
+                
+                // 승자 결정
+                const player1Score = this.players.player1.score;
+                const player2Score = this.players.player2.score;
+                const finalSync = this.calculateFinalSyncRate();
+                
+                let resultMessage = '';
+                if (player1Score > player2Score) {
+                    resultMessage = '🏆 플레이어 1 승리!';
+                } else if (player2Score > player1Score) {
+                    resultMessage = '🏆 플레이어 2 승리!';
+                } else {
+                    resultMessage = '🤝 무승부!';
+                }
+                
+                resultMessage += ` 최종 동조율: ${Math.round(finalSync)}%`;
+                
+                this.elements.gameMessage.textContent = resultMessage;
+                this.elements.resetBtn.disabled = false;
+                
+                console.log('🏆 게임 종료:', resultMessage);
+            }
+            
+            pauseGame() {
+                if (this.beatInterval) {
+                    clearInterval(this.beatInterval);
+                }
+                if (this.pulseInterval) {
+                    clearInterval(this.pulseInterval);
+                }
+                this.gameState.isPlaying = false;
+                this.elements.gameMessage.textContent = '⏸️ 게임 일시정지 (플레이어 연결 대기)';
+            }
+            
+            resetGame() {
+                // 게임 상태 초기화
+                this.gameState.isPlaying = false;
+                this.gameState.currentRound = 0;
+                this.gameState.currentBeat = 0;
+                
+                // 플레이어 데이터 초기화
+                Object.keys(this.players).forEach(playerId => {
+                    this.players[playerId].score = 0;
+                    this.players[playerId].lastHit = 0;
+                    this.players[playerId].syncRate = 0;
+                    this.players[playerId].rhythmHistory = [];
+                });
+                
+                // 인터벌 정리
+                if (this.beatInterval) clearInterval(this.beatInterval);
+                if (this.pulseInterval) clearInterval(this.pulseInterval);
+                
+                // UI 초기화
+                this.elements.player1Score.textContent = '0';
+                this.elements.player2Score.textContent = '0';
+                this.elements.player1Status.textContent = '대기 중...';
+                this.elements.player2Status.textContent = '대기 중...';
+                this.elements.player1Sync.style.width = '0%';
+                this.elements.player2Sync.style.width = '0%';
+                this.elements.roundInfo.textContent = '게임 준비 중...';
+                this.elements.syncDisplay.classList.add('hidden');
+                this.elements.rhythmBackground.innerHTML = '';
+                
+                // 새 패턴 생성
+                this.generateRhythmPattern();
+                this.checkGameReady();
+                
+                console.log('🔄 게임 리셋');
+            }
+        }
+        
+        // 게임 시작
+        document.addEventListener('DOMContentLoaded', () => {
+            new RhythmSyncGame();
+        });
+    </script>
+</body>
+</html>

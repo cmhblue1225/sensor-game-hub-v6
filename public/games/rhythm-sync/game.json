@@ -1,0 +1,70 @@
+{
+  "id": "rhythm-sync",
+  "title": "Rhythm Sync",
+  "description": "🎵 두 명이 함께 완벽한 리듬 동조를 만들어보세요!<br>센서 움직임으로 비트에 맞춰 연주하며 최고의 싱크율을 달성하는 협동 리듬 게임",
+  "category": "dual",
+  "icon": "🎵",
+  "version": "1.0.0",
+  "author": "Sensor Game Hub Team",
+  "sensors": ["orientation", "acceleration", "motion"],
+  "maxPlayers": 2,
+  "difficulty": "medium",
+  "status": "active",
+  "featured": true,
+  "tags": ["rhythm", "music", "cooperation", "sync", "beat", "coordination"],
+  "instructions": [
+    "두 명이 각자 센서 클라이언트에 연결하세요",
+    "화면에 표시되는 리듬 패턴을 확인하세요",
+    "비트에 맞춰 센서를 리드미컬하게 움직이세요",
+    "상대방과 최대한 동시에, 같은 타이밍에 움직이는 것이 핵심!",
+    "PERFECT: 100ms 이내, GREAT: 100-200ms, GOOD: 200ms 이내",
+    "5라운드 동안 최고 동조율과 점수를 달성하세요!"
+  ],
+  "controls": {
+    "movement": "리듬에 맞춰 센서를 자유롭게 움직이기",
+    "timing": "비트 타이밍에 맞춰 움직임의 강도 조절",
+    "sync": "상대방과 동시에 움직여 동조율 높이기"
+  },
+  "gameFeatures": {
+    "sessionPersistence": true,
+    "quickRestart": true,
+    "realtimeCompetition": true,
+    "cooperativePlay": true,
+    "rhythmVisualization": true,
+    "syncRateCalculation": true,
+    "beatDetection": true,
+    "scoreSystem": true,
+    "multipleRounds": true
+  },
+  "gameplay": {
+    "totalRounds": 5,
+    "bpm": 120,
+    "patternLength": 8,
+    "syncThreshold": "200ms",
+    "perfectThreshold": "100ms",
+    "scoringSystem": {
+      "perfect": "100점 (100ms 이내)",
+      "great": "75점 (100-200ms)",
+      "good": "50점 (200ms 이내)"
+    },
+    "winCondition": "5라운드 후 최고 점수 + 동조율",
+    "specialFeatures": {
+      "realTimeSync": "실시간 동조율 계산",
+      "rhythmPattern": "무작위 리듬 패턴 생성",
+      "visualFeedback": "비트 펄스 및 패턴 시각화",
+      "accuracyTracking": "히트 정확도 및 타이밍 추적"
+    }
+  },
+  "technicalSpecs": {
+    "sensorSensitivity": "15+ movement threshold",
+    "beatAccuracy": "millisecond precision",
+    "syncCalculation": "최근 5개 히트 기반 평균",
+    "visualEffects": "CSS 애니메이션 + 동적 펄스",
+    "performanceOptimized": true
+  },
+  "difficultyLevels": {
+    "easy": "BPM 100, 간단한 패턴",
+    "medium": "BPM 120, 표준 패턴 (기본값)",
+    "hard": "BPM 140, 복잡한 패턴"
+  }
+}
