@@ -371,7 +371,7 @@
                 
                 // 게임 상태
                 this.gameState = {
-                    phase: 'waiting',         // waiting, playing, paused, ending, ended
+                    phase: 'waiting',         // waiting, playing, paused, ended
                     score: 0,
                     combo: 0,
                     totalNotes: 0,
@@ -1005,104 +1005,6 @@
                 this.scene.add(particles);
             }
             
-            createVictoryEffect() {
-                // ✅ 게임 완료 시 화려한 셀레브레이션 효과
-                console.log('🎉 승리 효과 시작!');
-                
-                // 1. 대형 파티클 폭죽 효과
-                const fireworksCount = 5;
-                for (let f = 0; f < fireworksCount; f++) {
-                    setTimeout(() => {
-                        const particles = new THREE.Group();
-                        const particleCount = 50;
-                        
-                        // 랜덤 위치에서 폭죽 생성
-                        const centerX = (Math.random() - 0.5) * 8;
-                        const centerY = Math.random() * 3 + 1;
-                        const centerZ = Math.random() * 3 - 1;
-                        
-                        for (let i = 0; i < particleCount; i++) {
-                            const particleGeometry = new THREE.SphereGeometry(0.1, 6, 6);
-                            const colors = [0xff0000, 0x0000ff, 0x8b5cf6, 0xffd700, 0x00ff00, 0xff69b4];
-                            const particleMaterial = new THREE.MeshBasicMaterial({
-                                color: colors[Math.floor(Math.random() * colors.length)],
-                                transparent: true,
-                                opacity: 1
-                            });
-                            const particle = new THREE.Mesh(particleGeometry, particleMaterial);
-                            
-                            particle.position.set(centerX, centerY, centerZ);
-                            
-                            // 폭발 방향으로 빠르게 분산
-                            particle.userData.velocity = new THREE.Vector3(
-                                (Math.random() - 0.5) * 8,
-                                (Math.random() - 0.5) * 8,
-                                (Math.random() - 0.5) * 8
-                            );
-                            particle.userData.life = 1;
-                            particle.userData.gravity = -0.1;
-                            
-                            particles.add(particle);
-                        }
-                        
-                        this.particleEffects.push(particles);
-                        this.scene.add(particles);
-                    }, f * 300); // 300ms 간격으로 폭죽 발사
-                }
-                
-                // 2. 세이버 글로우 효과 강화
-                Object.values(this.sabers).forEach(saber => {
-                    const originalIntensity = saber.children[1].material.emissiveIntensity || 0;
-                    let glowTime = 0;
-                    
-                    const enhanceGlow = () => {
-                        glowTime += 0.1;
-                        const intensity = originalIntensity + Math.sin(glowTime * 4) * 0.3 + 0.2;
-                        saber.children[1].material.emissiveIntensity = Math.max(0, intensity);
-                        
-                        if (glowTime < 2) { // 2초간 글로우 효과
-                            requestAnimationFrame(enhanceGlow);
-                        } else {
-                            saber.children[1].material.emissiveIntensity = originalIntensity;
-                        }
-                    };
-                    enhanceGlow();
-                });
-                
-                // 3. 배경 색상 변화
-                let colorTime = 0;
-                const originalColor = this.scene.background || new THREE.Color(0x0f172a);
-                
-                const animateBackground = () => {
-                    colorTime += 0.05;
-                    const r = 0.06 + Math.sin(colorTime * 2) * 0.02;
-                    const g = 0.09 + Math.sin(colorTime * 2.5) * 0.03;
-                    const b = 0.16 + Math.sin(colorTime * 3) * 0.04;
-                    
-                    this.renderer.setClearColor(new THREE.Color(r, g, b));
-                    
-                    if (colorTime < 2) { // 2초간 배경 효과
-                        requestAnimationFrame(animateBackground);
-                    } else {
-                        this.renderer.setClearColor(originalColor);
-                    }
-                };
-                animateBackground();
-                
-                // 4. 음향 효과 (존재하는 경우)
-                try {
-                    const victorySound = new Audio();
-                    victorySound.volume = 0.3;
-                    // 승리 사운드가 있다면 재생
-                    // victorySound.src = '/sounds/victory.mp3';
-                    // victorySound.play();
-                } catch (e) {
-                    // 오디오 파일이 없으면 무시
-                }
-                
-                console.log('🌟 모든 승리 효과 시작 완료!');
-            }
-            
             updateCooperation(success) {
                 if (success) {
                     this.cooperation.sync = Math.min(100, this.cooperation.sync + 5);
@@ -1268,25 +1170,8 @@
             }
             
             checkGameEnd() {
-                // ✅ 개선된 게임 종료 로직
                 if (this.noteSpawnIndex >= this.beatmap.length && this.notes.length === 0) {
-                    if (this.gameState.phase === 'playing') {
-                        // 마지막 노트 처리 완료, 종료 대기 상태로 전환
-                        this.gameState.phase = 'ending';
-                        this.gameState.endingStartTime = Date.now();
-                        console.log('🎯 모든 노트 완료! 2초 후 게임 종료...');
-                        
-                        // ✅ 마지막 셀레브레이션 효과
-                        this.createVictoryEffect();
-                    }
-                }
-                
-                // 'ending' 상태에서 2초 후 실제 종료
-                if (this.gameState.phase === 'ending') {
-                    const elapsed = Date.now() - this.gameState.endingStartTime;
-                    if (elapsed >= 2000) { // 2초 대기
-                        this.endGame();
-                    }
+                    this.endGame();
                 }
             }
             
