@@ -603,7 +603,10 @@
                 });
                 
                 // 센서 데이터
-                this.sdk.on('sensor-data', (data) => {
+                this.sdk.on('sensor-data', (event) => {
+                    console.log('🔍 sensor-data 이벤트 원본:', event);
+                    const data = event.detail || event;
+                    console.log('🔍 추출한 센서 데이터:', data);
                     this.processSensorData(data);
                 });
                 

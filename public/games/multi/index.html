@@ -853,7 +853,8 @@
                 });
                 
                 // 센서 데이터 (실제 게임에서는 사용하지 않음 - 자동 수집)
-                this.sdk.on('sensor-data', (data) => {
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;
                     // 멀티플레이어에서는 자동으로 목표 수집
                     this.simulatePlayerMovement(data.sensorId);
                 });
