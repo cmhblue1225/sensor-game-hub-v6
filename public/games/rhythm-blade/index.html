@@ -330,13 +330,13 @@
             <a href="/" class="btn btn-secondary">🏠 허브로</a>
         </div>
         
-        <!-- 게임 설명 -->
+        <!-- ✅ 개선된 게임 설명 -->
         <div class="game-instructions hidden" id="gameInstructions">
             <div class="instruction-title">게임 방법</div>
-            <div class="instruction-item">플레이어1: 빨간 노트 담당</div>
-            <div class="instruction-item">플레이어2: 파란 노트 담당</div>
-            <div class="instruction-item">보라색: 동시 협력 노트</div>
-            <div class="instruction-item">모바일을 세이버처럼 휘두르세요!</div>
+            <div class="instruction-item">🔴 플레이어1(왼쪽): 빨간 노트, 오른쪽으로 스윙</div>
+            <div class="instruction-item">🔵 플레이어2(오른쪽): 파란 노트, 왼쪽으로 스윙</div>
+            <div class="instruction-item">🤝 보라색: 협력 노트 (500ms내 동시 타격)</div>
+            <div class="instruction-item">⌨️ 테스트: Q(왼쪽), E(오른쪽), Space(협력)</div>
         </div>
     </div>
     
@@ -599,14 +599,35 @@
                     this.onSensorDisconnected(data);
                 });
                 
-                // 키보드 컨트롤 (테스트용)
+                // ✅ 개선된 키보드 컨트롤 (테스트용)
                 window.addEventListener('keydown', (e) => {
                     if (this.gameState.phase !== 'playing') return;
                     
                     switch(e.key.toLowerCase()) {
-                        case 'q': this.triggerSwing('sensor1'); break;
-                        case 'e': this.triggerSwing('sensor2'); break;
-                        case ' ': this.triggerCooperationSwing(); break;  // 스페이스바로 협력 스윙
+                        case 'q': 
+                            this.triggerSwing('sensor1'); 
+                            console.log('🔴 왼쪽 세이버(sensor1) 스윙 - 오른쪽으로');
+                            break;
+                        case 'e': 
+                            this.triggerSwing('sensor2'); 
+                            console.log('🔵 오른쪽 세이버(sensor2) 스윙 - 왼쪽으로');
+                            break;
+                        case ' ': 
+                            this.triggerCooperationSwing(); 
+                            console.log('🤝 협력 스윙 - 두 세이버 동시 스윙');
+                            break;
+                        case 'a':
+                            // 약간의 딜레이를 두고 협력 테스트
+                            this.triggerSwing('sensor1');
+                            setTimeout(() => this.triggerSwing('sensor2'), 100);
+                            console.log('⏱️ 순차 협력 테스트 (100ms 딜레이)');
+                            break;
+                        case 's':
+                            // 더 긴 딜레이로 실패 테스트
+                            this.triggerSwing('sensor1');
+                            setTimeout(() => this.triggerSwing('sensor2'), 600);
+                            console.log('❌ 협력 실패 테스트 (600ms 딜레이)');
+                            break;
                     }
                 });
             }
@@ -751,21 +772,45 @@
                     const note = this.notes[i];
                     const noteData = note.userData;
                     
-                    // 거리 체크
+                    // ✅ 개선된 거리 체크 (협력 노트는 더 넓은 범위)
+                    const hitRange = noteData.type === 'cooperation' ? 2.5 : 2;
                     const distance = note.position.distanceTo(saber.position);
                     
-                    if (distance < 2) {  // 히트 범위
+                    if (distance < hitRange) {  
                         if (noteData.type === 'cooperation') {
-                            // 협력 노트는 두 센서 모두 필요
+                            // ✅ 개선된 협력 노트 시스템
                             noteData.hitBy = noteData.hitBy || [];
-                            if (!noteData.hitBy.includes(sensorId)) {
-                                noteData.hitBy.push(sensorId);
-                            }
+                            noteData.hitTimes = noteData.hitTimes || [];
                             
-                            if (noteData.hitBy.length >= 2) {
-                                // 완전한 협력 히트
-                                this.processHit(note, 'cooperation', true);
-                                hit = true;
+                            if (!noteData.hitBy.includes(sensorId)) {
+                                const now = Date.now();
+                                noteData.hitBy.push(sensorId);
+                                noteData.hitTimes.push(now);
+                                
+                                console.log(`🤝 협력 노트 히트: ${sensorId} (${noteData.hitBy.length}/2)`);
+                                
+                                // 두 센서 모두 히트했는지 확인
+                                if (noteData.hitBy.length >= 2) {
+                                    // ✅ 동시성 체크 (500ms 내에 두 히트가 발생해야 함)
+                                    const timeDiff = Math.abs(noteData.hitTimes[1] - noteData.hitTimes[0]);
+                                    const maxSyncTime = 500; // 500ms 동기화 윈도우
+                                    
+                                    if (timeDiff <= maxSyncTime) {
+                                        // 완벽한 협력 히트!
+                                        this.processHit(note, 'cooperation', true);
+                                        hit = true;
+                                        
+                                        // ✅ 특별한 협력 보너스
+                                        const syncBonus = Math.max(1, (maxSyncTime - timeDiff) / maxSyncTime);
+                                        this.cooperation.sync = Math.min(100, this.cooperation.sync + (10 * syncBonus));
+                                        
+                                        console.log(`🌟 완벽한 협력! 동기화: ${timeDiff}ms, 보너스: ${syncBonus.toFixed(2)}`);
+                                    } else {
+                                        // 타이밍이 맞지 않음
+                                        console.log(`⏰ 협력 타이밍 실패: ${timeDiff}ms (최대 ${maxSyncTime}ms)`);
+                                        this.updateCooperation(false);
+                                    }
+                                }
                             }
                         } else if (noteData.lane === sensorId) {
                             // 일반 노트
@@ -779,6 +824,7 @@
                     this.gameState.combo++;
                     this.updateCooperation(true);
                 } else {
+                    // ✅ 스윙했지만 히트하지 못한 경우
                     this.gameState.combo = 0;
                     this.updateCooperation(false);
                 }
@@ -974,7 +1020,18 @@
                     
                     if (timeSinceSwing < swingDuration) {
                         const progress = timeSinceSwing / swingDuration;
-                        const angle = Math.sin(progress * Math.PI) * 45;
+                        const baseAngle = Math.sin(progress * Math.PI) * 45;
+                        
+                        // ✅ 센서별 스윙 방향 설정
+                        // sensor1(왼쪽): 오른쪽으로 스윙 (음의 각도)
+                        // sensor2(오른쪽): 왼쪽으로 스윙 (양의 각도)
+                        let angle;
+                        if (saber.userData.sensorId === 'sensor1') {
+                            angle = -baseAngle;  // 왼쪽 세이버는 오른쪽으로 스윙
+                        } else {
+                            angle = baseAngle;   // 오른쪽 세이버는 왼쪽으로 스윙
+                        }
+                        
                         saber.rotation.z = THREE.MathUtils.degToRad(angle);
                     } else {
                         saber.userData.swinging = false;
