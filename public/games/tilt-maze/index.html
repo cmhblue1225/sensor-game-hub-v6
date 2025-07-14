@@ -319,7 +319,6 @@
                 
                 this.setupEventListeners();
                 this.createMaze();
-                this.setupSession();
                 this.gameLoop();
             }
             
@@ -330,6 +329,11 @@
             
             setupEventListeners() {
                 // SDK 이벤트
+                this.sdk.on('connected', () => {
+                    console.log('✅ 서버 연결 완료, 세션 생성 중...');
+                    this.createSession();
+                });
+                
                 this.sdk.on('session-created', (session) => {
                     console.log('세션 생성됨:', session);
                     this.displaySessionInfo(session);
@@ -370,7 +374,7 @@
                 });
             }
             
-            async setupSession() {
+            async createSession() {
                 try {
                     await this.sdk.createSession();
                 } catch (error) {
