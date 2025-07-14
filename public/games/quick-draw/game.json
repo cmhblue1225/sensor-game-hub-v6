@@ -1,0 +1,26 @@
+
+{
+  "id": "quick-draw",
+  "title": "Quick Draw",
+  "description": "서부의 무법자처럼 빠르게 총을 뽑으세요!<br>신호에 맞춰 가장 먼저 반응하는 사람이 승리합니다.",
+  "category": "dual",
+  "icon": "🤠",
+  "version": "1.0.0",
+  "author": "Gemini",
+  "sensors": ["orientation", "motion"],
+  "maxPlayers": 2,
+  "difficulty": "easy",
+  "status": "active",
+  "featured": true,
+  "tags": ["duel", "timing", "reflexes"],
+  "instructions": [
+    "두 명의 플레이어가 필요합니다.",
+    "휴대폰을 아래로 향하게 하여 준비 자세를 취하세요.",
+    "'FIRE!' 신호가 뜨면 즉시 휴대폰을 들어 상대를 조준하세요.",
+    "먼저 움직이면 실격입니다!"
+  ],
+  "controls": {
+    "motion": "총 뽑기 동작",
+    "orientation": "조준"
+  }
+}
