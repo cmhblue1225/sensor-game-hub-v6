@@ -402,6 +402,18 @@
                 
                 // 비트맵 (협력 요소 포함)
                 this.beatmap = [
+                    { time: 2, lane: "sensor1", type: "normal"},
+                    { time: 2.5, lane: "sensor2", type: "normal"},
+                    { time: 3, lane: "sensor1", type: "normal"},
+                    { time: 3.5, lane: "sensor1", type: "normal"},
+                    { time: 4, lane: "sensor2", type: "normal"},
+                    { time: 4.5, lane: "sensor1", type: "normal"},
+                    { time: 4.75, lane: "sensor1", type: "normal"},
+                    { time: 5, lane: "sensor1", type: "normal"},
+                    { time: 5.25, lane: "sensor1", type: "normal"},
+                    { time: 5.75, lane: "both", type: "cooperation"},
+                    { time: 6.25, lane: "both", type: "cooperation"}
+                    /*
                     // ✅ 기존 노트들 (그대로 유지)
                     { time: 2, lane: "sensor1", type: "normal" },
                     { time: 2.5, lane: "sensor2", type: "normal" },
@@ -503,6 +515,7 @@
                     { time: 26.5, lane: "sensor1", type: "normal" },
                     { time: 26.7, lane: "sensor2", type: "normal" },
                     { time: 27, lane: "both", type: "cooperation" }     // 최종 노트
+                     */
                 ];
                 
                 this.gameState.totalNotes = this.beatmap.length;
