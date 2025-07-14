@@ -218,7 +218,7 @@
     </div>
 
     <div class="session-panel" id="sessionPanel">
-        <div style="font-size: 1.5rem; margin-bottom: 1rem;">Connect Yer Phones!</div>
+        <div style="font-size: 1.5rem; margin-bottom: 1rem;">Connect Your Phones!</div>
         <div class="session-code" id="sessionCode">----</div>
         <div class="qr-container" id="qrContainer">
             <div style="color: #666; padding: 2rem;">QR Code loading...</div>
@@ -228,6 +228,9 @@
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
     <script src="/js/SessionSDK.js"></script>
+    <audio id="bgm" src="/audio/cowboy bgm.mp3" preload="auto"></audio>
+    <audio id="reloadSfx" src="/audio/revolver_reload.mp3" preload="auto"></audio>
+    <audio id="revolverShotSfx" src="/audio/revolver_shot.mp3" preload="auto"></audio>
     
     <script>
         class QuickDrawGame {
@@ -247,27 +250,53 @@
                     p2Status: document.getElementById('player2Status'),
                     gameStateDisplay: document.getElementById('gameStateDisplay'),
                     playAgainBtn: document.getElementById('playAgainBtn'),
+                    bgm: document.getElementById('bgm'),
+                    reloadSfx: document.getElementById('reloadSfx'),
+                    revolverShotSfx: document.getElementById('revolverShotSfx'),
                 };
 
                 this.READY_THRESHOLD = 1.5; // How still the phone must be
                 this.DRAW_THRESHOLD = 15; // How fast the draw motion must be
                 
+                // Initialize players object here
+                this.players = {
+                    sensor1: { id: 'sensor1', connected: false, ready: false, drawTime: -1 },
+                    sensor2: { id: 'sensor2', connected: false, ready: false, drawTime: -1 }
+                };
+
+                this.sessionActive = false; // Track if a session has been established
                 this.resetGame();
                 this.setupEventListeners();
             }
 
             resetGame() {
                 this.gameState = 'waiting';
-                this.players = {
-                    sensor1: { id: 'sensor1', connected: false, ready: false, drawTime: -1 },
-                    sensor2: { id: 'sensor2', connected: false, ready: false, drawTime: -1 }
-                };
+                // Reset player-specific game states, but keep connected status
+                Object.values(this.players).forEach(player => {
+                    player.ready = false;
+                    player.drawTime = -1;
+                });
                 this.winner = null;
                 this.countdownTimeout = null;
 
                 this.updateUI();
                 this.elements.playAgainBtn.classList.add('hidden');
-                this.elements.sessionPanel.classList.remove('hidden');
+                
+                if (this.sessionActive) {
+                    // If session is already active, hide session panel
+                    this.elements.sessionPanel.classList.add('hidden');
+                    // If both players are still connected, go straight to preparing
+                    if (this.players.sensor1.connected && this.players.sensor2.connected) {
+                        this.gameState = 'preparing';
+                        this.updateUI();
+                    } else {
+                        // If session is active but not all players are connected, wait for them
+                        this.elements.gameStateDisplay.textContent = 'Waiting for players...';
+                    }
+                } else {
+                    // First load, show session panel
+                    this.elements.sessionPanel.classList.remove('hidden');
+                }
             }
 
             setupEventListeners() {
@@ -289,6 +318,7 @@
             }
 
             displaySessionInfo(session) {
+                this.sessionActive = true; // Mark session as active
                 this.elements.sessionCode.textContent = session.sessionCode;
                 const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
                 
@@ -322,15 +352,18 @@
             }
 
             onSensorDisconnected(data) {
+                if (!this.players[data.sensorId]) return; // Ensure player exists
+
+                this.players[data.sensorId].connected = false;
+                this.players[data.sensorId].ready = false; // Player is no longer ready
+
                 if (this.gameState !== 'waiting' && this.gameState !== 'preparing') {
-                    this.elements.gameStateDisplay.textContent = 'Player Left!';
-                    setTimeout(() => this.resetGame(), 3000);
-                } else {
-                    if (!this.players[data.sensorId]) return;
-                    this.players[data.sensorId].connected = false;
-                    this.players[data.sensorId].ready = false;
-                    this.updateUI();
+                    // If game was in progress, set game state to waiting and display message
+                    this.elements.gameStateDisplay.textContent = 'Player Left! Waiting for reconnect...';
+                    this.gameState = 'waiting'; // Go back to waiting state
+                    // No need to call resetGame() here, as we want to keep the session active
                 }
+                this.updateUI(); // Update UI to reflect disconnected player
             }
 
             processSensorData(data) {
@@ -357,6 +390,7 @@
                     // Check for draw
                     if (totalAccel > this.DRAW_THRESHOLD && player.drawTime === -1) {
                         player.drawTime = Date.now();
+                        this.elements.revolverShotSfx.play(); // Play shot sound
                         if (!this.winner) {
                             this.winner = player.id;
                             // Wait a fraction of a second to see if the other player also draws (for a tie)
@@ -371,14 +405,20 @@
                 if (this.gameState !== 'preparing') return;
                 this.gameState = 'countdown';
                 this.elements.gameStateDisplay.textContent = 'Ready...';
+                this.elements.reloadSfx.play(); // Play reload sound
                 
+                // Start BGM from the beginning
+                this.elements.bgm.currentTime = 0;
+                this.elements.bgm.play();
+
                 this.countdownTimeout = setTimeout(() => {
                     this.elements.gameStateDisplay.textContent = 'Set...';
-                    const randomDelay = Math.random() * 2000 + 1000; // 1-3 seconds
+                    const randomDelay = Math.random() * 13000 + 5000; // 5-18 seconds
                     this.countdownTimeout = setTimeout(() => {
                         this.gameState = 'fire';
                         this.elements.gameStateDisplay.textContent = 'FIRE!';
                         this.fireTimestamp = Date.now();
+                        this.elements.bgm.pause(); // Stop BGM when FIRE!
                     }, randomDelay);
                 }, 1000);
             }
@@ -387,6 +427,7 @@
                 if (this.gameState === 'result') return; // Already ended
                 
                 clearTimeout(this.countdownTimeout);
+                this.elements.bgm.pause(); // Ensure BGM is stopped when game ends
                 this.gameState = 'result';
                 this.winner = winnerId;
 
