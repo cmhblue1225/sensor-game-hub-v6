@@ -960,6 +960,7 @@
                     countdownNumber: document.getElementById('countdownNumber'),
                     loadingOverlay: document.getElementById('loadingOverlay'),
                     backgroundEffects: document.getElementById('backgroundEffects'),
+                    battleArena: document.querySelector('.battle-arena'),
                     startBtn: document.getElementById('startBtn'),
                     restartBtn: document.getElementById('restartBtn'),
                     // 통계 요소들
@@ -1496,11 +1497,11 @@
                 const player = this.players[playerId];
                 
                 player.isDefending = true;
-                // 방어 방향은 센서 데이터에서 결정 (추후 구현 가능)
-                player.defenseType = 'horizontal'; // 기본값
+                // 센서 클라이언트에서 전송된 방어 방향 사용
+                player.defenseType = data.defenseType || 'horizontal';
                 
                 this.playWarriorAnimation(playerId, 'defending');
-                console.log(`🛡️ ${playerId} 방어 시작`);
+                console.log(`🛡️ ${playerId} ${player.defenseType} 방어 시작`);
             }
 
             handleDefenseStop(data) {

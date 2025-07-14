@@ -873,17 +873,30 @@
                 this.swordFight.isDefending = true;
                 this.elements.defenseButton.classList.add('defending');
 
+                // 기기 기울기로 방어 방향 결정
+                const currentOrientation = this.sensorCollector.getLastData()?.orientation;
+                let defenseType = 'horizontal'; // 기본값
+                
+                if (currentOrientation) {
+                    const betaAbs = Math.abs(currentOrientation.beta || 0);
+                    const gammaAbs = Math.abs(currentOrientation.gamma || 0);
+                    
+                    // 더 기울어진 방향으로 방어 방향 결정
+                    defenseType = betaAbs > gammaAbs ? 'vertical' : 'horizontal';
+                }
+
                 // 서버에 방어 시작 알림
                 if (this.sdk.socket) {
                     this.sdk.socket.emit('sword-defend-start', {
                         sessionCode: this.swordFight.sessionCode,
                         playerId: this.swordFight.playerId,
+                        defenseType: defenseType,
                         timestamp: Date.now()
                     });
                 }
 
                 this.vibrateDevice(50);
-                console.log('🛡️ 방어 시작');
+                console.log(`🛡️ ${defenseType} 방어 시작`);
             }
 
             stopDefense() {
@@ -1087,11 +1100,13 @@
 
                 let attackType = 'unknown';
                 
-                // 수직/수평 판단
+                // 수직/수평 판단 (더 정확한 로직)
                 if (absY > absX && absY > absZ) {
-                    attackType = acceleration.y > 0 ? 'vertical' : 'vertical';
+                    attackType = 'vertical'; // Y축 움직임이 가장 클 때 수직 공격
                 } else if (absX > absY && absX > absZ) {
-                    attackType = acceleration.x > 0 ? 'horizontal' : 'horizontal';
+                    attackType = 'horizontal'; // X축 움직임이 가장 클 때 수평 공격
+                } else if (absZ > 20) {
+                    attackType = 'vertical'; // Z축 움직임이 클 때도 수직으로 판단
                 }
 
                 // 공격 방향 정규화
