@@ -704,183 +704,74 @@
             }
             
             createTimingGuides() {
-                // ✅ 새로운 타이밍 가이드 시스템 - 바닥에 그리드 형태로 구현
-                console.log('🎯 새로운 타이밍 가이드 시스템 생성 중...');
+                // ✅ 직관적인 타이밍 가이드 시스템 - 단순하고 명확한 선
+                console.log('🎯 직관적인 타이밍 가이드 생성 중...');
                 
-                this.timingGuides = {
-                    floor: [],
-                    rings: [],
-                    particles: []
-                };
+                // 간단하고 명확한 세로 라인으로 타이밍 표시
+                this.createSimpleTimingLines();
                 
-                // 1. 바닥 타이밍 그리드 생성 (블록과 겹치지 않음)
-                this.createFloorTimingGrids();
-                
-                // 2. 타이밍 링 생성 (세이버 주변)
-                this.createTimingRings();
-                
-                // 3. 가이드 파티클 시스템
-                this.createGuideParticleSystem();
-                
-                console.log('✅ 새로운 타이밍 가이드 시스템 생성 완료');
+                console.log('✅ 직관적인 타이밍 가이드 생성 완료');
             }
             
-            createFloorTimingGrids() {
-                // 바닥에 타이밍을 표시하는 그리드 패턴
-                const gridGeometry = new THREE.RingGeometry(0.8, 1.2, 16);
+            createSimpleTimingLines() {
+                // 세이버 앞에 간단한 세로 라인 생성 (세이버 위치 z=3에 배치)
                 
-                // 왼쪽 플레이어 그리드 (빨간색)
-                const leftGridMaterial = new THREE.MeshBasicMaterial({
+                // 왼쪽 플레이어 타이밍 라인 (빨간색)
+                const leftLineGeometry = new THREE.BoxGeometry(0.1, 3, 0.02);
+                const leftLineMaterial = new THREE.MeshBasicMaterial({
                     color: 0xff0000,
                     transparent: true,
-                    opacity: 0.3,
-                    side: THREE.DoubleSide
+                    opacity: 0.7
                 });
-                const leftGrid = new THREE.Mesh(gridGeometry, leftGridMaterial);
-                leftGrid.position.set(-2, 0.02, 3); // 바닥에 살짝 띄워서 z-fighting 방지
-                leftGrid.rotation.x = -Math.PI / 2; // 바닥에 평행하게
-                this.scene.add(leftGrid);
-                this.timingGuides.floor.push(leftGrid);
+                this.leftTimingLine = new THREE.Mesh(leftLineGeometry, leftLineMaterial);
+                this.leftTimingLine.position.set(-2, 1.5, 3); // 왼쪽 세이버와 같은 위치
+                this.scene.add(this.leftTimingLine);
                 
-                // 오른쪽 플레이어 그리드 (파란색)
-                const rightGridMaterial = new THREE.MeshBasicMaterial({
+                // 오른쪽 플레이어 타이밍 라인 (파란색)
+                const rightLineGeometry = new THREE.BoxGeometry(0.1, 3, 0.02);
+                const rightLineMaterial = new THREE.MeshBasicMaterial({
                     color: 0x0000ff,
                     transparent: true,
-                    opacity: 0.3,
-                    side: THREE.DoubleSide
+                    opacity: 0.7
                 });
-                const rightGrid = new THREE.Mesh(gridGeometry, rightGridMaterial);
-                rightGrid.position.set(2, 0.02, 3);
-                rightGrid.rotation.x = -Math.PI / 2;
-                this.scene.add(rightGrid);
-                this.timingGuides.floor.push(rightGrid);
+                this.rightTimingLine = new THREE.Mesh(rightLineGeometry, rightLineMaterial);
+                this.rightTimingLine.position.set(2, 1.5, 3); // 오른쪽 세이버와 같은 위치
+                this.scene.add(this.rightTimingLine);
                 
-                // 중앙 협력 그리드 (보라색, 더 큰 크기)
-                const centerGridGeometry = new THREE.RingGeometry(1.0, 1.5, 20);
-                const centerGridMaterial = new THREE.MeshBasicMaterial({
+                // 중앙 협력 타이밍 라인 (보라색, 더 넓게)
+                const centerLineGeometry = new THREE.BoxGeometry(0.15, 3, 0.02);
+                const centerLineMaterial = new THREE.MeshBasicMaterial({
                     color: 0x8b5cf6,
                     transparent: true,
-                    opacity: 0.4,
-                    side: THREE.DoubleSide
+                    opacity: 0.7
                 });
-                const centerGrid = new THREE.Mesh(centerGridGeometry, centerGridMaterial);
-                centerGrid.position.set(0, 0.02, 3);
-                centerGrid.rotation.x = -Math.PI / 2;
-                this.scene.add(centerGrid);
-                this.timingGuides.floor.push(centerGrid);
+                this.centerTimingLine = new THREE.Mesh(centerLineGeometry, centerLineMaterial);
+                this.centerTimingLine.position.set(0, 1.5, 3); // 중앙 위치
+                this.scene.add(this.centerTimingLine);
+                
+                // 타이밍 라인 강조 애니메이션 시작
+                this.animateTimingLines();
             }
             
-            createTimingRings() {
-                // 세이버 주변에 타이밍을 표시하는 링 생성
-                const ringGeometry = new THREE.RingGeometry(1.5, 1.7, 32);
-                
-                // 왼쪽 세이버 링
-                const leftRingMaterial = new THREE.MeshBasicMaterial({
-                    color: 0xff0000,
-                    transparent: true,
-                    opacity: 0.2,
-                    side: THREE.DoubleSide
-                });
-                const leftRing = new THREE.Mesh(ringGeometry, leftRingMaterial);
-                leftRing.position.set(-2, 1.5, 3);
-                leftRing.rotation.z = Math.PI / 2; // 세로로 세우기
-                this.scene.add(leftRing);
-                this.timingGuides.rings.push(leftRing);
-                
-                // 오른쪽 세이버 링
-                const rightRingMaterial = new THREE.MeshBasicMaterial({
-                    color: 0x0000ff,
-                    transparent: true,
-                    opacity: 0.2,
-                    side: THREE.DoubleSide
-                });
-                const rightRing = new THREE.Mesh(ringGeometry, rightRingMaterial);
-                rightRing.position.set(2, 1.5, 3);
-                rightRing.rotation.z = Math.PI / 2;
-                this.scene.add(rightRing);
-                this.timingGuides.rings.push(rightRing);
-                
-                // 중앙 협력 링 (더 큰 크기)
-                const centerRingGeometry = new THREE.RingGeometry(2.0, 2.3, 32);
-                const centerRingMaterial = new THREE.MeshBasicMaterial({
-                    color: 0x8b5cf6,
-                    transparent: true,
-                    opacity: 0.25,
-                    side: THREE.DoubleSide
-                });
-                const centerRing = new THREE.Mesh(centerRingGeometry, centerRingMaterial);
-                centerRing.position.set(0, 1.5, 3);
-                centerRing.rotation.z = Math.PI / 2;
-                this.scene.add(centerRing);
-                this.timingGuides.rings.push(centerRing);
-            }
-            
-            createGuideParticleSystem() {
-                // 미묘한 파티클 효과로 타이밍존 표시
-                this.guideParticles = [];
-                
-                const positions = [
-                    { x: -2, color: 0xff0000 }, // 왼쪽
-                    { x: 2, color: 0x0000ff },  // 오른쪽
-                    { x: 0, color: 0x8b5cf6 }   // 중앙
-                ];
-                
-                positions.forEach(pos => {
-                    for (let i = 0; i < 8; i++) {
-                        const particleGeometry = new THREE.SphereGeometry(0.02, 4, 4);
-                        const particleMaterial = new THREE.MeshBasicMaterial({
-                            color: pos.color,
-                            transparent: true,
-                            opacity: 0.6
-                        });
-                        const particle = new THREE.Mesh(particleGeometry, particleMaterial);
-                        
-                        const angle = (i / 8) * Math.PI * 2;
-                        particle.position.set(
-                            pos.x + Math.cos(angle) * 1.2,
-                            1.5 + Math.sin(angle * 2) * 0.3,
-                            3 + Math.sin(angle) * 0.5
-                        );
-                        
-                        particle.userData = {
-                            baseY: particle.position.y,
-                            phase: angle,
-                            color: pos.color
-                        };
-                        
-                        this.scene.add(particle);
-                        this.guideParticles.push(particle);
-                    }
-                });
-                
-                // 파티클 애니메이션 시작
-                this.animateGuideParticles();
-            }
-            
-            animateGuideParticles() {
+            animateTimingLines() {
+                // 노트가 가까워질 때 라인이 밝아지는 효과만 적용
                 let time = 0;
                 
                 const animate = () => {
-                    time += 0.02;
+                    time += 0.03;
                     
-                    this.guideParticles.forEach(particle => {
-                        // 부드러운 상하 움직임
-                        particle.position.y = particle.userData.baseY + Math.sin(time * 2 + particle.userData.phase) * 0.1;
-                        
-                        // 투명도 변화
-                        particle.material.opacity = 0.3 + Math.sin(time * 3 + particle.userData.phase) * 0.2;
-                    });
+                    // 기본 미묘한 펄스 효과
+                    const basePulse = 0.7 + Math.sin(time * 2) * 0.1; // 0.6 ~ 0.8 사이
                     
-                    // 바닥 그리드 회전 효과
-                    this.timingGuides.floor.forEach((grid, index) => {
-                        grid.rotation.z = time * 0.5 * (index % 2 === 0 ? 1 : -1);
-                    });
-                    
-                    // 링 펄스 효과
-                    this.timingGuides.rings.forEach((ring, index) => {
-                        const pulse = 1 + Math.sin(time * 4 + index) * 0.1;
-                        ring.scale.setScalar(pulse);
-                    });
+                    if (this.leftTimingLine) {
+                        this.leftTimingLine.material.opacity = basePulse;
+                    }
+                    if (this.rightTimingLine) {
+                        this.rightTimingLine.material.opacity = basePulse;
+                    }
+                    if (this.centerTimingLine) {
+                        this.centerTimingLine.material.opacity = basePulse;
+                    }
                     
                     requestAnimationFrame(animate);
                 };
@@ -1354,6 +1245,9 @@
                 // 파티클 효과 업데이트
                 this.updateParticles();
                 
+                // ✅ 타이밍 라인 강조 업데이트
+                this.updateTimingLineHighlight();
+                
                 // 게임 종료 체크
                 this.checkGameEnd();
             }
@@ -1404,6 +1298,67 @@
                     if (allDead) {
                         this.scene.remove(particleGroup);
                         this.particleEffects.splice(i, 1);
+                    }
+                }
+            }
+            
+            updateTimingLineHighlight() {
+                // ✅ 노트가 타이밍 라인에 가까워질 때 라인 강조
+                const timingZone = 3; // 세이버/타이밍라인이 있는 z 위치
+                const highlightDistance = 2; // 강조 시작 거리
+                
+                let leftShouldHighlight = false;
+                let rightShouldHighlight = false;
+                let centerShouldHighlight = false;
+                
+                // 각 노트를 확인하여 타이밍 라인에 가까운지 체크
+                this.notes.forEach(note => {
+                    const distanceToTiming = Math.abs(note.position.z - timingZone);
+                    
+                    if (distanceToTiming <= highlightDistance) {
+                        const noteData = note.userData;
+                        
+                        if (noteData.type === 'cooperation') {
+                            centerShouldHighlight = true;
+                        } else if (noteData.lane === 'sensor1') {
+                            leftShouldHighlight = true;
+                        } else if (noteData.lane === 'sensor2') {
+                            rightShouldHighlight = true;
+                        }
+                    }
+                });
+                
+                // 타이밍 라인 강조 적용 (기본 애니메이션 오버라이드)
+                if (this.leftTimingLine) {
+                    if (leftShouldHighlight) {
+                        this.leftTimingLine.material.opacity = 1.0;
+                        this.leftTimingLine.material.emissive.setHex(0x330000); // 발광 효과
+                        this.leftTimingLine.scale.setScalar(1.2); // 크기 증가
+                    } else {
+                        this.leftTimingLine.material.emissive.setHex(0x000000);
+                        this.leftTimingLine.scale.setScalar(1.0);
+                    }
+                }
+                
+                if (this.rightTimingLine) {
+                    if (rightShouldHighlight) {
+                        this.rightTimingLine.material.opacity = 1.0;
+                        this.rightTimingLine.material.emissive.setHex(0x000033);
+                        this.rightTimingLine.scale.setScalar(1.2);
+                    } else {
+                        this.rightTimingLine.material.emissive.setHex(0x000000);
+                        this.rightTimingLine.scale.setScalar(1.0);
+                    }
+                }
+                
+                if (this.centerTimingLine) {
+                    if (centerShouldHighlight) {
+                        this.centerTimingLine.material.opacity = 1.0;
+                        this.centerTimingLine.material.emissive.setHex(0x330033);
+                        this.centerTimingLine.scale.setScalar(1.2);
+                    } else {
+                        this.centerTimingLine.material.emissive.setHex(0x000000);
+                        this.centerTimingLine.scale.setScalar(1.0);
                     }
                 }
             }
