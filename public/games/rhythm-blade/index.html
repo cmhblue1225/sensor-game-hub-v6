@@ -273,6 +273,7 @@
             <div class="session-title">⚔️ Rhythm Blade Dual</div>
             <div style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.6;">
                 두 명이 협력하여 플레이하는 3D 리듬 게임!<br>
+                27초 동안 70개의 노트로 구성된 epic한 협력 여정!<br>
                 완벽한 타이밍과 협력으로 최고 점수를 달성하세요!
             </div>
             
@@ -401,6 +402,7 @@
                 
                 // 비트맵 (협력 요소 포함)
                 this.beatmap = [
+                    // ✅ 기존 노트들 (그대로 유지)
                     { time: 2, lane: "sensor1", type: "normal" },
                     { time: 2.5, lane: "sensor2", type: "normal" },
                     { time: 3, lane: "sensor1", type: "normal" },
@@ -418,7 +420,89 @@
                     { time: 7.5, lane: "both", type: "cooperation" },   // 협력 노트
                     { time: 8, lane: "sensor1", type: "normal" },
                     { time: 8.5, lane: "sensor2", type: "normal" },
-                    { time: 9, lane: "both", type: "cooperation" }      // 마지막 협력 노트
+                    { time: 9, lane: "both", type: "cooperation" },     // 기존 마지막 노트
+                    
+                    // 🎵 추가된 노트들 - 점진적으로 난이도 증가
+                    
+                    // 9-12초: 빠른 교대 패턴
+                    { time: 9.5, lane: "sensor1", type: "normal" },
+                    { time: 9.75, lane: "sensor2", type: "normal" },
+                    { time: 10, lane: "sensor1", type: "normal" },
+                    { time: 10.25, lane: "sensor2", type: "normal" },
+                    { time: 10.5, lane: "sensor1", type: "normal" },
+                    { time: 10.75, lane: "sensor2", type: "normal" },
+                    { time: 11, lane: "both", type: "cooperation" },
+                    { time: 11.5, lane: "sensor2", type: "normal" },
+                    { time: 11.75, lane: "sensor1", type: "normal" },
+                    { time: 12, lane: "both", type: "cooperation" },
+                    
+                    // 12-15초: 복잡한 리듬 패턴
+                    { time: 12.5, lane: "sensor1", type: "normal" },
+                    { time: 12.6, lane: "sensor2", type: "normal" },
+                    { time: 12.8, lane: "sensor1", type: "normal" },
+                    { time: 13, lane: "sensor2", type: "normal" },
+                    { time: 13.2, lane: "sensor1", type: "normal" },
+                    { time: 13.5, lane: "both", type: "cooperation" },
+                    { time: 14, lane: "sensor2", type: "normal" },
+                    { time: 14.1, lane: "sensor1", type: "normal" },
+                    { time: 14.3, lane: "sensor2", type: "normal" },
+                    { time: 14.5, lane: "sensor1", type: "normal" },
+                    { time: 14.7, lane: "sensor2", type: "normal" },
+                    { time: 15, lane: "both", type: "cooperation" },
+                    
+                    // 15-18초: 고속 연타 구간
+                    { time: 15.5, lane: "sensor1", type: "normal" },
+                    { time: 15.6, lane: "sensor1", type: "normal" },
+                    { time: 15.8, lane: "sensor2", type: "normal" },
+                    { time: 15.9, lane: "sensor2", type: "normal" },
+                    { time: 16.1, lane: "sensor1", type: "normal" },
+                    { time: 16.3, lane: "sensor2", type: "normal" },
+                    { time: 16.5, lane: "both", type: "cooperation" },
+                    { time: 17, lane: "sensor2", type: "normal" },
+                    { time: 17.1, lane: "sensor1", type: "normal" },
+                    { time: 17.3, lane: "sensor2", type: "normal" },
+                    { time: 17.4, lane: "sensor1", type: "normal" },
+                    { time: 17.6, lane: "sensor2", type: "normal" },
+                    { time: 17.8, lane: "sensor1", type: "normal" },
+                    { time: 18, lane: "both", type: "cooperation" },
+                    
+                    // 18-21초: 협력 중심 구간
+                    { time: 18.5, lane: "both", type: "cooperation" },
+                    { time: 19, lane: "sensor1", type: "normal" },
+                    { time: 19.2, lane: "sensor2", type: "normal" },
+                    { time: 19.5, lane: "both", type: "cooperation" },
+                    { time: 20, lane: "sensor2", type: "normal" },
+                    { time: 20.2, lane: "sensor1", type: "normal" },
+                    { time: 20.5, lane: "both", type: "cooperation" },
+                    { time: 21, lane: "both", type: "cooperation" },
+                    
+                    // 21-24초: 마지막 클라이맥스
+                    { time: 21.5, lane: "sensor1", type: "normal" },
+                    { time: 21.6, lane: "sensor2", type: "normal" },
+                    { time: 21.8, lane: "sensor1", type: "normal" },
+                    { time: 21.9, lane: "sensor2", type: "normal" },
+                    { time: 22.1, lane: "sensor1", type: "normal" },
+                    { time: 22.2, lane: "sensor2", type: "normal" },
+                    { time: 22.5, lane: "both", type: "cooperation" },
+                    { time: 23, lane: "sensor1", type: "normal" },
+                    { time: 23.1, lane: "sensor2", type: "normal" },
+                    { time: 23.3, lane: "sensor1", type: "normal" },
+                    { time: 23.4, lane: "sensor2", type: "normal" },
+                    { time: 23.6, lane: "sensor1", type: "normal" },
+                    { time: 23.7, lane: "sensor2", type: "normal" },
+                    { time: 24, lane: "both", type: "cooperation" },
+                    
+                    // 24-27초: 최종 피날레
+                    { time: 24.5, lane: "both", type: "cooperation" },
+                    { time: 25, lane: "both", type: "cooperation" },
+                    { time: 25.5, lane: "sensor1", type: "normal" },
+                    { time: 25.6, lane: "sensor2", type: "normal" },
+                    { time: 25.8, lane: "sensor1", type: "normal" },
+                    { time: 25.9, lane: "sensor2", type: "normal" },
+                    { time: 26, lane: "both", type: "cooperation" },
+                    { time: 26.5, lane: "sensor1", type: "normal" },
+                    { time: 26.7, lane: "sensor2", type: "normal" },
+                    { time: 27, lane: "both", type: "cooperation" }     // 최종 노트
                 ];
                 
                 this.gameState.totalNotes = this.beatmap.length;
@@ -1081,10 +1165,32 @@
                 this.gameState.phase = 'ended';
                 
                 const accuracy = Math.round((this.gameState.hitNotes / this.gameState.totalNotes) * 100);
+                const cooperationScore = Math.round(this.cooperation.sync);
                 
-                alert(`게임 완료!\n점수: ${this.gameState.score}\n정확도: ${accuracy}%\n협력도: ${Math.round(this.cooperation.sync)}%`);
+                // ✅ 성과에 따른 메시지
+                let message = "🎮 Rhythm Blade Dual 완료!\n\n";
+                message += `📊 최종 결과:\n`;
+                message += `점수: ${this.gameState.score.toLocaleString()}\n`;
+                message += `정확도: ${accuracy}%\n`;
+                message += `협력도: ${cooperationScore}%\n`;
+                message += `연속 콤보: ${this.gameState.combo}\n\n`;
                 
-                console.log('🎮 게임 종료');
+                // 성과 평가
+                if (accuracy >= 95 && cooperationScore >= 90) {
+                    message += "🌟 PERFECT COOPERATION! 🌟\n완벽한 협력입니다!";
+                } else if (accuracy >= 85 && cooperationScore >= 80) {
+                    message += "🎖️ EXCELLENT TEAMWORK! 🎖️\n훌륭한 팀워크입니다!";
+                } else if (accuracy >= 70 && cooperationScore >= 70) {
+                    message += "👍 GOOD COOPERATION! 👍\n좋은 협력이었습니다!";
+                } else if (accuracy >= 50) {
+                    message += "💪 KEEP PRACTICING! 💪\n연습하면 더 좋아질 거예요!";
+                } else {
+                    message += "🎯 TRY AGAIN! 🎯\n다시 도전해보세요!";
+                }
+                
+                alert(message);
+                
+                console.log('🎮 게임 종료 - 27초 70노트 완주!');
             }
             
             resetGame() {
