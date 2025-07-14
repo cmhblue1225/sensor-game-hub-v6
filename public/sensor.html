@@ -477,6 +477,9 @@
                     <div class="detail-value" id="connectedSensors">0/1</div>
                 </div>
             </div>
+            <button class="btn btn-primary" id="startSensorBtn" style="width: 100%; margin-top: 1rem;" disabled>
+                📱 센서 시작하기
+            </button>
         </div>
         
         <!-- 센서 상태 -->
@@ -565,7 +568,8 @@
                     sensorStatus: document.getElementById('sensorStatus'),
                     activityIndicator: document.getElementById('activityIndicator'),
                     sessionInputSection: document.getElementById('sessionInputSection'),
-                    qrScannerSection: document.getElementById('qrScannerSection')
+                    qrScannerSection: document.getElementById('qrScannerSection'),
+                    startSensorBtn: document.getElementById('startSensorBtn')
                 };
                 
                 this.initializeApp();
@@ -609,6 +613,11 @@
                     this.scanQRCode();
                 });
                 
+                // 센서 시작 버튼
+                this.elements.startSensorBtn.addEventListener('click', () => {
+                    this.startSensorCollection();
+                });
+                
                 // 엔터키 처리
                 this.elements.sessionInput.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter' && !this.elements.connectButton.disabled) {
@@ -644,9 +653,11 @@
                     
                     this.updateConnectionStatus(`게임에 연결됨 (${data.sensorId})`, true);
                     this.showGameInfo(data);
-                    this.startSensorCollection();
                     
-                    this.showMessage('게임에 성공적으로 연결되었습니다!', 'success');
+                    // 센서 시작 버튼 활성화
+                    this.elements.startSensorBtn.disabled = false;
+                    
+                    this.showMessage('게임에 연결되었습니다! 센서 시작 버튼을 눌러주세요.', 'success');
                 });
                 
                 // 게임 시작
@@ -765,6 +776,8 @@
                     });
                     
                     this.elements.sensorStatus.classList.add('visible');
+                    this.elements.startSensorBtn.textContent = '✅ 센서 활성화됨';
+                    this.elements.startSensorBtn.disabled = true;
                     this.showMessage('센서 수집이 시작되었습니다.', 'success');
                     
                 } catch (error) {
