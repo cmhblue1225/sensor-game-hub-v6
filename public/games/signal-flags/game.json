@@ -1,0 +1,55 @@
+{
+  "id": "signal-flags",
+  "title": "Signal Flags",
+  "description": "🚩 깃발 신호로 지시를 따라하세요!<br>여성의 명령은 그대로, 남성의 명령은 반대로 수행하는 Nintendo 1-2-Switch 스타일 두뇌 게임",
+  "category": "dual",
+  "icon": "🚩",
+  "version": "1.0.0",
+  "author": "Sensor Game Hub Team",
+  "sensors": ["orientation", "motion"],
+  "maxPlayers": 2,
+  "difficulty": "medium",
+  "status": "active",
+  "featured": true,
+  "tags": ["brain", "memory", "reaction", "nintendo", "1-2-switch", "flags"],
+  "instructions": [
+    "두 명이 각자 센서 클라이언트에 연결하세요",
+    "센서를 깃발처럼 팔을 쭉 뻗어 가운데에서 시작하세요",
+    "음성 지시를 듣고 3초 이내에 올바른 방향으로 움직이세요",
+    "👩 여성의 명령: 그대로 수행 (Left → 왼쪽으로)",
+    "👨 남성의 명령: 반대로 수행 (Left → 오른쪽으로)",
+    "15라운드 후 더 많은 점수를 얻은 플레이어가 승리!"
+  ],
+  "controls": {
+    "up": "팔을 위로 뻗기",
+    "down": "팔을 아래로 뻗기",
+    "left": "팔을 왼쪽으로 뻗기",
+    "right": "팔을 오른쪽으로 뻗기"
+  },
+  "gameFeatures": {
+    "sessionPersistence": true,
+    "quickRestart": true,
+    "realtimeCompetition": true,
+    "soundEffects": true,
+    "voiceCommands": true,
+    "genderBasedRules": true,
+    "scoreSystem": true,
+    "customSensorClient": true
+  },
+  "gameplay": {
+    "totalRounds": 15,
+    "responseTime": "3초",
+    "roundInterval": "4초",
+    "scoringSystem": "정답 1점, 오답/시간초과 0점",
+    "winCondition": "15라운드 후 최고 점수",
+    "specialRules": {
+      "female": "명령 그대로 수행",
+      "male": "명령과 반대로 수행"
+    }
+  },
+  "audioAssets": {
+    "maleVoices": ["_up", "_down", "_left", "_right"],
+    "femaleVoices": ["_up", "_down", "_left", "_right"],
+    "path": "/games/signal-flags/assets/"
+  }
+}
