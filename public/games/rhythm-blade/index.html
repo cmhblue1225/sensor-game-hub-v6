@@ -341,6 +341,14 @@
         </div>
     </div>
     
+    <!-- 🎵 배경 음악 -->
+    <audio id="bgMusic" loop>
+        <source src="https://www.soundjay.com/misc/sounds/bell-ringing-05.wav" type="audio/wav">
+        <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+        <!-- 폴백: 무료 리듬 음악 URL -->
+        <source src="data:audio/wav;base64,UklGRiQDAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQADAAA=" type="audio/wav">
+    </audio>
+    
     <!-- Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
     
@@ -394,6 +402,14 @@
                     cooperationBonus: 1.0    // 협력 보너스 배수
                 };
                 
+                // 🎵 음악 시스템
+                this.bgMusic = document.getElementById('bgMusic');
+                this.musicLoaded = false;
+                this.bpm = 120; // BPM (Beats Per Minute)
+                this.beatInterval = 60 / this.bpm; // 비트 간격 (초)
+                
+                this.initializeMusic();
+                
                 // Three.js 초기화
                 this.initThreeJS();
                 
@@ -402,128 +418,124 @@
                 this.noteSpawnIndex = 0;
                 this.particleEffects = [];
                 
-                // 비트맵 (협력 요소 포함)
-                this.beatmap = [
-                    { time: 2.5, lane: "sensor1", type: "normal"},
-                    { time: 3, lane: "sensor2", type: "normal"},
-                    { time: 3.25, lane: "sensor1", type: "normal"},
-                    { time: 3.5, lane: "sensor2", type: "normal"},
-                    { time: 4, lane: "sensor1", type: "normal"},
-                    { time: 4.25, lane: "sensor2", type: "normal"},
-                    { time: 4.5, lane: "sensor1", type: "normal"},
-                    { time: 4.75, lane: "sensor2", type: "normal"},
-                    { time: 5, lane: "sensor1", type: "normal"},
-                    { time: 5.7, lane: "both", type: "cooperation"},
-                    { time: 6.13, lane: "both", type: "cooperation"}
-                    /*
-                    // ✅ 기존 노트들 (그대로 유지)
-                    { time: 2, lane: "sensor1", type: "normal" },
-                    { time: 2.5, lane: "sensor2", type: "normal" },
-                    { time: 3, lane: "sensor1", type: "normal" },
-                    { time: 3.5, lane: "sensor2", type: "normal" },
-                    { time: 4, lane: "both", type: "cooperation" },     // 협력 노트
-                    { time: 5, lane: "sensor1", type: "normal" },
-                    { time: 5.25, lane: "sensor2", type: "normal" },
-                    { time: 5.5, lane: "sensor1", type: "normal" },
-                    { time: 5.75, lane: "sensor2", type: "normal" },
-                    { time: 6, lane: "both", type: "cooperation" },     // 협력 노트
-                    { time: 6.5, lane: "sensor1", type: "normal" },
-                    { time: 6.75, lane: "sensor2", type: "normal" },
-                    { time: 7, lane: "sensor1", type: "normal" },
-                    { time: 7.25, lane: "sensor2", type: "normal" },
-                    { time: 7.5, lane: "both", type: "cooperation" },   // 협력 노트
-                    { time: 8, lane: "sensor1", type: "normal" },
-                    { time: 8.5, lane: "sensor2", type: "normal" },
-                    { time: 9, lane: "both", type: "cooperation" },     // 기존 마지막 노트
-                    
-                    // 🎵 추가된 노트들 - 점진적으로 난이도 증가
-                    
-                    // 9-12초: 빠른 교대 패턴
-                    { time: 9.5, lane: "sensor1", type: "normal" },
-                    { time: 9.75, lane: "sensor2", type: "normal" },
-                    { time: 10, lane: "sensor1", type: "normal" },
-                    { time: 10.25, lane: "sensor2", type: "normal" },
-                    { time: 10.5, lane: "sensor1", type: "normal" },
-                    { time: 10.75, lane: "sensor2", type: "normal" },
-                    { time: 11, lane: "both", type: "cooperation" },
-                    { time: 11.5, lane: "sensor2", type: "normal" },
-                    { time: 11.75, lane: "sensor1", type: "normal" },
-                    { time: 12, lane: "both", type: "cooperation" },
-                    
-                    // 12-15초: 복잡한 리듬 패턴
-                    { time: 12.5, lane: "sensor1", type: "normal" },
-                    { time: 12.6, lane: "sensor2", type: "normal" },
-                    { time: 12.8, lane: "sensor1", type: "normal" },
-                    { time: 13, lane: "sensor2", type: "normal" },
-                    { time: 13.2, lane: "sensor1", type: "normal" },
-                    { time: 13.5, lane: "both", type: "cooperation" },
-                    { time: 14, lane: "sensor2", type: "normal" },
-                    { time: 14.1, lane: "sensor1", type: "normal" },
-                    { time: 14.3, lane: "sensor2", type: "normal" },
-                    { time: 14.5, lane: "sensor1", type: "normal" },
-                    { time: 14.7, lane: "sensor2", type: "normal" },
-                    { time: 15, lane: "both", type: "cooperation" },
-                    
-                    // 15-18초: 고속 연타 구간
-                    { time: 15.5, lane: "sensor1", type: "normal" },
-                    { time: 15.6, lane: "sensor1", type: "normal" },
-                    { time: 15.8, lane: "sensor2", type: "normal" },
-                    { time: 15.9, lane: "sensor2", type: "normal" },
-                    { time: 16.1, lane: "sensor1", type: "normal" },
-                    { time: 16.3, lane: "sensor2", type: "normal" },
-                    { time: 16.5, lane: "both", type: "cooperation" },
-                    { time: 17, lane: "sensor2", type: "normal" },
-                    { time: 17.1, lane: "sensor1", type: "normal" },
-                    { time: 17.3, lane: "sensor2", type: "normal" },
-                    { time: 17.4, lane: "sensor1", type: "normal" },
-                    { time: 17.6, lane: "sensor2", type: "normal" },
-                    { time: 17.8, lane: "sensor1", type: "normal" },
-                    { time: 18, lane: "both", type: "cooperation" },
-                    
-                    // 18-21초: 협력 중심 구간
-                    { time: 18.5, lane: "both", type: "cooperation" },
-                    { time: 19, lane: "sensor1", type: "normal" },
-                    { time: 19.2, lane: "sensor2", type: "normal" },
-                    { time: 19.5, lane: "both", type: "cooperation" },
-                    { time: 20, lane: "sensor2", type: "normal" },
-                    { time: 20.2, lane: "sensor1", type: "normal" },
-                    { time: 20.5, lane: "both", type: "cooperation" },
-                    { time: 21, lane: "both", type: "cooperation" },
-                    
-                    // 21-24초: 마지막 클라이맥스
-                    { time: 21.5, lane: "sensor1", type: "normal" },
-                    { time: 21.6, lane: "sensor2", type: "normal" },
-                    { time: 21.8, lane: "sensor1", type: "normal" },
-                    { time: 21.9, lane: "sensor2", type: "normal" },
-                    { time: 22.1, lane: "sensor1", type: "normal" },
-                    { time: 22.2, lane: "sensor2", type: "normal" },
-                    { time: 22.5, lane: "both", type: "cooperation" },
-                    { time: 23, lane: "sensor1", type: "normal" },
-                    { time: 23.1, lane: "sensor2", type: "normal" },
-                    { time: 23.3, lane: "sensor1", type: "normal" },
-                    { time: 23.4, lane: "sensor2", type: "normal" },
-                    { time: 23.6, lane: "sensor1", type: "normal" },
-                    { time: 23.7, lane: "sensor2", type: "normal" },
-                    { time: 24, lane: "both", type: "cooperation" },
-                    
-                    // 24-27초: 최종 피날레
-                    { time: 24.5, lane: "both", type: "cooperation" },
-                    { time: 25, lane: "both", type: "cooperation" },
-                    { time: 25.5, lane: "sensor1", type: "normal" },
-                    { time: 25.6, lane: "sensor2", type: "normal" },
-                    { time: 25.8, lane: "sensor1", type: "normal" },
-                    { time: 25.9, lane: "sensor2", type: "normal" },
-                    { time: 26, lane: "both", type: "cooperation" },
-                    { time: 26.5, lane: "sensor1", type: "normal" },
-                    { time: 26.7, lane: "sensor2", type: "normal" },
-                    { time: 27, lane: "both", type: "cooperation" }     // 최종 노트
-                     */
-                ];
+                // 🎵 리듬에 맞는 비트맵 (120 BPM 기준)
+                this.beatmap = this.generateRhythmBeatmap();
                 
                 this.gameState.totalNotes = this.beatmap.length;
                 
                 this.setupEventListeners();
                 this.gameLoop();
+            }
+            
+            initializeMusic() {
+                // 🎵 음악 로드 및 설정
+                this.bgMusic.volume = 0.6; // 볼륨 설정
+                this.bgMusic.currentTime = 0;
+                
+                // 음악 로드 완료 이벤트
+                this.bgMusic.addEventListener('canplaythrough', () => {
+                    this.musicLoaded = true;
+                    console.log('🎵 음악 로드 완료');
+                });
+                
+                // 음악 재생 오류 처리
+                this.bgMusic.addEventListener('error', (e) => {
+                    console.warn('🎵 음악 로드 실패, 무음 모드로 진행');
+                    this.musicLoaded = false;
+                });
+                
+                // 음악 로드 시도
+                this.bgMusic.load();
+            }
+            
+            generateRhythmBeatmap() {
+                // 🎵 120 BPM 리듬에 맞는 비트맵 생성
+                // 1비트 = 0.5초, 1/2비트 = 0.25초, 1/4비트 = 0.125초
+                const beat = this.beatInterval; // 0.5초 (120 BPM)
+                const halfBeat = beat / 2; // 0.25초
+                const quarterBeat = beat / 4; // 0.125초
+                
+                const beatmap = [];
+                
+                // 🎵 인트로 (4비트) - 2초
+                beatmap.push(
+                    { time: beat * 2, lane: "sensor1", type: "normal" },     // 1초
+                    { time: beat * 3, lane: "sensor2", type: "normal" },     // 1.5초
+                    { time: beat * 4, lane: "sensor1", type: "normal" }      // 2초
+                );
+                
+                // 🎵 첫 번째 구간 (8비트) - 2-6초
+                for (let i = 0; i < 4; i++) {
+                    const baseTime = beat * (5 + i * 2);
+                    beatmap.push(
+                        { time: baseTime, lane: "sensor1", type: "normal" },
+                        { time: baseTime + beat, lane: "sensor2", type: "normal" }
+                    );
+                }
+                
+                // 🎵 첫 번째 협력 구간 (2비트) - 6-7초
+                beatmap.push(
+                    { time: beat * 12, lane: "both", type: "cooperation" },
+                    { time: beat * 13, lane: "both", type: "cooperation" }
+                );
+                
+                // 🎵 빠른 리듬 구간 (8비트) - 7-11초
+                for (let i = 0; i < 8; i++) {
+                    const baseTime = beat * (14 + i);
+                    const lane = i % 2 === 0 ? "sensor1" : "sensor2";
+                    beatmap.push({ time: baseTime, lane: lane, type: "normal" });
+                }
+                
+                // 🎵 복합 리듬 구간 (6비트) - 11-14초
+                const complexStart = beat * 22;
+                beatmap.push(
+                    { time: complexStart, lane: "sensor1", type: "normal" },
+                    { time: complexStart + halfBeat, lane: "sensor2", type: "normal" },
+                    { time: complexStart + beat, lane: "sensor1", type: "normal" },
+                    { time: complexStart + beat * 1.5, lane: "sensor2", type: "normal" },
+                    { time: complexStart + beat * 2, lane: "both", type: "cooperation" },
+                    { time: complexStart + beat * 3, lane: "sensor1", type: "normal" },
+                    { time: complexStart + beat * 3.5, lane: "sensor2", type: "normal" },
+                    { time: complexStart + beat * 4, lane: "both", type: "cooperation" }
+                );
+                
+                // 🎵 고속 연타 구간 (4비트) - 14-16초
+                const fastStart = beat * 28;
+                for (let i = 0; i < 8; i++) {
+                    const lane = i % 2 === 0 ? "sensor1" : "sensor2";
+                    beatmap.push({
+                        time: fastStart + (halfBeat * i),
+                        lane: lane,
+                        type: "normal"
+                    });
+                }
+                
+                // 🎵 클라이맥스 협력 구간 (4비트) - 16-18초
+                const climaxStart = beat * 32;
+                beatmap.push(
+                    { time: climaxStart, lane: "both", type: "cooperation" },
+                    { time: climaxStart + halfBeat, lane: "sensor1", type: "normal" },
+                    { time: climaxStart + beat, lane: "sensor2", type: "normal" },
+                    { time: climaxStart + beat * 1.5, lane: "both", type: "cooperation" },
+                    { time: climaxStart + beat * 2, lane: "sensor1", type: "normal" },
+                    { time: climaxStart + beat * 2.5, lane: "sensor2", type: "normal" },
+                    { time: climaxStart + beat * 3, lane: "both", type: "cooperation" }
+                );
+                
+                // 🎵 피날레 (4비트) - 18-20초
+                const finaleStart = beat * 36;
+                beatmap.push(
+                    { time: finaleStart, lane: "sensor1", type: "normal" },
+                    { time: finaleStart + quarterBeat, lane: "sensor2", type: "normal" },
+                    { time: finaleStart + halfBeat, lane: "sensor1", type: "normal" },
+                    { time: finaleStart + halfBeat + quarterBeat, lane: "sensor2", type: "normal" },
+                    { time: finaleStart + beat, lane: "both", type: "cooperation" },
+                    { time: finaleStart + beat * 2, lane: "both", type: "cooperation" },
+                    { time: finaleStart + beat * 3, lane: "both", type: "cooperation" }
+                );
+                
+                console.log(`🎵 리듬 비트맵 생성 완료: ${beatmap.length}개 노트, ${(finaleStart + beat * 3).toFixed(1)}초`);
+                return beatmap;
             }
             
             resizeCanvas() {
@@ -834,6 +846,16 @@
             startGame() {
                 this.gameState.phase = 'playing';
                 this.gameState.startTime = Date.now();
+                
+                // 🎵 음악 재생 시작
+                if (this.musicLoaded) {
+                    this.bgMusic.currentTime = 0;
+                    this.bgMusic.play().then(() => {
+                        console.log('🎵 음악 재생 시작');
+                    }).catch(e => {
+                        console.warn('🎵 음악 재생 실패:', e);
+                    });
+                }
                 
                 // UI 전환
                 document.getElementById('sessionPanel').classList.add('hidden');
@@ -1190,6 +1212,12 @@
             endGame() {
                 this.gameState.phase = 'ended';
                 
+                // 🎵 음악 정지
+                if (this.bgMusic && !this.bgMusic.paused) {
+                    this.bgMusic.pause();
+                    this.bgMusic.currentTime = 0;
+                }
+                
                 const accuracy = Math.round((this.gameState.hitNotes / this.gameState.totalNotes) * 100);
                 const cooperationScore = Math.round(this.cooperation.sync);
                 
@@ -1239,15 +1267,33 @@
                 this.notes.forEach(note => this.scene.remove(note));
                 this.notes = [];
                 
+                // 🎵 음악 재시작
+                if (this.musicLoaded) {
+                    this.bgMusic.currentTime = 0;
+                    this.bgMusic.play().catch(e => {
+                        console.warn('🎵 음악 재시작 실패:', e);
+                    });
+                }
+                
                 console.log('🔄 게임 재시작');
             }
             
             togglePause() {
                 if (this.gameState.phase === 'playing') {
                     this.gameState.phase = 'paused';
+                    // 🎵 음악 일시정지
+                    if (this.bgMusic && !this.bgMusic.paused) {
+                        this.bgMusic.pause();
+                    }
                     console.log('⏸️ 게임 일시정지');
                 } else if (this.gameState.phase === 'paused') {
                     this.gameState.phase = 'playing';
+                    // 🎵 음악 재개
+                    if (this.bgMusic && this.bgMusic.paused) {
+                        this.bgMusic.play().catch(e => {
+                            console.warn('🎵 음악 재개 실패:', e);
+                        });
+                    }
                     console.log('▶️ 게임 재개');
                 }
             }
