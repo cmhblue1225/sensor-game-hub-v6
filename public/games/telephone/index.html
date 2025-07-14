@@ -1154,6 +1154,8 @@
                     lastActivity: Date.now(),
                     isLifted: false,
                     baselineZ: null,
+                    baselineBeta: null,
+                    baselineGamma: null,
                     reactionTimes: []
                 });
 
@@ -1261,6 +1263,8 @@
                 this.connectedSensors.forEach(sensor => {
                     sensor.isLifted = false;
                     sensor.baselineZ = null;
+                    sensor.baselineBeta = null;
+                    sensor.baselineGamma = null;
                 });
 
                 // 플레이어 카드 초기화
@@ -1317,28 +1321,66 @@
                 if (!sensor || this.reactionTimes.has(sensorId)) return;
 
                 const { acceleration, orientation } = sensorData.data;
-                if (!acceleration) return;
+                if (!acceleration || !orientation) return;
 
-                // 기기가 들어 올려졌는지 감지
+                // 초기 베이스라인 설정 (핸드폰이 평평한 곳에 놓인 상태)
                 if (sensor.baselineZ === null) {
                     sensor.baselineZ = acceleration.z;
+                    sensor.baselineBeta = orientation.beta || 0;
+                    sensor.baselineGamma = orientation.gamma || 0;
                     return;
                 }
 
+                // 현재 방향과 가속도 계산
                 const zDiff = Math.abs(acceleration.z - sensor.baselineZ);
+                const betaDiff = Math.abs((orientation.beta || 0) - sensor.baselineBeta);
+                const gammaDiff = Math.abs((orientation.gamma || 0) - sensor.baselineGamma);
+                
+                // 총 가속도 변화량
                 const totalAccel = Math.sqrt(
                     acceleration.x ** 2 + 
                     acceleration.y ** 2 + 
                     acceleration.z ** 2
                 );
 
-                // 감도에 따른 임계값 조정
+                // 머리 위로 들었을 때의 특징적인 변화 감지
+                // 1. Z축 가속도 변화 (중력 방향 변화)
+                // 2. Beta 각도 변화 (앞뒤 기울기 - 머리 위로 들 때 크게 변함)
+                // 3. 총 가속도 변화 (들어 올리는 동작)
+                
+                // 감도에 따른 임계값 조정 (더 엄격하게)
                 const sensitivity = this.settings.sensitivity;
-                const zThreshold = Math.max(1, 5 - sensitivity * 0.5);
-                const accelThreshold = Math.max(8, 15 - sensitivity);
+                const baseZThreshold = 6; // 기본 Z축 변화 임계값
+                const baseBetaThreshold = 30; // 기본 베타 각도 변화 임계값 (도)
+                const baseAccelThreshold = 15; // 기본 총 가속도 임계값
+                
+                // 감도가 높을수록 더 민감하게, 낮을수록 더 둔감하게
+                const zThreshold = baseZThreshold - (sensitivity - 5) * 0.8;
+                const betaThreshold = baseBetaThreshold - (sensitivity - 5) * 3;
+                const accelThreshold = baseAccelThreshold - (sensitivity - 5) * 1.5;
 
-                // 들어 올리기 감지
-                if (zDiff > zThreshold || totalAccel > accelThreshold) {
+                // 머리 위로 확실히 들었는지 판단하는 복합 조건
+                const isZChangeSignificant = zDiff > Math.max(3, zThreshold);
+                const isBetaChangeSignificant = betaDiff > Math.max(20, betaThreshold);
+                const isAccelChangeSignificant = totalAccel > Math.max(12, accelThreshold);
+                
+                // 세 조건 중 최소 2개 이상 만족해야 함 (더 엄격한 판정)
+                const conditionCount = [isZChangeSignificant, isBetaChangeSignificant, isAccelChangeSignificant]
+                    .filter(condition => condition).length;
+
+                // 디버그 로그 (개발용)
+                if (window.location.search.includes('debug')) {
+                    console.log(`센서 ${sensorId}:`, {
+                        zDiff: zDiff.toFixed(2),
+                        betaDiff: betaDiff.toFixed(2),
+                        totalAccel: totalAccel.toFixed(2),
+                        conditions: conditionCount,
+                        thresholds: { zThreshold: zThreshold.toFixed(2), betaThreshold: betaThreshold.toFixed(2), accelThreshold: accelThreshold.toFixed(2) }
+                    });
+                }
+
+                // 최소 2개 조건 만족 + 추가 안전장치
+                if (conditionCount >= 2 && totalAccel > 10) {
                     this.handleSensorLift(sensorId);
                 }
             }
@@ -1622,6 +1664,8 @@
                 this.connectedSensors.forEach(sensor => {
                     sensor.isLifted = false;
                     sensor.baselineZ = null;
+                    sensor.baselineBeta = null;
+                    sensor.baselineGamma = null;
                 });
 
                 // UI 초기화
