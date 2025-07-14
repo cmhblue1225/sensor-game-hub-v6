@@ -42,7 +42,7 @@
         /* 상단 UI */
         .game-header {
             position: absolute;
-            top: 20px;
+            top: 15px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 100;
@@ -50,9 +50,9 @@
         }
 
         .session-title {
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: bold;
-            margin-bottom: 1rem;
+            margin-bottom: 0.8rem;
             background: linear-gradient(135deg, var(--primary), var(--secondary));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
@@ -60,19 +60,20 @@
         }
 
         .session-info {
-            background: rgba(30, 41, 59, 0.9);
+            background: rgba(30, 41, 59, 0.95);
             backdrop-filter: blur(12px);
             border: 1px solid rgba(59, 130, 246, 0.3);
             border-radius: 1rem;
-            padding: 1.5rem;
+            padding: 1.2rem;
             display: inline-block;
+            max-width: 300px;
         }
 
         .session-code {
-            font-size: 3rem;
+            font-size: 2.2rem;
             font-weight: bold;
             color: var(--primary);
-            margin-bottom: 1rem;
+            margin-bottom: 0.8rem;
             letter-spacing: 0.2em;
             text-align: center;
         }
@@ -80,28 +81,30 @@
         .qr-container {
             display: flex;
             justify-content: center;
-            margin-bottom: 1rem;
+            margin-bottom: 0.8rem;
         }
 
         .qr-container canvas,
         .qr-container img {
             border-radius: 0.5rem;
             background: white;
-            padding: 0.5rem;
+            padding: 0.4rem;
+            width: 150px !important;
+            height: 150px !important;
         }
 
         .connection-status {
             display: flex;
-            gap: 1rem;
+            gap: 0.8rem;
             justify-content: center;
-            margin-top: 1rem;
+            margin-top: 0.8rem;
         }
 
         .sensor-status {
-            padding: 0.5rem 1rem;
+            padding: 0.4rem 0.8rem;
             border-radius: 0.5rem;
             font-weight: 600;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
         }
 
         .sensor-disconnected {
@@ -273,11 +276,22 @@
         /* 반응형 디자인 */
         @media (max-width: 768px) {
             .session-title {
-                font-size: 2rem;
+                font-size: 1.5rem;
             }
             
             .session-code {
-                font-size: 2rem;
+                font-size: 1.8rem;
+            }
+
+            .session-info {
+                max-width: 280px;
+                padding: 1rem;
+            }
+
+            .qr-container canvas,
+            .qr-container img {
+                width: 120px !important;
+                height: 120px !important;
             }
             
             .game-state {
@@ -481,8 +495,8 @@
                 if (typeof QRCode !== 'undefined') {
                     QRCode.toCanvas(document.createElement('canvas'), qrUrl, (error, canvas) => {
                         if (!error) {
-                            canvas.style.width = '200px';
-                            canvas.style.height = '200px';
+                            canvas.style.width = '150px';
+                            canvas.style.height = '150px';
                             this.elements.qrContainer.innerHTML = '';
                             this.elements.qrContainer.appendChild(canvas);
                         } else {
@@ -495,11 +509,11 @@
             }
 
             showQRCodeFallback(qrUrl) {
-                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrUrl)}`;
                 const img = document.createElement('img');
                 img.src = qrApiUrl;
-                img.style.width = '200px';
-                img.style.height = '200px';
+                img.style.width = '150px';
+                img.style.height = '150px';
                 this.elements.qrContainer.innerHTML = '';
                 this.elements.qrContainer.appendChild(img);
             }
