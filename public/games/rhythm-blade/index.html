@@ -1143,8 +1143,8 @@
                 
                 this.sdk.on('game-ready', (event) => {
                     const data = event.detail || event;     // 필수 패턴!
-                    console.log('게임 준비 완료');
-                    this.startGame();
+                    console.log('게임 준비 완료 - 사용자 시작 버튼 활성화');
+                    this.showStartButton();
                 });
                 
                 this.sdk.on('sensor-disconnected', (event) => {
@@ -1284,6 +1284,22 @@
                         }
                     }
                 }
+            }
+            
+            showStartButton() {
+                const startButton = document.createElement('button');
+                startButton.className = 'btn btn-primary';
+                startButton.style.cssText = 'font-size: 1.2rem; padding: 1rem 2rem; margin-top: 1rem;';
+                startButton.innerHTML = '🎵 게임 시작!';
+                startButton.onclick = () => {
+                    startButton.remove();
+                    this.startGame();
+                };
+                
+                const sessionPanel = document.getElementById('sessionPanel');
+                sessionPanel.appendChild(startButton);
+                
+                console.log('🎮 센서 연결 완료 - 게임 시작 버튼 표시');
             }
             
             startGame() {
