@@ -717,12 +717,16 @@
                         
                         // Signal Flags v2 게임의 기본 상태는 항상 디폴트 대기
                         this.signalFlagsState.waitingForDefault = true;
-                        console.log('🚩 [센서] Signal Flags v2 연결 시 waitingForDefault를 true로 초기화');
+                        this.signalFlagsState.isInDefaultState = false; // 초기화 시 상태 리셋
+                        this.signalFlagsState.lastNotificationTime = 0; // 알림 시간 리셋
+                        console.log('🚩 [센서] Signal Flags v2 연결 시 상태 초기화:', this.signalFlagsState);
                     } else {
                         console.log('🚩 [센서] 게임 ID가 signal-flags-v2가 아니지만 강제로 설정');
                         this.setupSignalFlagsEventsImmediate();
                         this.signalFlagsState.waitingForDefault = true;
-                        console.log('🚩 [센서] 강제로 waitingForDefault를 true로 초기화');
+                        this.signalFlagsState.isInDefaultState = false; // 초기화 시 상태 리셋
+                        this.signalFlagsState.lastNotificationTime = 0; // 알림 시간 리셋
+                        console.log('🚩 [센서] 강제로 상태 초기화:', this.signalFlagsState);
                     }
                 });
                 
@@ -863,6 +867,13 @@
                     this.elements.startSensorBtn.disabled = true;
                     this.showMessage('센서 수집이 시작되었습니다.', 'success');
                     console.log('✅ 센서 수집 시작 완료');
+                    
+                    // Signal Flags v2 게임의 경우 센서 시작 시 상태 리셋
+                    if (this.state.gameId === 'signal-flags-v2') {
+                        this.signalFlagsState.isInDefaultState = false;
+                        this.signalFlagsState.lastNotificationTime = 0;
+                        console.log('🚩 [센서] 센서 시작 시 Signal Flags 상태 리셋 완료');
+                    }
                     
                 } catch (error) {
                     console.error('❌ 센서 시작 실패:', error);
