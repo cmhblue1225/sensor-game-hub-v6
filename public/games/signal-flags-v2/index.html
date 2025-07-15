@@ -1106,9 +1106,48 @@
                 
                 console.log(`📊 응답 처리: Player${data.playerId} - ${data.direction} (${isCorrect ? '정답' : '오답'}) 점수변화: ${scoreChange}`);
                 
-                // 두 플레이어 모두 응답했으면 즉시 라운드 종료
+                // 두 플레이어 모두 응답했으면 디폴트 상태 대기로 전환
                 if (this.gameData.responseCount >= 2) {
-                    setTimeout(() => this.endRound(), 200);
+                    console.log('📍 모든 플레이어 응답 완료 - 디폴트 상태 대기 모드로 전환');
+                    this.waitForDefaultStateAfterResponse();
+                }
+            }
+            
+            waitForDefaultStateAfterResponse() {
+                // 응답 타이머 정리
+                if (this.responseTimer) {
+                    clearInterval(this.responseTimer);
+                    this.responseTimer = null;
+                }
+                
+                // 명령 표시 숨김
+                this.elements.commandDisplay.classList.remove('visible');
+                
+                // 디폴트 상태 복귀 대기 시작
+                this.elements.gameMessage.textContent = '📱 디폴트 상태로 복귀하세요 (핸드폰을 앞으로 쭉 뻗어 수평 유지)';
+                this.defaultReadyPlayers.clear();
+                
+                // Signal Flags 상태 업데이트
+                this.signalFlagsState.waitingForDefault = true;
+                this.signalFlagsState.isPlaying = false; // 응답 완료 후이므로 플레이 상태 해제
+                
+                console.log('📍 응답 완료 후 디폴트 상태 대기 시작');
+                
+                // 라운드 결과를 센서 클라이언트에 전송
+                if (this.sdk.socket) {
+                    this.sdk.socket.emit('signal-flags-v2-round-end', {
+                        sessionCode: this.session.sessionCode,
+                        round: this.gameData.currentRound,
+                        responses: Object.fromEntries(this.gameData.playerResponses),
+                        scores: this.gameData.playerScores
+                    });
+                    
+                    // 센서 클라이언트에게 디폴트 상태 대기 시작 알림
+                    this.sdk.socket.emit('signal-flags-v2-wait-default', {
+                        sessionCode: this.session.sessionCode
+                    });
+                    
+                    console.log('✅ 라운드 결과 및 디폴트 상태 대기 알림 전송 완료');
                 }
             }
             
