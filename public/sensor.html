@@ -846,9 +846,12 @@
                         console.log('📤 Signal Flags v2 센서 데이터 전송:', {
                             gameId: this.state.gameId,
                             playerId: this.state.playerId,
-                            beta: data.orientation.beta?.toFixed(1),
-                            gamma: data.orientation.gamma?.toFixed(1),
-                            alpha: data.orientation.alpha?.toFixed(1),
+                            rawData: data,
+                            orientation: data.orientation,
+                            beta: data.orientation?.beta?.toFixed(1),
+                            gamma: data.orientation?.gamma?.toFixed(1),
+                            alpha: data.orientation?.alpha?.toFixed(1),
+                            acceleration: data.acceleration,
                             sessionConnected: this.state.sessionConnected,
                             timestamp: new Date().toLocaleTimeString()
                         });

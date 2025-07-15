@@ -1000,6 +1000,18 @@
             }
             
             handleSensorData(data) {
+                // 센서 데이터 구조 상세 분석
+                console.log('🔍 센서 데이터 원본 분석:', {
+                    wholeData: data,
+                    sensorData: data.sensorData,
+                    orientation: data.sensorData?.orientation,
+                    directAccess: {
+                        beta: data.sensorData?.orientation?.beta,
+                        gamma: data.sensorData?.orientation?.gamma,
+                        alpha: data.sensorData?.orientation?.alpha
+                    }
+                });
+                
                 // 센서 데이터 구조 확인 및 수정
                 const sensorData = data.sensorData || data;
                 const orientationData = sensorData.orientation || sensorData;
@@ -1011,7 +1023,7 @@
                     waitingForDefault: this.signalFlagsState.waitingForDefault,
                     beta: orientationData.beta?.toFixed(1),
                     gamma: orientationData.gamma?.toFixed(1),
-                    rawData: data,
+                    extractedOrientation: orientationData,
                     timestamp: new Date().toLocaleTimeString()
                 });
                 
