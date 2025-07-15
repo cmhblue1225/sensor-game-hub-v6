@@ -532,6 +532,10 @@
     <script>
         class SensorController {
             constructor() {
+                console.log('🚨 [센서] === SensorController 생성자 호출됨 ===');
+                console.log('🚨 [센서] 현재 시간:', new Date().toLocaleTimeString());
+                console.log('🚨 [센서] 페이지 URL:', window.location.href);
+                
                 // SDK 초기화
                 this.sdk = new SessionSDK({
                     gameId: 'sensor-controller',
@@ -1305,6 +1309,8 @@
         
         // 앱 시작
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚨 [센서] === DOMContentLoaded 이벤트 발생 ===');
+            console.log('🚨 [센서] SensorController 인스턴스 생성 시작');
             new SensorController();
         });
     </script>
