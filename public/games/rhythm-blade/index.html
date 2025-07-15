@@ -502,55 +502,130 @@
                     { time: breakdownStart + beat * 4, lane: "sensor2", type: "normal" }
                 );
                 
-                // 🎵 고속 연타 빌드업 (더블타임) - 10-12초
-                const doubleTimeStart = beat * 30;
-                for (let i = 0; i < 16; i++) {
+                // 🎵 개선된 빌드업 (리듬에 맞춘 적당한 난이도) - 10-12초
+                const improvedBuildupStart = beat * 30;
+                // 기본 비트에 맞춘 교대 패턴 (더 여유로운 간격)
+                for (let i = 0; i < 10; i++) {
+                    const pattern = i % 4;
+                    let lane, interval;
+                    
+                    if (pattern === 0) {
+                        lane = "sensor1";
+                        interval = beat * i; // 기본 비트
+                    } else if (pattern === 1) {
+                        lane = "sensor2";
+                        interval = beat * i + halfBeat; // 오프비트
+                    } else if (pattern === 2) {
+                        lane = "sensor1";
+                        interval = beat * i + beat; // 다음 비트
+                    } else {
+                        // 4번째마다 협력 노트로 리듬감 강화
+                        lane = "both";
+                        interval = beat * i + beat + halfBeat;
+                    }
+                    
+                    beatmap.push({
+                        time: improvedBuildupStart + interval,
+                        lane: lane,
+                        type: lane === "both" ? "cooperation" : "normal"
+                    });
+                }
+                
+                // 🎵 개선된 메인 드롭 (리듬 기반 중급 패턴) - 12-16초
+                const improvedMainDrop = beat * 42; // 시작 시점 조정
+                // 더 단순하고 리듬감 있는 패턴 (halfBeat 기준)
+                const rhythmPatterns = [
+                    { offset: 0, lane: "sensor1", type: "normal" },           // 강박
+                    { offset: halfBeat, lane: "sensor2", type: "normal" },    // 오프비트
+                    { offset: beat, lane: "both", type: "cooperation" },      // 협력 (2비트마다)
+                    { offset: beat + halfBeat, lane: "sensor1", type: "normal" }  // 마무리
+                ];
+                
+                // 6사이클로 줄여서 난이도 완화
+                for (let cycle = 0; cycle < 6; cycle++) {
+                    rhythmPatterns.forEach(pattern => {
+                        beatmap.push({
+                            time: improvedMainDrop + (beat * 2 * cycle) + pattern.offset,
+                            lane: pattern.lane,
+                            type: pattern.type
+                        });
+                    });
+                    
+                    // 사이클 중간에 휴식 구간 추가 (3번째, 5번째 사이클 후)
+                    if (cycle === 2 || cycle === 4) {
+                        beatmap.push({
+                            time: improvedMainDrop + (beat * 2 * cycle) + (beat * 1.5),
+                            lane: "sensor2", 
+                            type: "normal"
+                        });
+                    }
+                }
+                
+                // 🎵 개선된 클라이맥스 (적절한 강도의 피날레) - 16-18초
+                const improvedClimax = beat * 56; // 시작 시점 조정
+                
+                // 3단계로 나눈 점진적 클라이맥스
+                // 1단계: 기본 교대 패턴 (halfBeat)
+                for (let i = 0; i < 8; i++) {
                     const lane = i % 2 === 0 ? "sensor1" : "sensor2";
                     beatmap.push({
-                        time: doubleTimeStart + (halfBeat * i),
+                        time: improvedClimax + (halfBeat * i),
                         lane: lane,
                         type: "normal"
                     });
                 }
                 
-                // 🎵 메인 드롭 구간 2 (더 복잡한 패턴) - 12-16초
-                const mainDrop2 = beat * 38;
-                const complexPatterns = [
-                    { offset: 0, lane: "sensor1", type: "normal" },
-                    { offset: quarterBeat, lane: "sensor2", type: "normal" },
-                    { offset: halfBeat, lane: "sensor1", type: "normal" },
-                    { offset: halfBeat + quarterBeat, lane: "both", type: "cooperation" },
-                    { offset: beat, lane: "sensor2", type: "normal" },
-                    { offset: beat + quarterBeat, lane: "sensor1", type: "normal" },
-                    { offset: beat + halfBeat, lane: "sensor2", type: "normal" },
-                    { offset: beat * 2 - quarterBeat, lane: "both", type: "cooperation" }
-                ];
-                
-                for (let cycle = 0; cycle < 8; cycle++) {
-                    complexPatterns.forEach(pattern => {
-                        beatmap.push({
-                            time: mainDrop2 + (beat * 2 * cycle) + pattern.offset,
-                            lane: pattern.lane,
-                            type: pattern.type
-                        });
-                    });
-                }
-                
-                // 🎵 최종 클라이맥스 (초고속 연타) - 16-18초
-                const finalClimax = beat * 54;
-                for (let i = 0; i < 32; i++) {
-                    const lane = i % 3 === 0 ? "both" : (i % 2 === 0 ? "sensor1" : "sensor2");
-                    const noteType = lane === "both" ? "cooperation" : "normal";
+                // 2단계: 협력 강화 패턴 (beat 간격)
+                const stage2Start = improvedClimax + (halfBeat * 8);
+                for (let i = 0; i < 6; i++) {
+                    let lane, type;
+                    if (i % 3 === 0) {
+                        lane = "both";
+                        type = "cooperation";
+                    } else if (i % 3 === 1) {
+                        lane = "sensor1";
+                        type = "normal";
+                    } else {
+                        lane = "sensor2";
+                        type = "normal";
+                    }
                     
                     beatmap.push({
-                        time: finalClimax + (quarterBeat * i),
+                        time: stage2Start + (beat * i),
                         lane: lane,
-                        type: noteType
+                        type: type
                     });
                 }
                 
-                // 🎵 아웃트로 (웅장한 피날레) - 18-20초
-                const outro = beat * 62;
+                // 3단계: 마지막 스퍼트 (적절한 빈도)
+                const stage3Start = stage2Start + (beat * 6);
+                for (let i = 0; i < 8; i++) {
+                    const pattern = i % 4;
+                    let lane, interval;
+                    
+                    if (pattern === 0) {
+                        lane = "sensor1";
+                        interval = halfBeat * i;
+                    } else if (pattern === 1) {
+                        lane = "sensor2"; 
+                        interval = halfBeat * i;
+                    } else if (pattern === 2) {
+                        lane = "both";
+                        interval = halfBeat * i;
+                    } else {
+                        // 휴식 비트 (패턴 3은 건너뛰기)
+                        continue;
+                    }
+                    
+                    beatmap.push({
+                        time: stage3Start + interval,
+                        lane: lane,
+                        type: lane === "both" ? "cooperation" : "normal"
+                    });
+                }
+                
+                // 🎵 아웃트로 (웅장한 피날레) - 18-20초  
+                const outro = beat * 65; // 클라이맥스 이후 충분한 간격
                 beatmap.push(
                     { time: outro, lane: "both", type: "cooperation" },
                     { time: outro + halfBeat, lane: "both", type: "cooperation" },
@@ -563,7 +638,8 @@
                 );
                 
                 const totalDuration = (outro + beat * 4).toFixed(1);
-                console.log(`🎵 일렉트로닉 비트맵 생성 완료: ${beatmap.length}개 노트, ${totalDuration}초 (128 BPM)`);
+                console.log(`🎵 개선된 일렉트로닉 비트맵 생성 완료: ${beatmap.length}개 노트, ${totalDuration}초 (128 BPM)`);
+                console.log(`🎯 난이도 조정: 중반 이후 복잡한 패턴을 리듬에 맞춘 적당한 난이도로 완화`);
                 return beatmap;
             }
             
