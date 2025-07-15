@@ -1451,18 +1451,17 @@ class RhythmBladeDual {
     checkHit(sensorId) {
         const saber = this.sabers[sensorId];
         let hit = false;
-        
+        let partialCoopHit = false; // 콤보 리셋 방지를 위한 플래그
+
         for (let i = this.notes.length - 1; i >= 0; i--) {
             const note = this.notes[i];
             const noteData = note.userData;
             
-            // ✅ 개선된 거리 체크 (협력 노트는 더 넓은 범위)
             const hitRange = noteData.type === 'cooperation' ? 2.5 : 2;
             const distance = note.position.distanceTo(saber.position);
             
             if (distance < hitRange) {  
                 if (noteData.type === 'cooperation') {
-                    // ✅ 개선된 협력 노트 시스템
                     noteData.hitBy = noteData.hitBy || [];
                     noteData.hitTimes = noteData.hitTimes || [];
                     
@@ -1473,31 +1472,30 @@ class RhythmBladeDual {
                         
                         console.log(`🤝 협력 노트 히트: ${sensorId} (${noteData.hitBy.length}/2)`);
                         
-                        // 두 센서 모두 히트했는지 확인
+                        if (noteData.hitBy.length < 2) {
+                            partialCoopHit = true; // 첫 번째 협력 노트 히트
+                        }
+                        
                         if (noteData.hitBy.length >= 2) {
-                            // ✅ 동시성 체크 (500ms 내에 두 히트가 발생해야 함)
                             const timeDiff = Math.abs(noteData.hitTimes[1] - noteData.hitTimes[0]);
-                            const maxSyncTime = 500; // 500ms 동기화 윈도우
+                            const maxSyncTime = 500;
                             
                             if (timeDiff <= maxSyncTime) {
-                                // 완벽한 협력 히트!
                                 this.processHit(note, 'cooperation', true);
                                 hit = true;
+                                partialCoopHit = false; // 최종 히트 성공
                                 
-                                // ✅ 특별한 협력 보너스
                                 const syncBonus = Math.max(1, (maxSyncTime - timeDiff) / maxSyncTime);
                                 this.cooperation.sync = Math.min(100, this.cooperation.sync + (10 * syncBonus));
                                 
                                 console.log(`🌟 완벽한 협력! 동기화: ${timeDiff}ms, 보너스: ${syncBonus.toFixed(2)}`);
                             } else {
-                                // 타이밍이 맞지 않음
                                 console.log(`⏰ 협력 타이밍 실패: ${timeDiff}ms (최대 ${maxSyncTime}ms)`);
                                 this.updateCooperation(false);
                             }
                         }
                     }
                 } else if (noteData.lane === sensorId) {
-                    // 일반 노트
                     this.processHit(note, 'normal', false);
                     hit = true;
                 }
@@ -1506,19 +1504,18 @@ class RhythmBladeDual {
         
         if (hit) {
             this.gameState.combo++;
-            // 최대 콤보 업데이트
             this.gameState.maxCombo = Math.max(this.gameState.maxCombo, this.gameState.combo);
             this.updateCooperation(true);
+        } else if (partialCoopHit) {
+            // 첫 번째 협력 노트만 맞춘 경우, 콤보를 초기화하지 않고 대기
+            console.log('🤝 협력 노트 부분 히트. 콤보 유지.');
         } else {
-            // ✅ 게임이 거의 끝나갈 때는 콤보 초기화를 방지
             const isGameEnding = this.noteSpawnIndex >= this.beatmap.length && this.notes.length <= 2;
             
             if (!isGameEnding) {
-                // 일반적인 경우: 스윙했지만 히트하지 못한 경우 콤보 초기화
                 this.gameState.combo = 0;
                 this.updateCooperation(false);
             } else {
-                // 게임 종료 직전: 콤보 유지하되 협력도만 감소
                 console.log('🎯 게임 종료 직전 - 콤보 유지');
                 this.cooperation.sync = Math.max(0, this.cooperation.sync - 5);
             }
@@ -1972,6 +1969,7 @@ class RhythmBladeDual {
                 
                 // 놓친 노트에 해당하는 가이드라인 비활성화
                 this.deactivateGuideline(note.userData);
+                this.updateUI(); // UI 업데이트 추가
             }
         }
         
