@@ -313,6 +313,29 @@
             margin: 1rem 0;
             letter-spacing: 0.2em;
         }
+
+        /* QR 코드 */
+        .qr-container {
+            text-align: center;
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 10px;
+            display: inline-block;
+        }
+
+        .qr-container canvas,
+        .qr-container img {
+            max-width: 200px;
+            height: auto;
+            border-radius: 5px;
+        }
+
+        .qr-hint {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
     </style>
 </head>
 <body>
@@ -345,6 +368,11 @@
                 <div class="player-info">
                     <div class="player-role">세션 코드</div>
                     <div class="connection-code" id="sessionCode">----</div>
+                    
+                    <div class="qr-container" id="qrContainer">
+                        <!-- QR 코드가 여기에 생성됩니다 -->
+                    </div>
+                    <div class="qr-hint">QR 코드를 스캔하여 다른 기기에서 접속하세요</div>
                 </div>
 
                 <div class="game-controls">
@@ -390,6 +418,7 @@
     <!-- Scripts -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/SessionSDK.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <script>
         class SignalFlagsV3 {
@@ -448,6 +477,7 @@
                     waitingScreen: document.getElementById('waitingScreen'),
                     gameScreen: document.getElementById('gameScreen'),
                     sessionCode: document.getElementById('sessionCode'),
+                    qrContainer: document.getElementById('qrContainer'),
                     sensorDisplay: document.getElementById('sensorDisplay'),
                     sensorValues: document.getElementById('sensorValues'),
                     sensorState: document.getElementById('sensorState'),
@@ -505,6 +535,69 @@
                 const code = Math.floor(1000 + Math.random() * 9000).toString();
                 this.elements.sessionCode.textContent = code;
                 console.log('📱 세션 코드 생성:', code);
+                
+                // QR 코드 생성
+                this.generateQRCode(code);
+            }
+            
+            generateQRCode(sessionCode) {
+                // QR 코드 URL 생성 (현재 페이지 URL 사용)
+                const qrUrl = `${window.location.origin}${window.location.pathname}`;
+                
+                console.log('📱 QR 코드 생성 중:', qrUrl);
+                
+                // QRCode 라이브러리 사용 (폴백 처리)
+                if (typeof QRCode !== 'undefined') {
+                    try {
+                        // 캔버스 생성
+                        const canvas = document.createElement('canvas');
+                        this.elements.qrContainer.innerHTML = '';
+                        this.elements.qrContainer.appendChild(canvas);
+                        
+                        QRCode.toCanvas(canvas, qrUrl, {
+                            width: 200,
+                            height: 200,
+                            colorDark: '#dc2626',
+                            colorLight: '#ffffff',
+                            margin: 2
+                        }, (error) => {
+                            if (error) {
+                                console.error('QR 생성 오류:', error);
+                                this.showQRCodeFallback(qrUrl);
+                            } else {
+                                console.log('✅ QR 코드 생성 완료');
+                            }
+                        });
+                    } catch (error) {
+                        console.error('QR 라이브러리 오류:', error);
+                        this.showQRCodeFallback(qrUrl);
+                    }
+                } else {
+                    console.warn('QRCode 라이브러리 로드되지 않음, 폴백 사용');
+                    this.showQRCodeFallback(qrUrl);
+                }
+            }
+            
+            showQRCodeFallback(qrUrl) {
+                // 폴백: 외부 QR 생성 API 사용
+                console.log('📱 QR 코드 폴백 API 사용');
+                const img = document.createElement('img');
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=dc2626&bgcolor=ffffff&data=${encodeURIComponent(qrUrl)}`;
+                img.alt = 'QR Code';
+                img.style.maxWidth = '200px';
+                img.style.height = 'auto';
+                
+                this.elements.qrContainer.innerHTML = '';
+                this.elements.qrContainer.appendChild(img);
+                
+                img.onload = () => {
+                    console.log('✅ QR 코드 폴백 로드 완료');
+                };
+                
+                img.onerror = () => {
+                    console.error('❌ QR 코드 폴백도 실패');
+                    this.elements.qrContainer.innerHTML = '<p style="color: #ef4444;">QR 코드 생성 실패</p>';
+                };
             }
             
             initializeSDK() {
