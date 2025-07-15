@@ -713,6 +713,11 @@
                         // Signal Flags v2 게임의 기본 상태는 항상 디폴트 대기
                         this.signalFlagsState.waitingForDefault = true;
                         console.log('🚩 [센서] Signal Flags v2 연결 시 waitingForDefault를 true로 초기화');
+                    } else {
+                        console.log('🚩 [센서] 게임 ID가 signal-flags-v2가 아니지만 강제로 설정');
+                        this.setupSignalFlagsEventsImmediate();
+                        this.signalFlagsState.waitingForDefault = true;
+                        console.log('🚩 [센서] 강제로 waitingForDefault를 true로 초기화');
                     }
                 });
                 
@@ -999,10 +1004,11 @@
                 
                 // 즉시 이벤트 리스너 등록
                 this.sdk.socket.on('signal-flags-v2-wait-default', (data) => {
-                    console.log('📍 [센서] 디폴트 상태 대기 시작!', data);
+                    console.log('📍 [센서] === 디폴트 상태 대기 시작 이벤트 수신! ===', data);
                     console.log('📍 [센서] waitingForDefault를 true로 설정');
                     this.signalFlagsState.waitingForDefault = true;
                     this.signalFlagsState.isInDefaultState = false;
+                    console.log('📍 [센서] 현재 signalFlagsState:', this.signalFlagsState);
                     this.showMessage('📱 핸드폰을 앞으로 쭉 뻗어 수평으로 유지하세요!', 'warning');
                 });
                 
