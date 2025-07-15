@@ -1680,11 +1680,32 @@
                 const accuracy = this.gameState.totalNotes > 0 ? 
                     Math.round((this.gameState.hitNotes / this.noteSpawnIndex) * 100) : 100;
                 document.getElementById('accuracyValue').textContent = `${accuracy}%`;
+                
+                // ✅ 게임 종료 카운트다운 표시
+                if (this.gameState.endingStartTime > 0) {
+                    const remainingTime = Math.max(0, 2000 - (Date.now() - this.gameState.endingStartTime));
+                    const seconds = Math.ceil(remainingTime / 1000);
+                    
+                    if (seconds > 0) {
+                        document.getElementById('scoreValue').textContent = `종료 ${seconds}초 전...`;
+                    }
+                }
             }
             
             checkGameEnd() {
+                // 모든 노트가 생성되고 화면에서 사라졌을 때
                 if (this.noteSpawnIndex >= this.beatmap.length && this.notes.length === 0) {
-                    this.endGame();
+                    // 아직 종료 대기가 시작되지 않았다면 시작
+                    if (this.gameState.endingStartTime === 0) {
+                        this.gameState.endingStartTime = Date.now();
+                        console.log('🎯 마지막 블록 처리 완료 - 2초 후 게임 종료');
+                    }
+                    
+                    // 2초 지연 후 게임 종료
+                    const elapsedEndingTime = Date.now() - this.gameState.endingStartTime;
+                    if (elapsedEndingTime >= 2000) { // 2초 (2000ms) 지연
+                        this.endGame();
+                    }
                 }
             }
             
@@ -1724,7 +1745,7 @@
                 
                 alert(message);
                 
-                console.log('🎮 게임 종료 - 27초 70노트 완주!');
+                console.log('🎮 게임 종료 - 마지막 블록 처리 완료 2초 후 종료!');
             }
             
             resetGame() {
@@ -1735,7 +1756,8 @@
                     maxCombo: 0,
                     totalNotes: this.beatmap.length,
                     hitNotes: 0,
-                    startTime: Date.now()
+                    startTime: Date.now(),
+                    endingStartTime: 0        // 2초 지연 종료를 위한 초기화
                 };
                 
                 this.noteSpawnIndex = 0;
