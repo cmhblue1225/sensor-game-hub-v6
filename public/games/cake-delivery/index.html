@@ -1,0 +1,351 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🎂 아슬아슬 케이크 배달단</title>
+    <style>
+        :root {
+            --primary: #3b82f6; --secondary: #8b5cf6; --success: #10b981;
+            --warning: #f59e0b; --error: #ef4444; --background: #0f172a;
+            --surface: #1e293b; --text-primary: #f8fafc; --text-secondary: #cbd5e1;
+        }
+        body { 
+            margin: 0; overflow: hidden; background-color: var(--background); 
+            color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            display: flex; justify-content: center; align-items: center; height: 100vh;
+        }
+        #gameContainer { width: 100%; height: 100%; position: relative; }
+        #gameCanvas { display: block; }
+        .ui-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            pointer-events: none; text-align: center;
+        }
+        .session-panel {
+            position: absolute; top: 20px; left: 20px; background: rgba(30, 41, 59, 0.8);
+            padding: 15px; border-radius: 12px; backdrop-filter: blur(5px);
+            display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: auto;
+        }
+        .session-title { font-size: 24px; font-weight: bold; color: var(--primary); }
+        .session-code { font-size: 48px; font-weight: bold; letter-spacing: 4px; color: var(--warning); }
+        .qr-container { width: 160px; height: 160px; background: white; border-radius: 8px; padding: 5px;}
+        .qr-container img { width: 100%; height: 100%; }
+        .connection-status { display: flex; gap: 10px; margin-top: 10px; }
+        .player-status { padding: 8px 12px; border-radius: 8px; font-weight: bold; }
+        .player-status.connected { background-color: var(--success); color: white; }
+        .player-status.disconnected { background-color: var(--error); color: white; }
+        .game-message {
+            background: rgba(30, 41, 59, 0.9); padding: 20px 40px; border-radius: 15px;
+            font-size: 3em; font-weight: bold; color: white; backdrop-filter: blur(10px);
+            border: 2px solid var(--primary);
+        }
+        .controls {
+            position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; pointer-events: auto;
+        }
+        .controls button, .controls a {
+            padding: 12px 20px; background-color: var(--primary); color: white; border: none;
+            border-radius: 8px; font-size: 16px; font-weight: bold; text-decoration: none; cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .controls button:hover, .controls a:hover { background-color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div class="ui-overlay">
+            <div id="messageBox" class="game-message">플레이어 연결 대기중...</div>
+        </div>
+        <div class="session-panel">
+            <div class="session-title">🎂 케이크 배달단</div>
+            <div id="sessionCode" class="session-code">----</div>
+            <div id="qrContainer" class="qr-container"></div>
+            <div class="connection-status">
+                <div id="player1Status" class="player-status disconnected">P1</div>
+                <div id="player2Status" class="player-status disconnected">P2</div>
+            </div>
+        </div>
+        <div class="controls">
+            <button id="resetButton" style="display: none;">🔄 재시작</button>
+            <a href="/">🏠 허브로</a>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/SessionSDK.js"></script>
+
+    <script>
+        class CakeDeliveryGame {
+            constructor() {
+                this.sdk = new SessionSDK({
+                    gameId: 'cake-delivery',
+                    gameType: 'dual',
+                    debug: false
+                });
+
+                this.gameState = 'waiting'; // waiting, ready, playing, success, fail
+                this.players = {};
+                this.cake = {};
+                this.obstacles = [];
+                this.destination = null;
+
+                this.initUI();
+                this.init3D();
+                this.setupEvents();
+                
+                this.animate = this.animate.bind(this);
+                this.animate();
+            }
+
+            initUI() {
+                this.messageBox = document.getElementById('messageBox');
+                this.resetButton = document.getElementById('resetButton');
+                this.resetButton.onclick = () => window.location.reload();
+            }
+
+            init3D() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 15, 10);
+                this.camera.lookAt(0, 0, 0);
+
+                this.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.shadowMap.enabled = true;
+
+                // 조명
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 20, 5);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+
+                // 바닥
+                const floorGeometry = new THREE.PlaneGeometry(50, 100);
+                const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x4a5568 });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.y = -0.5;
+                floor.receiveShadow = true;
+                this.scene.add(floor);
+            }
+
+            setupEvents() {
+                this.sdk.on('connected', () => this.sdk.createSession());
+
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;
+                    this.displaySessionInfo(session);
+                });
+
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;
+                    this.addPlayer(data.sensorId);
+                    this.updatePlayerStatus();
+                });
+
+                this.sdk.on('sensor-disconnected', (event) => {
+                    const data = event.detail || event;
+                    this.removePlayer(data.sensorId);
+                    this.updatePlayerStatus();
+                });
+
+                this.sdk.on('game-ready', () => {
+                    this.gameState = 'ready';
+                    this.messageBox.textContent = '3초 후 시작!';
+                    setTimeout(() => {
+                        this.sdk.startGame();
+                        this.gameState = 'playing';
+                        this.messageBox.style.display = 'none';
+                    }, 3000);
+                });
+
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;
+                    if (this.gameState === 'playing' && this.players[data.sensorId]) {
+                        this.updatePlayerPosition(data.sensorId, data.data.orientation);
+                    }
+                });
+
+                window.addEventListener('resize', () => this.onWindowResize(), false);
+            }
+
+            displaySessionInfo(session) {
+                document.getElementById('sessionCode').textContent = session.sessionCode;
+                const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                const qrContainer = document.getElementById('qrContainer');
+                qrContainer.innerHTML = '';
+
+                try {
+                    if (typeof qrcode !== 'undefined') {
+                        const qr = qrcode(0, 'L');
+                        qr.addData(qrUrl);
+                        qr.make();
+                        qrContainer.innerHTML = qr.createImgTag(4);
+                    } else { throw new Error('qrcode.js not loaded'); }
+                } catch (e) {
+                    console.warn('QR code generator failed, using fallback API.');
+                    const img = document.createElement('img');
+                    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrUrl)}`;
+                    qrContainer.appendChild(img);
+                }
+            }
+
+            addPlayer(sensorId) {
+                const isPlayer1 = !this.players['sensor1'];
+                const playerColor = isPlayer1 ? 0x3b82f6 : 0x8b5cf6;
+                const startX = isPlayer1 ? -2 : 2;
+
+                const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+                const material = new THREE.MeshStandardMaterial({ color: playerColor });
+                const playerMesh = new THREE.Mesh(geometry, material);
+                playerMesh.position.set(startX, 0, 0);
+                playerMesh.castShadow = true;
+                this.scene.add(playerMesh);
+
+                this.players[sensorId] = {
+                    id: sensorId,
+                    mesh: playerMesh,
+                    velocity: new THREE.Vector3(),
+                };
+
+                if (Object.keys(this.players).length === 2 && !this.cake.mesh) {
+                    this.createCake();
+                    this.createLevel();
+                }
+            }
+
+            removePlayer(sensorId) {
+                if (this.players[sensorId]) {
+                    this.scene.remove(this.players[sensorId].mesh);
+                    delete this.players[sensorId];
+                    this.setGameState('fail', '플레이어 연결 끊김!');
+                }
+            }
+
+            updatePlayerStatus() {
+                document.getElementById('player1Status').className = `player-status ${this.players['sensor1'] ? 'connected' : 'disconnected'}`;
+                document.getElementById('player2Status').className = `player-status ${this.players['sensor2'] ? 'connected' : 'disconnected'}`;
+            }
+
+            createCake() {
+                const cakeGeometry = new THREE.CylinderGeometry(1.5, 1.5, 1, 64);
+                const cakeMaterial = new THREE.MeshStandardMaterial({ color: 0xf472b6 });
+                this.cake.mesh = new THREE.Mesh(cakeGeometry, cakeMaterial);
+                this.cake.mesh.castShadow = true;
+                this.scene.add(this.cake.mesh);
+            }
+            
+            createLevel() {
+                // 장애물 생성
+                const obstacleGeometry = new THREE.BoxGeometry(2, 2, 2);
+                for(let i = 0; i < 5; i++) {
+                    const obstacleMaterial = new THREE.MeshStandardMaterial({ color: 0xef4444 });
+                    const obstacle = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+                    obstacle.position.set(Math.random() * 8 - 4, 0, -20 - i * 15);
+                    obstacle.castShadow = true;
+                    this.scene.add(obstacle);
+                    this.obstacles.push(obstacle);
+                }
+
+                // 목적지 생성
+                const destGeometry = new THREE.BoxGeometry(10, 1, 5);
+                const destMaterial = new THREE.MeshStandardMaterial({ color: 0x10b981, transparent: true, opacity: 0.5 });
+                this.destination = new THREE.Mesh(destGeometry, destMaterial);
+                this.destination.position.set(0, -0.4, -90);
+                this.scene.add(this.destination);
+            }
+
+            updatePlayerPosition(sensorId, orientation) {
+                const player = this.players[sensorId];
+                if (!player) return;
+
+                const speed = 0.02;
+                player.velocity.x = (orientation.gamma || 0) * speed;
+                player.velocity.z = (orientation.beta || 0) * speed - 1; // 기본 전진
+
+                player.mesh.position.x += player.velocity.x;
+                player.mesh.position.z += player.velocity.z * 0.1;
+
+                // 경계 체크
+                player.mesh.position.x = THREE.MathUtils.clamp(player.mesh.position.x, -24, 24);
+                player.mesh.position.z = THREE.MathUtils.clamp(player.mesh.position.z, -98, 2);
+            }
+
+            updateCakePosition() {
+                if (!this.cake.mesh || Object.keys(this.players).length < 2) return;
+
+                const p1 = this.players['sensor1'].mesh.position;
+                const p2 = this.players['sensor2'].mesh.position;
+
+                // 케이크 위치는 두 플레이어의 중간
+                this.cake.mesh.position.lerp(new THREE.Vector3((p1.x + p2.x) / 2, 0, (p1.z + p2.z) / 2), 0.1);
+
+                // 케이크 기울기 계산
+                const distance = p1.distanceTo(p2);
+                const angle = Math.atan2(p1.z - p2.z, p1.x - p2.x);
+                this.cake.mesh.rotation.y = -angle;
+                this.cake.mesh.rotation.z = (p1.y - p2.y) * 0.1; // 이 게임에선 y는 안변함
+                this.cake.mesh.rotation.x = (p1.z - p2.z) * 0.1;
+
+                // 실패 조건: 너무 멀어지거나 기울어지면
+                if (distance > 5) this.setGameState('fail', '너무 멀어요!');
+                if (Math.abs(this.cake.mesh.rotation.x) > 0.8 || Math.abs(this.cake.mesh.rotation.z) > 0.8) {
+                    this.setGameState('fail', '케이크가 떨어졌어요!');
+                }
+            }
+
+            checkCollisions() {
+                if (!this.cake.mesh) return;
+                const cakeBox = new THREE.Box3().setFromObject(this.cake.mesh);
+
+                // 장애물 충돌
+                for (const obstacle of this.obstacles) {
+                    const obstacleBox = new THREE.Box3().setFromObject(obstacle);
+                    if (cakeBox.intersectsBox(obstacleBox)) {
+                        this.setGameState('fail', '장애물과 충돌!');
+                        return;
+                    }
+                }
+
+                // 목적지 도착
+                const destBox = new THREE.Box3().setFromObject(this.destination);
+                if (cakeBox.intersectsBox(destBox)) {
+                    this.setGameState('success', '배달 성공!');
+                }
+            }
+
+            setGameState(state, message) {
+                if (this.gameState === 'success' || this.gameState === 'fail') return;
+                this.gameState = state;
+                this.messageBox.textContent = message;
+                this.messageBox.style.display = 'flex';
+                this.resetButton.style.display = 'block';
+            }
+
+            animate() {
+                requestAnimationFrame(this.animate);
+                if (this.gameState === 'playing') {
+                    this.updateCakePosition();
+                    this.checkCollisions();
+                }
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        }
+
+        window.onload = () => new CakeDeliveryGame();
+    </script>
+</body>
+</html>

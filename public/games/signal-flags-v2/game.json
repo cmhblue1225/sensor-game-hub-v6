@@ -56,14 +56,14 @@
     },
     "sensorThresholds": {
       "defaultState": {
-        "beta": "±15도 이내",
-        "gamma": "±15도 이내"
+        "beta": "±15도 이내 (실제 측정: 8.1°)",
+        "gamma": "±15도 이내 (실제 측정: 1.0°)"
       },
       "actionDetection": {
-        "up": "beta > 30",
-        "down": "beta < -30", 
-        "left": "gamma > 30",
-        "right": "gamma > 45"
+        "up": "beta >= 60 (실제 측정: 83.7°)",
+        "down": "beta <= -50 (실제 측정: -69.2°)", 
+        "left": "gamma <= -35 (실제 측정: -64.9°)",
+        "right": "-35 < gamma <= -25 (실제 측정: -42.2°)"
       }
     }
   },
