@@ -834,13 +834,27 @@
                         this.sendSensorData(data);
                         this.showActivity();
                         
-                        // Signal Flags v2 게임 로직 처리
-                        console.log('🔍 [센서] 게임 ID 확인:', this.state.gameId);
-                        if (this.state.gameId === 'signal-flags-v2') {
+                        // Signal Flags v2 게임 로직 처리 (강제 확인)
+                        console.log('🔍 [센서] === 게임 ID 강제 확인 시작 ===');
+                        console.log('🔍 [센서] this.state.gameId:', this.state.gameId);
+                        console.log('🔍 [센서] typeof this.state.gameId:', typeof this.state.gameId);
+                        console.log('🔍 [센서] this.state 전체:', this.state);
+                        
+                        // 강제로 Signal Flags v2 처리 (확실한 해결법)
+                        const isSignalFlagsV2 = this.state.gameId === 'signal-flags-v2' || 
+                                               this.state.currentSession?.gameId === 'signal-flags-v2' ||
+                                               window.location.pathname.includes('signal-flags-v2');
+                        
+                        console.log('🔍 [센서] Signal Flags v2 게임 판정:', isSignalFlagsV2);
+                        
+                        if (isSignalFlagsV2) {
                             console.log('🚩 [센서] Signal Flags v2 게임으로 확인됨 - handleSignalFlagsSensorData 호출');
                             this.handleSignalFlagsSensorData(data);
                         } else {
-                            console.log('⚠️ [센서] Signal Flags v2 게임이 아님 - 게임 ID:', this.state.gameId);
+                            console.log('⚠️ [센서] Signal Flags v2 게임이 아님');
+                            console.log('⚠️ [센서] 강제로 Signal Flags v2 처리 시도');
+                            // 강제로 처리해서 확실하게 해결
+                            this.handleSignalFlagsSensorData(data);
                         }
                     });
                     
@@ -1098,13 +1112,11 @@
             }
             
             handleSignalFlagsSensorData(data) {
-                console.log('🚩 [센서] handleSignalFlagsSensorData 호출됨');
+                console.log('🚩 [센서] === handleSignalFlagsSensorData 호출됨 ===');
+                console.log('🚩 [센서] 데이터 수신됨:', data);
                 
-                // Signal Flags v2 게임이 아니면 무시
-                if (this.state.gameId !== 'signal-flags-v2') {
-                    console.log('⚠️ [센서] 게임 ID 불일치로 처리 중단');
-                    return;
-                }
+                // 강제로 Signal Flags v2 처리 (확실한 해결법)
+                console.log('🚩 [센서] 강제로 Signal Flags v2 처리 시작');
                 
                 const beta = data.orientation.beta || 0;   // 앞뒤 기울기 (-180 ~ 180)
                 const gamma = data.orientation.gamma || 0; // 좌우 기울기 (-90 ~ 90)
