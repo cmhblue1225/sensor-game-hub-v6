@@ -568,6 +568,7 @@
                     currentGender: null,
                     isInDefaultState: false,
                     hasResponded: false,
+                    lastNotificationTime: 0,  // 중복 알림 방지
                     sensorThresholds: {
                         defaultState: { 
                             beta: 15,    // 디폴트 상태: ±15도 이내
@@ -1147,15 +1148,31 @@
                     console.log(`📊 [센서] - 최종 판정: ${isInDefaultState}`);
                     console.log(`📊 [센서] - 진입 조건: ${isInDefaultState && !this.signalFlagsState.isInDefaultState}`);
                     
-                    if (isInDefaultState) {
-                        // 디폴트 상태 진입 - 매번 알림 전송 (확실한 해결)
+                    if (isInDefaultState && !this.signalFlagsState.isInDefaultState) {
+                        // 디폴트 상태 진입 - 상태 변화 시에만 알림 전송 (깜빡임 방지)
                         console.log('✅ [센서] === 디폴트 상태 감지됨! ===');
-                        console.log('✅ [센서] 조건 확인 없이 무조건 서버에 알림 전송');
+                        console.log('✅ [센서] 새로운 디폴트 상태 진입 - 서버에 알림 전송');
                         
-                        // 서버에 알림
+                        // 중복 알림 방지 - 1초 이내 재전송 금지
+                        const currentTime = Date.now();
+                        if (currentTime - this.signalFlagsState.lastNotificationTime < 1000) {
+                            console.log('⏳ [센서] 중복 알림 방지 - 1초 이내 재전송 금지');
+                            return;
+                        }
+                        
+                        // 서버에 알림 - 세션 정보 정확히 추출
+                        const sessionCode = this.state.currentSession?.sessionCode || 
+                                          this.state.currentSession?.sessionId?.split('_')[1] ||
+                                          this.state.currentSession?.detail?.sessionCode ||
+                                          this.state.currentSession?.detail?.sessionId?.split('_')[1];
+                        
+                        const playerId = this.state.playerId || 
+                                       this.state.currentSession?.sensorId?.replace('sensor', '') ||
+                                       this.state.currentSession?.detail?.sensorId?.replace('sensor', '');
+                        
                         const messageData = {
-                            sessionCode: this.state.currentSession.sessionCode || this.state.currentSession.sessionId?.split('_')[1],
-                            playerId: this.state.playerId
+                            sessionCode: sessionCode,
+                            playerId: playerId
                         };
                         console.log('📤 [센서] 디폴트 상태 준비 알림 전송:', messageData);
                         console.log('📤 [센서] 소켓 상태:', !!this.sdk.socket);
@@ -1165,6 +1182,7 @@
                         if (this.sdk.socket) {
                             this.sdk.socket.emit('signal-flags-v2-default-ready', messageData);
                             console.log('✅ [센서] 디폴트 상태 알림 전송 완료');
+                            this.signalFlagsState.lastNotificationTime = currentTime;
                         } else {
                             console.error('❌ [센서] 소켓 연결 없음 - 알림 전송 실패');
                         }
