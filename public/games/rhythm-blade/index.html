@@ -1153,170 +1153,395 @@
             }
             
             generateSpaceRhythmBeatmap(beat, halfBeat, doubleBeat) {
-                // 🚀 Space Rhythm - 우주적이고 흐르는 패턴 (1분 40초, BPM 100)
+                // 🚀 Space Rhythm - 궤도와 중력장 패턴 (1분 40초, BPM 100)
                 const beatmap = [];
                 const track = this.tracks[this.currentTrack];
                 const targetDuration = track.duration; // 100초
                 
-                // 긴 곡에 맞는 우주적 패턴 생성
-                for (let i = 0; i < 140; i++) {
-                    const time = beat * (i + 1);
-                    const pattern = i % 12; // 12박자 우주적 패턴
+                // 🚀 Orbital Mechanics 시스템 - 태양계 궤도 시뮬레이션
+                let currentTime = 0;
+                let planetCount = 0;
+                
+                while (currentTime < targetDuration) {
+                    planetCount++;
+                    const orbitRadius = 2 + (planetCount % 4); // 2-5비트 궤도 반지름
+                    const orbitSpeed = 1.0 + (planetCount % 3) * 0.3; // 1.0-1.9 궤도 속도
                     
-                    if (pattern === 11) {
-                        beatmap.push({ time: time, lane: "both", type: "cooperation" });
-                    } else if (pattern < 6) {
-                        beatmap.push({ time: time, lane: "sensor1", type: "normal" });
-                    } else {
-                        beatmap.push({ time: time, lane: "sensor2", type: "normal" });
+                    // 🚀 Planetary Orbit (행성 궤도) - 원형 운동
+                    const pointsInOrbit = Math.floor(orbitRadius * 4); // 궤도당 포인트 수
+                    for (let i = 0; i < pointsInOrbit; i++) {
+                        const angle = (i / pointsInOrbit) * 2 * Math.PI; // 0 to 2π
+                        const orbitalTime = currentTime + (i * orbitSpeed * beat);
+                        
+                        // 사인/코사인으로 좌우 선택 (원형 궤도)
+                        const x = Math.cos(angle);
+                        const lane = x > 0 ? "sensor1" : "sensor2";
+                        
+                        // 특별한 위치에서는 협력 (태양 접근시)
+                        if (Math.abs(angle - Math.PI) < 0.5 || Math.abs(angle) < 0.5) {
+                            beatmap.push({ time: orbitalTime, lane: "both", type: "cooperation" });
+                        } else {
+                            beatmap.push({ time: orbitalTime, lane: lane, type: "normal" });
+                        }
+                    }
+                    
+                    currentTime += orbitSpeed * beat * pointsInOrbit;
+                    
+                    // 🚀 Gravitational Pull (중력 끌림) - 가끔 중심으로 끌려들어감
+                    if (planetCount % 3 === 0 && currentTime < targetDuration) {
+                        // 중력장 효과 - 양쪽에서 중심으로 수렴
+                        for (let g = 0; g < 4; g++) {
+                            const gravTime = currentTime + beat * g * 0.7;
+                            if (g === 3) {
+                                // 마지막은 중심에서 만남
+                                beatmap.push({ time: gravTime, lane: "both", type: "cooperation" });
+                            } else {
+                                // 점점 중심으로 수렴
+                                const lane = g % 2 === 0 ? "sensor1" : "sensor2";
+                                beatmap.push({ time: gravTime, lane: lane, type: "normal" });
+                            }
+                        }
+                        currentTime += beat * 3;
+                    }
+                    
+                    // 🚀 Asteroid Belt (소행성대) - 불규칙한 작은 충돌
+                    if (Math.random() > 0.6 && currentTime < targetDuration - beat * 2) {
+                        const asteroidCount = 2 + Math.floor(Math.random() * 3); // 2-4개
+                        for (let a = 0; a < asteroidCount; a++) {
+                            const asteroidTime = currentTime + beat * a * 0.5;
+                            const lane = Math.random() > 0.5 ? "sensor1" : "sensor2";
+                            beatmap.push({ time: asteroidTime, lane: lane, type: "normal" });
+                        }
+                        currentTime += beat * 2;
                     }
                 }
                 
-                console.log(`🚀 Space Rhythm 비트맵: ${beatmap.length}개 노트, ${targetDuration}초`);
+                console.log(`🚀 Space Rhythm 비트맵: ${beatmap.length}개 노트 (궤도 역학), ${(currentTime / beat).toFixed(1)}비트`);
                 return beatmap;
             }
             
             generateFireDanceBeatmap(beat, halfBeat, doubleBeat) {
-                // 🔥 Fire Dance - 격렬하고 공격적인 패턴 (1분 35초, BPM 150)
+                // 🔥 Fire Dance - 불꽃처럼 폭발적이고 예측불가한 패턴 (1분 35초, BPM 150)
                 const beatmap = [];
                 const track = this.tracks[this.currentTrack];
                 const targetDuration = track.duration; // 95초
                 
-                // 격렬한 Fire Dance 패턴 (1분 35초)
-                for (let i = 0; i < 230; i++) {
-                    const time = beat * (i + 1) * 0.4; // 빠른 템포
-                    const pattern = i % 8;
+                // 🔥 Fire Burst 시스템 - 강렬한 폭발 + 잠깐의 정적
+                let currentTime = 0;
+                const burstInterval = beat * 8; // 8비트마다 폭발
+                
+                while (currentTime < targetDuration) {
+                    // 🔥 화염 폭발 구간 (3-5개 빠른 연타)
+                    const burstSize = 3 + Math.floor(Math.random() * 3); // 3-5개 랜덤
+                    for (let i = 0; i < burstSize; i++) {
+                        const burstTime = currentTime + (beat * 0.6 * i); // 빠른 연타
+                        
+                        if (i === burstSize - 1) {
+                            // 마지막은 협력으로 폭발 피날레
+                            beatmap.push({ time: burstTime, lane: "both", type: "cooperation" });
+                        } else if (Math.random() > 0.7) {
+                            // 30% 확률로 예상치 못한 협력
+                            beatmap.push({ time: burstTime, lane: "both", type: "cooperation" });
+                        } else {
+                            // 좌우 교대하는 기본 화염
+                            const lane = i % 2 === 0 ? "sensor1" : "sensor2";
+                            beatmap.push({ time: burstTime, lane: lane, type: "normal" });
+                        }
+                    }
                     
-                    if (pattern === 7) {
-                        beatmap.push({ time: time, lane: "both", type: "cooperation" });
-                    } else if (pattern < 4) {
-                        beatmap.push({ time: time, lane: "sensor1", type: "normal" });
-                    } else {
-                        beatmap.push({ time: time, lane: "sensor2", type: "normal" });
+                    // 🔥 불꽃 여운 - 잠깐의 정적 후 작은 불씨
+                    currentTime += burstInterval;
+                    if (currentTime < targetDuration - beat * 2) {
+                        // 작은 불씨 (랜덤 위치)
+                        const emberTime = currentTime - beat * 2;
+                        const emberLane = Math.random() > 0.5 ? "sensor1" : "sensor2";
+                        beatmap.push({ time: emberTime, lane: emberLane, type: "normal" });
                     }
                 }
                 
-                console.log(`🔥 Fire Dance 비트맵: ${beatmap.length}개 노트, ${targetDuration}초`);
+                console.log(`🔥 Fire Dance 비트맵: ${beatmap.length}개 노트 (폭발적 패턴), ${(currentTime / beat).toFixed(1)}비트`);
                 return beatmap;
             }
             
             generateOceanWavesBeatmap(beat, halfBeat, doubleBeat) {
-                // 🌊 Ocean Waves - 부드럽고 편안한 패턴 (1분 55초, BPM 90)
+                // 🌊 Ocean Waves - 파도처럼 밀려오고 잦아드는 자연스러운 패턴 (1분 55초, BPM 90)
                 const beatmap = [];
                 const track = this.tracks[this.currentTrack];
                 const targetDuration = track.duration; // 115초
                 
-                // 부드러운 Ocean Waves 패턴 (1분 55초)
-                for (let i = 0; i < 150; i++) {
-                    const time = beat * (i + 1) * 0.77; // 느린 템포
-                    const pattern = i % 15; // 15박자 파도 패턴
+                // 🌊 Wave Cycle 시스템 - 밀려오기 + 피크 + 잦아들기
+                let currentTime = 0;
+                const waveLength = beat * 16; // 16비트 = 한 파도 사이클
+                
+                while (currentTime < targetDuration) {
+                    // 🌊 Wave Build-up (밀려오기) - 점점 빨라짐
+                    for (let i = 0; i < 6; i++) {
+                        const buildTime = currentTime + (beat * (2 - i * 0.2)); // 점점 빨라짐
+                        const lane = i % 2 === 0 ? "sensor1" : "sensor2";
+                        beatmap.push({ time: currentTime + beat * (i + 1) * 1.5, lane: lane, type: "normal" });
+                    }
                     
-                    if (pattern === 14) {
-                        beatmap.push({ time: time, lane: "both", type: "cooperation" });
-                    } else if (pattern < 7) {
-                        beatmap.push({ time: time, lane: "sensor1", type: "normal" });
-                    } else {
-                        beatmap.push({ time: time, lane: "sensor2", type: "normal" });
+                    // 🌊 Wave Peak (파도 정점) - 협력 타격
+                    beatmap.push({ time: currentTime + beat * 10, lane: "both", type: "cooperation" });
+                    
+                    // 🌊 Wave Crash (파도 충돌) - 빠른 교대
+                    for (let i = 0; i < 4; i++) {
+                        const crashTime = currentTime + beat * (11 + i * 0.7);
+                        const lane = i % 2 === 0 ? "sensor2" : "sensor1"; // 역순으로
+                        beatmap.push({ time: crashTime, lane: lane, type: "normal" });
+                    }
+                    
+                    // 🌊 Wave Retreat (파도 퇴조) - 점점 느려짐
+                    beatmap.push({ time: currentTime + beat * 15, lane: "sensor1", type: "normal" });
+                    beatmap.push({ time: currentTime + beat * 16.5, lane: "sensor2", type: "normal" });
+                    
+                    currentTime += waveLength;
+                    
+                    // 🌊 Calm Period (잔잔한 구간) - 가끔 작은 물결
+                    if (currentTime < targetDuration && Math.random() > 0.6) {
+                        const rippleTime = currentTime - beat * 2;
+                        const rippleLane = Math.random() > 0.5 ? "sensor1" : "sensor2";
+                        beatmap.push({ time: rippleTime, lane: rippleLane, type: "normal" });
                     }
                 }
                 
-                console.log(`🌊 Ocean Waves 비트맵: ${beatmap.length}개 노트, ${targetDuration}초`);
+                console.log(`🌊 Ocean Waves 비트맵: ${beatmap.length}개 노트 (파도 사이클), ${(currentTime / beat).toFixed(1)}비트`);
                 return beatmap;
             }
             
             generateCrystalCaveBeatmap(beat, halfBeat, doubleBeat) {
-                // 💎 Crystal Cave - 프로그레시브하고 신비로운 패턴 (1분 48초, BPM 130)
+                // 💎 Crystal Cave - 기하학적 크리스탈 성장 패턴 (1분 48초, BPM 130)
                 const beatmap = [];
                 const track = this.tracks[this.currentTrack];
                 const targetDuration = track.duration; // 108초
                 
-                // 신비로운 Crystal Cave 패턴 (1분 48초)
-                for (let i = 0; i < 180; i++) {
-                    const time = beat * (i + 1) * 0.6;
-                    const pattern = i % 10; // 10박자 크리스탈 패턴
+                // 💎 Crystal Formation 시스템 - 피보나치 수열 기반 성장
+                let currentTime = 0;
+                let fibA = 1, fibB = 1; // 피보나치 시작
+                
+                while (currentTime < targetDuration) {
+                    // 💎 Crystal Nucleus (핵 생성) - 작은 시작
+                    beatmap.push({ time: currentTime, lane: "sensor1", type: "normal" });
+                    beatmap.push({ time: currentTime + beat * 0.5, lane: "sensor2", type: "normal" });
                     
-                    if (pattern === 9) {
-                        beatmap.push({ time: time, lane: "both", type: "cooperation" });
-                    } else if (pattern < 5) {
-                        beatmap.push({ time: time, lane: "sensor1", type: "normal" });
-                    } else {
-                        beatmap.push({ time: time, lane: "sensor2", type: "normal" });
+                    // 💎 Crystal Growth (성장) - 피보나치 패턴
+                    const nextFib = fibA + fibB;
+                    const growthPhases = Math.min(nextFib, 8); // 최대 8단계
+                    
+                    for (let i = 0; i < growthPhases; i++) {
+                        const growthTime = currentTime + beat * (1 + i * 0.7);
+                        
+                        // 대칭적 크리스탈 성장
+                        if (i % 3 === 2) {
+                            // 3의 배수마다 중심축 (협력)
+                            beatmap.push({ time: growthTime, lane: "both", type: "cooperation" });
+                        } else {
+                            // 대칭적 성장
+                            const isLeftSide = (i + currentTime / beat) % 2 === 0;
+                            const lane = isLeftSide ? "sensor1" : "sensor2";
+                            beatmap.push({ time: growthTime, lane: lane, type: "normal" });
+                        }
+                    }
+                    
+                    // 💎 Crystal Resonance (공명) - 하모닉 패턴
+                    const resonanceTime = currentTime + beat * (growthPhases + 1);
+                    beatmap.push({ time: resonanceTime, lane: "both", type: "cooperation" });
+                    
+                    // 💎 Crystal Stabilization (안정화) - 점점 느려지는 마무리
+                    beatmap.push({ time: resonanceTime + beat * 1.5, lane: "sensor2", type: "normal" });
+                    beatmap.push({ time: resonanceTime + beat * 2.2, lane: "sensor1", type: "normal" });
+                    
+                    // 다음 크리스탈 사이클로
+                    currentTime += beat * (growthPhases + 4);
+                    fibA = fibB;
+                    fibB = nextFib;
+                    
+                    // 피보나치가 너무 커지면 리셋
+                    if (fibB > 13) {
+                        fibA = 1;
+                        fibB = 1;
                     }
                 }
                 
-                console.log(`💎 Crystal Cave 비트맵: ${beatmap.length}개 노트, ${targetDuration}초`);
+                console.log(`💎 Crystal Cave 비트맵: ${beatmap.length}개 노트 (기하학적 성장), ${(currentTime / beat).toFixed(1)}비트`);
                 return beatmap;
             }
             
             generateNeonCityBeatmap(beat, halfBeat, doubleBeat) {
-                // 🏙️ Neon City - 레트로웨이브 도시 패턴 (1분 42초, BPM 110)
+                // 🏙️ Neon City - 도시의 네온사인 점멸 패턴 (1분 42초, BPM 110)
                 const beatmap = [];
                 const track = this.tracks[this.currentTrack];
                 const targetDuration = track.duration; // 102초
                 
-                // 레트로 Neon City 패턴 (1분 42초)
-                for (let i = 0; i < 170; i++) {
-                    const time = beat * (i + 1) * 0.6;
-                    const pattern = i % 11; // 11박자 네온 패턴
+                // 🏙️ Urban Grid 시스템 - 도시 블록별 네온 점멸
+                let currentTime = 0;
+                const blockSize = beat * 12; // 12비트 = 한 도시 블록
+                
+                while (currentTime < targetDuration) {
+                    // 🏙️ Neon Sign Sequence (네온사인 순차 점등)
+                    // 왼쪽 건물들
+                    beatmap.push({ time: currentTime + beat * 1, lane: "sensor1", type: "normal" });
+                    beatmap.push({ time: currentTime + beat * 2.5, lane: "sensor1", type: "normal" });
+                    beatmap.push({ time: currentTime + beat * 4, lane: "sensor1", type: "normal" });
                     
-                    if (pattern === 10) {
-                        beatmap.push({ time: time, lane: "both", type: "cooperation" });
-                    } else if (pattern < 5) {
-                        beatmap.push({ time: time, lane: "sensor1", type: "normal" });
-                    } else {
-                        beatmap.push({ time: time, lane: "sensor2", type: "normal" });
+                    // 🏙️ Traffic Light (신호등) - 중앙 협력
+                    beatmap.push({ time: currentTime + beat * 6, lane: "both", type: "cooperation" });
+                    
+                    // 🏙️ Right Side Buildings (오른쪽 건물들)
+                    beatmap.push({ time: currentTime + beat * 7.5, lane: "sensor2", type: "normal" });
+                    beatmap.push({ time: currentTime + beat * 9, lane: "sensor2", type: "normal" });
+                    beatmap.push({ time: currentTime + beat * 10.5, lane: "sensor2", type: "normal" });
+                    
+                    // 🏙️ City Pulse (도시 맥박) - 전체 동기화
+                    if (Math.random() > 0.3) { // 70% 확률
+                        beatmap.push({ time: currentTime + beat * 11.5, lane: "both", type: "cooperation" });
+                    }
+                    
+                    currentTime += blockSize;
+                    
+                    // 🏙️ Advertising Flicker (광고 깜빡임) - 랜덤 간섭
+                    if (currentTime < targetDuration && Math.random() > 0.5) {
+                        const flickerTime = currentTime - beat * 1;
+                        const flickerLane = Math.random() > 0.6 ? "both" : (Math.random() > 0.5 ? "sensor1" : "sensor2");
+                        const flickerType = flickerLane === "both" ? "cooperation" : "normal";
+                        beatmap.push({ time: flickerTime, lane: flickerLane, type: flickerType });
                     }
                 }
                 
-                console.log(`🏙️ Neon City 비트맵: ${beatmap.length}개 노트, ${targetDuration}초`);
+                console.log(`🏙️ Neon City 비트맵: ${beatmap.length}개 노트 (도시 그리드), ${(currentTime / beat).toFixed(1)}비트`);
                 return beatmap;
             }
             
             generateThunderStormBeatmap(beat, halfBeat, doubleBeat) {
-                // ⛈️ Thunder Storm - 극한 하드코어 패턴 (1분 30초, BPM 160)
+                // ⛈️ Thunder Storm - 예측불가한 번개와 천둥 패턴 (1분 30초, BPM 160)
                 const beatmap = [];
                 const track = this.tracks[this.currentTrack];
                 const targetDuration = track.duration; // 90초
                 
-                // 극한 Thunder Storm 패턴 (1분 30초)
-                for (let i = 0; i < 270; i++) {
-                    const time = beat * (i + 1) * 0.33; // 매우 빠른 템포
-                    const pattern = i % 6; // 6박자 폭풍 패턴
+                // ⛈️ Lightning Storm 시스템 - 랜덤 번개 + 천둥 굉음
+                let currentTime = 0;
+                
+                while (currentTime < targetDuration) {
+                    // ⛈️ Lightning Strike (번개 공격) - 완전 랜덤
+                    const strikeDuration = beat * (3 + Math.random() * 4); // 3-7비트 구간
+                    const strikeEnd = currentTime + strikeDuration;
                     
-                    if (pattern === 5) {
-                        beatmap.push({ time: time, lane: "both", type: "cooperation" });
-                    } else if (pattern < 3) {
-                        beatmap.push({ time: time, lane: "sensor1", type: "normal" });
-                    } else {
-                        beatmap.push({ time: time, lane: "sensor2", type: "normal" });
+                    // 번개는 예측불가능하게 등장
+                    const strikeCount = 2 + Math.floor(Math.random() * 5); // 2-6번
+                    for (let i = 0; i < strikeCount; i++) {
+                        const strikeTime = currentTime + (Math.random() * strikeDuration);
+                        const intensity = Math.random();
+                        
+                        if (intensity > 0.8) {
+                            // 20% - 강력한 번개 (협력 필요)
+                            beatmap.push({ time: strikeTime, lane: "both", type: "cooperation" });
+                        } else if (intensity > 0.4) {
+                            // 40% - 일반 번개
+                            const lane = Math.random() > 0.5 ? "sensor1" : "sensor2";
+                            beatmap.push({ time: strikeTime, lane: lane, type: "normal" });
+                        }
+                        // 40% - 번개 없음 (정적)
+                    }
+                    
+                    currentTime = strikeEnd;
+                    
+                    // ⛈️ Thunder Rumble (천둥 굉음) - 느린 진동
+                    if (currentTime < targetDuration) {
+                        const rumbleDuration = beat * (2 + Math.random() * 3); // 2-5비트
+                        const rumbleEnd = currentTime + rumbleDuration;
+                        
+                        // 천둥은 규칙적인 진동
+                        let rumbleTime = currentTime;
+                        let rumbleIndex = 0;
+                        while (rumbleTime < rumbleEnd && rumbleTime < targetDuration) {
+                            const lane = rumbleIndex % 3 === 2 ? "both" : (rumbleIndex % 2 === 0 ? "sensor1" : "sensor2");
+                            const type = lane === "both" ? "cooperation" : "normal";
+                            
+                            beatmap.push({ time: rumbleTime, lane: lane, type: type });
+                            rumbleTime += beat * (0.8 + Math.random() * 0.4); // 0.8-1.2비트 간격
+                            rumbleIndex++;
+                        }
+                        
+                        currentTime = rumbleEnd;
+                    }
+                    
+                    // ⛈️ Eye of Storm (폭풍의 눈) - 잠깐의 정적
+                    if (Math.random() > 0.7 && currentTime < targetDuration - beat * 2) {
+                        currentTime += beat * (1 + Math.random() * 2); // 1-3비트 정적
                     }
                 }
                 
-                console.log(`⛈️ Thunder Storm 비트맵: ${beatmap.length}개 노트, ${targetDuration}초`);
+                console.log(`⛈️ Thunder Storm 비트맵: ${beatmap.length}개 노트 (번개 폭풍), ${(currentTime / beat).toFixed(1)}비트`);
                 return beatmap;
             }
             
             generateStarlightBeatmap(beat, halfBeat, doubleBeat) {
-                // ✨ Starlight - 멜로딕하고 아름다운 패턴 (1분 58초, BPM 115)
+                // ✨ Starlight - 별자리와 별 깜빡임 패턴 (1분 58초, BPM 115)
                 const beatmap = [];
                 const track = this.tracks[this.currentTrack];
                 const targetDuration = track.duration; // 118초
                 
-                // 아름다운 Starlight 패턴 (1분 58초)
-                for (let i = 0; i < 190; i++) {
-                    const time = beat * (i + 1) * 0.62;
-                    const pattern = i % 13; // 13박자 별빛 패턴
+                // ✨ Constellation 시스템 - 별자리 모양 + 별 깜빡임
+                let currentTime = 0;
+                const constellations = [
+                    // 북두칠성 패턴
+                    [0, 1.5, 3, 4.2, 5.8, 7.5, 9],
+                    // 오리온자리 패턴  
+                    [0, 1, 2.5, 4, 5, 6.5, 8, 9.5],
+                    // 카시오페아 패턴
+                    [0, 2, 3.5, 5.5, 7],
+                    // 백조자리 패턴
+                    [0, 1.8, 3.2, 5, 6.8, 8.5]
+                ];
+                
+                let constellationIndex = 0;
+                
+                while (currentTime < targetDuration) {
+                    const constellation = constellations[constellationIndex % constellations.length];
                     
-                    if (pattern === 12) {
-                        beatmap.push({ time: time, lane: "both", type: "cooperation" });
-                    } else if (pattern < 6) {
-                        beatmap.push({ time: time, lane: "sensor1", type: "normal" });
-                    } else {
-                        beatmap.push({ time: time, lane: "sensor2", type: "normal" });
+                    // ✨ Constellation Drawing (별자리 그리기)
+                    for (let i = 0; i < constellation.length; i++) {
+                        const starTime = currentTime + beat * constellation[i];
+                        
+                        // 첫 번째와 마지막 별은 협력으로 특별하게
+                        if (i === 0 || i === constellation.length - 1) {
+                            beatmap.push({ time: starTime, lane: "both", type: "cooperation" });
+                        } else {
+                            // 별자리 좌우 균형
+                            const lane = i % 2 === 0 ? "sensor1" : "sensor2";
+                            beatmap.push({ time: starTime, lane: lane, type: "normal" });
+                        }
                     }
+                    
+                    currentTime += beat * (constellation[constellation.length - 1] + 2);
+                    
+                    // ✨ Twinkling Stars (별 깜빡임) - 별자리 사이의 작은 별들
+                    const twinkleEnd = currentTime + beat * 6;
+                    while (currentTime < twinkleEnd && currentTime < targetDuration) {
+                        // 별 깜빡임은 랜덤하고 희소
+                        if (Math.random() > 0.6) { // 40% 확률
+                            const twinkleLane = Math.random() > 0.7 ? "both" : (Math.random() > 0.5 ? "sensor1" : "sensor2");
+                            const twinkleType = twinkleLane === "both" ? "cooperation" : "normal";
+                            beatmap.push({ time: currentTime, lane: twinkleLane, type: twinkleType });
+                        }
+                        currentTime += beat * (1.2 + Math.random() * 0.8); // 1.2-2.0비트 간격
+                    }
+                    
+                    // ✨ Shooting Star (유성) - 가끔 빠른 연속 타격
+                    if (Math.random() > 0.7 && currentTime < targetDuration - beat * 3) {
+                        for (let j = 0; j < 3; j++) {
+                            const shootTime = currentTime + beat * j * 0.4; // 빠른 연속
+                            const lane = j === 2 ? "both" : (j % 2 === 0 ? "sensor1" : "sensor2");
+                            const type = lane === "both" ? "cooperation" : "normal";
+                            beatmap.push({ time: shootTime, lane: lane, type: type });
+                        }
+                        currentTime += beat * 2;
+                    }
+                    
+                    constellationIndex++;
                 }
                 
-                console.log(`✨ Starlight 비트맵: ${beatmap.length}개 노트, ${targetDuration}초`);
+                console.log(`✨ Starlight 비트맵: ${beatmap.length}개 노트 (별자리 패턴), ${(currentTime / beat).toFixed(1)}비트`);
                 return beatmap;
             }
             
