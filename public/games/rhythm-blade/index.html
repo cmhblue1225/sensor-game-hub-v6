@@ -331,14 +331,15 @@
             <a href="/" class="btn btn-secondary">🏠 허브로</a>
         </div>
         
-        <!-- ✅ 개선된 게임 설명 -->
+        <!-- ✅ 개선된 게임 설명 (탭소닉 스타일 가이드라인 포함) -->
         <div class="game-instructions hidden" id="gameInstructions">
             <div class="instruction-title">🎵 Rhythm Blade 게임 방법</div>
-            <div class="instruction-item">🎶 음악에 맞춰 정확한 타이밍으로 노트를 베세요!</div>
-            <div class="instruction-item">🔴 플레이어1(왼쪽): 빨간 노트, 오른쪽으로 스윙</div>
-            <div class="instruction-item">🔵 플레이어2(오른쪽): 파란 노트, 왼쪽으로 스윙</div>
-            <div class="instruction-item">🤝 보라색: 협력 노트 (500ms내 동시 타격)</div>
-            <div class="instruction-item">🎵 128 BPM 일렉트로닉 뮤직으로 리듬감 UP!</div>
+            <div class="instruction-item">🎯 탭소닉 스타일 가이드라인을 보고 정확한 타이밍으로!</div>
+            <div class="instruction-item">🔴 빨간 가이드라인: 플레이어1, 오른쪽으로 스윙</div>
+            <div class="instruction-item">🔵 파란 가이드라인: 플레이어2, 왼쪽으로 스윙</div>
+            <div class="instruction-item">🟣 보라 가이드라인: 협력 노트 (동시 타격)</div>
+            <div class="instruction-item">✨ 노트가 가이드라인에 도달할 때 타격하세요!</div>
+            <div class="instruction-item">🎵 128 BPM 일렉트로닉 뮤직 + 박자 맞춤 효과</div>
             <div class="instruction-item">⌨️ 테스트: Q(왼쪽), E(오른쪽), Space(협력)</div>
         </div>
     </div>
@@ -620,6 +621,9 @@
                 
                 // 배경 환경 생성
                 this.createEnvironment();
+                
+                // ✅ 탭소닉 스타일 가이드라인 시스템 추가
+                this.createTimingGuidelines();
             }
             
             createSaber(color, xPosition) {
@@ -698,6 +702,101 @@
                     wall.rotation.y = i === 0 ? Math.PI / 2 : -Math.PI / 2;
                     this.scene.add(wall);
                 }
+            }
+            
+            // ✅ 탭소닉 스타일 타이밍 가이드라인 시스템
+            createTimingGuidelines() {
+                this.timingGuidelines = {
+                    sensor1: null,    // 왼쪽 빨간 가이드라인
+                    sensor2: null,    // 오른쪽 파란 가이드라인
+                    cooperation: null // 중앙 보라색 가이드라인
+                };
+                
+                // 왼쪽 세이버용 빨간 가이드라인
+                this.timingGuidelines.sensor1 = this.createGuideline(-2, 0xff0000, 'sensor1');
+                this.scene.add(this.timingGuidelines.sensor1);
+                
+                // 오른쪽 세이버용 파란 가이드라인
+                this.timingGuidelines.sensor2 = this.createGuideline(2, 0x0000ff, 'sensor2');
+                this.scene.add(this.timingGuidelines.sensor2);
+                
+                // 협력 노트용 보라색 가이드라인 (중앙)
+                this.timingGuidelines.cooperation = this.createGuideline(0, 0x8b5cf6, 'cooperation');
+                this.scene.add(this.timingGuidelines.cooperation);
+                
+                console.log('🎯 탭소닉 스타일 타이밍 가이드라인 생성 완료');
+            }
+            
+            createGuideline(xPosition, color, type) {
+                const guidelineGroup = new THREE.Group();
+                
+                // 메인 가이드라인 (세로선)
+                const lineGeometry = new THREE.PlaneGeometry(0.1, 3);
+                const lineMaterial = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.8,
+                    side: THREE.DoubleSide
+                });
+                const mainLine = new THREE.Mesh(lineGeometry, lineMaterial);
+                mainLine.position.set(0, 1.5, 3.5); // 타격 지점 위치
+                mainLine.userData = { originalOpacity: 0.8 };
+                
+                // 가이드라인 글로우 효과
+                const glowGeometry = new THREE.PlaneGeometry(0.3, 3.5);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide
+                });
+                const glowLine = new THREE.Mesh(glowGeometry, glowMaterial);
+                glowLine.position.set(0, 1.5, 3.5);
+                glowLine.userData = { originalOpacity: 0.3 };
+                
+                // 타격 포인트 인디케이터 (원형)
+                const hitPointGeometry = new THREE.CircleGeometry(0.4, 16);
+                const hitPointMaterial = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.6,
+                    side: THREE.DoubleSide
+                });
+                const hitPoint = new THREE.Mesh(hitPointGeometry, hitPointMaterial);
+                hitPoint.position.set(0, 1.5, 3.5);
+                hitPoint.userData = { originalOpacity: 0.6, pulsePhase: 0 };
+                
+                // 박자 인디케이터 (작은 점들)
+                for (let i = -1; i <= 1; i++) {
+                    if (i === 0) continue; // 메인 타격 지점 제외
+                    
+                    const beatIndicatorGeometry = new THREE.CircleGeometry(0.15, 8);
+                    const beatIndicatorMaterial = new THREE.MeshBasicMaterial({
+                        color: color,
+                        transparent: true,
+                        opacity: 0.4,
+                        side: THREE.DoubleSide
+                    });
+                    const beatIndicator = new THREE.Mesh(beatIndicatorGeometry, beatIndicatorMaterial);
+                    beatIndicator.position.set(0, 1.5 + (i * 0.8), 3.5);
+                    beatIndicator.userData = { originalOpacity: 0.4 };
+                    
+                    guidelineGroup.add(beatIndicator);
+                }
+                
+                guidelineGroup.add(glowLine);
+                guidelineGroup.add(mainLine);
+                guidelineGroup.add(hitPoint);
+                
+                guidelineGroup.position.x = xPosition;
+                guidelineGroup.userData = { 
+                    type: type,
+                    color: color,
+                    isActive: false,
+                    lastPulse: 0
+                };
+                
+                return guidelineGroup;
             }
             
             setupEventListeners() {
@@ -991,6 +1090,236 @@
                 this.updateUI();
             }
             
+            // ✅ 탭소닉 스타일 가이드라인 애니메이션 시스템
+            updateGuidelineForNote(note) {
+                const noteData = note.userData;
+                const distanceToHitPoint = Math.abs(note.position.z - 3.5); // 가이드라인 위치: z=3.5
+                
+                // 노트가 가이드라인에 접근할 때 활성화 (3초 정도 전부터)
+                if (distanceToHitPoint <= 25 && distanceToHitPoint >= 0) {
+                    let guidelineType;
+                    
+                    if (noteData.type === 'cooperation') {
+                        guidelineType = 'cooperation';
+                    } else if (noteData.lane === 'sensor1') {
+                        guidelineType = 'sensor1';
+                    } else if (noteData.lane === 'sensor2') {
+                        guidelineType = 'sensor2';
+                    }
+                    
+                    if (guidelineType && this.timingGuidelines[guidelineType]) {
+                        this.activateGuideline(guidelineType, note);
+                        
+                        // 노트가 완벽한 타이밍 지점에 가까워질 때 강조 효과
+                        if (distanceToHitPoint <= 3) {
+                            this.highlightGuideline(guidelineType, distanceToHitPoint);
+                        }
+                    }
+                }
+            }
+            
+            activateGuideline(guidelineType, note) {
+                const guideline = this.timingGuidelines[guidelineType];
+                if (!guideline) return;
+                
+                guideline.userData.isActive = true;
+                guideline.userData.activeNote = note;
+                
+                // 가이드라인을 더 밝게 만들기
+                guideline.children.forEach(child => {
+                    if (child.material && child.userData.originalOpacity) {
+                        child.material.opacity = Math.min(1.0, child.userData.originalOpacity * 1.5);
+                    }
+                });
+            }
+            
+            highlightGuideline(guidelineType, distance) {
+                const guideline = this.timingGuidelines[guidelineType];
+                if (!guideline) return;
+                
+                // 거리에 따른 강조 강도 계산 (가까울수록 강하게)
+                const intensity = Math.max(0, 1 - (distance / 3));
+                
+                // 히트 포인트 원형 인디케이터 찾기 (마지막에 추가된 원형)
+                const hitPoint = guideline.children.find(child => 
+                    child.geometry && child.geometry.type === 'CircleGeometry' && 
+                    child.userData.pulsePhase !== undefined
+                );
+                
+                if (hitPoint) {
+                    // 펄스 효과 적용
+                    hitPoint.userData.pulsePhase += 0.3;
+                    const pulse = 0.6 + (Math.sin(hitPoint.userData.pulsePhase) * 0.4 * intensity);
+                    hitPoint.material.opacity = pulse;
+                    hitPoint.scale.setScalar(1 + (intensity * 0.5));
+                    
+                    // 매우 가까울 때 (완벽한 타이밍) 특별한 효과
+                    if (distance <= 1) {
+                        hitPoint.material.opacity = 1.0;
+                        hitPoint.scale.setScalar(1.5);
+                        
+                        // 가이드라인 전체를 깜빡이게 하기
+                        guideline.children.forEach(child => {
+                            if (child !== hitPoint && child.material) {
+                                const flash = 0.8 + (Math.sin(Date.now() * 0.01) * 0.2);
+                                child.material.opacity = child.userData.originalOpacity * flash;
+                            }
+                        });
+                    }
+                }
+            }
+            
+            deactivateGuideline(noteData) {
+                let guidelineType;
+                
+                if (noteData.type === 'cooperation') {
+                    guidelineType = 'cooperation';
+                } else if (noteData.lane === 'sensor1') {
+                    guidelineType = 'sensor1';
+                } else if (noteData.lane === 'sensor2') {
+                    guidelineType = 'sensor2';
+                }
+                
+                if (guidelineType && this.timingGuidelines[guidelineType]) {
+                    const guideline = this.timingGuidelines[guidelineType];
+                    guideline.userData.isActive = false;
+                    guideline.userData.activeNote = null;
+                    
+                    // 가이드라인을 원래 밝기로 복원
+                    guideline.children.forEach(child => {
+                        if (child.material && child.userData.originalOpacity) {
+                            child.material.opacity = child.userData.originalOpacity;
+                        }
+                        if (child.scale) {
+                            child.scale.setScalar(1);
+                        }
+                    });
+                }
+            }
+            
+            updateTimingGuidelines() {
+                // 각 가이드라인의 기본 애니메이션 업데이트
+                Object.values(this.timingGuidelines).forEach(guideline => {
+                    if (!guideline) return;
+                    
+                    // 기본 펄스 효과 (활성화되지 않은 가이드라인)
+                    if (!guideline.userData.isActive) {
+                        const time = Date.now() * 0.002;
+                        const pulse = 0.7 + (Math.sin(time) * 0.3);
+                        
+                        // 메인 라인에 펄스 적용
+                        guideline.children.forEach(child => {
+                            if (child.geometry && child.geometry.type === 'PlaneGeometry') {
+                                child.material.opacity = child.userData.originalOpacity * pulse;
+                            }
+                        });
+                    }
+                    
+                    // 박자에 맞는 깜빡임 효과
+                    if (this.gameState.phase === 'playing') {
+                        const elapsedTime = (Date.now() - this.gameState.startTime) / 1000;
+                        const beatTime = elapsedTime % this.beatInterval;
+                        const beatPulse = beatTime < 0.1 ? 1.5 : 1.0;
+                        
+                        // 박자 인디케이터들에 박자 맞춤 효과
+                        guideline.children.forEach(child => {
+                            if (child.geometry && child.geometry.type === 'CircleGeometry' && 
+                                child.userData.originalOpacity === 0.4) {
+                                child.material.opacity = child.userData.originalOpacity * beatPulse;
+                            }
+                        });
+                    }
+                    
+                    // 히트 효과 페이드아웃 처리
+                    if (guideline.userData.hitEffectTime) {
+                        const timeSinceHit = Date.now() - guideline.userData.hitEffectTime;
+                        if (timeSinceHit > 500) { // 0.5초 후 효과 제거
+                            guideline.userData.hitEffectTime = null;
+                            // 원래 상태로 복원
+                            this.deactivateGuideline({ 
+                                type: guideline.userData.type === 'cooperation' ? 'cooperation' : 'normal',
+                                lane: guideline.userData.type
+                            });
+                        }
+                    }
+                });
+            }
+            
+            triggerGuidelineHitEffect(noteData) {
+                let guidelineType;
+                
+                if (noteData.type === 'cooperation') {
+                    guidelineType = 'cooperation';
+                } else if (noteData.lane === 'sensor1') {
+                    guidelineType = 'sensor1';
+                } else if (noteData.lane === 'sensor2') {
+                    guidelineType = 'sensor2';
+                }
+                
+                if (guidelineType && this.timingGuidelines[guidelineType]) {
+                    const guideline = this.timingGuidelines[guidelineType];
+                    guideline.userData.hitEffectTime = Date.now();
+                    
+                    // 강렬한 히트 효과
+                    guideline.children.forEach(child => {
+                        if (child.material) {
+                            // 밝은 플래시 효과
+                            child.material.opacity = 1.0;
+                            
+                            // 히트 포인트 확대 효과
+                            if (child.geometry && child.geometry.type === 'CircleGeometry' && 
+                                child.userData.pulsePhase !== undefined) {
+                                child.scale.setScalar(2.0);
+                                
+                                // 링 확산 효과를 위한 임시 링 생성
+                                this.createGuidelineRingEffect(child.position, guideline.userData.color);
+                            }
+                        }
+                    });
+                    
+                    console.log(`🎯 가이드라인 히트 효과: ${guidelineType}`);
+                }
+            }
+            
+            createGuidelineRingEffect(position, color) {
+                // 확산되는 링 효과 생성
+                const ringGeometry = new THREE.RingGeometry(0.5, 0.7, 16);
+                const ringMaterial = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.8,
+                    side: THREE.DoubleSide
+                });
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                ring.position.copy(position);
+                ring.userData = { 
+                    startTime: Date.now(),
+                    duration: 300 // 0.3초 동안 확산
+                };
+                
+                this.scene.add(ring);
+                
+                // 애니메이션 함수
+                const animateRing = () => {
+                    const elapsed = Date.now() - ring.userData.startTime;
+                    const progress = elapsed / ring.userData.duration;
+                    
+                    if (progress >= 1) {
+                        this.scene.remove(ring);
+                        return;
+                    }
+                    
+                    // 크기 확대 및 페이드아웃
+                    const scale = 1 + (progress * 3); // 4배까지 확대
+                    ring.scale.setScalar(scale);
+                    ring.material.opacity = 0.8 * (1 - progress);
+                    
+                    requestAnimationFrame(animateRing);
+                };
+                
+                animateRing();
+            }
+            
             processHit(note, type, isCooperation) {
                 // 점수 계산
                 let score = 100;
@@ -1004,6 +1333,9 @@
                 
                 // 이펙트 생성
                 this.createHitEffect(note.position, isCooperation);
+                
+                // ✅ 가이드라인 히트 효과
+                this.triggerGuidelineHitEffect(note.userData);
                 
                 // 노트 제거
                 this.scene.remove(note);
@@ -1148,12 +1480,18 @@
                     note.position.z += delta;
                     note.rotation.y += 0.02;  // 회전 효과
                     
+                    // ✅ 가이드라인과 노트 매칭 체크
+                    this.updateGuidelineForNote(note);
+                    
                     // 놓친 노트 처리
                     if (note.position.z > 6) {
                         this.scene.remove(note);
                         this.notes.splice(i, 1);
                         this.gameState.combo = 0;
                         this.updateCooperation(false);
+                        
+                        // 놓친 노트에 해당하는 가이드라인 비활성화
+                        this.deactivateGuideline(note.userData);
                     }
                 }
                 
@@ -1166,6 +1504,9 @@
                 
                 // 파티클 효과 업데이트
                 this.updateParticles();
+                
+                // ✅ 가이드라인 애니메이션 업데이트
+                this.updateTimingGuidelines();
                 
                 // 게임 종료 체크
                 this.checkGameEnd();
