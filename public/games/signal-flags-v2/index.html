@@ -838,9 +838,24 @@
             }
             
             handleDefaultReady(data) {
+                console.log('🔍 디폴트 준비 이벤트 상세:', {
+                    playerId: data.playerId,
+                    playerIdType: typeof data.playerId,
+                    currentPlayers: Array.from(this.defaultReadyPlayers),
+                    waitingForDefault: this.signalFlagsState.waitingForDefault,
+                    gameState: this.gameState
+                });
+                
+                // 디폴트 상태 대기 중이 아니면 무시
+                if (!this.signalFlagsState.waitingForDefault) {
+                    console.warn('⚠️ 디폴트 상태 대기 중이 아닌데 디폴트 준비 이벤트 수신');
+                    return;
+                }
+                
                 // 디폴트 상태 준비 완료 플레이어 추가
                 this.defaultReadyPlayers.add(data.playerId);
                 console.log(`📍 Player${data.playerId} 디폴트 상태 준비 완료 (${this.defaultReadyPlayers.size}/2)`);
+                console.log('🔍 현재 대기 플레이어 목록:', Array.from(this.defaultReadyPlayers));
                 
                 // 메시지 업데이트
                 this.elements.gameMessage.textContent = `📱 모든 플레이어가 디폴트 상태를 유지하세요 (${this.defaultReadyPlayers.size}/2)`;
@@ -848,7 +863,11 @@
                 // 정확히 두 플레이어 모두 디폴트 상태에 있으면 라운드 시작
                 if (this.defaultReadyPlayers.size === 2) {
                     console.log('🚀 모든 플레이어 디폴트 상태 준비 완료 - 라운드 시작');
+                    console.log('🔍 라운드 시작 전 최종 플레이어 목록:', Array.from(this.defaultReadyPlayers));
                     this.elements.gameMessage.textContent = '🚀 모든 플레이어 준비 완료! 곧 다음 라운드가 시작됩니다...';
+                    
+                    // 디폴트 상태 대기 해제
+                    this.signalFlagsState.waitingForDefault = false;
                     this.defaultReadyPlayers.clear();
                     
                     setTimeout(() => {
@@ -1073,16 +1092,16 @@
                 const beta = orientationData.beta || 0;
                 const gamma = orientationData.gamma || 0;
                 
-                console.log('🔍 디폴트 상태 감지 시도:', { beta, gamma });
+                console.log('🔍 게임에서 센서 데이터 수신:', { beta, gamma });
+                console.log('⚠️ 게임에서는 센서 데이터를 직접 처리하지 않음 - 센서 클라이언트에서 처리');
                 
-                // 디폴트 상태 확인 (±30도)
+                // 게임에서는 센서 데이터를 직접 처리하지 않음
+                // 센서 클라이언트에서 디폴트 상태를 감지하고 서버를 통해 알림을 보냄
+                // 이 메서드는 디버깅 목적으로만 사용
+                
+                // 디폴트 상태 확인 (±30도) - 디버깅 목적
                 const isInDefaultState = Math.abs(beta) <= 30 && Math.abs(gamma) <= 30;
-                
-                if (isInDefaultState) {
-                    console.log('✅ 디폴트 상태 감지! 라운드 시작...');
-                    this.signalFlagsState.waitingForDefault = false;
-                    this.startNextRound();
-                }
+                console.log('🔍 디폴트 상태 여부 (디버깅용):', isInDefaultState);
             }
             
             handlePlayerResponse(data) {
@@ -1126,14 +1145,29 @@
             }
             
             handleDefaultLost(data) {
+                console.log('🔍 디폴트 벗어남 이벤트 상세:', {
+                    playerId: data.playerId,
+                    playerIdType: typeof data.playerId,
+                    currentPlayers: Array.from(this.defaultReadyPlayers),
+                    waitingForDefault: this.signalFlagsState.waitingForDefault,
+                    gameState: this.gameState
+                });
+                
+                // 디폴트 상태 대기 중이 아니면 무시
+                if (!this.signalFlagsState.waitingForDefault) {
+                    console.warn('⚠️ 디폴트 상태 대기 중이 아닌데 디폴트 벗어남 이벤트 수신');
+                    return;
+                }
+                
                 // 디폴트 상태에서 벗어난 플레이어 제거
+                const wasInSet = this.defaultReadyPlayers.has(data.playerId);
                 this.defaultReadyPlayers.delete(data.playerId);
                 console.log(`⚠️ Player${data.playerId} 디폴트 상태 벗어남 - 대기 플레이어에서 제거 (${this.defaultReadyPlayers.size}/2)`);
+                console.log('🔍 벗어남 후 플레이어 목록:', Array.from(this.defaultReadyPlayers));
+                console.log('🔍 플레이어가 목록에 있었는지:', wasInSet);
                 
                 // 메시지 업데이트
-                if (this.signalFlagsState.waitingForDefault) {
-                    this.elements.gameMessage.textContent = `📱 모든 플레이어가 디폴트 상태를 유지해야 합니다 (${this.defaultReadyPlayers.size}/2)`;
-                }
+                this.elements.gameMessage.textContent = `📱 모든 플레이어가 디폴트 상태를 유지해야 합니다 (${this.defaultReadyPlayers.size}/2)`;
             }
             
             waitForDefaultStateAfterResponse() {
