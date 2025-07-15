@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚩 Signal Flags v3 - Integrated Sensor Game</title>
+    <style>
+        :root {
+            --primary: #dc2626;
+            --secondary: #7c2d12;
+            --success: #16a34a;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --background: #0f0f0f;
+            --surface: #1a1a1a;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --accent: #f59e0b;
+            --male-color: #3b82f6;
+            --female-color: #ec4899;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, var(--background), #020617);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 헤더 */
+        .game-header {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .session-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 0.6rem;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* 센서 상태 표시 */
+        .sensor-display {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            background: rgba(26, 26, 26, 0.9);
+            backdrop-filter: blur(15px);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 15px;
+            min-width: 200px;
+            z-index: 50;
+        }
+
+        .sensor-values {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .sensor-state {
+            text-align: center;
+            padding: 8px;
+            border-radius: 5px;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+
+        .sensor-state.default {
+            background: var(--success);
+            color: white;
+        }
+
+        .sensor-state.action {
+            background: var(--warning);
+            color: white;
+        }
+
+        .sensor-state.invalid {
+            background: var(--error);
+            color: white;
+        }
+
+        /* 게임 메인 영역 */
+        .game-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            z-index: 10;
+        }
+
+        /* 게임 상태 표시 */
+        .game-status {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .round-info {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            color: var(--accent);
+        }
+
+        .game-message {
+            font-size: 1.2rem;
+            color: var(--text-secondary);
+            margin-bottom: 1rem;
+        }
+
+        /* 플레이어 정보 */
+        .player-info {
+            background: var(--surface);
+            border: 2px solid var(--primary);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            min-width: 300px;
+        }
+
+        .player-role {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .player-score {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        /* 명령 표시 영역 */
+        .command-display {
+            background: var(--surface);
+            border: 3px solid var(--primary);
+            border-radius: 2rem;
+            padding: 3rem 2rem;
+            margin: 2rem 0;
+            text-align: center;
+            min-width: 400px;
+            position: relative;
+            display: none;
+        }
+
+        .command-display.visible {
+            display: block;
+        }
+
+        .command-display.male {
+            border-color: var(--male-color);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .command-display.female {
+            border-color: var(--female-color);
+            background: rgba(236, 72, 153, 0.1);
+        }
+
+        .commander-icon {
+            font-size: 5rem;
+            margin-bottom: 1rem;
+        }
+
+        .command-text {
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .command-text.male {
+            color: var(--male-color);
+        }
+
+        .command-text.female {
+            color: var(--female-color);
+        }
+
+        .action-hint {
+            font-size: 1.2rem;
+            margin-top: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* 타이머 */
+        .timer-container {
+            position: absolute;
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .timer-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--error), var(--warning), var(--success));
+            width: 100%;
+            transition: width 0.1s linear;
+        }
+
+        /* 게임 컨트롤 */
+        .game-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .control-btn {
+            padding: 1rem 2rem;
+            border: none;
+            border-radius: 0.8rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .control-btn.primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .control-btn.home {
+            background: var(--warning);
+            color: white;
+        }
+
+        .control-btn.primary:hover,
+        .control-btn.home:hover {
+            transform: translateY(-2px);
+            opacity: 0.9;
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .sensor-display {
+                position: static;
+                margin: 10px;
+                min-width: auto;
+            }
+            
+            .command-display {
+                min-width: 300px;
+                padding: 2rem 1rem;
+            }
+            
+            .commander-icon {
+                font-size: 4rem;
+            }
+            
+            .command-text {
+                font-size: 2rem;
+            }
+        }
+
+        /* 숨김 */
+        .hidden {
+            display: none !important;
+        }
+
+        /* 대기 화면 */
+        .waiting-screen {
+            text-align: center;
+        }
+
+        .connection-code {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin: 1rem 0;
+            letter-spacing: 0.2em;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 헤더 -->
+        <div class="game-header">
+            <div class="session-title">🚩 Signal Flags v3</div>
+        </div>
+
+        <!-- 센서 상태 표시 -->
+        <div class="sensor-display" id="sensorDisplay">
+            <div class="sensor-values" id="sensorValues">
+                Beta: 0.0°<br>
+                Gamma: 0.0°
+            </div>
+            <div class="sensor-state invalid" id="sensorState">
+                센서 대기 중
+            </div>
+        </div>
+
+        <!-- 게임 메인 영역 -->
+        <div class="game-main">
+            <!-- 대기 화면 -->
+            <div class="waiting-screen" id="waitingScreen">
+                <div class="game-status">
+                    <div class="round-info">🎮 Signal Flags v3</div>
+                    <div class="game-message">모바일 디바이스에서 접속해주세요</div>
+                </div>
+                
+                <div class="player-info">
+                    <div class="player-role">세션 코드</div>
+                    <div class="connection-code" id="sessionCode">----</div>
+                </div>
+
+                <div class="game-controls">
+                    <button class="control-btn primary" id="requestPermissionBtn">📱 센서 권한 요청</button>
+                    <a href="/" class="control-btn home">🏠 허브로</a>
+                </div>
+            </div>
+
+            <!-- 게임 화면 -->
+            <div class="game-screen hidden" id="gameScreen">
+                <!-- 게임 상태 -->
+                <div class="game-status">
+                    <div class="round-info" id="roundInfo">게임 준비 중...</div>
+                    <div class="game-message" id="gameMessage">디폴트 상태를 유지하세요</div>
+                </div>
+
+                <!-- 플레이어 정보 -->
+                <div class="player-info">
+                    <div class="player-role" id="playerRole">플레이어</div>
+                    <div class="player-score" id="playerScore">0</div>
+                </div>
+
+                <!-- 명령 표시 영역 -->
+                <div class="command-display" id="commandDisplay">
+                    <div class="commander-icon" id="commanderIcon">🚩</div>
+                    <div class="command-text" id="commandText">준비하세요</div>
+                    <div class="action-hint" id="actionHint">지시에 따라 움직이세요</div>
+                    <div class="timer-container">
+                        <div class="timer-fill" id="timerFill"></div>
+                    </div>
+                </div>
+
+                <!-- 게임 컨트롤 -->
+                <div class="game-controls">
+                    <button class="control-btn primary" id="startBtn" disabled>🚩 게임 시작</button>
+                    <button class="control-btn primary" id="resetBtn">🔄 다시 시작</button>
+                    <a href="/" class="control-btn home">🏠 허브로</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/SessionSDK.js"></script>
+
+    <script>
+        class SignalFlagsV3 {
+            constructor() {
+                console.log('🚩 Signal Flags v3 초기화 시작');
+                
+                // 게임 상태
+                this.gameState = 'waiting'; // waiting, ready, playing, finished
+                this.playerRole = null; // 'commander' 또는 'follower'
+                this.isHost = false;
+                
+                // 센서 상태
+                this.sensorData = {
+                    beta: 0,
+                    gamma: 0,
+                    alpha: 0
+                };
+                
+                this.sensorState = {
+                    isInDefaultState: false,
+                    currentAction: null,
+                    lastStateChange: 0
+                };
+                
+                // 게임 데이터
+                this.gameData = {
+                    currentRound: 0,
+                    maxRounds: 10,
+                    score: 0,
+                    currentCommand: null,
+                    currentGender: null,
+                    roundStartTime: 0,
+                    responseTime: 3000,
+                    commands: ['up', 'down', 'left', 'right'],
+                    genders: ['male', 'female']
+                };
+                
+                // 센서 임계값
+                this.thresholds = {
+                    defaultState: { beta: 15, gamma: 15 },
+                    actions: {
+                        up: { beta: 30 },
+                        down: { beta: -30 },
+                        left: { gamma: -30 },
+                        right: { gamma: 30 }
+                    },
+                    deadZone: { beta: 5, gamma: 5 }
+                };
+                
+                // 타이머
+                this.gameTimer = null;
+                this.sensorTimer = null;
+                
+                // DOM 요소
+                this.elements = {
+                    waitingScreen: document.getElementById('waitingScreen'),
+                    gameScreen: document.getElementById('gameScreen'),
+                    sessionCode: document.getElementById('sessionCode'),
+                    sensorDisplay: document.getElementById('sensorDisplay'),
+                    sensorValues: document.getElementById('sensorValues'),
+                    sensorState: document.getElementById('sensorState'),
+                    roundInfo: document.getElementById('roundInfo'),
+                    gameMessage: document.getElementById('gameMessage'),
+                    playerRole: document.getElementById('playerRole'),
+                    playerScore: document.getElementById('playerScore'),
+                    commandDisplay: document.getElementById('commandDisplay'),
+                    commanderIcon: document.getElementById('commanderIcon'),
+                    commandText: document.getElementById('commandText'),
+                    actionHint: document.getElementById('actionHint'),
+                    timerFill: document.getElementById('timerFill'),
+                    requestPermissionBtn: document.getElementById('requestPermissionBtn'),
+                    startBtn: document.getElementById('startBtn'),
+                    resetBtn: document.getElementById('resetBtn')
+                };
+                
+                this.initializeGame();
+            }
+            
+            initializeGame() {
+                console.log('🎮 게임 초기화');
+                
+                // 이벤트 리스너 설정
+                this.setupEventListeners();
+                
+                // 세션 코드 생성 (단순화)
+                this.generateSessionCode();
+                
+                // SDK 초기화 (향후 멀티플레이어용)
+                this.initializeSDK();
+                
+                console.log('✅ Signal Flags v3 초기화 완료');
+            }
+            
+            setupEventListeners() {
+                // 센서 권한 요청
+                this.elements.requestPermissionBtn.addEventListener('click', () => {
+                    this.requestSensorPermission();
+                });
+                
+                // 게임 시작
+                this.elements.startBtn.addEventListener('click', () => {
+                    this.startGame();
+                });
+                
+                // 게임 리셋
+                this.elements.resetBtn.addEventListener('click', () => {
+                    this.resetGame();
+                });
+            }
+            
+            generateSessionCode() {
+                // 4자리 랜덤 코드 생성
+                const code = Math.floor(1000 + Math.random() * 9000).toString();
+                this.elements.sessionCode.textContent = code;
+                console.log('📱 세션 코드 생성:', code);
+            }
+            
+            initializeSDK() {
+                // 향후 멀티플레이어 지원을 위한 SDK 초기화
+                try {
+                    this.sdk = new SessionSDK({
+                        gameId: 'signal-flags-v3',
+                        gameType: 'solo' // v3에서는 우선 솔로 모드로 구현
+                    });
+                } catch (error) {
+                    console.warn('SDK 초기화 실패, 오프라인 모드로 진행:', error);
+                }
+            }
+            
+            async requestSensorPermission() {
+                console.log('📱 센서 권한 요청 시작');
+                this.elements.requestPermissionBtn.textContent = '요청 중...';
+                this.elements.requestPermissionBtn.disabled = true;
+                
+                try {
+                    // iOS 13+ 권한 요청
+                    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                        const permission = await DeviceOrientationEvent.requestPermission();
+                        
+                        if (permission === 'granted') {
+                            console.log('✅ 센서 권한 승인됨');
+                            this.startSensorCollection();
+                        } else {
+                            throw new Error('센서 권한이 거부되었습니다');
+                        }
+                    } else {
+                        // 다른 브라우저/기기
+                        console.log('📱 센서 권한 요청 불필요, 직접 시작');
+                        this.startSensorCollection();
+                    }
+                } catch (error) {
+                    console.error('❌ 센서 권한 요청 실패:', error);
+                    alert('센서 권한이 필요합니다. 브라우저 설정을 확인해주세요.');
+                    this.elements.requestPermissionBtn.textContent = '📱 센서 권한 요청';
+                    this.elements.requestPermissionBtn.disabled = false;
+                }
+            }
+            
+            startSensorCollection() {
+                console.log('🔍 센서 수집 시작');
+                
+                if (!window.DeviceOrientationEvent) {
+                    alert('이 디바이스는 센서를 지원하지 않습니다.');
+                    return;
+                }
+                
+                // 센서 이벤트 리스너 등록
+                window.addEventListener('deviceorientation', (event) => {
+                    this.handleSensorData(event);
+                });
+                
+                // 화면 전환
+                this.elements.waitingScreen.classList.add('hidden');
+                this.elements.gameScreen.classList.remove('hidden');
+                
+                // 게임 상태 변경
+                this.setGameState('ready');
+                
+                console.log('✅ 센서 수집 시작 완료');
+            }
+            
+            handleSensorData(event) {
+                // 센서 데이터 업데이트
+                this.sensorData.beta = event.beta || 0;
+                this.sensorData.gamma = event.gamma || 0;
+                this.sensorData.alpha = event.alpha || 0;
+                
+                // UI 업데이트
+                this.updateSensorDisplay();
+                
+                // 센서 상태 분석
+                this.analyzeSensorState();
+                
+                // 게임 중인 경우 응답 처리
+                if (this.gameState === 'playing') {
+                    this.processGameResponse();
+                }
+            }
+            
+            updateSensorDisplay() {
+                this.elements.sensorValues.innerHTML = 
+                    `Beta: ${this.sensorData.beta.toFixed(1)}°<br>` +
+                    `Gamma: ${this.sensorData.gamma.toFixed(1)}°`;
+            }
+            
+            analyzeSensorState() {
+                const { beta, gamma } = this.sensorData;
+                const { defaultState, actions, deadZone } = this.thresholds;
+                
+                // 데드존 체크 (센서 노이즈 방지)
+                if (Math.abs(beta) < deadZone.beta && Math.abs(gamma) < deadZone.gamma) {
+                    // 데드존 내부 - 이전 상태 유지
+                    return;
+                }
+                
+                // 디폴트 상태 체크
+                const isInDefault = (
+                    Math.abs(beta) <= defaultState.beta && 
+                    Math.abs(gamma) <= defaultState.gamma
+                );
+                
+                if (isInDefault) {
+                    this.setSensorState('default', '디폴트 상태');
+                    return;
+                }
+                
+                // 동작 감지
+                let detectedAction = null;
+                
+                // 우선순위: Up/Down > Left/Right
+                if (beta >= actions.up.beta) {
+                    detectedAction = 'up';
+                } else if (beta <= actions.down.beta) {
+                    detectedAction = 'down';
+                } else if (gamma <= actions.left.gamma) {
+                    detectedAction = 'left';
+                } else if (gamma >= actions.right.gamma) {
+                    detectedAction = 'right';
+                }
+                
+                if (detectedAction) {
+                    this.setSensorState('action', `동작: ${this.getActionText(detectedAction)}`);
+                    this.sensorState.currentAction = detectedAction;
+                } else {
+                    this.setSensorState('invalid', '올바르지 않은 자세');
+                    this.sensorState.currentAction = null;
+                }
+            }
+            
+            setSensorState(type, text) {
+                const element = this.elements.sensorState;
+                const isStateChange = !element.classList.contains(type);
+                
+                if (isStateChange) {
+                    element.className = `sensor-state ${type}`;
+                    element.textContent = text;
+                    this.sensorState.lastStateChange = Date.now();
+                    
+                    // 디폴트 상태 변화 감지
+                    const wasInDefault = this.sensorState.isInDefaultState;
+                    const isInDefault = (type === 'default');
+                    
+                    if (isInDefault !== wasInDefault) {
+                        this.sensorState.isInDefaultState = isInDefault;
+                        this.onDefaultStateChange(isInDefault);
+                    }
+                }
+            }
+            
+            onDefaultStateChange(isInDefault) {
+                if (this.gameState === 'ready' && isInDefault) {
+                    // 게임 시작 가능
+                    this.elements.startBtn.disabled = false;
+                    this.elements.gameMessage.textContent = '디폴트 상태 감지! 게임을 시작하세요';
+                } else if (this.gameState === 'ready' && !isInDefault) {
+                    // 게임 시작 불가
+                    this.elements.startBtn.disabled = true;
+                    this.elements.gameMessage.textContent = '디폴트 상태를 유지하세요';
+                }
+            }
+            
+            setGameState(state) {
+                console.log(`🎮 게임 상태 변경: ${this.gameState} → ${state}`);
+                this.gameState = state;
+                
+                switch (state) {
+                    case 'ready':
+                        this.elements.roundInfo.textContent = '게임 준비';
+                        this.elements.gameMessage.textContent = '디폴트 상태를 유지하고 게임을 시작하세요';
+                        this.elements.playerRole.textContent = '플레이어';
+                        this.elements.startBtn.disabled = !this.sensorState.isInDefaultState;
+                        break;
+                        
+                    case 'playing':
+                        this.elements.startBtn.disabled = true;
+                        break;
+                        
+                    case 'finished':
+                        this.elements.startBtn.disabled = false;
+                        this.elements.startBtn.textContent = '🚩 다시 시작';
+                        break;
+                }
+            }
+            
+            startGame() {
+                if (!this.sensorState.isInDefaultState) {
+                    alert('디폴트 상태를 유지한 후 게임을 시작하세요!');
+                    return;
+                }
+                
+                console.log('🚩 게임 시작!');
+                this.setGameState('playing');
+                
+                // 게임 데이터 초기화
+                this.gameData.currentRound = 0;
+                this.gameData.score = 0;
+                this.updateScoreDisplay();
+                
+                // 첫 라운드 시작
+                this.startNextRound();
+            }
+            
+            startNextRound() {
+                this.gameData.currentRound++;
+                
+                if (this.gameData.currentRound > this.gameData.maxRounds) {
+                    this.endGame();
+                    return;
+                }
+                
+                // 랜덤 명령과 성별 선택
+                this.gameData.currentCommand = this.gameData.commands[
+                    Math.floor(Math.random() * this.gameData.commands.length)
+                ];
+                this.gameData.currentGender = this.gameData.genders[
+                    Math.floor(Math.random() * this.gameData.genders.length)
+                ];
+                
+                console.log(`🚩 라운드 ${this.gameData.currentRound}: ${this.gameData.currentGender} says "${this.gameData.currentCommand}"`);
+                
+                // UI 업데이트
+                this.updateRoundDisplay();
+                
+                // 음성 재생
+                this.playVoiceCommand();
+                
+                // 응답 타이머 시작
+                this.startResponseTimer();
+                
+                // 라운드 시작 시간 기록
+                this.gameData.roundStartTime = Date.now();
+            }
+            
+            updateRoundDisplay() {
+                this.elements.roundInfo.textContent = `라운드 ${this.gameData.currentRound} / ${this.gameData.maxRounds}`;
+                
+                // 성별 아이콘
+                this.elements.commanderIcon.textContent = this.gameData.currentGender === 'male' ? '👨' : '👩';
+                
+                // 명령 텍스트
+                this.elements.commandText.textContent = this.gameData.currentCommand.toUpperCase();
+                this.elements.commandText.className = `command-text ${this.gameData.currentGender}`;
+                
+                // 행동 힌트
+                const expectedAction = this.getExpectedAction();
+                this.elements.actionHint.textContent = `→ ${this.getActionText(expectedAction)}로 움직이세요`;
+                
+                // 명령 표시
+                this.elements.commandDisplay.className = `command-display visible ${this.gameData.currentGender}`;
+                
+                // 게임 메시지
+                const genderText = this.gameData.currentGender === 'male' ? '👨 남성' : '👩 여성';
+                this.elements.gameMessage.textContent = `${genderText}의 명령을 듣고 올바르게 움직이세요!`;
+            }
+            
+            getExpectedAction() {
+                const command = this.gameData.currentCommand;
+                const gender = this.gameData.currentGender;
+                
+                if (gender === 'female') {
+                    // 여성의 명령은 그대로
+                    return command;
+                } else {
+                    // 남성의 명령은 반대로
+                    const oppositeMap = {
+                        'up': 'down',
+                        'down': 'up',
+                        'left': 'right',
+                        'right': 'left'
+                    };
+                    return oppositeMap[command];
+                }
+            }
+            
+            getActionText(action) {
+                const actionMap = {
+                    'up': '위',
+                    'down': '아래',
+                    'left': '왼쪽',
+                    'right': '오른쪽'
+                };
+                return actionMap[action] || action;
+            }
+            
+            playVoiceCommand() {
+                // TTS로 명령 재생
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(this.getActionText(this.gameData.currentCommand));
+                    utterance.lang = 'ko-KR';
+                    utterance.pitch = this.gameData.currentGender === 'male' ? 0.6 : 1.4;
+                    utterance.rate = 1.0;
+                    utterance.volume = 1.0;
+                    
+                    speechSynthesis.speak(utterance);
+                }
+            }
+            
+            startResponseTimer() {
+                let timeLeft = this.gameData.responseTime;
+                this.elements.timerFill.style.width = '100%';
+                
+                this.gameTimer = setInterval(() => {
+                    timeLeft -= 100;
+                    const percentage = (timeLeft / this.gameData.responseTime) * 100;
+                    this.elements.timerFill.style.width = `${Math.max(0, percentage)}%`;
+                    
+                    if (timeLeft <= 0) {
+                        this.endRound('timeout');
+                    }
+                }, 100);
+            }
+            
+            processGameResponse() {
+                const currentAction = this.sensorState.currentAction;
+                
+                if (currentAction) {
+                    const expectedAction = this.getExpectedAction();
+                    const isCorrect = (currentAction === expectedAction);
+                    
+                    console.log(`📊 응답: ${currentAction}, 예상: ${expectedAction}, 정답: ${isCorrect}`);
+                    
+                    if (isCorrect) {
+                        this.endRound('correct');
+                    } else {
+                        this.endRound('incorrect');
+                    }
+                }
+            }
+            
+            endRound(result) {
+                if (this.gameTimer) {
+                    clearInterval(this.gameTimer);
+                    this.gameTimer = null;
+                }
+                
+                // 점수 업데이트
+                if (result === 'correct') {
+                    this.gameData.score += 1;
+                    this.elements.gameMessage.textContent = '✅ 정답! (+1점)';
+                } else if (result === 'incorrect') {
+                    this.gameData.score = Math.max(0, this.gameData.score - 1);
+                    this.elements.gameMessage.textContent = '❌ 오답! (-1점)';
+                } else if (result === 'timeout') {
+                    this.gameData.score = Math.max(0, this.gameData.score - 1);
+                    this.elements.gameMessage.textContent = '⏰ 시간 초과! (-1점)';
+                }
+                
+                this.updateScoreDisplay();
+                
+                // 명령 표시 숨김
+                this.elements.commandDisplay.classList.remove('visible');
+                
+                // 다음 라운드 또는 게임 종료
+                setTimeout(() => {
+                    this.startNextRound();
+                }, 2000);
+            }
+            
+            updateScoreDisplay() {
+                this.elements.playerScore.textContent = this.gameData.score;
+            }
+            
+            endGame() {
+                console.log('🏆 게임 종료! 최종 점수:', this.gameData.score);
+                this.setGameState('finished');
+                
+                this.elements.roundInfo.textContent = '게임 종료!';
+                this.elements.gameMessage.textContent = `최종 점수: ${this.gameData.score}/${this.gameData.maxRounds}점`;
+                
+                // 결과 메시지
+                let resultMessage = '';
+                const percentage = (this.gameData.score / this.gameData.maxRounds) * 100;
+                
+                if (percentage >= 80) {
+                    resultMessage = '🏆 훌륭합니다!';
+                } else if (percentage >= 60) {
+                    resultMessage = '👍 잘했습니다!';
+                } else if (percentage >= 40) {
+                    resultMessage = '💪 연습이 더 필요해요';
+                } else {
+                    resultMessage = '🎯 다시 도전해보세요!';
+                }
+                
+                setTimeout(() => {
+                    alert(`${resultMessage}\n최종 점수: ${this.gameData.score}/${this.gameData.maxRounds}점`);
+                }, 1000);
+            }
+            
+            resetGame() {
+                console.log('🔄 게임 리셋');
+                
+                // 타이머 정리
+                if (this.gameTimer) {
+                    clearInterval(this.gameTimer);
+                    this.gameTimer = null;
+                }
+                
+                // 게임 데이터 초기화
+                this.gameData.currentRound = 0;
+                this.gameData.score = 0;
+                this.updateScoreDisplay();
+                
+                // UI 초기화
+                this.elements.commandDisplay.classList.remove('visible');
+                this.elements.timerFill.style.width = '100%';
+                this.elements.startBtn.textContent = '🚩 게임 시작';
+                
+                // 게임 상태 리셋
+                this.setGameState('ready');
+            }
+        }
+        
+        // 게임 시작
+        document.addEventListener('DOMContentLoaded', () => {
+            new SignalFlagsV3();
+        });
+    </script>
+</body>
+</html>
