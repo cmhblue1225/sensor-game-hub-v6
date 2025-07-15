@@ -56,14 +56,14 @@
     },
     "sensorThresholds": {
       "defaultState": {
-        "beta": "±10도 이내",
-        "gamma": "±10도 이내"
+        "beta": "±15도 이내",
+        "gamma": "±15도 이내"
       },
       "actionDetection": {
-        "up": "beta > 50",
-        "down": "beta < -50", 
-        "left": "gamma < -50",
-        "right": "gamma > 50"
+        "up": "beta > 30",
+        "down": "beta < -30", 
+        "left": "gamma > 30",
+        "right": "gamma > 45"
       }
     }
   },

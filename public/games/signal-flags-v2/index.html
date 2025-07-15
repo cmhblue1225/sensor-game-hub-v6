@@ -520,12 +520,12 @@
                     commands: ['up', 'down', 'left', 'right'],
                     genders: ['male', 'female'],
                     sensorThresholds: {
-                        defaultState: { beta: 30, gamma: 30 }, // ±30도로 완화
+                        defaultState: { beta: 15, gamma: 15 }, // 실제 측정: beta=0.7°, gamma=0.6°이므로 ±15도로 설정
                         actions: {
-                            up: { beta: 40 },      // beta > 40
-                            down: { beta: -40 },   // beta < -40  
-                            left: { gamma: -40 },  // gamma < -40
-                            right: { gamma: 40 }   // gamma > 40
+                            up: { beta: 30 },      // 위쪽 동작 감지 (실제론 더 큰 값이지만 빠른 반응을 위해)
+                            down: { beta: -30 },   // 아래쪽 동작 감지 (실제 측정: -78.7°)
+                            left: { gamma: 30 },   // 왼쪽 동작 감지 (실제 측정: 33.9°)  
+                            right: { gamma: 45 }   // 오른쪽 동작 감지 (실제 측정: 73.8°)
                         }
                     }
                 };

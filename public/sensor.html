@@ -565,12 +565,12 @@
                     isInDefaultState: false,
                     hasResponded: false,
                     sensorThresholds: {
-                        defaultState: { beta: 30, gamma: 30 }, // ±30도로 완화
+                        defaultState: { beta: 15, gamma: 15 }, // 실제 측정: beta=0.7°, gamma=0.6°이므로 ±15도로 설정
                         actions: {
-                            up: { beta: 40 },      // beta > 40
-                            down: { beta: -40 },   // beta < -40
-                            left: { gamma: -40 },  // gamma < -40
-                            right: { gamma: 40 }   // gamma > 40
+                            up: { beta: 30 },      // 위쪽 동작 감지 (실제론 더 큰 값이지만 빠른 반응을 위해)
+                            down: { beta: -30 },   // 아래쪽 동작 감지 (실제 측정: -78.7°)
+                            left: { gamma: 30 },   // 왼쪽 동작 감지 (실제 측정: 33.9°)  
+                            right: { gamma: 45 }   // 오른쪽 동작 감지 (실제 측정: 73.8°)
                         }
                     }
                 };
@@ -704,8 +704,12 @@
                     
                     // Signal Flags v2 게임인 경우 이벤트 리스너 설정
                     if (this.state.gameId === 'signal-flags-v2') {
-                        console.log('🚩 Signal Flags v2 게임 감지 - 이벤트 리스너 설정');
+                        console.log('🚩 Signal Flags v2 게임 감지 - 이벤트 리스너 설정 및 초기 상태 설정');
                         this.setupSignalFlagsEventsImmediate();
+                        
+                        // Signal Flags v2 게임의 기본 상태는 항상 디폴트 대기
+                        this.signalFlagsState.waitingForDefault = true;
+                        console.log('🚩 [센서] Signal Flags v2 연결 시 waitingForDefault를 true로 초기화');
                     }
                 });
                 
@@ -975,10 +979,17 @@
             
             setupSignalFlagsEventsImmediate() {
                 console.log('🚩 [센서] setupSignalFlagsEventsImmediate 시작');
+                console.log('🚩 [센서] SDK 소켓 상태 확인:', !!this.sdk.socket);
+                
+                if (!this.sdk.socket) {
+                    console.error('🚩 [센서] 소켓이 없어서 이벤트 리스너 등록 불가!');
+                    return;
+                }
                 
                 // 즉시 이벤트 리스너 등록
                 this.sdk.socket.on('signal-flags-v2-wait-default', (data) => {
                     console.log('📍 [센서] 디폴트 상태 대기 시작!', data);
+                    console.log('📍 [센서] waitingForDefault를 true로 설정');
                     this.signalFlagsState.waitingForDefault = true;
                     this.signalFlagsState.isInDefaultState = false;
                     this.showMessage('📱 핸드폰을 앞으로 쭉 뻗어 수평으로 유지하세요!', 'warning');
@@ -1086,12 +1097,16 @@
                 const beta = data.orientation.beta || 0;   // 앞뒤 기울기
                 const gamma = data.orientation.gamma || 0; // 좌우 기울기
                 
+                // 상태 디버깅
+                console.log(`🔍 [센서] 상태 체크: waitingForDefault=${this.signalFlagsState.waitingForDefault}, isPlaying=${this.signalFlagsState.isPlaying}, isInDefaultState=${this.signalFlagsState.isInDefaultState}`);
+                
                 // 디폴트 상태 대기 중인 경우에만 처리
                 if (this.signalFlagsState.waitingForDefault) {
                     console.log(`📊 [센서] 디폴트 체크: beta=${beta.toFixed(1)}°, gamma=${gamma.toFixed(1)}°`);
                     
-                    // 디폴트 상태 확인 (±30도)
-                    const isInDefaultState = Math.abs(beta) <= 30 && Math.abs(gamma) <= 30;
+                    // 디폴트 상태 확인 (실제 측정값에 맞게 ±15도)
+                    const isInDefaultState = Math.abs(beta) <= 15 && Math.abs(gamma) <= 15;
+                    console.log(`🔍 [센서] 디폴트 상태 판정: ${isInDefaultState} (beta≤15: ${Math.abs(beta) <= 15}, gamma≤15: ${Math.abs(gamma) <= 15})`);
                     
                     if (isInDefaultState && !this.signalFlagsState.isInDefaultState) {
                         // 디폴트 상태 진입
@@ -1099,10 +1114,12 @@
                         console.log('✅ [센서] 디폴트 상태 감지됨!');
                         
                         // 서버에 알림
-                        this.sdk.socket.emit('signal-flags-v2-default-ready', {
+                        const messageData = {
                             sessionCode: this.state.currentSession.sessionCode || this.state.currentSession.sessionId?.split('_')[1],
                             playerId: this.state.playerId
-                        });
+                        };
+                        console.log('📤 [센서] 디폴트 상태 준비 알림 전송:', messageData);
+                        this.sdk.socket.emit('signal-flags-v2-default-ready', messageData);
                         
                         this.showMessage('✅ 디폴트 상태 감지!', 'success');
                     } else if (!isInDefaultState && this.signalFlagsState.isInDefaultState) {
@@ -1145,11 +1162,25 @@
             detectAction(beta, gamma) {
                 const actions = this.signalFlagsState.sensorThresholds.actions;
                 
+                console.log(`🎯 [센서] 동작 감지 시도: beta=${beta.toFixed(1)}°, gamma=${gamma.toFixed(1)}°`);
+                
                 // 우선순위: 위/아래 > 좌/우
-                if (beta > actions.up.beta) return 'up';
-                if (beta < actions.down.beta) return 'down';
-                if (gamma < actions.left.gamma) return 'left';
-                if (gamma > actions.right.gamma) return 'right';
+                if (beta > actions.up.beta) {
+                    console.log('🔺 [센서] UP 동작 감지됨');
+                    return 'up';
+                }
+                if (beta < actions.down.beta) {
+                    console.log('🔻 [센서] DOWN 동작 감지됨');
+                    return 'down';
+                }
+                if (gamma > actions.left.gamma && gamma < actions.right.gamma) {
+                    console.log('◀️ [센서] LEFT 동작 감지됨');
+                    return 'left';
+                }
+                if (gamma >= actions.right.gamma) {
+                    console.log('▶️ [센서] RIGHT 동작 감지됨');
+                    return 'right';
+                }
                 
                 return null;
             }
