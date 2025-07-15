@@ -503,6 +503,15 @@
                 this.session = null;
                 this.defaultReadyPlayers = new Set(); // 디폴트 상태 준비 완료된 플레이어들
                 
+                // Signal Flags v2 전용 상태 (중요!)
+                this.signalFlagsState = {
+                    waitingForDefault: false,
+                    isPlaying: false,
+                    currentRound: 0,
+                    currentCommand: null,
+                    currentGender: null
+                };
+                
                 // 게임 설정
                 this.config = {
                     totalRounds: 10,
@@ -807,7 +816,9 @@
                 this.elements.gameMessage.textContent = '📱 핸드폰을 앞으로 쭉 뻗어 수평으로 유지하세요';
                 this.defaultReadyPlayers.clear();
                 
-                console.log('📍 디폴트 상태 대기 시작 - 센서 클라이언트에 알림 전송');
+                // Signal Flags 상태 업데이트
+                this.signalFlagsState.waitingForDefault = true;
+                console.log('📍 디폴트 상태 대기 시작 - waitingForDefault = true');
                 
                 // 센서 클라이언트에게 디폴트 상태 대기 시작 알림
                 if (this.sdk.socket) {
@@ -989,15 +1000,27 @@
             }
             
             handleSensorData(data) {
+                // 센서 데이터 구조 확인 및 수정
+                const sensorData = data.sensorData || data;
+                const orientationData = sensorData.orientation || sensorData;
+                
                 // 센서 데이터 수신 로깅
                 console.log('📡 게임에서 센서 데이터 수신:', {
                     sensorId: data.sensorId,
                     gameState: this.gameState,
-                    waitingForDefault: this.signalFlagsState?.waitingForDefault,
-                    beta: data.sensorData?.orientation?.beta?.toFixed(1),
-                    gamma: data.sensorData?.orientation?.gamma?.toFixed(1),
+                    waitingForDefault: this.signalFlagsState.waitingForDefault,
+                    beta: orientationData.beta?.toFixed(1),
+                    gamma: orientationData.gamma?.toFixed(1),
+                    rawData: data,
                     timestamp: new Date().toLocaleTimeString()
                 });
+                
+                // 디폴트 상태 대기 중에는 센서 데이터 처리
+                if (this.signalFlagsState.waitingForDefault) {
+                    console.log('📍 디폴트 상태 대기 중 - 센서 데이터 처리');
+                    this.processDefaultStateDetection(orientationData);
+                    return;
+                }
                 
                 // 게임 중이 아니면 센서 데이터 무시
                 if (this.gameState !== 'playing') {
@@ -1007,6 +1030,22 @@
                 
                 // 실제 센서 기반 게임 로직은 센서 클라이언트에서 처리됨
                 // 여기서는 UI 업데이트만 수행
+            }
+            
+            processDefaultStateDetection(orientationData) {
+                const beta = orientationData.beta || 0;
+                const gamma = orientationData.gamma || 0;
+                
+                console.log('🔍 디폴트 상태 감지 시도:', { beta, gamma });
+                
+                // 디폴트 상태 확인 (±30도)
+                const isInDefaultState = Math.abs(beta) <= 30 && Math.abs(gamma) <= 30;
+                
+                if (isInDefaultState) {
+                    console.log('✅ 디폴트 상태 감지! 라운드 시작...');
+                    this.signalFlagsState.waitingForDefault = false;
+                    this.startNextRound();
+                }
             }
             
             handlePlayerResponse(data) {
