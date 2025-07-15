@@ -415,6 +415,9 @@
                 this.initializeSensors();
                 this.setupEvents();
                 
+                // URL 파라미터에서 세션 코드 자동 감지
+                this.checkURLParams();
+                
                 console.log('✅ Signal Flags 센서 초기화 완료');
             }
             
@@ -490,6 +493,19 @@
                 
                 // Signal Flags 게임 이벤트
                 this.setupGameEvents();
+            }
+            
+            checkURLParams() {
+                // URL 파라미터에서 세션 코드 확인
+                const urlParams = new URLSearchParams(window.location.search);
+                const sessionCode = urlParams.get('session');
+                
+                if (sessionCode && sessionCode.length === 4) {
+                    console.log('🔗 URL에서 세션 코드 감지됨:', sessionCode);
+                    this.elements.sessionInput.value = sessionCode;
+                    this.elements.connectBtn.disabled = false;
+                    this.showMessage(`세션 코드 ${sessionCode}이(가) 자동으로 입력되었습니다`, 'success');
+                }
             }
             
             setupGameEvents() {
