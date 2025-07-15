@@ -566,14 +566,14 @@
                     hasResponded: false,
                     sensorThresholds: {
                         defaultState: { 
-                            beta: 15,    // 실제 측정: 8.1° → ±15도로 충분히 허용
-                            gamma: 15    // 실제 측정: 1.0° → ±15도로 충분히 허용
+                            beta: 15,    // 디폴트 상태: ±15도 이내
+                            gamma: 15    // 디폴트 상태: ±15도 이내
                         },
                         actions: {
-                            up: { beta: 60 },      // 실제 측정: 83.7° → 60도 이상
-                            down: { beta: -50 },   // 실제 측정: -69.2° → -50도 이하
-                            left: { gamma: -35 },  // 실제 측정: -64.9° → -35도 이하 (왼쪽)
-                            right: { gamma: -25 }  // 실제 측정: -42.2° → -25도 이하 (오른쪽)
+                            up: { beta: 30 },      // UP: beta ≥ 30도 (위쪽 기울기)
+                            down: { beta: -30 },   // DOWN: beta ≤ -30도 (아래쪽 기울기)
+                            left: { gamma: -30 },  // LEFT: gamma ≤ -30도 (왼쪽 기울기)
+                            right: { gamma: 30 }   // RIGHT: gamma ≥ 30도 (오른쪽 기울기)
                         }
                     }
                 };
@@ -835,8 +835,12 @@
                         this.showActivity();
                         
                         // Signal Flags v2 게임 로직 처리
+                        console.log('🔍 [센서] 게임 ID 확인:', this.state.gameId);
                         if (this.state.gameId === 'signal-flags-v2') {
+                            console.log('🚩 [센서] Signal Flags v2 게임으로 확인됨 - handleSignalFlagsSensorData 호출');
                             this.handleSignalFlagsSensorData(data);
+                        } else {
+                            console.log('⚠️ [센서] Signal Flags v2 게임이 아님 - 게임 ID:', this.state.gameId);
                         }
                     });
                     
@@ -1094,27 +1098,44 @@
             }
             
             handleSignalFlagsSensorData(data) {
+                console.log('🚩 [센서] handleSignalFlagsSensorData 호출됨');
+                
                 // Signal Flags v2 게임이 아니면 무시
-                if (this.state.gameId !== 'signal-flags-v2') return;
+                if (this.state.gameId !== 'signal-flags-v2') {
+                    console.log('⚠️ [센서] 게임 ID 불일치로 처리 중단');
+                    return;
+                }
                 
-                const beta = data.orientation.beta || 0;   // 앞뒤 기울기
-                const gamma = data.orientation.gamma || 0; // 좌우 기울기
+                const beta = data.orientation.beta || 0;   // 앞뒤 기울기 (-180 ~ 180)
+                const gamma = data.orientation.gamma || 0; // 좌우 기울기 (-90 ~ 90)
                 
-                // 상태 디버깅
-                console.log(`🔍 [센서] 상태 체크: waitingForDefault=${this.signalFlagsState.waitingForDefault}, isPlaying=${this.signalFlagsState.isPlaying}, isInDefaultState=${this.signalFlagsState.isInDefaultState}`);
+                // 상태 디버깅 강화
+                console.log(`🔍 [센서] === Signal Flags 상태 체크 ===`);
+                console.log(`🔍 [센서] waitingForDefault: ${this.signalFlagsState.waitingForDefault}`);
+                console.log(`🔍 [센서] isPlaying: ${this.signalFlagsState.isPlaying}`);
+                console.log(`🔍 [센서] isInDefaultState: ${this.signalFlagsState.isInDefaultState}`);
+                console.log(`🔍 [센서] 센서 값: beta=${beta.toFixed(1)}°, gamma=${gamma.toFixed(1)}°`);
                 
-                // 디폴트 상태 대기 중인 경우에만 처리
+                // 디폴트 상태 대기 중인 경우
                 if (this.signalFlagsState.waitingForDefault) {
-                    console.log(`📊 [센서] 디폴트 체크: beta=${beta.toFixed(1)}°, gamma=${gamma.toFixed(1)}°`);
+                    console.log(`📊 [센서] === 디폴트 상태 확인 시작 ===`);
+                    console.log(`📊 [센서] 현재 센서 값: beta=${beta.toFixed(1)}°, gamma=${gamma.toFixed(1)}°`);
                     
-                    // 디폴트 상태 확인 (실제 측정값에 맞게 ±15도)
-                    const isInDefaultState = Math.abs(beta) <= 15 && Math.abs(gamma) <= 15;
-                    console.log(`🔍 [센서] 디폴트 상태 판정: ${isInDefaultState} (beta≤15: ${Math.abs(beta) <= 15}, gamma≤15: ${Math.abs(gamma) <= 15})`);
+                    // 디폴트 상태 확인 (±15도 이내)
+                    const betaInRange = Math.abs(beta) <= 15;
+                    const gammaInRange = Math.abs(gamma) <= 15;
+                    const isInDefaultState = betaInRange && gammaInRange;
+                    
+                    console.log(`📊 [센서] 디폴트 상태 판정:`);
+                    console.log(`📊 [센서] - beta 범위 확인: ${Math.abs(beta).toFixed(1)} <= 15 = ${betaInRange}`);
+                    console.log(`📊 [센서] - gamma 범위 확인: ${Math.abs(gamma).toFixed(1)} <= 15 = ${gammaInRange}`);
+                    console.log(`📊 [센서] - 최종 판정: ${isInDefaultState}`);
+                    console.log(`📊 [센서] - 현재 상태: ${this.signalFlagsState.isInDefaultState}`);
                     
                     if (isInDefaultState && !this.signalFlagsState.isInDefaultState) {
                         // 디폴트 상태 진입
                         this.signalFlagsState.isInDefaultState = true;
-                        console.log('✅ [센서] 디폴트 상태 감지됨!');
+                        console.log('✅ [센서] === 디폴트 상태 감지됨! ===');
                         
                         // 서버에 알림
                         const messageData = {
@@ -1122,22 +1143,36 @@
                             playerId: this.state.playerId
                         };
                         console.log('📤 [센서] 디폴트 상태 준비 알림 전송:', messageData);
-                        this.sdk.socket.emit('signal-flags-v2-default-ready', messageData);
+                        console.log('📤 [센서] 소켓 상태:', !!this.sdk.socket);
+                        
+                        if (this.sdk.socket) {
+                            this.sdk.socket.emit('signal-flags-v2-default-ready', messageData);
+                            console.log('✅ [센서] 디폴트 상태 알림 전송 완료');
+                        } else {
+                            console.error('❌ [센서] 소켓 연결 없음 - 알림 전송 실패');
+                        }
                         
                         this.showMessage('✅ 디폴트 상태 감지!', 'success');
+                        
                     } else if (!isInDefaultState && this.signalFlagsState.isInDefaultState) {
                         // 디폴트 상태에서 벗어남
                         this.signalFlagsState.isInDefaultState = false;
                         console.log('⚠️ [센서] 디폴트 상태 벗어남');
                         
                         // 서버에 알림
-                        this.sdk.socket.emit('signal-flags-v2-default-lost', {
-                            sessionCode: this.state.currentSession.sessionCode || this.state.currentSession.sessionId?.split('_')[1],
-                            playerId: this.state.playerId
-                        });
+                        if (this.sdk.socket) {
+                            this.sdk.socket.emit('signal-flags-v2-default-lost', {
+                                sessionCode: this.state.currentSession.sessionCode || this.state.currentSession.sessionId?.split('_')[1],
+                                playerId: this.state.playerId
+                            });
+                        }
+                        
+                        this.showMessage('⚠️ 디폴트 상태 벗어남', 'warning');
                     }
+                    
                 } else if (this.signalFlagsState.isPlaying && !this.signalFlagsState.hasResponded) {
                     // 게임 중 - 동작 감지
+                    console.log(`🎯 [센서] === 동작 감지 시작 ===`);
                     const detectedAction = this.detectAction(beta, gamma);
                     
                     if (detectedAction) {
@@ -1145,15 +1180,22 @@
                         console.log(`🎯 [센서] 동작 감지: ${detectedAction}`);
                         
                         // 서버에 응답 전송
-                        this.sdk.socket.emit('signal-flags-v2-player-response', {
-                            sessionCode: this.state.currentSession.sessionCode || this.state.currentSession.sessionId?.split('_')[1],
-                            playerId: this.state.playerId,
-                            direction: detectedAction,
-                            timestamp: Date.now()
-                        });
+                        if (this.sdk.socket) {
+                            this.sdk.socket.emit('signal-flags-v2-player-response', {
+                                sessionCode: this.state.currentSession.sessionCode || this.state.currentSession.sessionId?.split('_')[1],
+                                playerId: this.state.playerId,
+                                direction: detectedAction,
+                                timestamp: Date.now()
+                            });
+                        }
                         
                         this.showMessage(`🎯 응답: ${detectedAction.toUpperCase()}`, 'warning');
                     }
+                } else {
+                    console.log(`🔍 [센서] 처리 조건 불만족:`);
+                    console.log(`🔍 [센서] - waitingForDefault: ${this.signalFlagsState.waitingForDefault}`);
+                    console.log(`🔍 [센서] - isPlaying: ${this.signalFlagsState.isPlaying}`);
+                    console.log(`🔍 [센서] - hasResponded: ${this.signalFlagsState.hasResponded}`);
                 }
             }
             
@@ -1163,39 +1205,58 @@
             }
             
             detectAction(beta, gamma) {
-                const actions = this.signalFlagsState.sensorThresholds.actions;
+                console.log(`🎯 [센서] === 동작 감지 알고리즘 시작 ===`);
+                console.log(`🎯 [센서] 입력 센서 값: beta=${beta.toFixed(1)}°, gamma=${gamma.toFixed(1)}°`);
                 
-                console.log(`🎯 [센서] 동작 감지 시도: beta=${beta.toFixed(1)}°, gamma=${gamma.toFixed(1)}°`);
+                /**
+                 * 논리적 방향 판단 알고리즘
+                 * 
+                 * 기본 원리:
+                 * - beta (앞뒤 기울기): -180° ~ 180°
+                 * - gamma (좌우 기울기): -90° ~ 90°
+                 * 
+                 * 우선순위: Up/Down (beta 변화) > Left/Right (gamma 변화)
+                 * 이유: 사용자가 핸드폰을 위/아래로 움직일 때 beta 변화가 더 크고 확실함
+                 * 
+                 * 임계값 설정:
+                 * - 디폴트 상태: beta, gamma 모두 ±15도 이내
+                 * - 동작 감지: 디폴트 상태를 벗어난 확실한 움직임
+                 */
                 
-                // 실제 측정값 기반 새로운 알고리즘
-                // 우선순위: 위/아래 > 좌/우 (절댓값이 더 큰 것부터)
+                // Step 1: Up/Down 감지 (beta 기반, 우선순위 높음)
+                console.log(`🎯 [센서] Step 1: Up/Down 감지 (beta=${beta.toFixed(1)}°)`);
                 
-                // UP 감지: beta가 60도 이상 (실제 측정: 83.7°)
-                if (beta >= actions.up.beta) {
-                    console.log('🔺 [센서] UP 동작 감지됨');
+                if (beta >= 30) {
+                    console.log(`🔺 [센서] UP 동작 감지됨 (beta=${beta.toFixed(1)}° >= 30°)`);
                     return 'up';
                 }
                 
-                // DOWN 감지: beta가 -50도 이하 (실제 측정: -69.2°)
-                if (beta <= actions.down.beta) {
-                    console.log('🔻 [센서] DOWN 동작 감지됨');
+                if (beta <= -30) {
+                    console.log(`🔻 [센서] DOWN 동작 감지됨 (beta=${beta.toFixed(1)}° <= -30°)`);
                     return 'down';
                 }
                 
-                // LEFT 감지: gamma가 -35도 이하 (실제 측정: -64.9°)
-                if (gamma <= actions.left.gamma) {
-                    console.log('◀️ [센서] LEFT 동작 감지됨');
+                // Step 2: Left/Right 감지 (gamma 기반, Up/Down이 없을 때만)
+                console.log(`🎯 [센서] Step 2: Left/Right 감지 (gamma=${gamma.toFixed(1)}°)`);
+                console.log(`🎯 [센서] Up/Down 감지 안됨, Left/Right 확인 중...`);
+                
+                // Left: gamma가 -30도 이하 (강한 왼쪽 기울기)
+                if (gamma <= -30) {
+                    console.log(`◀️ [센서] LEFT 동작 감지됨 (gamma=${gamma.toFixed(1)}° <= -30°)`);
                     return 'left';
                 }
                 
-                // RIGHT 감지: gamma가 -25도 이하이면서 LEFT보다 작지 않은 경우 (실제 측정: -42.2°)
-                // 즉, -35° < gamma <= -25° 범위
-                if (gamma <= actions.right.gamma && gamma > actions.left.gamma) {
-                    console.log('▶️ [센서] RIGHT 동작 감지됨');
+                // Right: gamma가 30도 이상 (강한 오른쪽 기울기)
+                if (gamma >= 30) {
+                    console.log(`▶️ [센서] RIGHT 동작 감지됨 (gamma=${gamma.toFixed(1)}° >= 30°)`);
                     return 'right';
                 }
                 
-                console.log(`🔍 [센서] 동작 감지 실패 - 임계값 미달`);
+                // Step 3: 감지 실패
+                console.log(`🔍 [센서] 동작 감지 실패 - 모든 임계값 미달`);
+                console.log(`🔍 [센서] 현재 상태: beta=${beta.toFixed(1)}° (Up≥30°, Down≤-30°)`);
+                console.log(`🔍 [센서] 현재 상태: gamma=${gamma.toFixed(1)}° (Left≤-30°, Right≥30°)`);
+                
                 return null;
             }
             

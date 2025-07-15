@@ -520,12 +520,12 @@
                     commands: ['up', 'down', 'left', 'right'],
                     genders: ['male', 'female'],
                     sensorThresholds: {
-                        defaultState: { beta: 15, gamma: 15 }, // 실제 측정: beta=8.1°, gamma=1.0° → ±15도로 충분히 허용
+                        defaultState: { beta: 15, gamma: 15 }, // 디폴트 상태: ±15도 이내
                         actions: {
-                            up: { beta: 60 },      // 실제 측정: 83.7° → 60도 이상
-                            down: { beta: -50 },   // 실제 측정: -69.2° → -50도 이하
-                            left: { gamma: -35 },  // 실제 측정: -64.9° → -35도 이하 (왼쪽)
-                            right: { gamma: -25 }  // 실제 측정: -42.2° → -25도 이하 (오른쪽)
+                            up: { beta: 30 },      // UP: beta ≥ 30도 (위쪽 기울기)
+                            down: { beta: -30 },   // DOWN: beta ≤ -30도 (아래쪽 기울기)
+                            left: { gamma: -30 },  // LEFT: gamma ≤ -30도 (왼쪽 기울기)
+                            right: { gamma: 30 }   // RIGHT: gamma ≥ 30도 (오른쪽 기울기)
                         }
                     }
                 };
