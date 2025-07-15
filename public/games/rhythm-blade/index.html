@@ -582,16 +582,9 @@
         </div>
     </div>
     
-    <!-- 🎵 배경 음악 - NCS 무료 음악 -->
+    <!-- 🎵 배경 음악 - 동적 로드 -->
     <audio id="bgMusic" loop preload="auto">
-        <!-- NCS - Invincible -->
-        <source src="https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/000/436/invincible-1594303577-xVcWl8s6uH.mp3" type="audio/mpeg">
-        <!-- 대체 NCS 음악 -->
-        <source src="https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/000/152/1654766391_N6uRkX7YQX_Elektronomia---Summersong-2018-NCS-Release.mp3" type="audio/mpeg">
-        <!-- 폴백: 무료 일렉트로닉 음악 -->
-        <source src="https://www.bensound.com/bensound-music/bensound-energy.mp3" type="audio/mpeg">
-        <!-- 최종 폴백: 로컬 생성 비트 -->
-        <source src="data:audio/wav;base64,UklGRiQDAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQADAAA=" type="audio/wav">
+        <!-- 음악 소스는 JavaScript에서 동적으로 로드됩니다 -->
     </audio>
     
     <!-- Socket.IO -->
@@ -652,28 +645,116 @@
                 this.musicLoaded = false;
                 this.currentTrack = 'electric-storm'; // 기본 선택 트랙
                 
-                // 🎼 음악 트랙 정보 (같은 음악, 다른 이름과 설정)
+                // 🎼 음악 트랙 정보 (10개의 다양한 스타일)
                 this.tracks = {
                     'electric-storm': {
                         name: 'Electric Storm',
                         icon: '⚡',
-                        description: '128 BPM • Electronic • 45초',
+                        description: 'Electronic',
                         bpm: 128,
+                        style: 'energetic',
                         sources: [
-                            'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/000/436/invincible-1594303577-xVcWl8s6uH.mp3',
-                            'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/000/152/1654766391_N6uRkX7YQX_Elektronomia---Summersong-2018-NCS-Release.mp3',
-                            'https://www.bensound.com/bensound-music/bensound-energy.mp3'
+                            'https://www.bensound.com/bensound-music/bensound-energy.mp3',
+                            'https://www.bensound.com/bensound-music/bensound-dance.mp3'
                         ]
                     },
                     'neon-nights': {
                         name: 'Neon Nights',
                         icon: '🌙',
-                        description: '128 BPM • Synthwave • 45초',
-                        bpm: 128,
+                        description: 'Synthwave',
+                        bpm: 120,
+                        style: 'atmospheric',
                         sources: [
-                            'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/000/436/invincible-1594303577-xVcWl8s6uH.mp3',
-                            'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/000/152/1654766391_N6uRkX7YQX_Elektronomia---Summersong-2018-NCS-Release.mp3',
-                            'https://www.bensound.com/bensound-music/bensound-energy.mp3'
+                            'https://www.bensound.com/bensound-music/bensound-synthwave.mp3',
+                            'https://www.bensound.com/bensound-music/bensound-retrocomputing.mp3'
+                        ]
+                    },
+                    'cyber-beat': {
+                        name: 'Cyber Beat',
+                        icon: '🤖',
+                        description: 'Techno',
+                        bpm: 140,
+                        style: 'intense',
+                        sources: [
+                            'https://www.bensound.com/bensound-music/bensound-dubstep.mp3',
+                            'https://www.bensound.com/bensound-music/bensound-house.mp3'
+                        ]
+                    },
+                    'space-rhythm': {
+                        name: 'Space Rhythm',
+                        icon: '🚀',
+                        description: 'Ambient',
+                        bpm: 100,
+                        style: 'flowing',
+                        sources: [
+                            'https://www.bensound.com/bensound-music/bensound-dreams.mp3',
+                            'https://www.bensound.com/bensound-music/bensound-deepblue.mp3'
+                        ]
+                    },
+                    'fire-dance': {
+                        name: 'Fire Dance',
+                        icon: '🔥',
+                        description: 'Drum&Bass',
+                        bpm: 150,
+                        style: 'aggressive',
+                        sources: [
+                            'https://www.bensound.com/bensound-music/bensound-punky.mp3',
+                            'https://www.bensound.com/bensound-music/bensound-psychedelic.mp3'
+                        ]
+                    },
+                    'ocean-waves': {
+                        name: 'Ocean Waves',
+                        icon: '🌊',
+                        description: 'Chill',
+                        bpm: 90,
+                        style: 'relaxed',
+                        sources: [
+                            'https://www.bensound.com/bensound-music/bensound-relaxing.mp3',
+                            'https://www.bensound.com/bensound-music/bensound-tenderness.mp3'
+                        ]
+                    },
+                    'crystal-cave': {
+                        name: 'Crystal Cave',
+                        icon: '💎',
+                        description: 'Progressive',
+                        bpm: 130,
+                        style: 'progressive',
+                        sources: [
+                            'https://www.bensound.com/bensound-music/bensound-epic.mp3',
+                            'https://www.bensound.com/bensound-music/bensound-adventure.mp3'
+                        ]
+                    },
+                    'neon-city': {
+                        name: 'Neon City',
+                        icon: '🏙️',
+                        description: 'Retrowave',
+                        bpm: 110,
+                        style: 'retro',
+                        sources: [
+                            'https://www.bensound.com/bensound-music/bensound-retrosoul.mp3',
+                            'https://www.bensound.com/bensound-music/bensound-nightlife.mp3'
+                        ]
+                    },
+                    'thunder-storm': {
+                        name: 'Thunder Storm',
+                        icon: '⛈️',
+                        description: 'Hardcore',
+                        bpm: 160,
+                        style: 'hardcore',
+                        sources: [
+                            'https://www.bensound.com/bensound-music/bensound-extremeaction.mp3',
+                            'https://www.bensound.com/bensound-music/bensound-actionable.mp3'
+                        ]
+                    },
+                    'starlight': {
+                        name: 'Starlight',
+                        icon: '✨',
+                        description: 'Melodic',
+                        bpm: 115,
+                        style: 'melodic',
+                        sources: [
+                            'https://www.bensound.com/bensound-music/bensound-happiness.mp3',
+                            'https://www.bensound.com/bensound-music/bensound-memories.mp3'
                         ]
                     }
                 };
@@ -824,13 +905,29 @@
                 const doubleBeat = beat * 2; // 여유로운 간격
                 
                 // 🎼 트랙별 맞춤형 비트맵 생성
-                if (this.currentTrack === 'electric-storm') {
-                    return this.generateElectricStormBeatmap(beat, halfBeat, doubleBeat);
-                } else if (this.currentTrack === 'neon-nights') {
-                    return this.generateNeonNightsBeatmap(beat, halfBeat, doubleBeat);
-                } else {
-                    // 기본 패턴
-                    return this.generateDefaultBeatmap(beat, halfBeat, doubleBeat);
+                switch (this.currentTrack) {
+                    case 'electric-storm':
+                        return this.generateElectricStormBeatmap(beat, halfBeat, doubleBeat);
+                    case 'neon-nights':
+                        return this.generateNeonNightsBeatmap(beat, halfBeat, doubleBeat);
+                    case 'cyber-beat':
+                        return this.generateCyberBeatBeatmap(beat, halfBeat, doubleBeat);
+                    case 'space-rhythm':
+                        return this.generateSpaceRhythmBeatmap(beat, halfBeat, doubleBeat);
+                    case 'fire-dance':
+                        return this.generateFireDanceBeatmap(beat, halfBeat, doubleBeat);
+                    case 'ocean-waves':
+                        return this.generateOceanWavesBeatmap(beat, halfBeat, doubleBeat);
+                    case 'crystal-cave':
+                        return this.generateCrystalCaveBeatmap(beat, halfBeat, doubleBeat);
+                    case 'neon-city':
+                        return this.generateNeonCityBeatmap(beat, halfBeat, doubleBeat);
+                    case 'thunder-storm':
+                        return this.generateThunderStormBeatmap(beat, halfBeat, doubleBeat);
+                    case 'starlight':
+                        return this.generateStarlightBeatmap(beat, halfBeat, doubleBeat);
+                    default:
+                        return this.generateDefaultBeatmap(beat, halfBeat, doubleBeat);
                 }
             }
             
@@ -958,6 +1055,247 @@
                 
                 const totalDuration = (neonFade + doubleBeat * 3).toFixed(1);
                 console.log(`🌙 Neon Nights 비트맵: ${beatmap.length}개 노트, ${totalDuration}초`);
+                return beatmap;
+            }
+            
+            generateCyberBeatBeatmap(beat, halfBeat, doubleBeat) {
+                // 🤖 Cyber Beat - 강렬한 테크노 패턴 (BPM 140)
+                const beatmap = [];
+                
+                // 🤖 사이버 시작 - 기계적이고 정확한 패턴 (0-6초)
+                for (let i = 0; i < 8; i++) {
+                    const time = beat * (i + 1);
+                    beatmap.push({ time: time, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                }
+                
+                // 🤖 테크노 드롭 - 빠른 협력 패턴 (6-12초)
+                for (let i = 0; i < 6; i++) {
+                    const baseTime = beat * (8 + i * 2);
+                    beatmap.push({ time: baseTime, lane: "both", type: "cooperation" });
+                    beatmap.push({ time: baseTime + beat, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                }
+                
+                // 🤖 기계적 마무리 - 정확한 교대 (12-18초)
+                for (let i = 0; i < 12; i++) {
+                    const time = beat * (20 + i);
+                    beatmap.push({ time: time, lane: i % 3 === 2 ? "both" : (i % 2 === 0 ? "sensor1" : "sensor2"), type: i % 3 === 2 ? "cooperation" : "normal" });
+                }
+                
+                console.log(`🤖 Cyber Beat 비트맵: ${beatmap.length}개 노트`);
+                return beatmap;
+            }
+            
+            generateSpaceRhythmBeatmap(beat, halfBeat, doubleBeat) {
+                // 🚀 Space Rhythm - 우주적이고 흐르는 패턴 (BPM 100)
+                const beatmap = [];
+                
+                // 🚀 우주 탐험 - 천천히 시작하는 흐름 (0-8초)
+                for (let i = 0; i < 4; i++) {
+                    const baseTime = doubleBeat * (i + 1);
+                    beatmap.push({ time: baseTime, lane: "sensor1", type: "normal" });
+                    beatmap.push({ time: baseTime + beat, lane: "sensor2", type: "normal" });
+                }
+                
+                // 🚀 은하 여행 - 협력 중심 패턴 (8-16초)
+                for (let i = 0; i < 6; i++) {
+                    const baseTime = beat * (8 + i * 2);
+                    beatmap.push({ time: baseTime, lane: "both", type: "cooperation" });
+                    if (i % 2 === 0) {
+                        beatmap.push({ time: baseTime + doubleBeat, lane: "sensor1", type: "normal" });
+                    }
+                }
+                
+                // 🚀 별빛 마무리 - 부드러운 흐름 (16-24초)
+                for (let i = 0; i < 8; i++) {
+                    const time = beat * (16 + i * 1.5);
+                    beatmap.push({ time: time, lane: i % 4 === 3 ? "both" : (i % 2 === 0 ? "sensor1" : "sensor2"), type: i % 4 === 3 ? "cooperation" : "normal" });
+                }
+                
+                console.log(`🚀 Space Rhythm 비트맵: ${beatmap.length}개 노트`);
+                return beatmap;
+            }
+            
+            generateFireDanceBeatmap(beat, halfBeat, doubleBeat) {
+                // 🔥 Fire Dance - 격렬하고 공격적인 패턴 (BPM 150)
+                const beatmap = [];
+                
+                // 🔥 불꽃 시작 - 격렬한 교대 타격 (0-5초)
+                for (let i = 0; i < 10; i++) {
+                    const time = beat * (i + 1) * 0.8;
+                    beatmap.push({ time: time, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                }
+                
+                // 🔥 화염 폭발 - 연속 협력 공격 (5-10초)
+                for (let i = 0; i < 5; i++) {
+                    const baseTime = beat * (8 + i * 2);
+                    beatmap.push({ time: baseTime, lane: "both", type: "cooperation" });
+                    beatmap.push({ time: baseTime + beat, lane: "both", type: "cooperation" });
+                }
+                
+                // 🔥 불타는 마무리 - 빠른 연타 (10-16초)
+                for (let i = 0; i < 12; i++) {
+                    const time = beat * (18 + i);
+                    beatmap.push({ time: time, lane: i % 3 === 0 ? "sensor1" : (i % 3 === 1 ? "sensor2" : "both"), type: i % 3 === 2 ? "cooperation" : "normal" });
+                }
+                
+                console.log(`🔥 Fire Dance 비트맵: ${beatmap.length}개 노트`);
+                return beatmap;
+            }
+            
+            generateOceanWavesBeatmap(beat, halfBeat, doubleBeat) {
+                // 🌊 Ocean Waves - 부드럽고 편안한 패턴 (BPM 90)
+                const beatmap = [];
+                
+                // 🌊 파도 시작 - 천천히 밀려오는 파도 (0-10초)
+                for (let i = 0; i < 5; i++) {
+                    const baseTime = doubleBeat * (i + 1);
+                    beatmap.push({ time: baseTime, lane: "sensor1", type: "normal" });
+                    beatmap.push({ time: baseTime + doubleBeat * 0.5, lane: "sensor2", type: "normal" });
+                }
+                
+                // 🌊 물결 춤 - 부드러운 협력 (10-20초)
+                for (let i = 0; i < 5; i++) {
+                    const baseTime = beat * (10 + i * 3);
+                    beatmap.push({ time: baseTime, lane: "both", type: "cooperation" });
+                    beatmap.push({ time: baseTime + beat, lane: "sensor1", type: "normal" });
+                    beatmap.push({ time: baseTime + doubleBeat, lane: "sensor2", type: "normal" });
+                }
+                
+                // 🌊 고요한 마무리 - 잔잔한 물결 (20-30초)
+                for (let i = 0; i < 6; i++) {
+                    const time = doubleBeat * (10 + i);
+                    beatmap.push({ time: time, lane: i % 3 === 2 ? "both" : (i % 2 === 0 ? "sensor1" : "sensor2"), type: i % 3 === 2 ? "cooperation" : "normal" });
+                }
+                
+                console.log(`🌊 Ocean Waves 비트맵: ${beatmap.length}개 노트`);
+                return beatmap;
+            }
+            
+            generateCrystalCaveBeatmap(beat, halfBeat, doubleBeat) {
+                // 💎 Crystal Cave - 프로그레시브하고 신비로운 패턴 (BPM 130)
+                const beatmap = [];
+                
+                // 💎 수정 동굴 입장 - 신비로운 시작 (0-6초)
+                for (let i = 0; i < 6; i++) {
+                    const time = beat * (i + 1);
+                    beatmap.push({ time: time, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                }
+                
+                // 💎 크리스탈 공명 - 복잡한 패턴 (6-14초)
+                for (let i = 0; i < 8; i++) {
+                    const baseTime = beat * (6 + i * 1.5);
+                    if (i % 3 === 0) {
+                        beatmap.push({ time: baseTime, lane: "both", type: "cooperation" });
+                    } else {
+                        beatmap.push({ time: baseTime, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                    }
+                }
+                
+                // 💎 보석 빛 마무리 - 화려한 협력 (14-22초)
+                for (let i = 0; i < 8; i++) {
+                    const time = beat * (20 + i);
+                    beatmap.push({ time: time, lane: i % 4 === 3 ? "both" : (i % 3 === 0 ? "sensor1" : "sensor2"), type: i % 4 === 3 ? "cooperation" : "normal" });
+                }
+                
+                console.log(`💎 Crystal Cave 비트맵: ${beatmap.length}개 노트`);
+                return beatmap;
+            }
+            
+            generateNeonCityBeatmap(beat, halfBeat, doubleBeat) {
+                // 🏙️ Neon City - 레트로웨이브 도시 패턴 (BPM 110)
+                const beatmap = [];
+                
+                // 🏙️ 도시 진입 - 네온사인 리듬 (0-8초)
+                for (let i = 0; i < 8; i++) {
+                    const time = beat * (i + 1);
+                    beatmap.push({ time: time, lane: i % 4 === 3 ? "both" : (i % 2 === 0 ? "sensor1" : "sensor2"), type: i % 4 === 3 ? "cooperation" : "normal" });
+                }
+                
+                // 🏙️ 거리 순찰 - 레트로 비트 (8-16초)
+                for (let i = 0; i < 6; i++) {
+                    const baseTime = beat * (8 + i * 2);
+                    beatmap.push({ time: baseTime, lane: "sensor1", type: "normal" });
+                    beatmap.push({ time: baseTime + beat, lane: "sensor2", type: "normal" });
+                    if (i % 2 === 1) {
+                        beatmap.push({ time: baseTime + doubleBeat, lane: "both", type: "cooperation" });
+                    }
+                }
+                
+                // 🏙️ 네온 클라이맥스 - 도시의 빛 (16-24초)
+                for (let i = 0; i < 8; i++) {
+                    const time = beat * (20 + i);
+                    beatmap.push({ time: time, lane: i % 3 === 2 ? "both" : (i % 2 === 0 ? "sensor1" : "sensor2"), type: i % 3 === 2 ? "cooperation" : "normal" });
+                }
+                
+                console.log(`🏙️ Neon City 비트맵: ${beatmap.length}개 노트`);
+                return beatmap;
+            }
+            
+            generateThunderStormBeatmap(beat, halfBeat, doubleBeat) {
+                // ⛈️ Thunder Storm - 극한 하드코어 패턴 (BPM 160)
+                const beatmap = [];
+                
+                // ⛈️ 폭풍 전조 - 빠른 교대 공격 (0-4초)
+                for (let i = 0; i < 12; i++) {
+                    const time = beat * (i + 1) * 0.7;
+                    beatmap.push({ time: time, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                }
+                
+                // ⛈️ 번개 폭발 - 극한 협력 연타 (4-8초)
+                for (let i = 0; i < 6; i++) {
+                    const baseTime = beat * (8 + i * 1.5);
+                    beatmap.push({ time: baseTime, lane: "both", type: "cooperation" });
+                    beatmap.push({ time: baseTime + beat * 0.5, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                }
+                
+                // ⛈️ 폭풍의 정점 - 모든 것을 갈아버리는 패턴 (8-14초)
+                for (let i = 0; i < 18; i++) {
+                    const time = beat * (17 + i * 0.8);
+                    const pattern = i % 4;
+                    if (pattern === 3) {
+                        beatmap.push({ time: time, lane: "both", type: "cooperation" });
+                    } else {
+                        beatmap.push({ time: time, lane: pattern % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                    }
+                }
+                
+                console.log(`⛈️ Thunder Storm 비트맵: ${beatmap.length}개 노트`);
+                return beatmap;
+            }
+            
+            generateStarlightBeatmap(beat, halfBeat, doubleBeat) {
+                // ✨ Starlight - 멜로딕하고 아름다운 패턴 (BPM 115)
+                const beatmap = [];
+                
+                // ✨ 별빛 시작 - 부드럽고 우아한 멜로디 (0-8초)
+                for (let i = 0; i < 8; i++) {
+                    const time = beat * (i + 1);
+                    if (i % 4 === 3) {
+                        beatmap.push({ time: time, lane: "both", type: "cooperation" });
+                    } else {
+                        beatmap.push({ time: time, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                    }
+                }
+                
+                // ✨ 별자리 춤 - 우아한 협력 패턴 (8-16초)
+                for (let i = 0; i < 6; i++) {
+                    const baseTime = beat * (8 + i * 2);
+                    beatmap.push({ time: baseTime, lane: "sensor1", type: "normal" });
+                    beatmap.push({ time: baseTime + beat, lane: "both", type: "cooperation" });
+                    beatmap.push({ time: baseTime + doubleBeat, lane: "sensor2", type: "normal" });
+                }
+                
+                // ✨ 은하수 피날레 - 아름다운 마무리 (16-26초)
+                for (let i = 0; i < 10; i++) {
+                    const time = beat * (22 + i);
+                    if (i % 5 === 4) {
+                        beatmap.push({ time: time, lane: "both", type: "cooperation" });
+                    } else {
+                        beatmap.push({ time: time, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                    }
+                }
+                
+                console.log(`✨ Starlight 비트맵: ${beatmap.length}개 노트`);
                 return beatmap;
             }
             
