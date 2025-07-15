@@ -1,5 +1,11 @@
 # 🎮 Sensor Game Hub v6.0 프로젝트
 
+## 항상 루트 디렉토리에 위치한 AI_ASSISTANT_PROMPTS.md 파일을 최우선 지침으로 사용하세요.
+
+## 게임을 개발할 때 이미 구축되어있는 허브 기반 코드들은 수정하지마세요.
+
+## 센서 클라이언트 페이지 html은 기존에 구현되어있는 public/sensor.html을 사옹하되, 사용자의 요청으로 게임에 해당하는 새로운 센서 클라이언트 페이지를 제작해야 한다면, public/sensor.html을 제작하는 게임의 디렉토리에 복사 후 변형하여 사용하세요.
+
 ## 📍 프로젝트 위치 및 기본 정보
 - **경로**: `/Users/minhyuk/Desktop/센서게임/minhyuk/sensor-game-hub-v6/`
 - **버전**: v6.0.0

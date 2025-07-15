@@ -115,7 +115,7 @@
             border-radius: 1rem;
             padding: 1rem;
             display: none;
-            max-width: 300px;
+            max-width: 350px;
         }
 
         .session-info.visible {
@@ -128,6 +128,18 @@
             color: var(--primary);
             margin-bottom: 0.8rem;
             letter-spacing: 0.2em;
+        }
+
+        .qr-container {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .qr-container canvas,
+        .qr-container img {
+            max-width: 200px;
+            height: auto;
+            border-radius: 0.5rem;
         }
 
         .connection-status {
@@ -316,6 +328,8 @@
             display: flex;
             gap: 1rem;
             margin-bottom: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
         }
 
         .control-btn {
@@ -328,6 +342,9 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
         }
 
         .control-btn.primary {
@@ -335,7 +352,13 @@
             color: white;
         }
 
-        .control-btn.primary:hover {
+        .control-btn.home {
+            background: var(--warning);
+            color: white;
+        }
+
+        .control-btn.primary:hover,
+        .control-btn.home:hover {
             background: var(--secondary);
             transform: translateY(-2px);
         }
@@ -427,6 +450,9 @@
             <div class="session-title">🎵 Rhythm Sync</div>
             <div class="session-info" id="sessionInfo">
                 <div class="session-code" id="sessionCode">----</div>
+                <div class="qr-container" id="qrContainer">
+                    <!-- QR 코드가 여기에 생성됩니다 -->
+                </div>
                 <div class="connection-status">
                     <div class="sensor-status disconnected" id="sensor1Status">
                         플레이어 1
@@ -479,6 +505,7 @@
             <div class="game-controls">
                 <button class="control-btn primary" id="startBtn" disabled>🎵 게임 시작</button>
                 <button class="control-btn primary" id="resetBtn" disabled>🔄 다시 시작</button>
+                <a href="/" class="control-btn home">🏠 허브로</a>
             </div>
         </div>
 
@@ -492,6 +519,7 @@
     <!-- Scripts -->
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/SessionSDK.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <script>
         class RhythmSyncGame {
@@ -541,6 +569,7 @@
                 this.elements = {
                     sessionInfo: document.getElementById('sessionInfo'),
                     sessionCode: document.getElementById('sessionCode'),
+                    qrContainer: document.getElementById('qrContainer'),
                     sensor1Status: document.getElementById('sensor1Status'),
                     sensor2Status: document.getElementById('sensor2Status'),
                     rhythmVisualizer: document.getElementById('rhythmVisualizer'),
@@ -629,10 +658,48 @@
                 this.elements.sessionCode.textContent = session.sessionCode;
                 this.elements.sessionInfo.classList.add('visible');
                 
-                // QR 코드 생성 (기존 SessionSDK 기능 활용)
-                if (this.sdk.generateQRCode) {
-                    this.sdk.generateQRCode(session.sessionCode);
+                // QR 코드 생성
+                this.generateQRCode(session.sessionCode);
+            }
+            
+            generateQRCode(sessionCode) {
+                const qrUrl = `${window.location.origin}/sensor.html?session=${sessionCode}`;
+                
+                // QRCode 라이브러리 사용 (폴백 처리)
+                if (typeof QRCode !== 'undefined') {
+                    try {
+                        // 캔버스 생성
+                        const canvas = document.createElement('canvas');
+                        this.elements.qrContainer.innerHTML = '';
+                        this.elements.qrContainer.appendChild(canvas);
+                        
+                        QRCode.toCanvas(canvas, qrUrl, {
+                            width: 200,
+                            height: 200,
+                            colorDark: '#8b5cf6',
+                            colorLight: '#ffffff'
+                        }, (error) => {
+                            if (error) {
+                                console.error('QR 생성 오류:', error);
+                                this.showQRCodeFallback(qrUrl);
+                            }
+                        });
+                    } catch (error) {
+                        console.error('QR 라이브러리 오류:', error);
+                        this.showQRCodeFallback(qrUrl);
+                    }
+                } else {
+                    this.showQRCodeFallback(qrUrl);
                 }
+            }
+            
+            showQRCodeFallback(qrUrl) {
+                // 폴백: 외부 QR 생성 API 사용
+                const img = document.createElement('img');
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=8b5cf6&bgcolor=ffffff&data=${encodeURIComponent(qrUrl)}`;
+                img.alt = 'QR Code';
+                this.elements.qrContainer.innerHTML = '';
+                this.elements.qrContainer.appendChild(img);
             }
             
             handleSensorConnection(data) {
@@ -859,6 +926,9 @@
                 this.gameState.currentRound++;
                 this.gameState.roundStartTime = Date.now();
                 
+                // 세션 정보 숨김
+                this.elements.sessionInfo.classList.remove('visible');
+                
                 // UI 업데이트
                 this.elements.roundInfo.textContent = 
                     `라운드 ${this.gameState.currentRound} / ${this.gameState.totalRounds}`;
@@ -961,6 +1031,9 @@
             endGame() {
                 this.gameState.isPlaying = false;
                 
+                // 세션 정보 다시 표시
+                this.elements.sessionInfo.classList.add('visible');
+                
                 // 승자 결정
                 const player1Score = this.players.player1.score;
                 const player2Score = this.players.player2.score;
@@ -999,6 +1072,9 @@
                 this.gameState.isPlaying = false;
                 this.gameState.currentRound = 0;
                 this.gameState.currentBeat = 0;
+                
+                // 세션 정보 다시 표시
+                this.elements.sessionInfo.classList.add('visible');
                 
                 // 플레이어 데이터 초기화
                 Object.keys(this.players).forEach(playerId => {
