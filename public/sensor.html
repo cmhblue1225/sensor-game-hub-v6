@@ -701,6 +701,12 @@
                     this.elements.startSensorBtn.disabled = false;
                     
                     this.showMessage('게임에 연결되었습니다! 센서 시작 버튼을 눌러주세요.', 'success');
+                    
+                    // Signal Flags v2 게임인 경우 이벤트 리스너 설정
+                    if (this.state.gameId === 'signal-flags-v2') {
+                        console.log('🚩 Signal Flags v2 게임 감지 - 이벤트 리스너 설정');
+                        this.setupSignalFlagsEvents();
+                    }
                 });
                 
                 // 게임 시작
@@ -720,8 +726,8 @@
                     this.showMessage(`센서 오류: ${data.error}`, 'error');
                 });
                 
-                // Signal Flags v2 게임 이벤트들
-                this.setupSignalFlagsEvents();
+                // Signal Flags v2 게임 이벤트들은 센서 연결 후에 설정
+                // this.setupSignalFlagsEvents();
             }
             
             async connectToSession() {
@@ -968,8 +974,14 @@
             // === Signal Flags v2 게임 전용 메서드들 ===
             
             setupSignalFlagsEvents() {
+                console.log('🚩 [센서] setupSignalFlagsEvents 호출됨');
+                console.log('🚩 [센서] SDK 소켓 상태:', !!this.sdk.socket);
+                console.log('🚩 [센서] 게임 ID:', this.state.gameId);
+                console.log('🚩 [센서] 플레이어 ID:', this.state.playerId);
+                
                 // Signal Flags v2 게임별 소켓 이벤트 리스너
                 if (this.sdk.socket) {
+                    console.log('🚩 [센서] 소켓 이벤트 리스너 등록 시작');
                     this.sdk.socket.on('signal-flags-v2-wait-default', (data) => {
                         console.log('📍 [센서] 디폴트 상태 대기 시작 이벤트 수신:', data);
                         console.log('📍 [센서] playerId:', this.state.playerId, 'gameId:', this.state.gameId);
@@ -1022,6 +1034,10 @@
                                          data.winner === parseInt(this.state.playerId) ? '🏆 승리!' : '😢 패배';
                         this.showMessage(`게임 종료! ${winnerText}`, 'success');
                     });
+                    
+                    console.log('🚩 [센서] Signal Flags v2 이벤트 리스너 등록 완료');
+                } else {
+                    console.error('🚩 [센서] SDK 소켓이 없어 이벤트 리스너 등록 실패');
                 }
             }
             
