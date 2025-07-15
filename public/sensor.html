@@ -1054,6 +1054,12 @@
                     } else if (!isInDefaultState) {
                         if (this.signalFlagsState.isInDefaultState) {
                             console.log('⚠️ 디폴트 상태 벗어남:', { beta, gamma });
+                            
+                            // 서버에 디폴트 상태 벗어남 알림
+                            this.sdk.socket.emit('signal-flags-v2-default-lost', {
+                                sessionCode: this.state.currentSession.sessionCode || this.state.currentSession.sessionId?.split('_')[1],
+                                playerId: this.state.playerId
+                            });
                         }
                         this.signalFlagsState.isInDefaultState = false;
                     }
@@ -1089,6 +1095,15 @@
                         
                         this.showMessage('🔄 디폴트 상태 복귀 완료', 'success');
                     } else if (!isInDefaultState) {
+                        if (this.signalFlagsState.isInDefaultState) {
+                            console.log('⚠️ 라운드 종료 후 디폴트 상태 벗어남:', { beta, gamma });
+                            
+                            // 서버에 디폴트 상태 벗어남 알림
+                            this.sdk.socket.emit('signal-flags-v2-default-lost', {
+                                sessionCode: this.state.currentSession.sessionCode || this.state.currentSession.sessionId?.split('_')[1],
+                                playerId: this.state.playerId
+                            });
+                        }
                         this.signalFlagsState.isInDefaultState = false;
                     }
                 }

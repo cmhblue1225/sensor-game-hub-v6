@@ -639,6 +639,12 @@
                     this.handleDefaultReady(data);
                 });
                 
+                // 디폴트 상태 벗어남 이벤트
+                this.sdk.socket.on('signal-flags-v2-default-lost', (data) => {
+                    console.log('⚠️ 플레이어 디폴트 상태 벗어남:', data);
+                    this.handleDefaultLost(data);
+                });
+                
                 // 플레이어 응답 이벤트
                 this.sdk.socket.on('signal-flags-v2-player-response', (data) => {
                     console.log('📡 플레이어 응답 수신:', data);
@@ -813,7 +819,7 @@
             }
             
             waitForDefaultState() {
-                this.elements.gameMessage.textContent = '📱 핸드폰을 앞으로 쭉 뻗어 수평으로 유지하세요';
+                this.elements.gameMessage.textContent = '📱 모든 플레이어가 핸드폰을 앞으로 쭉 뻗어 수평으로 유지하세요 (0/2)';
                 this.defaultReadyPlayers.clear();
                 
                 // Signal Flags 상태 업데이트
@@ -836,14 +842,20 @@
                 this.defaultReadyPlayers.add(data.playerId);
                 console.log(`📍 Player${data.playerId} 디폴트 상태 준비 완료 (${this.defaultReadyPlayers.size}/2)`);
                 
-                // 두 플레이어 모두 디폴트 상태에 있으면 라운드 시작
-                if (this.defaultReadyPlayers.size >= 2) {
+                // 메시지 업데이트
+                this.elements.gameMessage.textContent = `📱 모든 플레이어가 디폴트 상태를 유지하세요 (${this.defaultReadyPlayers.size}/2)`;
+                
+                // 정확히 두 플레이어 모두 디폴트 상태에 있으면 라운드 시작
+                if (this.defaultReadyPlayers.size === 2) {
                     console.log('🚀 모든 플레이어 디폴트 상태 준비 완료 - 라운드 시작');
+                    this.elements.gameMessage.textContent = '🚀 모든 플레이어 준비 완료! 곧 다음 라운드가 시작됩니다...';
                     this.defaultReadyPlayers.clear();
                     
                     setTimeout(() => {
                         this.startNextRound();
                     }, 500);
+                } else {
+                    console.log(`⏳ 디폴트 상태 대기 중... (${this.defaultReadyPlayers.size}/2)`);
                 }
             }
             
@@ -1113,6 +1125,17 @@
                 }
             }
             
+            handleDefaultLost(data) {
+                // 디폴트 상태에서 벗어난 플레이어 제거
+                this.defaultReadyPlayers.delete(data.playerId);
+                console.log(`⚠️ Player${data.playerId} 디폴트 상태 벗어남 - 대기 플레이어에서 제거 (${this.defaultReadyPlayers.size}/2)`);
+                
+                // 메시지 업데이트
+                if (this.signalFlagsState.waitingForDefault) {
+                    this.elements.gameMessage.textContent = `📱 모든 플레이어가 디폴트 상태를 유지해야 합니다 (${this.defaultReadyPlayers.size}/2)`;
+                }
+            }
+            
             waitForDefaultStateAfterResponse() {
                 // 응답 타이머 정리
                 if (this.responseTimer) {
@@ -1124,7 +1147,7 @@
                 this.elements.commandDisplay.classList.remove('visible');
                 
                 // 디폴트 상태 복귀 대기 시작
-                this.elements.gameMessage.textContent = '📱 디폴트 상태로 복귀하세요 (핸드폰을 앞으로 쭉 뻗어 수평 유지)';
+                this.elements.gameMessage.textContent = '📱 모든 플레이어가 디폴트 상태로 복귀하세요 (0/2)';
                 this.defaultReadyPlayers.clear();
                 
                 // Signal Flags 상태 업데이트

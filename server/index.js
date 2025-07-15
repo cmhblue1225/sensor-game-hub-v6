@@ -777,6 +777,34 @@ class GameServer {
                 }
             });
             
+            // 디폴트 상태 벗어남 처리
+            socket.on('signal-flags-v2-default-lost', (data) => {
+                console.log('⚠️ Signal Flags v2 디폴트 상태 벗어남:', data);
+                
+                try {
+                    const sessionCode = data.sessionCode;
+                    const playerId = data.playerId;
+                    
+                    // 세션 찾기
+                    const session = this.sessionManager.getSessionByCode(sessionCode);
+                    if (!session) {
+                        console.warn(`⚠️ 세션을 찾을 수 없음: ${sessionCode}`);
+                        return;
+                    }
+                    
+                    // 호스트에 디폴트 상태 벗어남 알림
+                    if (session.hostSocketId) {
+                        this.io.to(session.hostSocketId).emit('signal-flags-v2-default-lost', {
+                            playerId: playerId,
+                            sessionCode: sessionCode
+                        });
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Signal Flags v2 디폴트 상태 벗어남 처리 오류:', error);
+                }
+            });
+            
             // 플레이어 응답 처리
             socket.on('signal-flags-v2-player-response', (data) => {
                 console.log('🎯 Signal Flags v2 플레이어 응답:', data);
