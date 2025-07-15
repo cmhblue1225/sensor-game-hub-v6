@@ -1071,10 +1071,10 @@
                     timestamp: new Date().toLocaleTimeString()
                 });
                 
-                // 디폴트 상태 대기 중에는 센서 데이터 처리
+                // 디폴트 상태 대기 중에는 게임에서 센서 데이터를 처리하지 않음
+                // 센서 클라이언트에서만 처리하고 서버를 통해 알림을 받음
                 if (this.signalFlagsState.waitingForDefault) {
-                    console.log('📍 디폴트 상태 대기 중 - 센서 데이터 처리');
-                    this.processDefaultStateDetection(orientationData);
+                    console.log('📍 디폴트 상태 대기 중 - 센서 클라이언트의 알림 대기');
                     return;
                 }
                 
@@ -1086,22 +1086,6 @@
                 
                 // 실제 센서 기반 게임 로직은 센서 클라이언트에서 처리됨
                 // 여기서는 UI 업데이트만 수행
-            }
-            
-            processDefaultStateDetection(orientationData) {
-                const beta = orientationData.beta || 0;
-                const gamma = orientationData.gamma || 0;
-                
-                console.log('🔍 게임에서 센서 데이터 수신:', { beta, gamma });
-                console.log('⚠️ 게임에서는 센서 데이터를 직접 처리하지 않음 - 센서 클라이언트에서 처리');
-                
-                // 게임에서는 센서 데이터를 직접 처리하지 않음
-                // 센서 클라이언트에서 디폴트 상태를 감지하고 서버를 통해 알림을 보냄
-                // 이 메서드는 디버깅 목적으로만 사용
-                
-                // 디폴트 상태 확인 (±30도) - 디버깅 목적
-                const isInDefaultState = Math.abs(beta) <= 30 && Math.abs(gamma) <= 30;
-                console.log('🔍 디폴트 상태 여부 (디버깅용):', isInDefaultState);
             }
             
             handlePlayerResponse(data) {

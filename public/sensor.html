@@ -971,10 +971,12 @@
                 // Signal Flags v2 게임별 소켓 이벤트 리스너
                 if (this.sdk.socket) {
                     this.sdk.socket.on('signal-flags-v2-wait-default', (data) => {
-                        console.log('📍 디폴트 상태 대기 시작');
+                        console.log('📍 [센서] 디폴트 상태 대기 시작 이벤트 수신:', data);
+                        console.log('📍 [센서] playerId:', this.state.playerId, 'gameId:', this.state.gameId);
                         this.signalFlagsState.waitingForDefault = true;
                         this.signalFlagsState.isInDefaultState = false;
                         this.showMessage('📱 핸드폰을 앞으로 쭉 뻗어 수평으로 유지하세요 (±30도)', 'warning');
+                        console.log('📍 [센서] 디폴트 상태 대기 시작 완료 - waitingForDefault:', this.signalFlagsState.waitingForDefault);
                     });
                     
                     this.sdk.socket.on('signal-flags-v2-round-start', (data) => {
@@ -1030,38 +1032,43 @@
                 const beta = data.orientation.beta || 0;   // 앞뒤 기울기
                 const gamma = data.orientation.gamma || 0; // 좌우 기울기
                 
-                // 디버깅: 센서 값 실시간 로깅
-                if (this.signalFlagsState.waitingForDefault || this.signalFlagsState.isPlaying) {
-                    console.log(`📊 센서값: beta=${beta.toFixed(1)}°, gamma=${gamma.toFixed(1)}° | 디폴트범위: ±${this.signalFlagsState.sensorThresholds.defaultState.beta}°`);
+                // 디버깅: 센서 값 실시간 로깅 (디폴트 대기 중에만)
+                if (this.signalFlagsState.waitingForDefault) {
+                    console.log(`📊 [센서] 센서값: beta=${beta.toFixed(1)}°, gamma=${gamma.toFixed(1)}° | 디폴트범위: ±${this.signalFlagsState.sensorThresholds.defaultState.beta}°`);
+                    console.log(`📊 [센서] 현재 상태: waitingForDefault=${this.signalFlagsState.waitingForDefault}, isInDefaultState=${this.signalFlagsState.isInDefaultState}, playerId=${this.state.playerId}`);
                 }
                 
                 // 디폴트 상태 감지
                 const isInDefaultState = this.checkDefaultState(beta, gamma);
                 
                 if (this.signalFlagsState.waitingForDefault) {
+                    console.log(`📊 [센서] 디폴트 상태 체크: isInDefaultState=${isInDefaultState}, currentlyInDefault=${this.signalFlagsState.isInDefaultState}`);
+                    
                     // 디폴트 상태 대기 중
                     if (isInDefaultState && !this.signalFlagsState.isInDefaultState) {
                         this.signalFlagsState.isInDefaultState = true;
-                        console.log('✅ 디폴트 상태 감지됨:', { beta, gamma });
+                        console.log('✅ [센서] 디폴트 상태 감지됨:', { beta, gamma });
                         
                         // 서버에 디폴트 상태 준비 완료 알림
                         const readyData = {
                             sessionCode: this.state.currentSession.sessionCode || this.state.currentSession.sessionId?.split('_')[1],
                             playerId: this.state.playerId
                         };
-                        console.log('📤 디폴트 상태 준비 완료 전송:', readyData);
+                        console.log('📤 [센서] 디폴트 상태 준비 완료 전송:', readyData);
                         this.sdk.socket.emit('signal-flags-v2-default-ready', readyData);
                         
                         this.showMessage('✅ 디폴트 상태 감지! 명령을 기다리는 중...', 'success');
                     } else if (!isInDefaultState) {
                         if (this.signalFlagsState.isInDefaultState) {
-                            console.log('⚠️ 디폴트 상태 벗어남:', { beta, gamma });
+                            console.log('⚠️ [센서] 디폴트 상태 벗어남:', { beta, gamma });
                             
                             // 서버에 디폴트 상태 벗어남 알림
-                            this.sdk.socket.emit('signal-flags-v2-default-lost', {
+                            const lostData = {
                                 sessionCode: this.state.currentSession.sessionCode || this.state.currentSession.sessionId?.split('_')[1],
                                 playerId: this.state.playerId
-                            });
+                            };
+                            console.log('📤 [센서] 디폴트 상태 벗어남 전송:', lostData);
+                            this.sdk.socket.emit('signal-flags-v2-default-lost', lostData);
                         }
                         this.signalFlagsState.isInDefaultState = false;
                     }
