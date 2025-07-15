@@ -331,15 +331,16 @@
             <a href="/" class="btn btn-secondary">🏠 허브로</a>
         </div>
         
-        <!-- ✅ 개선된 게임 설명 (탭소닉 스타일 가이드라인 포함) -->
+        <!-- ✅ 바닥 가이드라인 게임 설명 (탭소닉 스타일) -->
         <div class="game-instructions hidden" id="gameInstructions">
             <div class="instruction-title">🎵 Rhythm Blade 게임 방법</div>
-            <div class="instruction-item">🎯 탭소닉 스타일 가이드라인을 보고 정확한 타이밍으로!</div>
-            <div class="instruction-item">🔴 빨간 가이드라인: 플레이어1, 오른쪽으로 스윙</div>
-            <div class="instruction-item">🔵 파란 가이드라인: 플레이어2, 왼쪽으로 스윙</div>
-            <div class="instruction-item">🟣 보라 가이드라인: 협력 노트 (동시 타격)</div>
-            <div class="instruction-item">✨ 노트가 가이드라인에 도달할 때 타격하세요!</div>
-            <div class="instruction-item">🎵 128 BPM 일렉트로닉 뮤직 + 박자 맞춤 효과</div>
+            <div class="instruction-item">🎯 바닥의 탭소닉 스타일 가이드라인으로 완벽한 타이밍!</div>
+            <div class="instruction-item">🔴 빨간 바닥 패드: 플레이어1, 오른쪽으로 스윙</div>
+            <div class="instruction-item">🔵 파란 바닥 패드: 플레이어2, 왼쪽으로 스윙</div>
+            <div class="instruction-item">🟣 보라 바닥 패드: 협력 노트 (동시 타격)</div>
+            <div class="instruction-item">✨ 노트가 바닥 원형 인디케이터에 도달할 때 타격!</div>
+            <div class="instruction-item">🛤️ 트랙 라인을 따라 다가오는 노트를 추적하세요</div>
+            <div class="instruction-item">🎵 128 BPM 박자에 맞춘 바닥 펄스 효과</div>
             <div class="instruction-item">⌨️ 테스트: Q(왼쪽), E(오른쪽), Space(협력)</div>
         </div>
     </div>
@@ -704,7 +705,7 @@
                 }
             }
             
-            // ✅ 탭소닉 스타일 타이밍 가이드라인 시스템
+            // ✅ 탭소닉 스타일 바닥 가이드라인 시스템 (노트 가시성 개선)
             createTimingGuidelines() {
                 this.timingGuidelines = {
                     sensor1: null,    // 왼쪽 빨간 가이드라인
@@ -712,81 +713,101 @@
                     cooperation: null // 중앙 보라색 가이드라인
                 };
                 
-                // 왼쪽 세이버용 빨간 가이드라인
-                this.timingGuidelines.sensor1 = this.createGuideline(-2, 0xff0000, 'sensor1');
+                // 왼쪽 세이버용 빨간 가이드라인 (바닥)
+                this.timingGuidelines.sensor1 = this.createFloorGuideline(-2, 0xff0000, 'sensor1');
                 this.scene.add(this.timingGuidelines.sensor1);
                 
-                // 오른쪽 세이버용 파란 가이드라인
-                this.timingGuidelines.sensor2 = this.createGuideline(2, 0x0000ff, 'sensor2');
+                // 오른쪽 세이버용 파란 가이드라인 (바닥)
+                this.timingGuidelines.sensor2 = this.createFloorGuideline(2, 0x0000ff, 'sensor2');
                 this.scene.add(this.timingGuidelines.sensor2);
                 
-                // 협력 노트용 보라색 가이드라인 (중앙)
-                this.timingGuidelines.cooperation = this.createGuideline(0, 0x8b5cf6, 'cooperation');
+                // 협력 노트용 보라색 가이드라인 (중앙 바닥)
+                this.timingGuidelines.cooperation = this.createFloorGuideline(0, 0x8b5cf6, 'cooperation');
                 this.scene.add(this.timingGuidelines.cooperation);
                 
-                console.log('🎯 탭소닉 스타일 타이밍 가이드라인 생성 완료');
+                console.log('🎯 탭소닉 스타일 바닥 가이드라인 생성 완료 - 노트 가시성 향상');
             }
             
-            createGuideline(xPosition, color, type) {
+            // ✅ 바닥 가이드라인 생성 (탭소닉 스타일로 노트 가시성 향상)
+            createFloorGuideline(xPosition, color, type) {
                 const guidelineGroup = new THREE.Group();
                 
-                // 메인 가이드라인 (세로선)
-                const lineGeometry = new THREE.PlaneGeometry(0.1, 3);
-                const lineMaterial = new THREE.MeshBasicMaterial({
+                // 바닥 타격 지점 (직사각형 패드)
+                const hitZoneGeometry = new THREE.PlaneGeometry(1.5, 3);
+                const hitZoneMaterial = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.4,
+                    side: THREE.DoubleSide
+                });
+                const hitZone = new THREE.Mesh(hitZoneGeometry, hitZoneMaterial);
+                hitZone.rotation.x = -Math.PI / 2; // 바닥에 평행하게
+                hitZone.position.set(0, -0.8, 3.5); // 바닥 위치
+                hitZone.userData = { originalOpacity: 0.4 };
+                
+                // 타격 지점 중앙 원형 인디케이터
+                const centerCircleGeometry = new THREE.CircleGeometry(0.6, 16);
+                const centerCircleMaterial = new THREE.MeshBasicMaterial({
                     color: color,
                     transparent: true,
                     opacity: 0.8,
                     side: THREE.DoubleSide
                 });
-                const mainLine = new THREE.Mesh(lineGeometry, lineMaterial);
-                mainLine.position.set(0, 1.5, 3.5); // 타격 지점 위치
-                mainLine.userData = { originalOpacity: 0.8 };
+                const centerCircle = new THREE.Mesh(centerCircleGeometry, centerCircleMaterial);
+                centerCircle.rotation.x = -Math.PI / 2;
+                centerCircle.position.set(0, -0.75, 3.5); // 바닥보다 살짝 위
+                centerCircle.userData = { originalOpacity: 0.8, pulsePhase: 0 };
                 
-                // 가이드라인 글로우 효과
-                const glowGeometry = new THREE.PlaneGeometry(0.3, 3.5);
-                const glowMaterial = new THREE.MeshBasicMaterial({
-                    color: color,
-                    transparent: true,
-                    opacity: 0.3,
-                    side: THREE.DoubleSide
-                });
-                const glowLine = new THREE.Mesh(glowGeometry, glowMaterial);
-                glowLine.position.set(0, 1.5, 3.5);
-                glowLine.userData = { originalOpacity: 0.3 };
-                
-                // 타격 포인트 인디케이터 (원형)
-                const hitPointGeometry = new THREE.CircleGeometry(0.4, 16);
-                const hitPointMaterial = new THREE.MeshBasicMaterial({
-                    color: color,
-                    transparent: true,
-                    opacity: 0.6,
-                    side: THREE.DoubleSide
-                });
-                const hitPoint = new THREE.Mesh(hitPointGeometry, hitPointMaterial);
-                hitPoint.position.set(0, 1.5, 3.5);
-                hitPoint.userData = { originalOpacity: 0.6, pulsePhase: 0 };
-                
-                // 박자 인디케이터 (작은 점들)
-                for (let i = -1; i <= 1; i++) {
-                    if (i === 0) continue; // 메인 타격 지점 제외
-                    
-                    const beatIndicatorGeometry = new THREE.CircleGeometry(0.15, 8);
-                    const beatIndicatorMaterial = new THREE.MeshBasicMaterial({
+                // 가이드라인 경계선 (앞뒤)
+                for (let i = 0; i < 2; i++) {
+                    const borderGeometry = new THREE.PlaneGeometry(1.5, 0.1);
+                    const borderMaterial = new THREE.MeshBasicMaterial({
                         color: color,
                         transparent: true,
-                        opacity: 0.4,
+                        opacity: 0.9,
                         side: THREE.DoubleSide
                     });
-                    const beatIndicator = new THREE.Mesh(beatIndicatorGeometry, beatIndicatorMaterial);
-                    beatIndicator.position.set(0, 1.5 + (i * 0.8), 3.5);
-                    beatIndicator.userData = { originalOpacity: 0.4 };
+                    const border = new THREE.Mesh(borderGeometry, borderMaterial);
+                    border.rotation.x = -Math.PI / 2;
+                    border.position.set(0, -0.7, 3.5 + (i === 0 ? -1.5 : 1.5));
+                    border.userData = { originalOpacity: 0.9 };
+                    
+                    guidelineGroup.add(border);
+                }
+                
+                // 노트 트랙 라인 (길게 뻗은 가이드)
+                const trackGeometry = new THREE.PlaneGeometry(0.8, 40);
+                const trackMaterial = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.2,
+                    side: THREE.DoubleSide
+                });
+                const track = new THREE.Mesh(trackGeometry, trackMaterial);
+                track.rotation.x = -Math.PI / 2;
+                track.position.set(0, -0.9, -16); // 멀리서부터 시작
+                track.userData = { originalOpacity: 0.2 };
+                
+                // 박자 인디케이터들 (바닥 원형들)
+                for (let i = 1; i <= 3; i++) {
+                    const beatGeometry = new THREE.CircleGeometry(0.2, 8);
+                    const beatMaterial = new THREE.MeshBasicMaterial({
+                        color: color,
+                        transparent: true,
+                        opacity: 0.5,
+                        side: THREE.DoubleSide
+                    });
+                    const beatIndicator = new THREE.Mesh(beatGeometry, beatMaterial);
+                    beatIndicator.rotation.x = -Math.PI / 2;
+                    beatIndicator.position.set(0, -0.7, 3.5 - (i * 2));
+                    beatIndicator.userData = { originalOpacity: 0.5 };
                     
                     guidelineGroup.add(beatIndicator);
                 }
                 
-                guidelineGroup.add(glowLine);
-                guidelineGroup.add(mainLine);
-                guidelineGroup.add(hitPoint);
+                guidelineGroup.add(track);
+                guidelineGroup.add(hitZone);
+                guidelineGroup.add(centerCircle);
                 
                 guidelineGroup.position.x = xPosition;
                 guidelineGroup.userData = { 
@@ -1093,10 +1114,10 @@
             // ✅ 탭소닉 스타일 가이드라인 애니메이션 시스템
             updateGuidelineForNote(note) {
                 const noteData = note.userData;
-                const distanceToHitPoint = Math.abs(note.position.z - 3.5); // 가이드라인 위치: z=3.5
+                const distanceToHitPoint = Math.abs(note.position.z - 3.5); // 바닥 가이드라인 위치: z=3.5
                 
-                // 노트가 가이드라인에 접근할 때 활성화 (3초 정도 전부터)
-                if (distanceToHitPoint <= 25 && distanceToHitPoint >= 0) {
+                // 노트가 바닥 가이드라인에 접근할 때 활성화 (더 넓은 범위)
+                if (distanceToHitPoint <= 30 && distanceToHitPoint >= 0) {
                     let guidelineType;
                     
                     if (noteData.type === 'cooperation') {
@@ -1140,10 +1161,11 @@
                 // 거리에 따른 강조 강도 계산 (가까울수록 강하게)
                 const intensity = Math.max(0, 1 - (distance / 3));
                 
-                // 히트 포인트 원형 인디케이터 찾기 (마지막에 추가된 원형)
+                // 바닥 가이드라인의 중앙 원형 인디케이터 찾기
                 const hitPoint = guideline.children.find(child => 
                     child.geometry && child.geometry.type === 'CircleGeometry' && 
-                    child.userData.pulsePhase !== undefined
+                    child.userData.pulsePhase !== undefined &&
+                    child.geometry.parameters && child.geometry.parameters.radius === 0.6
                 );
                 
                 if (hitPoint) {
@@ -1207,9 +1229,10 @@
                         const time = Date.now() * 0.002;
                         const pulse = 0.7 + (Math.sin(time) * 0.3);
                         
-                        // 메인 라인에 펄스 적용
+                        // 바닥 가이드라인 트랙에 펄스 적용
                         guideline.children.forEach(child => {
-                            if (child.geometry && child.geometry.type === 'PlaneGeometry') {
+                            if (child.geometry && child.geometry.type === 'PlaneGeometry' && 
+                                child.userData.originalOpacity === 0.2) { // 트랙 라인
                                 child.material.opacity = child.userData.originalOpacity * pulse;
                             }
                         });
@@ -1221,10 +1244,10 @@
                         const beatTime = elapsedTime % this.beatInterval;
                         const beatPulse = beatTime < 0.1 ? 1.5 : 1.0;
                         
-                        // 박자 인디케이터들에 박자 맞춤 효과
+                        // 바닥 박자 인디케이터들에 박자 맞춤 효과
                         guideline.children.forEach(child => {
                             if (child.geometry && child.geometry.type === 'CircleGeometry' && 
-                                child.userData.originalOpacity === 0.4) {
+                                child.userData.originalOpacity === 0.5) { // 바닥 박자 인디케이터
                                 child.material.opacity = child.userData.originalOpacity * beatPulse;
                             }
                         });
@@ -1266,13 +1289,14 @@
                             // 밝은 플래시 효과
                             child.material.opacity = 1.0;
                             
-                            // 히트 포인트 확대 효과
+                            // 바닥 가이드라인 중앙 원형 확대 효과
                             if (child.geometry && child.geometry.type === 'CircleGeometry' && 
-                                child.userData.pulsePhase !== undefined) {
+                                child.userData.pulsePhase !== undefined &&
+                                child.geometry.parameters && child.geometry.parameters.radius === 0.6) {
                                 child.scale.setScalar(2.0);
                                 
-                                // 링 확산 효과를 위한 임시 링 생성
-                                this.createGuidelineRingEffect(child.position, guideline.userData.color);
+                                // 바닥 링 확산 효과 생성
+                                this.createFloorRingEffect(child.position, guideline.userData.color);
                             }
                         }
                     });
@@ -1318,6 +1342,46 @@
                 };
                 
                 animateRing();
+            }
+            
+            createFloorRingEffect(position, color) {
+                // 바닥에 확산되는 링 효과 생성 (탭소닉 스타일)
+                const ringGeometry = new THREE.RingGeometry(0.7, 1.0, 16);
+                const ringMaterial = new THREE.MeshBasicMaterial({
+                    color: color,
+                    transparent: true,
+                    opacity: 0.9,
+                    side: THREE.DoubleSide
+                });
+                const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+                ring.position.copy(position);
+                ring.rotation.x = -Math.PI / 2; // 바닥에 평행하게
+                ring.userData = { 
+                    startTime: Date.now(),
+                    duration: 400 // 0.4초 동안 확산
+                };
+                
+                this.scene.add(ring);
+                
+                // 바닥 링 애니메이션 함수
+                const animateFloorRing = () => {
+                    const elapsed = Date.now() - ring.userData.startTime;
+                    const progress = elapsed / ring.userData.duration;
+                    
+                    if (progress >= 1) {
+                        this.scene.remove(ring);
+                        return;
+                    }
+                    
+                    // 크기 확대 및 페이드아웃
+                    const scale = 1 + (progress * 4); // 5배까지 확대
+                    ring.scale.setScalar(scale);
+                    ring.material.opacity = 0.9 * (1 - progress);
+                    
+                    requestAnimationFrame(animateFloorRing);
+                };
+                
+                animateFloorRing();
             }
             
             processHit(note, type, isCooperation) {
