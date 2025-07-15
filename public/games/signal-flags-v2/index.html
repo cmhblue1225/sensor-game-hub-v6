@@ -1004,17 +1004,29 @@
                 console.log('🔍 센서 데이터 원본 분석:', {
                     wholeData: data,
                     sensorData: data.sensorData,
-                    orientation: data.sensorData?.orientation,
+                    dataProperty: data.data,
+                    dataOrientation: data.data?.orientation,
+                    sensorDataOrientation: data.sensorData?.orientation,
                     directAccess: {
-                        beta: data.sensorData?.orientation?.beta,
-                        gamma: data.sensorData?.orientation?.gamma,
-                        alpha: data.sensorData?.orientation?.alpha
+                        beta: data.data?.orientation?.beta,
+                        gamma: data.data?.orientation?.gamma,
+                        alpha: data.data?.orientation?.alpha
                     }
                 });
                 
-                // 센서 데이터 구조 확인 및 수정
-                const sensorData = data.sensorData || data;
-                const orientationData = sensorData.orientation || sensorData;
+                // 올바른 센서 데이터 추출 (data.data.orientation이 실제 경로)
+                let orientationData = null;
+                
+                if (data.data?.orientation) {
+                    orientationData = data.data.orientation;
+                } else if (data.sensorData?.orientation) {
+                    orientationData = data.sensorData.orientation;
+                } else if (data.orientation) {
+                    orientationData = data.orientation;
+                } else {
+                    console.warn('⚠️ 센서 orientation 데이터를 찾을 수 없음');
+                    return;
+                }
                 
                 // 센서 데이터 수신 로깅
                 console.log('📡 게임에서 센서 데이터 수신:', {
@@ -1023,7 +1035,8 @@
                     waitingForDefault: this.signalFlagsState.waitingForDefault,
                     beta: orientationData.beta?.toFixed(1),
                     gamma: orientationData.gamma?.toFixed(1),
-                    extractedOrientation: orientationData,
+                    alpha: orientationData.alpha?.toFixed(1),
+                    orientationData: orientationData,
                     timestamp: new Date().toLocaleTimeString()
                 });
                 
