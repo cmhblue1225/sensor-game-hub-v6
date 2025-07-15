@@ -262,6 +262,98 @@
             left: 0;
             color: var(--primary);
         }
+        
+        /* 🎵 음악 선택 UI 스타일 */
+        .music-selection {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+        }
+        
+        .music-title {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+        
+        .music-tracks {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+        }
+        
+        .track-option {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            background: rgba(30, 41, 59, 0.8);
+            border: 2px solid transparent;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .track-option:hover {
+            background: rgba(59, 130, 246, 0.1);
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+        
+        .track-option.selected {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+        }
+        
+        .track-icon {
+            font-size: 2rem;
+            margin-right: 1rem;
+            min-width: 3rem;
+            text-align: center;
+        }
+        
+        .track-info {
+            flex: 1;
+        }
+        
+        .track-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+        
+        .track-details {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .track-status {
+            font-size: 1.5rem;
+            color: var(--success);
+            min-width: 2rem;
+            text-align: center;
+        }
+        
+        .selected-track-info {
+            text-align: center;
+            padding: 0.75rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 0.5rem;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            font-weight: 600;
+        }
+        
+        #selectedTrackName {
+            color: var(--success);
+        }
     </style>
 </head>
 <body>
@@ -273,8 +365,34 @@
             <div class="session-title">⚔️ Rhythm Blade Dual</div>
             <div style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.6;">
                 두 명이 협력하여 플레이하는 3D 리듬 게임!<br>
-                27초 동안 70개의 노트로 구성된 epic한 협력 여정!<br>
+                선택한 음악에 맞춘 특별한 비트맵으로 플레이하세요!<br>
                 완벽한 타이밍과 협력으로 최고 점수를 달성하세요!
+            </div>
+            
+            <!-- 🎵 음악 선택 섹션 -->
+            <div class="music-selection" id="musicSelection">
+                <div class="music-title">🎵 음악 선택</div>
+                <div class="music-tracks">
+                    <div class="track-option" data-track="electric-storm" id="track-electric-storm">
+                        <div class="track-icon">⚡</div>
+                        <div class="track-info">
+                            <div class="track-name">Electric Storm</div>
+                            <div class="track-details">128 BPM • Electronic • 45초</div>
+                        </div>
+                        <div class="track-status">✓</div>
+                    </div>
+                    <div class="track-option" data-track="neon-nights" id="track-neon-nights">
+                        <div class="track-icon">🌙</div>
+                        <div class="track-info">
+                            <div class="track-name">Neon Nights</div>
+                            <div class="track-details">128 BPM • Synthwave • 45초</div>
+                        </div>
+                        <div class="track-status"></div>
+                    </div>
+                </div>
+                <div class="selected-track-info" id="selectedTrackInfo">
+                    <span id="selectedTrackName">Electric Storm</span> 선택됨
+                </div>
             </div>
             
             <div class="session-code" id="sessionCode">----</div>
@@ -410,11 +528,39 @@
                     cooperationBonus: 1.0    // 협력 보너스 배수
                 };
                 
-                // 🎵 음악 시스템 - NCS 일렉트로닉 뮤직
+                // 🎵 다중 음악 시스템 - 선택 가능한 트랙들
                 this.bgMusic = document.getElementById('bgMusic');
                 this.musicLoaded = false;
-                this.bpm = 128; // BPM (Beats Per Minute) - 일렉트로닉 음악 표준
-                this.beatInterval = 60 / this.bpm; // 비트 간격 (약 0.47초)
+                this.currentTrack = 'electric-storm'; // 기본 선택 트랙
+                
+                // 🎼 음악 트랙 정보 (같은 음악, 다른 이름과 설정)
+                this.tracks = {
+                    'electric-storm': {
+                        name: 'Electric Storm',
+                        icon: '⚡',
+                        description: '128 BPM • Electronic • 45초',
+                        bpm: 128,
+                        sources: [
+                            'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/000/436/invincible-1594303577-xVcWl8s6uH.mp3',
+                            'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/000/152/1654766391_N6uRkX7YQX_Elektronomia---Summersong-2018-NCS-Release.mp3',
+                            'https://www.bensound.com/bensound-music/bensound-energy.mp3'
+                        ]
+                    },
+                    'neon-nights': {
+                        name: 'Neon Nights',
+                        icon: '🌙',
+                        description: '128 BPM • Synthwave • 45초',
+                        bpm: 128,
+                        sources: [
+                            'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/000/436/invincible-1594303577-xVcWl8s6uH.mp3',
+                            'https://ncsmusic.s3.eu-west-1.amazonaws.com/tracks/000/000/152/1654766391_N6uRkX7YQX_Elektronomia---Summersong-2018-NCS-Release.mp3',
+                            'https://www.bensound.com/bensound-music/bensound-energy.mp3'
+                        ]
+                    }
+                };
+                
+                this.bpm = this.tracks[this.currentTrack].bpm;
+                this.beatInterval = 60 / this.bpm; // 비트 간격 계산
                 
                 this.initializeMusic();
                 
@@ -426,191 +572,297 @@
                 this.noteSpawnIndex = 0;
                 this.particleEffects = [];
                 
-                // 🎵 리듬에 맞는 비트맵 (120 BPM 기준)
+                // 🎵 리듬에 맞는 비트맵 (선택된 트랙 기준)
                 this.beatmap = this.generateRhythmBeatmap();
                 
                 this.gameState.totalNotes = this.beatmap.length;
+                
+                // 🎵 음악 선택 시스템 초기화
+                this.setupMusicSelection();
                 
                 this.setupEventListeners();
                 this.gameLoop();
             }
             
             initializeMusic() {
-                // 🎵 음악 로드 및 설정
-                this.bgMusic.volume = 0.6; // 볼륨 설정
+                // 🎵 선택된 트랙에 따른 음악 로드
+                this.loadTrack(this.currentTrack);
+            }
+            
+            loadTrack(trackId) {
+                // 🎵 트랙 정보 가져오기
+                const track = this.tracks[trackId];
+                if (!track) {
+                    console.error(`트랙을 찾을 수 없습니다: ${trackId}`);
+                    return;
+                }
+                
+                // BPM 업데이트
+                this.bpm = track.bpm;
+                this.beatInterval = 60 / this.bpm;
+                
+                // 🎵 audio 엘리먼트 소스 업데이트
+                this.bgMusic.innerHTML = '';
+                track.sources.forEach(src => {
+                    const source = document.createElement('source');
+                    source.src = src;
+                    source.type = 'audio/mpeg';
+                    this.bgMusic.appendChild(source);
+                });
+                
+                // 최종 폴백 추가
+                const fallbackSource = document.createElement('source');
+                fallbackSource.src = 'data:audio/wav;base64,UklGRiQDAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQADAAA=';
+                fallbackSource.type = 'audio/wav';
+                this.bgMusic.appendChild(fallbackSource);
+                
+                // 🎵 음악 설정
+                this.bgMusic.volume = 0.6;
                 this.bgMusic.currentTime = 0;
+                this.musicLoaded = false;
                 
                 // 음악 로드 완료 이벤트
                 this.bgMusic.addEventListener('canplaythrough', () => {
                     this.musicLoaded = true;
-                    console.log('🎵 음악 로드 완료');
+                    console.log(`🎵 ${track.name} 로드 완료`);
                 });
                 
                 // 음악 재생 오류 처리
                 this.bgMusic.addEventListener('error', (e) => {
-                    console.warn('🎵 음악 로드 실패, 무음 모드로 진행');
+                    console.warn(`🎵 ${track.name} 로드 실패, 무음 모드로 진행`);
                     this.musicLoaded = false;
                 });
                 
                 // 음악 로드 시도
                 this.bgMusic.load();
+                
+                console.log(`🎵 ${track.name} 트랙 로딩 중...`);
+            }
+            
+            // 🎵 음악 선택 시스템 설정
+            setupMusicSelection() {
+                // 트랙 옵션 클릭 이벤트 설정
+                document.querySelectorAll('.track-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        const trackId = option.getAttribute('data-track');
+                        this.selectTrack(trackId);
+                    });
+                });
+                
+                // 초기 선택 상태 설정
+                this.updateTrackSelection();
+            }
+            
+            selectTrack(trackId) {
+                if (this.gameState.phase === 'playing') {
+                    console.warn('게임 진행 중에는 트랙을 변경할 수 없습니다.');
+                    return;
+                }
+                
+                this.currentTrack = trackId;
+                
+                // 🎵 새 트랙 로드
+                this.loadTrack(trackId);
+                
+                // 🎼 새 비트맵 생성
+                this.beatmap = this.generateRhythmBeatmap();
+                this.gameState.totalNotes = this.beatmap.length;
+                
+                // UI 업데이트
+                this.updateTrackSelection();
+                
+                console.log(`🎵 트랙 변경: ${this.tracks[trackId].name}`);
+            }
+            
+            updateTrackSelection() {
+                // 모든 트랙 옵션 선택 해제
+                document.querySelectorAll('.track-option').forEach(option => {
+                    option.classList.remove('selected');
+                    option.querySelector('.track-status').textContent = '';
+                });
+                
+                // 현재 선택된 트랙 강조
+                const selectedOption = document.getElementById(`track-${this.currentTrack}`);
+                if (selectedOption) {
+                    selectedOption.classList.add('selected');
+                    selectedOption.querySelector('.track-status').textContent = '✓';
+                }
+                
+                // 선택된 트랙 정보 업데이트
+                const track = this.tracks[this.currentTrack];
+                document.getElementById('selectedTrackName').textContent = track.name;
             }
             
             generateRhythmBeatmap() {
-                // 🎵 128 BPM 일렉트로닉 뮤직에 맞는 비트맵 생성 (센서 딜레이 최적화)
-                // 센서 쿨다운: 500ms, 1비트 = 0.47초, 1/2비트 = 0.23초
-                // ⚠️ halfBeat(235ms) < 센서쿨다운(500ms) 이므로 최소 beat 간격 필요
-                const beat = this.beatInterval; // 약 0.47초 (128 BPM)
-                const halfBeat = beat / 2; // 약 0.23초 (센서 딜레이로 연속 불가)
-                const quarterBeat = beat / 4; // 약 0.12초 (센서 딜레이로 불가)
-                const doubleBeat = beat * 2; // 약 0.94초 (여유로운 간격)
+                // 🎵 선택된 트랙에 따른 맞춤형 비트맵 생성
+                const track = this.tracks[this.currentTrack];
+                console.log(`🎼 ${track.name} 비트맵 생성 중...`);
                 
+                // BPM에 따른 비트 간격 계산 (센서 딜레이 최적화)
+                const beat = this.beatInterval; // 현재 트랙의 BPM 기준
+                const halfBeat = beat / 2; // 센서 딜레이로 연속 불가
+                const quarterBeat = beat / 4; // 센서 딜레이로 불가
+                const doubleBeat = beat * 2; // 여유로운 간격
+                
+                // 🎼 트랙별 맞춤형 비트맵 생성
+                if (this.currentTrack === 'electric-storm') {
+                    return this.generateElectricStormBeatmap(beat, halfBeat, doubleBeat);
+                } else if (this.currentTrack === 'neon-nights') {
+                    return this.generateNeonNightsBeatmap(beat, halfBeat, doubleBeat);
+                } else {
+                    // 기본 패턴
+                    return this.generateDefaultBeatmap(beat, halfBeat, doubleBeat);
+                }
+            }
+            
+            generateElectricStormBeatmap(beat, halfBeat, doubleBeat) {
+                // ⚡ Electric Storm - 에너지 넘치는 전기적 패턴 (강렬하고 직선적)
                 const beatmap = [];
                 
-                // 🎵 센서 친화적 인트로 (기본 비트 간격) - 0-4초
+                // ⚡ 전기적 시작 - 번개 같은 빠른 교대 (0-5초)
                 beatmap.push(
                     { time: beat * 1, lane: "sensor1", type: "normal" },
                     { time: beat * 2, lane: "sensor2", type: "normal" },
                     { time: beat * 3, lane: "sensor1", type: "normal" },
                     { time: beat * 4, lane: "sensor2", type: "normal" },
-                    { time: beat * 5, lane: "both", type: "cooperation" },
-                    { time: beat * 7, lane: "sensor1", type: "normal" },    // beat * 6 → 7 (여유)
+                    { time: beat * 5, lane: "both", type: "cooperation" }, // 첫 번째 전기 폭발
+                    { time: beat * 7, lane: "sensor1", type: "normal" },
                     { time: beat * 8, lane: "sensor2", type: "normal" },
-                    { time: beat * 10, lane: "both", type: "cooperation" }   // beat * 8 → 10 (여유)
+                    { time: beat * 10, lane: "both", type: "cooperation" }
                 );
                 
-                // 🎵 센서 최적화 드롭 구간 1 (기본 비트 패턴) - 5-9초
+                // ⚡ 전기 방전 구간 - 지그재그 패턴 (6-12초)
                 for (let i = 0; i < 12; i++) {
-                    const baseTime = beat * (12 + i); // 시작점 조정
-                    const pattern = i % 3; // 3박자 패턴으로 단순화
+                    const baseTime = beat * (12 + i);
+                    const pattern = i % 4; // 4박자 패턴
                     
                     if (pattern === 0) {
                         beatmap.push({ time: baseTime, lane: "sensor1", type: "normal" });
                     } else if (pattern === 1) {
                         beatmap.push({ time: baseTime, lane: "sensor2", type: "normal" });
-                    } else { // pattern === 2, 협력 노트
+                    } else if (pattern === 2) {
+                        beatmap.push({ time: baseTime, lane: "sensor1", type: "normal" });
+                    } else { // 전기 충돌
                         beatmap.push({ time: baseTime, lane: "both", type: "cooperation" });
                     }
                 }
                 
-                // 🎵 센서 휴식 구간 (여유로운 간격) - 11-13초
-                const restStart = beat * 26;
+                // ⚡ 전기 폭풍 휴식 (13-15초)
+                const stormRest = beat * 26;
                 beatmap.push(
-                    { time: restStart, lane: "sensor1", type: "normal" },
-                    { time: restStart + doubleBeat, lane: "sensor2", type: "normal" },      // 2비트 간격
-                    { time: restStart + doubleBeat * 2, lane: "both", type: "cooperation" },
-                    { time: restStart + doubleBeat * 3, lane: "sensor1", type: "normal" },
-                    { time: restStart + doubleBeat * 4, lane: "sensor2", type: "normal" }
+                    { time: stormRest, lane: "sensor1", type: "normal" },
+                    { time: stormRest + doubleBeat, lane: "sensor2", type: "normal" },
+                    { time: stormRest + doubleBeat * 2, lane: "both", type: "cooperation" },
+                    { time: stormRest + doubleBeat * 3, lane: "sensor1", type: "normal" }
                 );
                 
-                // 🎵 센서 최적화 빌드업 (안전한 비트 간격) - 14-18초
-                const sensorBuildupStart = beat * 34;
-                // 모든 노트를 최소 1비트 간격으로 배치 (센서 쿨다운 고려)
+                // ⚡ 번개 연쇄 반응 (16-20초)
+                const lightningChain = beat * 34;
                 for (let i = 0; i < 8; i++) {
+                    const chainTime = lightningChain + (beat * i);
+                    const lane = i % 3 === 0 ? "both" : (i % 2 === 0 ? "sensor1" : "sensor2");
+                    const type = lane === "both" ? "cooperation" : "normal";
+                    
+                    beatmap.push({ time: chainTime, lane: lane, type: type });
+                }
+                
+                // ⚡ 최종 전기 폭발 (21-25초)
+                const finalExplosion = beat * 44;
+                beatmap.push(
+                    { time: finalExplosion, lane: "both", type: "cooperation" },
+                    { time: finalExplosion + beat, lane: "sensor1", type: "normal" },
+                    { time: finalExplosion + doubleBeat, lane: "sensor2", type: "normal" },
+                    { time: finalExplosion + doubleBeat + beat, lane: "both", type: "cooperation" },
+                    { time: finalExplosion + doubleBeat * 2, lane: "both", type: "cooperation" } // 최종 폭발
+                );
+                
+                const totalDuration = (finalExplosion + doubleBeat * 2).toFixed(1);
+                console.log(`⚡ Electric Storm 비트맵: ${beatmap.length}개 노트, ${totalDuration}초`);
+                return beatmap;
+            }
+            
+            generateNeonNightsBeatmap(beat, halfBeat, doubleBeat) {
+                // 🌙 Neon Nights - 몽환적이고 신스웨이브한 패턴
+                const beatmap = [];
+                
+                // 🌙 네온 시작 - 부드럽고 몽환적 (0-5초)
+                beatmap.push(
+                    { time: beat * 1.5, lane: "sensor1", type: "normal" },
+                    { time: beat * 3, lane: "sensor2", type: "normal" },
+                    { time: beat * 4.5, lane: "sensor1", type: "normal" },
+                    { time: beat * 6, lane: "both", type: "cooperation" }, // 네온 발광
+                    { time: beat * 8, lane: "sensor2", type: "normal" },
+                    { time: beat * 10, lane: "sensor1", type: "normal" }
+                );
+                
+                // 🌙 신스웨이브 리듬 - 웨이브 패턴 (6-12초)
+                for (let i = 0; i < 10; i++) {
+                    const baseTime = beat * (12 + i * 1.2); // 약간 느린 간격
+                    const pattern = i % 5; // 5박자 패턴 (신스웨이브 특징)
+                    
+                    if (pattern === 0 || pattern === 2) {
+                        beatmap.push({ time: baseTime, lane: "sensor1", type: "normal" });
+                    } else if (pattern === 1 || pattern === 3) {
+                        beatmap.push({ time: baseTime, lane: "sensor2", type: "normal" });
+                    } else { // 네온 펄스
+                        beatmap.push({ time: baseTime, lane: "both", type: "cooperation" });
+                    }
+                }
+                
+                // 🌙 밤의 정적 (13-16초)
+                const nightQuiet = beat * 28;
+                beatmap.push(
+                    { time: nightQuiet, lane: "sensor1", type: "normal" },
+                    { time: nightQuiet + doubleBeat * 1.5, lane: "sensor2", type: "normal" },
+                    { time: nightQuiet + doubleBeat * 3, lane: "both", type: "cooperation" },
+                    { time: nightQuiet + doubleBeat * 4.5, lane: "sensor1", type: "normal" }
+                );
+                
+                // 🌙 네온 클라이맥스 - 색깔 폭발 (17-21초)
+                const neonClimax = beat * 38;
+                for (let i = 0; i < 6; i++) {
+                    const clTime = neonClimax + (doubleBeat * i);
+                    const lane = i % 3 === 0 ? "both" : (i % 2 === 0 ? "sensor2" : "sensor1");
+                    const type = lane === "both" ? "cooperation" : "normal";
+                    
+                    beatmap.push({ time: clTime, lane: lane, type: type });
+                }
+                
+                // 🌙 네온 페이드아웃 (22-25초)
+                const neonFade = beat * 50;
+                beatmap.push(
+                    { time: neonFade, lane: "both", type: "cooperation" },
+                    { time: neonFade + doubleBeat, lane: "sensor2", type: "normal" },
+                    { time: neonFade + doubleBeat * 2, lane: "sensor1", type: "normal" },
+                    { time: neonFade + doubleBeat * 3, lane: "both", type: "cooperation" } // 네온 꺼짐
+                );
+                
+                const totalDuration = (neonFade + doubleBeat * 3).toFixed(1);
+                console.log(`🌙 Neon Nights 비트맵: ${beatmap.length}개 노트, ${totalDuration}초`);
+                return beatmap;
+            }
+            
+            generateDefaultBeatmap(beat, halfBeat, doubleBeat) {
+                // 🎵 기본 패턴 (fallback)
+                const beatmap = [];
+                
+                // 간단한 기본 패턴
+                for (let i = 0; i < 20; i++) {
+                    const time = beat * (i + 1);
                     const pattern = i % 4;
-                    let lane, interval;
                     
                     if (pattern === 0) {
-                        lane = "sensor1";
-                        interval = beat * i; // 기본 비트 간격
+                        beatmap.push({ time: time, lane: "sensor1", type: "normal" });
                     } else if (pattern === 1) {
-                        lane = "sensor2";
-                        interval = beat * i + beat; // 1비트 후
+                        beatmap.push({ time: time, lane: "sensor2", type: "normal" });
                     } else if (pattern === 2) {
-                        lane = "sensor1";
-                        interval = beat * i + doubleBeat; // 2비트 후
+                        beatmap.push({ time: time, lane: "sensor1", type: "normal" });
                     } else {
-                        // 협력 노트는 충분한 간격 확보
-                        lane = "both";
-                        interval = beat * i + doubleBeat + beat; // 3비트 후
-                    }
-                    
-                    beatmap.push({
-                        time: sensorBuildupStart + interval,
-                        lane: lane,
-                        type: lane === "both" ? "cooperation" : "normal"
-                    });
-                }
-                
-                // 🎵 센서 안전 메인 드롭 (1비트 최소 간격) - 20-26초
-                const sensorMainDrop = beat * 48; // 시작 시점 조정
-                // 센서 쿨다운을 고려한 안전한 패턴 (beat 간격)
-                const safeRhythmPatterns = [
-                    { offset: 0, lane: "sensor1", type: "normal" },          // 1비트
-                    { offset: beat, lane: "sensor2", type: "normal" },       // 2비트 (+1비트)
-                    { offset: doubleBeat, lane: "both", type: "cooperation" }, // 3비트 (+2비트)
-                    { offset: doubleBeat + beat, lane: "sensor1", type: "normal" }  // 4비트 (+1비트)
-                ];
-                
-                // 4사이클로 안전하게 진행
-                for (let cycle = 0; cycle < 4; cycle++) {
-                    safeRhythmPatterns.forEach(pattern => {
-                        beatmap.push({
-                            time: sensorMainDrop + (doubleBeat * 2 * cycle) + pattern.offset,
-                            lane: pattern.lane,
-                            type: pattern.type
-                        });
-                    });
-                    
-                    // 사이클 중간에 충분한 휴식 (2번째 사이클 후)
-                    if (cycle === 1) {
-                        beatmap.push({
-                            time: sensorMainDrop + (doubleBeat * 2 * cycle) + (doubleBeat + beat),
-                            lane: "sensor2", 
-                            type: "normal"
-                        });
+                        beatmap.push({ time: time, lane: "both", type: "cooperation" });
                     }
                 }
                 
-                // 🎵 센서 안전 클라이맥스 (최소 1비트 간격 보장) - 28-32초
-                const sensorClimax = beat * 66; // 시작 시점 조정
-                
-                // 2단계로 단순화한 안전한 클라이맥스
-                // 1단계: 기본 교대 패턴 (1비트 간격)
-                for (let i = 0; i < 6; i++) {
-                    const lane = i % 2 === 0 ? "sensor1" : "sensor2";
-                    beatmap.push({
-                        time: sensorClimax + (beat * i),
-                        lane: lane,
-                        type: "normal"
-                    });
-                }
-                
-                // 2단계: 협력 마무리 패턴 (여유로운 간격)
-                const finalStage = sensorClimax + (beat * 6);
-                const finalPatterns = [
-                    { offset: 0, lane: "both", type: "cooperation" },
-                    { offset: doubleBeat, lane: "sensor1", type: "normal" },
-                    { offset: doubleBeat * 2, lane: "sensor2", type: "normal" },
-                    { offset: doubleBeat * 3, lane: "both", type: "cooperation" },
-                    { offset: doubleBeat * 4, lane: "sensor1", type: "normal" },
-                    { offset: doubleBeat * 5, lane: "both", type: "cooperation" }
-                ];
-                
-                finalPatterns.forEach(pattern => {
-                    beatmap.push({
-                        time: finalStage + pattern.offset,
-                        lane: pattern.lane,
-                        type: pattern.type
-                    });
-                });
-                
-                // 🎵 센서 안전 아웃트로 (여유로운 피날레) - 38-42초  
-                const sensorOutro = beat * 88; // 클라이맥스 이후 충분한 간격
-                beatmap.push(
-                    { time: sensorOutro, lane: "both", type: "cooperation" },
-                    { time: sensorOutro + beat, lane: "both", type: "cooperation" },      // 1비트 간격
-                    { time: sensorOutro + doubleBeat, lane: "both", type: "cooperation" }, // 2비트 간격
-                    { time: sensorOutro + doubleBeat + beat, lane: "sensor1", type: "normal" }, // 1비트 간격
-                    { time: sensorOutro + doubleBeat * 2, lane: "sensor2", type: "normal" }, // 1비트 간격
-                    { time: sensorOutro + doubleBeat * 3, lane: "both", type: "cooperation" }, // 2비트 간격
-                    { time: sensorOutro + doubleBeat * 4, lane: "both", type: "cooperation" } // 최종 노트 (2비트 간격)
-                );
-                
-                const totalDuration = (sensorOutro + doubleBeat * 4).toFixed(1);
-                console.log(`🎵 센서 최적화 비트맵 생성 완료: ${beatmap.length}개 노트, ${totalDuration}초 (128 BPM)`);
-                console.log(`🎯 센서 딜레이 최적화: 500ms 쿨다운을 고려한 최소 1비트(470ms) 간격 보장`);
-                console.log(`🎶 음악성 유지: 128 BPM 강박/약박 리듬 패턴 기반 설계`);
+                console.log(`🎵 기본 비트맵: ${beatmap.length}개 노트`);
                 return beatmap;
             }
             
