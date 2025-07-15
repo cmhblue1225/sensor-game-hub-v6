@@ -1,0 +1,658 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🎂 아슬아슬 케이크 배달단</title>
+    <style>
+        :root {
+            --primary: #3b82f6; --secondary: #8b5cf6; --success: #10b981;
+            --warning: #f59e0b; --error: #ef4444; --background: #0f172a;
+            --surface: #1e293b; --text-primary: #f8fafc; --text-secondary: #cbd5e1;
+        }
+        body { 
+            margin: 0; overflow: hidden; background-color: var(--background); 
+            color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            display: flex; justify-content: center; align-items: center; height: 100vh;
+        }
+        #gameContainer { width: 100%; height: 100%; position: relative; }
+        #gameCanvas { display: block; }
+        .ui-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            pointer-events: none; text-align: center;
+        }
+        .session-panel {
+            position: absolute; top: 20px; left: 20px; background: rgba(30, 41, 59, 0.8);
+            padding: 15px; border-radius: 12px; backdrop-filter: blur(5px);
+            display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: auto;
+        }
+        .session-title { font-size: 24px; font-weight: bold; color: var(--primary); }
+        .session-code { font-size: 48px; font-weight: bold; letter-spacing: 4px; color: var(--warning); }
+        .qr-container { width: 160px; height: 160px; background: white; border-radius: 8px; padding: 5px;}
+        .qr-container img { width: 100%; height: 100%; }
+        .connection-status { display: flex; gap: 10px; margin-top: 10px; }
+        .player-status { padding: 8px 12px; border-radius: 8px; font-weight: bold; }
+        .player-status.connected { background-color: var(--success); color: white; }
+        .player-status.disconnected { background-color: var(--error); color: white; }
+        .game-message {
+            background: rgba(30, 41, 59, 0.9); padding: 20px 40px; border-radius: 15px;
+            font-size: 3em; font-weight: bold; color: white; backdrop-filter: blur(10px);
+            border: 2px solid var(--primary);
+        }
+        .controls {
+            position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; pointer-events: auto;
+        }
+        .controls button, .controls a {
+            padding: 12px 20px; background-color: var(--primary); color: white; border: none;
+            border-radius: 8px; font-size: 16px; font-weight: bold; text-decoration: none; cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .controls button:hover, .controls a:hover { background-color: #2563eb; }
+    </style>
+</head>
+<body>
+    <audio id="bgm" src="./assets/bgm.mp3" loop></audio>
+    <audio id="sfx-success" src="./assets/success.mp3"></audio>
+    <audio id="sfx-fail" src="./assets/fail.mp3"></audio>
+
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        <div class="ui-overlay">
+            <div id="messageBox" class="game-message">플레이어 연결 대기중...</div>
+            <div class="score-display" style="position: absolute; top: 20px; right: 20px; background: rgba(30, 41, 59, 0.8); padding: 15px; border-radius: 12px; backdrop-filter: blur(5px); pointer-events: auto; text-align: right;">
+                <div style="font-size: 1.5em; font-weight: bold; color: var(--text-primary);">점수: <span id="currentScore">0</span></div>
+                <div style="font-size: 1em; color: var(--text-secondary);">최고 기록: <span id="highScore">0</span></div>
+            </div>
+        </div>
+        <div class="session-panel">
+            <div class="session-title">🎂 케이크 배달단</div>
+            <div id="sessionCode" class="session-code">----</div>
+            <div id="qrContainer" class="qr-container"></div>
+            <div class="connection-status">
+                <div id="player1Status" class="player-status disconnected">P1</div>
+                <div id="player2Status" class="player-status disconnected">P2</div>
+            </div>
+        </div>
+        <div class="controls">
+            <button id="resetButton" style="display: none;">🔄 재시작</button>
+            <a href="/">🏠 허브로</a>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/SessionSDK.js"></script>
+
+    <script>
+        class CakeDeliveryGame {
+            constructor() {
+                this.sdk = new SessionSDK({
+                    gameId: 'cake-delivery',
+                    gameType: 'dual',
+                    debug: false
+                });
+
+                this.gameState = 'waiting'; // waiting, ready, playing, success, fail, level_clear
+                this.level = 1;
+                this.maxLevel = 5;
+                this.players = {};
+                this.cake = {};
+                this.obstacles = [];
+                this.destination = null;
+                this.particles = [];
+                this.cameraShake = { intensity: 0, decay: 0 };
+                this.currentScore = 0;
+                this.highScore = parseInt(localStorage.getItem('cakeDeliveryHighScore') || '0');
+
+                this.levelConfig = {
+                    1: { forwardSpeed: 0.1, obstacles: 2, holes: 1, movingObstacles: 1, rotatingObstacles: 0 },
+                    2: { forwardSpeed: 0.12, obstacles: 3, holes: 2, movingObstacles: 1, rotatingObstacles: 1 },
+                    3: { forwardSpeed: 0.15, obstacles: 4, holes: 3, movingObstacles: 2, rotatingObstacles: 1 },
+                    4: { forwardSpeed: 0.18, obstacles: 5, holes: 4, movingObstacles: 2, rotatingObstacles: 2 },
+                    5: { forwardSpeed: 0.2, obstacles: 6, holes: 5, movingObstacles: 3, rotatingObstacles: 2 },
+                };
+
+                this.initUI();
+                this.init3D();
+                this.initAudio();
+                this.setupEvents();
+                
+                this.animate = this.animate.bind(this);
+                this.animate();
+            }
+
+            initUI() {
+                this.messageBox = document.getElementById('messageBox');
+                this.resetButton = document.getElementById('resetButton');
+                this.resetButton.onclick = () => this.resetGame();
+                this.currentScoreDisplay = document.getElementById('currentScore');
+                this.highScoreDisplay = document.getElementById('highScore');
+                this.updateScoreDisplay();
+            }
+
+            init3D() {
+                this.scene = new THREE.Scene();
+                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                this.camera.position.set(0, 15, 10);
+                this.camera.lookAt(0, 0, 0);
+
+                this.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.shadowMap.enabled = true;
+
+                // 조명
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                this.scene.add(ambientLight);
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 20, 5);
+                directionalLight.castShadow = true;
+                this.scene.add(directionalLight);
+
+                this.scene.add(directionalLight);
+
+                // 별 배경 추가
+                const starsGeometry = new THREE.BufferGeometry();
+                const starsMaterial = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.5 });
+                const starVertices = [];
+                for (let i = 0; i < 10000; i++) {
+                    const x = (Math.random() - 0.5) * 2000;
+                    const y = (Math.random() - 0.5) * 2000;
+                    const z = (Math.random() - 0.5) * 2000;
+                    starVertices.push(x, y, z);
+                }
+                starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+                this.stars = new THREE.Points(starsGeometry, starsMaterial);
+                this.scene.add(this.stars);
+
+                this.roadWidth = 15; // 도로 폭 감소
+                const floorGeometry = new THREE.PlaneGeometry(this.roadWidth, 100);
+                const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x4a5568 });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.y = -0.5;
+                floor.position.z = -50; // 도로 시작 위치 조정
+                floor.receiveShadow = true;
+                this.scene.add(floor);
+            }
+
+            setupEvents() {
+                this.sdk.on('connected', () => this.sdk.createSession());
+
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;
+                    this.displaySessionInfo(session);
+                });
+
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;
+                    this.addPlayer(data.sensorId);
+                    this.updatePlayerStatus();
+                });
+
+                this.sdk.on('sensor-disconnected', (event) => {
+                    const data = event.detail || event;
+                    this.removePlayer(data.sensorId);
+                    this.updatePlayerStatus();
+                });
+
+                this.sdk.on('game-ready', () => {
+                    this.gameState = 'ready';
+                    this.messageBox.textContent = '3초 후 시작!';
+                    setTimeout(() => {
+                        this.sdk.startGame();
+                        this.gameState = 'playing';
+                        this.messageBox.style.display = 'none';
+                    }, 3000);
+                });
+
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;
+                    if (this.gameState === 'playing' && this.players[data.sensorId]) {
+                        this.updatePlayerPosition(data.sensorId, data.data.orientation);
+                    }
+                });
+
+                window.addEventListener('resize', () => this.onWindowResize(), false);
+            }
+
+            displaySessionInfo(session) {
+                document.getElementById('sessionCode').textContent = session.sessionCode;
+                const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                const qrContainer = document.getElementById('qrContainer');
+                qrContainer.innerHTML = '';
+
+                try {
+                    if (typeof qrcode !== 'undefined') {
+                        const qr = qrcode(0, 'L');
+                        qr.addData(qrUrl);
+                        qr.make();
+                        qrContainer.innerHTML = qr.createImgTag(4);
+                    } else { throw new Error('qrcode.js not loaded'); }
+                } catch (e) {
+                    console.warn('QR code generator failed, using fallback API.');
+                    const img = document.createElement('img');
+                    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrUrl)}`;
+                    qrContainer.appendChild(img);
+                }
+            }
+
+            addPlayer(sensorId) {
+                const isPlayer1 = !this.players['sensor1'];
+                const playerColor = isPlayer1 ? 0x3b82f6 : 0x8b5cf6;
+                const startX = isPlayer1 ? -2 : 2;
+                const playerLabel = isPlayer1 ? '1P' : '2P';
+
+                const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+                const material = new THREE.MeshStandardMaterial({ color: playerColor });
+                const playerMesh = new THREE.Mesh(geometry, material);
+                playerMesh.position.set(startX, 0, 0);
+                playerMesh.castShadow = true;
+
+                const labelSprite = this.makeTextSprite(playerLabel, { fontsize: 96, fontface: 'Arial', borderColor: { r:255, g:0, b:0, a:1.0 } });
+                labelSprite.position.set(0, 1.5, 0);
+                playerMesh.add(labelSprite);
+
+                this.scene.add(playerMesh);
+
+                this.players[sensorId] = {
+                    id: sensorId,
+                    mesh: playerMesh,
+                    velocity: new THREE.Vector3(),
+                };
+
+                if (Object.keys(this.players).length === 2 && !this.cake.mesh) {
+                    this.createCake();
+                    this.createLevel();
+                }
+            }
+
+            removePlayer(sensorId) {
+                if (this.players[sensorId]) {
+                    this.scene.remove(this.players[sensorId].mesh);
+                    delete this.players[sensorId];
+                    this.setGameState('fail', '플레이어 연결 끊김!');
+                }
+            }
+
+            updatePlayerStatus() {
+                document.getElementById('player1Status').className = `player-status ${this.players['sensor1'] ? 'connected' : 'disconnected'}`;
+                document.getElementById('player2Status').className = `player-status ${this.players['sensor2'] ? 'connected' : 'disconnected'}`;
+            }
+
+            createCake() {
+                const cakeGeometry = new THREE.CylinderGeometry(1.5, 1.5, 1, 64);
+                const cakeMaterial = new THREE.MeshStandardMaterial({ color: 0xf472b6 });
+                this.cake.mesh = new THREE.Mesh(cakeGeometry, cakeMaterial);
+                this.cake.mesh.castShadow = true;
+                this.scene.add(this.cake.mesh);
+            }
+            
+            createLevel() {
+                // 기존 장애물 및 구멍 제거
+                this.obstacles.forEach(obstacle => this.scene.remove(obstacle));
+                this.obstacles = [];
+
+                const config = this.levelConfig[this.level];
+                const totalLength = 100; // 목적지까지의 총 길이
+                const destinationZ = -totalLength; // 목적지 Z 좌표
+
+                // 고정 장애물 생성
+                const obstacleGeometry = new THREE.BoxGeometry(2, 2, 2);
+                for(let i = 0; i < config.obstacles; i++) {
+                    const obstacleMaterial = new THREE.MeshStandardMaterial({ color: 0xef4444 });
+                    const obstacle = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+                    obstacle.position.set(Math.random() * (this.roadWidth - 4) - (this.roadWidth / 2 - 2), 0, -10 - i * (totalLength / config.obstacles));
+                    obstacle.castShadow = true;
+                    this.scene.add(obstacle);
+                    this.obstacles.push(obstacle);
+                }
+
+                // 구멍 생성 (단순히 어두운 평면으로 표현)
+                const holeGeometry = new THREE.PlaneGeometry(3, 3);
+                const holeMaterial = new THREE.MeshStandardMaterial({ color: 0x1a202c });
+                for(let i = 0; i < config.holes; i++) {
+                    const hole = new THREE.Mesh(holeGeometry, holeMaterial);
+                    hole.rotation.x = -Math.PI / 2;
+                    hole.position.set(Math.random() * (this.roadWidth - 4) - (this.roadWidth / 2 - 2), -0.45, -5 - i * (totalLength / config.holes));
+                    this.scene.add(hole);
+                    this.obstacles.push(hole); // 구멍도 충돌 체크 대상에 포함
+                }
+
+                // 움직이는 장애물 생성
+                const movingObstacleGeometry = new THREE.BoxGeometry(3, 1, 1);
+                const movingObstacleMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700 });
+                for(let i = 0; i < config.movingObstacles; i++) {
+                    const movingObstacle = new THREE.Mesh(movingObstacleGeometry, movingObstacleMaterial);
+                    movingObstacle.position.set(0, 0, -25 - i * (totalLength / config.movingObstacles));
+                    movingObstacle.userData.moveDirection = Math.random() > 0.5 ? 1 : -1;
+                    movingObstacle.userData.moveSpeed = 0.1 + Math.random() * 0.1;
+                    movingObstacle.castShadow = true;
+                    this.scene.add(movingObstacle);
+                    this.obstacles.push(movingObstacle);
+                }
+
+                // 회전하는 장애물 생성
+                const rotatingObstacleGeometry = new THREE.BoxGeometry(1, 5, 1);
+                const rotatingObstacleMaterial = new THREE.MeshStandardMaterial({ color: 0x8a2be2 });
+                for(let i = 0; i < config.rotatingObstacles; i++) {
+                    const rotatingObstacle = new THREE.Mesh(rotatingObstacleGeometry, rotatingObstacleMaterial);
+                    rotatingObstacle.position.set(0, 2.5, -30 - i * (totalLength / config.rotatingObstacles));
+                    rotatingObstacle.userData.rotationSpeed = 0.05 + Math.random() * 0.05;
+                    rotatingObstacle.castShadow = true;
+                    this.scene.add(rotatingObstacle);
+                    this.obstacles.push(rotatingObstacle);
+                }
+
+                // 목적지 위치 조정
+                if (!this.destination) {
+                    const destGeometry = new THREE.BoxGeometry(this.roadWidth, 1, 5);
+                    const destMaterial = new THREE.MeshStandardMaterial({ color: 0x10b981, transparent: true, opacity: 0.5 });
+                    this.destination = new THREE.Mesh(destGeometry, destMaterial);
+                    this.scene.add(this.destination);
+                }
+                this.destination.position.set(0, -0.4, destinationZ);
+            }
+
+            updatePlayerPosition(sensorId, orientation) {
+                const player = this.players[sensorId];
+                if (!player) return;
+
+                const config = this.levelConfig[this.level];
+                const sensitivity = 0.01;
+                const maxSpeed = 0.2;
+
+                let moveX = (orientation.gamma || 0) * sensitivity;
+                let moveZ = (orientation.beta || 0) * sensitivity;
+
+                moveX = THREE.MathUtils.clamp(moveX, -maxSpeed, maxSpeed);
+                moveZ = THREE.MathUtils.clamp(moveZ, -maxSpeed, maxSpeed);
+
+                const targetVelocity = new THREE.Vector3(moveX, 0, moveZ - config.forwardSpeed);
+
+                player.velocity.lerp(targetVelocity, 0.05);
+
+                player.mesh.position.add(player.velocity);
+
+                // 도로 이탈 방지
+                const roadLimit = this.roadWidth / 2 - 0.5; // 플레이어 반지름 고려
+                player.mesh.position.x = THREE.MathUtils.clamp(player.mesh.position.x, -roadLimit, roadLimit);
+                player.mesh.position.z = THREE.MathUtils.clamp(player.mesh.position.z, -100, 2);
+            }
+
+            updateCakePosition() {
+                if (!this.cake.mesh || Object.keys(this.players).length < 2) return;
+
+                const p1 = this.players['sensor1'].mesh.position;
+                const p2 = this.players['sensor2'].mesh.position;
+
+                this.cake.mesh.position.lerp(new THREE.Vector3((p1.x + p2.x) / 2, 0, (p1.z + p2.z) / 2), 0.1);
+
+                // 케이크 회전은 고정, 기울기만 계산
+                this.cake.mesh.rotation.y = 0; // Y축 회전 고정
+                this.cake.mesh.rotation.x = (p1.z - p2.z) * 0.1;
+                this.cake.mesh.rotation.z = (p2.x - p1.x) * 0.1;
+
+                const distance = p1.distanceTo(p2);
+                if (distance > 7) this.setGameState('fail', '너무 멀어요!');
+                if (Math.abs(this.cake.mesh.rotation.x) > 0.8 || Math.abs(this.cake.mesh.rotation.z) > 0.8) {
+                    this.setGameState('fail', '케이크가 떨어졌어요!');
+                }
+
+                // 도로 이탈 판정
+                const roadLimit = this.roadWidth / 2 - 1.5; // 케이크 반지름 고려
+                if (Math.abs(this.cake.mesh.position.x) > roadLimit) {
+                    this.setGameState('fail', '도로 밖으로 이탈!');
+                }
+            }
+
+            checkCollisions() {
+                if (!this.cake.mesh) return;
+                const cakeBox = new THREE.Box3().setFromObject(this.cake.mesh);
+
+                for (const obstacle of this.obstacles) {
+                    const obstacleBox = new THREE.Box3().setFromObject(obstacle);
+                    if (cakeBox.intersectsBox(obstacleBox)) {
+                        this.setGameState('fail', '장애물과 충돌!');
+                        return;
+                    }
+                }
+
+                const destBox = new THREE.Box3().setFromObject(this.destination);
+                if (cakeBox.intersectsBox(destBox)) {
+                    if (this.level < this.maxLevel) {
+                        this.setGameState('level_clear', `레벨 ${this.level} 클리어!`);
+                        this.level++;
+                        setTimeout(() => this.resetGame(true), 2000);
+                    } else {
+                        this.setGameState('success', '최종 배달 성공!');
+                    }
+                }
+            }
+
+            initAudio() {
+                this.bgm = document.getElementById('bgm');
+                this.sfxSuccess = document.getElementById('sfx-success');
+                this.sfxFail = document.getElementById('sfx-fail');
+
+                // BGM 자동 재생을 위한 처리 (사용자 제스처 필요)
+                document.addEventListener('click', () => {
+                    if (this.bgm.paused) {
+                        this.bgm.play().catch(e => console.log("BGM play failed:", e));
+                    }
+                }, { once: true });
+            }
+
+            playSound(soundElement) {
+                soundElement.currentTime = 0;
+                soundElement.play().catch(e => console.log("Sound play failed:", e));
+            }
+
+            setGameState(state, message) {
+                if (this.gameState === 'fail' || this.gameState === 'success') return;
+                this.gameState = state;
+                this.messageBox.textContent = message;
+                this.messageBox.style.display = 'flex';
+                if (state === 'fail' || state === 'success') {
+                    this.resetButton.style.display = 'block';
+                    this.bgm.pause();
+                    if (state === 'success') {
+                        this.playSound(this.sfxSuccess);
+                        this.createParticles(this.cake.mesh.position, 0xffd700, 100); // 성공 파티클 (금색)
+                        this.currentScore += (this.maxLevel * 100); // 최종 클리어 보너스
+                    } else {
+                        this.playSound(this.sfxFail);
+                        this.createParticles(this.cake.mesh.position, 0xffa07a, 200); // 실패 파티클 (주황색)
+                        this.startCameraShake(0.5, 500); // 실패 시 카메라 흔들림
+                    }
+                    this.updateHighScore();
+                    this.updateScoreDisplay();
+                } else if (state === 'playing') {
+                    this.bgm.play().catch(e => console.log("BGM play failed:", e));
+                } else if (state === 'level_clear') {
+                    this.currentScore += (this.level * 100); // 레벨 클리어 점수
+                    this.updateScoreDisplay();
+                }
+            }
+
+            updateScoreDisplay() {
+                this.currentScoreDisplay.textContent = this.currentScore;
+                this.highScoreDisplay.textContent = this.highScore;
+            }
+
+            updateHighScore() {
+                if (this.currentScore > this.highScore) {
+                    this.highScore = this.currentScore;
+                    localStorage.setItem('cakeDeliveryHighScore', this.highScore);
+                }
+            }
+
+            createParticles(position, color, count) {
+                const geometry = new THREE.BufferGeometry();
+                const vertices = [];
+                for (let i = 0; i < count; i++) {
+                    const x = position.x + (Math.random() - 0.5) * 2;
+                    const y = position.y + (Math.random() - 0.5) * 2;
+                    const z = position.z + (Math.random() - 0.5) * 2;
+                    vertices.push(x, y, z);
+                }
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                const material = new THREE.PointsMaterial({ color: color, size: 0.2 });
+                const particles = new THREE.Points(geometry, material);
+                this.scene.add(particles);
+                this.particles.push({ mesh: particles, velocity: new THREE.Vector3(), life: 100 });
+            }
+
+            updateParticles() {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.mesh.position.add(p.velocity);
+                    p.mesh.material.opacity -= 0.01;
+                    p.life--;
+                    if (p.life <= 0 || p.mesh.material.opacity <= 0) {
+                        this.scene.remove(p.mesh);
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+
+            startCameraShake(intensity, duration) {
+                this.cameraShake.intensity = intensity;
+                this.cameraShake.decay = intensity / duration;
+                this.cameraShake.startTime = Date.now();
+            }
+
+            updateCameraShake() {
+                if (this.cameraShake.intensity > 0) {
+                    const elapsed = Date.now() - this.cameraShake.startTime;
+                    const currentIntensity = Math.max(0, this.cameraShake.intensity - this.cameraShake.decay * elapsed);
+
+                    this.camera.position.x += (Math.random() - 0.5) * currentIntensity;
+                    this.camera.position.y += (Math.random() - 0.5) * currentIntensity;
+
+                    if (currentIntensity <= 0) {
+                        this.cameraShake.intensity = 0;
+                    }
+                }
+            }
+
+            resetGame(isLevelUp = false) {
+                if (!isLevelUp && Object.keys(this.players).length < 2) {
+                    window.location.reload();
+                    return;
+                }
+
+                if (!isLevelUp) {
+                    this.level = 1;
+                    this.currentScore = 0;
+                }
+
+                this.updateScoreDisplay();
+
+                this.createLevel();
+
+                if (this.players['sensor1']) this.players['sensor1'].mesh.position.set(-2, 0, 0);
+                if (this.players['sensor2']) this.players['sensor2'].mesh.position.set(2, 0, 0);
+
+                if (this.cake.mesh) {
+                    this.cake.mesh.position.set(0, 0, 0);
+                    this.cake.mesh.rotation.set(0, 0, 0);
+                }
+
+                this.resetButton.style.display = 'none';
+                this.gameState = 'ready';
+                this.messageBox.textContent = isLevelUp ? `레벨 ${this.level} 시작!` : '3초 후 다시 시작!';
+                this.messageBox.style.display = 'flex';
+
+                setTimeout(() => {
+                    this.gameState = 'playing';
+                    this.messageBox.style.display = 'none';
+                    this.bgm.play().catch(e => console.log("BGM play failed:", e));
+                }, 3000);
+            }
+
+            updateCamera() {
+                if (!this.cake.mesh) return;
+                const targetPosition = new THREE.Vector3();
+                targetPosition.copy(this.cake.mesh.position);
+                targetPosition.y += 15;
+                targetPosition.z += 10;
+                this.camera.position.lerp(targetPosition, 0.05);
+                this.camera.lookAt(this.cake.mesh.position);
+            }
+
+            updateDynamicObstacles() {
+                const roadLimit = this.roadWidth / 2 - 1.5; // 장애물 반지름 고려
+                this.obstacles.forEach(obstacle => {
+                    if (obstacle.userData.moveDirection) { // 움직이는 장애물
+                        obstacle.position.x += obstacle.userData.moveDirection * obstacle.userData.moveSpeed;
+                        if (obstacle.position.x > roadLimit || obstacle.position.x < -roadLimit) {
+                            obstacle.userData.moveDirection *= -1; // 방향 반전
+                        }
+                    }
+                    if (obstacle.userData.rotationSpeed) { // 회전하는 장애물
+                        obstacle.rotation.y += obstacle.userData.rotationSpeed;
+                    }
+                });
+            }
+
+            animate() {
+                requestAnimationFrame(this.animate);
+                if (this.gameState === 'playing') {
+                    this.updateCakePosition();
+                    this.checkCollisions();
+                    this.updateDynamicObstacles();
+                }
+                this.updateCamera();
+                this.updateParticles();
+                this.updateCameraShake();
+                this.stars.rotation.y += 0.0001; // 별 배경 움직임
+                this.renderer.render(this.scene, this.camera);
+            }
+
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            makeTextSprite(message, parameters) {
+                const fontface = parameters.hasOwnProperty("fontface") ? parameters["fontface"] : "Arial";
+                const fontsize = parameters.hasOwnProperty("fontsize") ? parameters["fontsize"] : 18;
+                const borderThickness = parameters.hasOwnProperty("borderThickness") ? parameters["borderThickness"] : 4;
+                const borderColor = parameters.hasOwnProperty("borderColor") ? parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 };
+                const backgroundColor = parameters.hasOwnProperty("backgroundColor") ? parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 };
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                context.font = "Bold " + fontsize + "px " + fontface;
+
+                const metrics = context.measureText(message);
+                const textWidth = metrics.width;
+
+                context.fillStyle   = "rgba(" + backgroundColor.r + "," + backgroundColor.g + "," + backgroundColor.b + "," + backgroundColor.a + ")";
+                context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + "," + borderColor.b + "," + borderColor.a + ")";
+
+                context.lineWidth = borderThickness;
+                // roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6);
+
+                context.fillStyle = "rgba(255, 255, 255, 1.0)";
+                context.fillText(message, borderThickness, fontsize + borderThickness);
+
+                const texture = new THREE.Texture(canvas);
+                texture.needsUpdate = true;
+
+                const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.scale.set(8, 4, 1.0);
+                return sprite;
+            }
+        }
+
+        window.onload = () => new CakeDeliveryGame();
+    </script>
+</body>
+</html>
