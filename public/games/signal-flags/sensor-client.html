@@ -379,7 +379,8 @@
                 // 센서 설정 (매우 간단하게)
                 this.sensorConfig = {
                     threshold: 25,      // 방향 인식 임계값
-                    responseDelay: 500  // 응답 후 대기 시간
+                    responseDelay: 500, // 응답 후 대기 시간
+                    centerThreshold: 15 // 중앙 위치 판정 임계값
                 };
                 
                 // 센서 상태
@@ -387,7 +388,9 @@
                     currentDirection: 'center',
                     lastResponseTime: 0,
                     isCalibrated: false,
-                    centerPosition: { beta: 0, gamma: 0 }
+                    centerPosition: { beta: 0, gamma: 0 },
+                    waitingForCenter: false,
+                    centerStartTime: 0
                 };
                 
                 // DOM 요소
@@ -561,6 +564,9 @@
                         this.gameData.opponentScore = data.scores[`player${this.getPlayerNumber() === 1 ? 2 : 1}`] || 0;
                         this.updateUI();
                         
+                        // 중앙 위치 대기 시작
+                        this.startWaitingForCenter();
+                        
                         // 방향 표시기 초기화
                         setTimeout(() => {
                             this.resetDirectionIndicator();
@@ -618,6 +624,11 @@
                     if (direction !== 'center' && movementSize > this.sensorConfig.threshold) {
                         this.sendResponse(direction);
                     }
+                }
+                
+                // 중앙 위치 대기 중일 때 처리
+                if (this.sensorState.waitingForCenter) {
+                    this.checkCenterPosition(direction);
                 }
             }
             
@@ -767,6 +778,43 @@
             vibrateDevice(pattern) {
                 if (navigator.vibrate) {
                     navigator.vibrate(pattern);
+                }
+            }
+            
+            startWaitingForCenter() {
+                this.sensorState.waitingForCenter = true;
+                this.sensorState.centerStartTime = 0;
+                this.showMessage('📍 중앙 위치(🎯)로 핸드폰을 평평하게 유지하세요', 'warning');
+                console.log('📍 중앙 위치 대기 시작');
+            }
+            
+            checkCenterPosition(direction) {
+                if (direction === 'center') {
+                    const now = Date.now();
+                    
+                    if (this.sensorState.centerStartTime === 0) {
+                        this.sensorState.centerStartTime = now;
+                        this.showMessage('📍 중앙 위치 유지 중... (1초간 유지)', 'warning');
+                    } else {
+                        const centerTime = now - this.sensorState.centerStartTime;
+                        if (centerTime >= 1000) { // 1초간 중앙 유지
+                            this.sensorState.waitingForCenter = false;
+                            this.sensorState.centerStartTime = 0;
+                            
+                            // 서버에 중앙 위치 도달 알림
+                            this.sdk.socket.emit('signal-flags-center-ready', {
+                                sessionCode: this.gameData.sessionCode,
+                                playerId: this.getPlayerNumber(),
+                                timestamp: Date.now()
+                            });
+                            
+                            this.showMessage('✅ 중앙 위치 완료! 다음 라운드 준비', 'success');
+                            console.log('✅ 중앙 위치 도달 - 서버에 알림');
+                        }
+                    }
+                } else {
+                    // 중앙에서 벗어나면 타이머 리셋
+                    this.sensorState.centerStartTime = 0;
                 }
             }
             

@@ -580,6 +580,7 @@
                 this.gameState = 'waiting'; // waiting, ready, playing, finished
                 this.connectedSensors = new Map();
                 this.session = null;
+                this.centerReadyPlayers = new Set(); // 중앙 위치 준비 완료된 플레이어들
 
                 // 게임 설정
                 this.config = {
@@ -708,6 +709,12 @@
                 this.sdk.socket.on('signal-flags-response', (data) => {
                     console.log('📡 플레이어 응답 수신:', data);
                     this.handlePlayerResponse(data);
+                });
+                
+                // 중앙 위치 준비 완료 이벤트
+                this.sdk.socket.on('signal-flags-center-ready', (data) => {
+                    console.log('📍 플레이어 중앙 위치 준비:', data);
+                    this.handleCenterReady(data);
                 });
             }
 
@@ -937,17 +944,29 @@
             }
 
             playVoiceCommand() {
-                // TTS 음성 재생
-                if ('speechSynthesis' in window) {
-                    const utterance = new SpeechSynthesisUtterance(this.gameData.currentCommand.toUpperCase());
-                    utterance.pitch = this.gameData.currentGender === 'male' ? 0.7 : 1.3;
-                    utterance.rate = 1.2;
-                    utterance.volume = 1.0;
+                // 실제 음성 파일 재생
+                const audioPath = `/games/signal-flags/assets/${this.gameData.currentGender}/_${this.gameData.currentCommand.toLowerCase()}.m4a`;
+                
+                const audio = new Audio(audioPath);
+                audio.volume = 1.0;
+                
+                audio.play().then(() => {
+                    console.log(`🎤 음성 파일 재생 성공: ${audioPath}`);
+                }).catch(error => {
+                    console.warn(`⚠️ 음성 파일 재생 실패: ${audioPath}`, error);
                     
-                    speechSynthesis.cancel();
-                    speechSynthesis.speak(utterance);
-                    console.log(`🎤 TTS 음성 재생: ${this.gameData.currentGender}_${this.gameData.currentCommand}`);
-                }
+                    // 폴백: TTS 사용
+                    if ('speechSynthesis' in window) {
+                        const utterance = new SpeechSynthesisUtterance(this.gameData.currentCommand.toUpperCase());
+                        utterance.pitch = this.gameData.currentGender === 'male' ? 0.7 : 1.3;
+                        utterance.rate = 1.2;
+                        utterance.volume = 1.0;
+                        
+                        speechSynthesis.cancel();
+                        speechSynthesis.speak(utterance);
+                        console.log(`🎤 TTS 폴백 재생: ${this.gameData.currentGender}_${this.gameData.currentCommand}`);
+                    }
+                });
             }
 
             startResponseTimer() {
@@ -994,6 +1013,23 @@
                     setTimeout(() => this.endRound(), 200);
                 }
             }
+            
+            handleCenterReady(data) {
+                // 중앙 위치 준비 완료 플레이어 추가
+                this.centerReadyPlayers.add(data.playerId);
+                console.log(`📍 Player${data.playerId} 중앙 위치 준비 완료 (${this.centerReadyPlayers.size}/2)`);
+                
+                // 두 플레이어 모두 중앙 위치에 있으면 다음 라운드 시작
+                if (this.centerReadyPlayers.size >= 2) {
+                    console.log('🚀 모든 플레이어 중앙 위치 준비 완료 - 다음 라운드 시작');
+                    this.centerReadyPlayers.clear();
+                    
+                    // 잠시 대기 후 다음 라운드 시작
+                    setTimeout(() => {
+                        this.startNextRound();
+                    }, 500);
+                }
+            }
 
             getExpectedDirection() {
                 const command = this.gameData.currentCommand;
@@ -1030,10 +1066,8 @@
                     });
                 }
 
-                // 다음 라운드 준비
-                setTimeout(() => {
-                    this.startNextRound();
-                }, this.config.roundInterval);
+                // 중앙 위치 대기 시작 (센서 클라이언트에서 자동 처리)
+                console.log('📍 라운드 종료 - 플레이어들이 중앙 위치로 돌아오면 자동으로 다음 라운드 시작');
             }
 
             updateScoreboard() {
