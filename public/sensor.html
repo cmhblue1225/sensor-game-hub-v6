@@ -1147,11 +1147,10 @@
                     console.log(`📊 [센서] - 최종 판정: ${isInDefaultState}`);
                     console.log(`📊 [센서] - 진입 조건: ${isInDefaultState && !this.signalFlagsState.isInDefaultState}`);
                     
-                    if (isInDefaultState && !this.signalFlagsState.isInDefaultState) {
-                        // 디폴트 상태 진입
-                        this.signalFlagsState.isInDefaultState = true;
+                    if (isInDefaultState) {
+                        // 디폴트 상태 진입 - 매번 알림 전송 (확실한 해결)
                         console.log('✅ [센서] === 디폴트 상태 감지됨! ===');
-                        console.log('✅ [센서] 서버에 알림 전송 시작');
+                        console.log('✅ [센서] 조건 확인 없이 무조건 서버에 알림 전송');
                         
                         // 서버에 알림
                         const messageData = {
@@ -1170,6 +1169,7 @@
                             console.error('❌ [센서] 소켓 연결 없음 - 알림 전송 실패');
                         }
                         
+                        this.signalFlagsState.isInDefaultState = true;
                         this.showMessage('✅ 디폴트 상태 감지!', 'success');
                         
                     } else if (!isInDefaultState && this.signalFlagsState.isInDefaultState) {
