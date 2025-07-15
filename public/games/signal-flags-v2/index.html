@@ -511,12 +511,12 @@
                     commands: ['up', 'down', 'left', 'right'],
                     genders: ['male', 'female'],
                     sensorThresholds: {
-                        defaultState: { beta: 10, gamma: 10 }, // ±10도
+                        defaultState: { beta: 30, gamma: 30 }, // ±30도로 완화
                         actions: {
-                            up: { beta: 50 },      // beta > 50
-                            down: { beta: -50 },   // beta < -50  
-                            left: { gamma: -50 },  // gamma < -50
-                            right: { gamma: 50 }   // gamma > 50
+                            up: { beta: 40 },      // beta > 40
+                            down: { beta: -40 },   // beta < -40  
+                            left: { gamma: -40 },  // gamma < -40
+                            right: { gamma: 40 }   // gamma > 40
                         }
                     }
                 };
