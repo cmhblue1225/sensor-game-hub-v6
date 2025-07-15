@@ -550,7 +550,29 @@
                     connected: false,
                     sessionConnected: false,
                     sensorActive: false,
-                    currentSession: null
+                    currentSession: null,
+                    gameId: null,
+                    playerId: null
+                };
+                
+                // Signal Flags v2 게임 상태
+                this.signalFlagsState = {
+                    isPlaying: false,
+                    waitingForDefault: false,
+                    currentRound: 0,
+                    currentCommand: null,
+                    currentGender: null,
+                    isInDefaultState: false,
+                    hasResponded: false,
+                    sensorThresholds: {
+                        defaultState: { beta: 10, gamma: 10 }, // ±10도
+                        actions: {
+                            up: { beta: 50 },      // beta > 50
+                            down: { beta: -50 },   // beta < -50
+                            left: { gamma: -50 },  // gamma < -50
+                            right: { gamma: 50 }   // gamma > 50
+                        }
+                    }
                 };
                 
                 // DOM 요소
@@ -659,6 +681,13 @@
                     this.state.sessionConnected = true;
                     this.state.currentSession = data;
                     
+                    // 게임 ID 확인 - 세션 데이터에서 추출
+                    this.state.gameId = data.gameId || data.sessionId?.split('_')[0] || 'unknown';
+                    this.state.playerId = data.sensorId?.replace('sensor', '');
+                    
+                    console.log('🎮 게임 ID 감지:', this.state.gameId);
+                    console.log('👤 플레이어 ID:', this.state.playerId);
+                    
                     this.updateConnectionStatus(`게임에 연결됨 (${data.sensorId})`, true);
                     this.showGameInfo(data);
                     
@@ -684,6 +713,9 @@
                 this.sdk.on('sensor-error', (data) => {
                     this.showMessage(`센서 오류: ${data.error}`, 'error');
                 });
+                
+                // Signal Flags v2 게임 이벤트들
+                this.setupSignalFlagsEvents();
             }
             
             async connectToSession() {
@@ -779,10 +811,14 @@
                     
                     // 센서 데이터 핸들러
                     this.sensorCollector.onData((data) => {
-                        console.log('🔍 센서 데이터 수신:', data);
                         this.updateSensorDisplay(data);
                         this.sendSensorData(data);
                         this.showActivity();
+                        
+                        // Signal Flags v2 게임 로직 처리
+                        if (this.state.gameId === 'signal-flags-v2') {
+                            this.handleSignalFlagsSensorData(data);
+                        }
                     });
                     
                     this.elements.sensorStatus.classList.add('visible');
@@ -881,6 +917,151 @@
                 setTimeout(() => {
                     this.elements.message.classList.remove('visible');
                 }, 5000);
+            }
+            
+            // === Signal Flags v2 게임 전용 메서드들 ===
+            
+            setupSignalFlagsEvents() {
+                // Signal Flags v2 게임별 소켓 이벤트 리스너
+                if (this.sdk.socket) {
+                    this.sdk.socket.on('signal-flags-v2-wait-default', (data) => {
+                        console.log('📍 디폴트 상태 대기 시작');
+                        this.signalFlagsState.waitingForDefault = true;
+                        this.signalFlagsState.isInDefaultState = false;
+                        this.showMessage('📱 핸드폰을 앞으로 쭉 뻗어 수평으로 유지하세요', 'warning');
+                    });
+                    
+                    this.sdk.socket.on('signal-flags-v2-round-start', (data) => {
+                        console.log('🚩 라운드 시작:', data);
+                        this.signalFlagsState.isPlaying = true;
+                        this.signalFlagsState.waitingForDefault = false;
+                        this.signalFlagsState.currentRound = data.round;
+                        this.signalFlagsState.currentCommand = data.command;
+                        this.signalFlagsState.currentGender = data.gender;
+                        this.signalFlagsState.hasResponded = false;
+                        
+                        const genderText = data.gender === 'male' ? '👨 남성' : '👩 여성';
+                        const actionText = this.getActionInstruction(data.command, data.gender);
+                        this.showMessage(`${genderText}: "${data.command.toUpperCase()}" → ${actionText}`, 'success');
+                    });
+                    
+                    this.sdk.socket.on('signal-flags-v2-round-end', (data) => {
+                        console.log('📊 라운드 종료:', data);
+                        this.signalFlagsState.isPlaying = false;
+                        this.signalFlagsState.hasResponded = false;
+                        
+                        // 내 응답 결과 표시
+                        if (data.responses && this.state.playerId) {
+                            const myResponse = data.responses[this.state.playerId];
+                            if (myResponse) {
+                                const resultText = myResponse.isCorrect ? 
+                                    `✅ 정답! (+${myResponse.scoreChange}점)` : 
+                                    `❌ 오답 (${myResponse.scoreChange}점)`;
+                                this.showMessage(resultText, myResponse.isCorrect ? 'success' : 'error');
+                            }
+                        }
+                    });
+                    
+                    this.sdk.socket.on('signal-flags-v2-game-end', (data) => {
+                        console.log('🏆 게임 종료:', data);
+                        this.signalFlagsState.isPlaying = false;
+                        this.signalFlagsState.waitingForDefault = false;
+                        
+                        const winnerText = data.winner === 0 ? '🤝 무승부!' :
+                                         data.winner === parseInt(this.state.playerId) ? '🏆 승리!' : '😢 패배';
+                        this.showMessage(`게임 종료! ${winnerText}`, 'success');
+                    });
+                }
+            }
+            
+            handleSignalFlagsSensorData(data) {
+                // Signal Flags v2 게임이 아니면 무시
+                if (this.state.gameId !== 'signal-flags-v2') return;
+                
+                const beta = data.orientation.beta || 0;   // 앞뒤 기울기
+                const gamma = data.orientation.gamma || 0; // 좌우 기울기
+                
+                // 디폴트 상태 감지
+                const isInDefaultState = this.checkDefaultState(beta, gamma);
+                
+                if (this.signalFlagsState.waitingForDefault) {
+                    // 디폴트 상태 대기 중
+                    if (isInDefaultState && !this.signalFlagsState.isInDefaultState) {
+                        this.signalFlagsState.isInDefaultState = true;
+                        console.log('📍 디폴트 상태 감지됨');
+                        
+                        // 서버에 디폴트 상태 준비 완료 알림
+                        this.sdk.socket.emit('signal-flags-v2-default-ready', {
+                            sessionCode: this.state.currentSession.sessionCode || this.state.currentSession.sessionId?.split('_')[1],
+                            playerId: this.state.playerId
+                        });
+                        
+                        this.showMessage('✅ 디폴트 상태 감지! 명령을 기다리는 중...', 'success');
+                    } else if (!isInDefaultState) {
+                        this.signalFlagsState.isInDefaultState = false;
+                    }
+                } else if (this.signalFlagsState.isPlaying && !this.signalFlagsState.hasResponded) {
+                    // 게임 중 - 동작 감지
+                    const detectedAction = this.detectAction(beta, gamma);
+                    
+                    if (detectedAction) {
+                        this.signalFlagsState.hasResponded = true;
+                        console.log(`🎯 동작 감지: ${detectedAction}`);
+                        
+                        // 서버에 응답 전송
+                        this.sdk.socket.emit('signal-flags-v2-player-response', {
+                            sessionCode: this.state.currentSession.sessionCode || this.state.currentSession.sessionId?.split('_')[1],
+                            playerId: this.state.playerId,
+                            direction: detectedAction,
+                            timestamp: Date.now()
+                        });
+                        
+                        this.showMessage(`🎯 응답: ${detectedAction.toUpperCase()}`, 'warning');
+                    }
+                }
+            }
+            
+            checkDefaultState(beta, gamma) {
+                const thresholds = this.signalFlagsState.sensorThresholds.defaultState;
+                return Math.abs(beta) <= thresholds.beta && Math.abs(gamma) <= thresholds.gamma;
+            }
+            
+            detectAction(beta, gamma) {
+                const actions = this.signalFlagsState.sensorThresholds.actions;
+                
+                // 우선순위: 위/아래 > 좌/우
+                if (beta > actions.up.beta) return 'up';
+                if (beta < actions.down.beta) return 'down';
+                if (gamma < actions.left.gamma) return 'left';
+                if (gamma > actions.right.gamma) return 'right';
+                
+                return null;
+            }
+            
+            getActionInstruction(command, gender) {
+                // 여성의 명령은 그대로, 남성의 명령은 반대로
+                if (gender === 'female') {
+                    return `핸드폰을 ${this.getDirectionText(command)}로`;
+                } else {
+                    const oppositeMap = {
+                        'up': 'down',
+                        'down': 'up', 
+                        'left': 'right',
+                        'right': 'left'
+                    };
+                    const oppositeDirection = oppositeMap[command];
+                    return `핸드폰을 ${this.getDirectionText(oppositeDirection)}로 (반대로!)`;
+                }
+            }
+            
+            getDirectionText(direction) {
+                const directionMap = {
+                    'up': '위',
+                    'down': '아래',
+                    'left': '왼쪽',
+                    'right': '오른쪽'
+                };
+                return directionMap[direction] || direction;
             }
         }
         

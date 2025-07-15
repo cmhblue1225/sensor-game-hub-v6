@@ -746,6 +746,133 @@ class GameServer {
             socket.on('ping', (callback) => {
                 if (callback) callback({ pong: Date.now() });
             });
+            
+            // === Signal Flags v2 게임 전용 이벤트들 ===
+            
+            // 디폴트 상태 준비 완료 알림
+            socket.on('signal-flags-v2-default-ready', (data) => {
+                console.log('📍 Signal Flags v2 디폴트 상태 준비:', data);
+                
+                try {
+                    const sessionCode = data.sessionCode;
+                    const playerId = data.playerId;
+                    
+                    // 세션 찾기
+                    const session = this.sessionManager.getSessionByCode(sessionCode);
+                    if (!session) {
+                        console.warn(`⚠️ 세션을 찾을 수 없음: ${sessionCode}`);
+                        return;
+                    }
+                    
+                    // 호스트에 디폴트 상태 준비 완료 알림
+                    if (session.hostSocketId) {
+                        this.io.to(session.hostSocketId).emit('signal-flags-v2-default-ready', {
+                            playerId: playerId,
+                            sessionCode: sessionCode
+                        });
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Signal Flags v2 디폴트 상태 처리 오류:', error);
+                }
+            });
+            
+            // 플레이어 응답 처리
+            socket.on('signal-flags-v2-player-response', (data) => {
+                console.log('🎯 Signal Flags v2 플레이어 응답:', data);
+                
+                try {
+                    const sessionCode = data.sessionCode;
+                    const playerId = data.playerId;
+                    const direction = data.direction;
+                    const timestamp = data.timestamp;
+                    
+                    // 세션 찾기
+                    const session = this.sessionManager.getSessionByCode(sessionCode);
+                    if (!session) {
+                        console.warn(`⚠️ 세션을 찾을 수 없음: ${sessionCode}`);
+                        return;
+                    }
+                    
+                    // 호스트에 플레이어 응답 전송
+                    if (session.hostSocketId) {
+                        this.io.to(session.hostSocketId).emit('signal-flags-v2-player-response', {
+                            playerId: playerId,
+                            direction: direction,
+                            timestamp: timestamp,
+                            sessionCode: sessionCode
+                        });
+                    }
+                    
+                } catch (error) {
+                    console.error('❌ Signal Flags v2 플레이어 응답 처리 오류:', error);
+                }
+            });
+            
+            // 호스트에서 센서로 브로드캐스트 이벤트들
+            socket.on('signal-flags-v2-wait-default', (data) => {
+                try {
+                    const sessionCode = data.sessionCode;
+                    const session = this.sessionManager.getSessionByCode(sessionCode);
+                    
+                    if (session) {
+                        // 모든 센서 클라이언트에 디폴트 상태 대기 시작 알림
+                        for (const sensor of session.sensors.values()) {
+                            this.io.to(sensor.socketId).emit('signal-flags-v2-wait-default', data);
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Signal Flags v2 디폴트 대기 브로드캐스트 오류:', error);
+                }
+            });
+            
+            socket.on('signal-flags-v2-round-start', (data) => {
+                try {
+                    const sessionCode = data.sessionCode;
+                    const session = this.sessionManager.getSessionByCode(sessionCode);
+                    
+                    if (session) {
+                        // 모든 센서 클라이언트에 라운드 시작 알림
+                        for (const sensor of session.sensors.values()) {
+                            this.io.to(sensor.socketId).emit('signal-flags-v2-round-start', data);
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Signal Flags v2 라운드 시작 브로드캐스트 오류:', error);
+                }
+            });
+            
+            socket.on('signal-flags-v2-round-end', (data) => {
+                try {
+                    const sessionCode = data.sessionCode;
+                    const session = this.sessionManager.getSessionByCode(sessionCode);
+                    
+                    if (session) {
+                        // 모든 센서 클라이언트에 라운드 종료 알림
+                        for (const sensor of session.sensors.values()) {
+                            this.io.to(sensor.socketId).emit('signal-flags-v2-round-end', data);
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Signal Flags v2 라운드 종료 브로드캐스트 오류:', error);
+                }
+            });
+            
+            socket.on('signal-flags-v2-game-end', (data) => {
+                try {
+                    const sessionCode = data.sessionCode;
+                    const session = this.sessionManager.getSessionByCode(sessionCode);
+                    
+                    if (session) {
+                        // 모든 센서 클라이언트에 게임 종료 알림
+                        for (const sensor of session.sensors.values()) {
+                            this.io.to(sensor.socketId).emit('signal-flags-v2-game-end', data);
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ Signal Flags v2 게임 종료 브로드캐스트 오류:', error);
+                }
+            });
         });
     }
     
