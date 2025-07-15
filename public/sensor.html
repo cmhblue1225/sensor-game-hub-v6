@@ -687,6 +687,12 @@
                     
                     console.log('🎮 게임 ID 감지:', this.state.gameId);
                     console.log('👤 플레이어 ID:', this.state.playerId);
+                    console.log('📋 세션 정보 전체:', {
+                        sessionId: data.sessionId,
+                        sessionCode: data.sessionCode,
+                        gameType: data.gameType,
+                        sensorId: data.sensorId
+                    });
                     
                     this.updateConnectionStatus(`게임에 연결됨 (${data.sensorId})`, true);
                     this.showGameInfo(data);
@@ -835,7 +841,18 @@
             
             sendSensorData(data) {
                 if (this.state.sessionConnected) {
-                    console.log('🔍 센서 데이터 전송:', data);
+                    // 센서 데이터 전송 로깅 (Signal Flags v2인 경우만 상세 로깅)
+                    if (this.state.gameId === 'signal-flags-v2') {
+                        console.log('📤 Signal Flags v2 센서 데이터 전송:', {
+                            gameId: this.state.gameId,
+                            playerId: this.state.playerId,
+                            beta: data.orientation.beta?.toFixed(1),
+                            gamma: data.orientation.gamma?.toFixed(1),
+                            alpha: data.orientation.alpha?.toFixed(1),
+                            sessionConnected: this.state.sessionConnected,
+                            timestamp: new Date().toLocaleTimeString()
+                        });
+                    }
                     this.sdk.sendSensorData(data);
                 } else {
                     console.log('⚠️ 세션 연결되지 않음 - 센서 데이터 전송 불가');

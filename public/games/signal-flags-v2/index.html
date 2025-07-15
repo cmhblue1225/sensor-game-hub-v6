@@ -807,11 +807,16 @@
                 this.elements.gameMessage.textContent = '📱 핸드폰을 앞으로 쭉 뻗어 수평으로 유지하세요';
                 this.defaultReadyPlayers.clear();
                 
+                console.log('📍 디폴트 상태 대기 시작 - 센서 클라이언트에 알림 전송');
+                
                 // 센서 클라이언트에게 디폴트 상태 대기 시작 알림
                 if (this.sdk.socket) {
                     this.sdk.socket.emit('signal-flags-v2-wait-default', {
                         sessionCode: this.session.sessionCode
                     });
+                    console.log('✅ 디폴트 상태 대기 알림 전송 완료:', this.session.sessionCode);
+                } else {
+                    console.error('❌ 소켓 연결이 없어 디폴트 상태 알림 전송 실패');
                 }
             }
             
@@ -984,8 +989,21 @@
             }
             
             handleSensorData(data) {
+                // 센서 데이터 수신 로깅
+                console.log('📡 게임에서 센서 데이터 수신:', {
+                    sensorId: data.sensorId,
+                    gameState: this.gameState,
+                    waitingForDefault: this.signalFlagsState?.waitingForDefault,
+                    beta: data.sensorData?.orientation?.beta?.toFixed(1),
+                    gamma: data.sensorData?.orientation?.gamma?.toFixed(1),
+                    timestamp: new Date().toLocaleTimeString()
+                });
+                
                 // 게임 중이 아니면 센서 데이터 무시
-                if (this.gameState !== 'playing') return;
+                if (this.gameState !== 'playing') {
+                    console.log('⚠️ 게임 상태가 playing이 아니므로 센서 데이터 무시');
+                    return;
+                }
                 
                 // 실제 센서 기반 게임 로직은 센서 클라이언트에서 처리됨
                 // 여기서는 UI 업데이트만 수행
