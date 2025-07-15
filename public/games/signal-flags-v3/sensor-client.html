@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🚩 Signal Flags v3 - Sensor Controller</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <style>
+        :root {
+            --primary: #dc2626;
+            --secondary: #7c2d12;
+            --success: #16a34a;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --background: #0f0f0f;
+            --surface: #1a1a1a;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --border: #475569;
+            --male-color: #3b82f6;
+            --female-color: #ec4899;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, var(--background), #020617);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+        
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 1rem;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: var(--surface);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(135deg, var(--primary), var(--warning));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+        }
+        
+        .status {
+            background: var(--surface);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .connection-section {
+            background: var(--surface);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .input-group {
+            margin-bottom: 1rem;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid var(--border);
+            border-radius: 0.5rem;
+            background: var(--background);
+            color: var(--text-primary);
+            font-size: 1.2rem;
+            text-align: center;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #b91c1c;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .game-section {
+            background: var(--surface);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+        
+        .game-section.visible {
+            display: block;
+        }
+        
+        .game-status {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .round-info {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        
+        .command-display {
+            background: var(--background);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+        
+        .command-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+        }
+        
+        .command-text {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .direction-indicator {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr 1fr;
+            gap: 0.5rem;
+            max-width: 200px;
+            margin: 0 auto 1.5rem;
+        }
+        
+        .direction-cell {
+            aspect-ratio: 1;
+            background: var(--background);
+            border: 2px solid var(--border);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            transition: all 0.3s ease;
+        }
+        
+        .direction-cell.current {
+            background: var(--primary);
+            border-color: var(--primary);
+            transform: scale(1.1);
+        }
+        
+        .direction-cell.correct {
+            background: var(--success);
+            border-color: var(--success);
+        }
+        
+        .direction-cell.incorrect {
+            background: var(--error);
+            border-color: var(--error);
+        }
+        
+        .sensor-data {
+            background: var(--background);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        
+        .sensor-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        
+        .score-display {
+            display: flex;
+            justify-content: space-between;
+            background: var(--background);
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        
+        .score-item {
+            text-align: center;
+        }
+        
+        .score-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        .message {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        
+        .message.visible {
+            display: block;
+        }
+        
+        .message.success {
+            background: rgba(22, 163, 74, 0.1);
+            border: 1px solid var(--success);
+            color: var(--success);
+        }
+        
+        .message.error {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+        
+        .message.warning {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning);
+            color: var(--warning);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 헤더 -->
+        <div class="header">
+            <div class="logo">🚩 Signal Flags v3</div>
+            <div class="subtitle">센서 컨트롤러</div>
+        </div>
+        
+        <!-- 메시지 -->
+        <div class="message" id="message">메시지가 여기 표시됩니다</div>
+        
+        <!-- 연결 상태 -->
+        <div class="status">
+            <div><strong>연결 상태:</strong> <span id="connectionStatus">서버 연결 중...</span></div>
+        </div>
+        
+        <!-- 세션 연결 -->
+        <div class="connection-section" id="connectionSection">
+            <h3>🚩 Signal Flags 게임 참여</h3>
+            <div class="input-group">
+                <label>4자리 세션 코드</label>
+                <input type="text" id="sessionInput" placeholder="1234" maxlength="4">
+            </div>
+            <button class="btn btn-primary" id="connectBtn" disabled>🚩 게임 참여</button>
+            <button class="btn btn-primary" id="qrBtn">📱 QR 코드 스캔</button>
+            <button class="btn btn-primary" id="sensorPermissionBtn">📱 센서 권한 요청</button>
+        </div>
+        
+        <!-- 게임 섹션 -->
+        <div class="game-section" id="gameSection">
+            <div class="game-status">
+                <div class="round-info" id="roundInfo">라운드 준비 중...</div>
+                <div class="command-display" id="commandDisplay">
+                    <div class="command-icon" id="commandIcon">🚩</div>
+                    <div class="command-text" id="commandText">준비하세요</div>
+                </div>
+            </div>
+            
+            <!-- 방향 표시기 -->
+            <div class="direction-indicator">
+                <div class="direction-cell"></div>
+                <div class="direction-cell" data-direction="up">⬆️</div>
+                <div class="direction-cell"></div>
+                <div class="direction-cell" data-direction="left">⬅️</div>
+                <div class="direction-cell" data-direction="center">🎯</div>
+                <div class="direction-cell" data-direction="right">➡️</div>
+                <div class="direction-cell"></div>
+                <div class="direction-cell" data-direction="down">⬇️</div>
+                <div class="direction-cell"></div>
+            </div>
+            
+            <!-- 센서 데이터 -->
+            <div class="sensor-data" id="sensorData">
+                <div class="sensor-row">
+                    <span>현재 방향:</span>
+                    <span id="currentDirection">center</span>
+                </div>
+                <div class="sensor-row">
+                    <span>기울기 Beta:</span>
+                    <span id="tiltBeta">0°</span>
+                </div>
+                <div class="sensor-row">
+                    <span>기울기 Gamma:</span>
+                    <span id="tiltGamma">0°</span>
+                </div>
+                <div class="sensor-row">
+                    <span>움직임 크기:</span>
+                    <span id="movementSize">0°</span>
+                </div>
+            </div>
+            
+            <!-- 점수 표시 -->
+            <div class="score-display">
+                <div class="score-item">
+                    <div>내 점수</div>
+                    <div class="score-value" id="myScore">0</div>
+                </div>
+                <div class="score-item">
+                    <div>상대 점수</div>
+                    <div class="score-value" id="opponentScore">0</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR 스캐너 -->
+    <div id="qr-reader" style="display: none; width: 100%; margin: 1rem 0;"></div>
+
+    <!-- Scripts -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/SessionSDK.js"></script>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+
+    <script>
+        class SignalFlagsV3Sensor {
+            constructor() {
+                console.log('🚩 Signal Flags v3 센서 초기화 시작');
+                
+                // 기본 상태
+                this.isConnected = false;
+                this.sessionConnected = false;
+                this.gameActive = false;
+                this.hasResponded = false;
+                this.sensorPermissionGranted = false;
+                
+                // 게임 데이터
+                this.gameData = {
+                    sessionCode: null,
+                    currentRound: 0,
+                    currentCommand: null,
+                    currentGender: null,
+                    myScore: 0,
+                    opponentScore: 0
+                };
+                
+                // 센서 설정
+                this.sensorConfig = {
+                    threshold: 30,      // 방향 인식 임계값
+                    responseDelay: 500, // 응답 후 대기 시간
+                    centerThreshold: 15 // 중앙 위치 판정 임계값
+                };
+                
+                // 센서 상태
+                this.sensorState = {
+                    currentDirection: 'center',
+                    lastResponseTime: 0,
+                    waitingForCenter: false,
+                    centerStartTime: 0
+                };
+                
+                // DOM 요소
+                this.elements = {
+                    message: document.getElementById('message'),
+                    connectionStatus: document.getElementById('connectionStatus'),
+                    connectionSection: document.getElementById('connectionSection'),
+                    sessionInput: document.getElementById('sessionInput'),
+                    connectBtn: document.getElementById('connectBtn'),
+                    qrBtn: document.getElementById('qrBtn'),
+                    sensorPermissionBtn: document.getElementById('sensorPermissionBtn'),
+                    gameSection: document.getElementById('gameSection'),
+                    roundInfo: document.getElementById('roundInfo'),
+                    commandIcon: document.getElementById('commandIcon'),
+                    commandText: document.getElementById('commandText'),
+                    currentDirection: document.getElementById('currentDirection'),
+                    tiltBeta: document.getElementById('tiltBeta'),
+                    tiltGamma: document.getElementById('tiltGamma'),
+                    movementSize: document.getElementById('movementSize'),
+                    myScore: document.getElementById('myScore'),
+                    opponentScore: document.getElementById('opponentScore')
+                };
+                
+                // SDK 및 초기화
+                this.initializeSDK();
+                this.setupEvents();
+                
+                // URL 파라미터에서 세션 코드 자동 감지
+                this.checkURLParams();
+                
+                console.log('✅ Signal Flags v3 센서 초기화 완료');
+            }
+            
+            initializeSDK() {
+                this.sdk = new SessionSDK({
+                    gameType: 'solo',
+                    gameId: 'signal-flags-v3',
+                    debug: true
+                });
+            }
+            
+            setupEvents() {
+                // SDK 이벤트
+                this.sdk.on('connected', () => {
+                    this.isConnected = true;
+                    this.elements.connectionStatus.textContent = '서버 연결됨';
+                    this.updateConnectButton();
+                    console.log('✅ 서버 연결됨');
+                });
+                
+                this.sdk.on('disconnected', () => {
+                    this.isConnected = false;
+                    this.sessionConnected = false;
+                    this.elements.connectionStatus.textContent = '서버 연결 끊김';
+                    this.hideGameSection();
+                });
+                
+                this.sdk.on('sensor-connection-success', (data) => {
+                    this.sessionConnected = true;
+                    this.gameData.sessionCode = data.sessionCode;
+                    this.showGameSection();
+                    this.showMessage('Signal Flags v3 게임에 연결되었습니다!', 'success');
+                    console.log('✅ 게임 연결 성공:', data);
+                });
+                
+                // UI 이벤트
+                this.elements.sessionInput.addEventListener('input', () => {
+                    this.updateConnectButton();
+                });
+                
+                this.elements.connectBtn.addEventListener('click', () => {
+                    this.connectToSession();
+                });
+                
+                this.elements.qrBtn.addEventListener('click', () => {
+                    this.scanQRCode();
+                });
+                
+                this.elements.sensorPermissionBtn.addEventListener('click', () => {
+                    this.requestSensorPermission();
+                });
+            }
+            
+            updateConnectButton() {
+                const value = this.elements.sessionInput.value;
+                this.elements.connectBtn.disabled = value.length !== 4 || !this.isConnected;
+            }
+            
+            checkURLParams() {
+                // URL 파라미터에서 세션 코드 확인
+                const urlParams = new URLSearchParams(window.location.search);
+                const sessionCode = urlParams.get('session');
+                
+                if (sessionCode && sessionCode.length === 4) {
+                    console.log('🔗 URL에서 세션 코드 감지됨:', sessionCode);
+                    this.elements.sessionInput.value = sessionCode;
+                    this.updateConnectButton();
+                    this.showMessage(`세션 코드 ${sessionCode}이(가) 자동으로 입력되었습니다`, 'success');
+                }
+            }
+            
+            async requestSensorPermission() {
+                console.log('📱 센서 권한 요청 시작');
+                this.elements.sensorPermissionBtn.textContent = '요청 중...';
+                this.elements.sensorPermissionBtn.disabled = true;
+                
+                try {
+                    // iOS 13+ 권한 요청
+                    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                        const permission = await DeviceOrientationEvent.requestPermission();
+                        
+                        if (permission === 'granted') {
+                            console.log('✅ 센서 권한 승인됨');
+                            this.sensorPermissionGranted = true;
+                            this.startSensorCollection();
+                            this.showMessage('센서 권한이 승인되었습니다!', 'success');
+                        } else {
+                            throw new Error('센서 권한이 거부되었습니다');
+                        }
+                    } else {
+                        // 다른 브라우저/기기
+                        console.log('📱 센서 권한 요청 불필요, 직접 시작');
+                        this.sensorPermissionGranted = true;
+                        this.startSensorCollection();
+                        this.showMessage('센서 수집이 시작되었습니다!', 'success');
+                    }
+                } catch (error) {
+                    console.error('❌ 센서 권한 요청 실패:', error);
+                    this.showMessage('센서 권한이 필요합니다. 브라우저 설정을 확인해주세요.', 'error');
+                    this.elements.sensorPermissionBtn.textContent = '📱 센서 권한 요청';
+                    this.elements.sensorPermissionBtn.disabled = false;
+                }
+            }
+            
+            startSensorCollection() {
+                console.log('🔍 센서 수집 시작');
+                
+                if (!window.DeviceOrientationEvent) {
+                    this.showMessage('이 디바이스는 센서를 지원하지 않습니다.', 'error');
+                    return;
+                }
+                
+                // 센서 이벤트 리스너 등록
+                window.addEventListener('deviceorientation', (event) => {
+                    this.handleSensorData(event);
+                });
+                
+                this.elements.sensorPermissionBtn.textContent = '✅ 센서 활성화됨';
+                console.log('✅ 센서 수집 시작 완료');
+            }
+            
+            handleSensorData(event) {
+                if (!this.sessionConnected) return;
+                
+                const beta = event.beta || 0;   // 앞뒤 기울기
+                const gamma = event.gamma || 0; // 좌우 기울기
+                const alpha = event.alpha || 0; // 회전
+                
+                // 현재 방향 계산
+                const direction = this.calculateDirection(beta, gamma);
+                const movementSize = Math.sqrt(beta * beta + gamma * gamma);
+                
+                // UI 업데이트
+                this.sensorState.currentDirection = direction;
+                this.elements.currentDirection.textContent = direction;
+                this.elements.tiltBeta.textContent = beta.toFixed(1) + '°';
+                this.elements.tiltGamma.textContent = gamma.toFixed(1) + '°';
+                this.elements.movementSize.textContent = movementSize.toFixed(1) + '°';
+                
+                this.updateDirectionIndicator(direction);
+                
+                // PC 게임으로 센서 데이터 전송
+                this.sendSensorDataToGame({
+                    orientation: {
+                        alpha: alpha,
+                        beta: beta,
+                        gamma: gamma
+                    },
+                    direction: direction,
+                    movementSize: movementSize,
+                    timestamp: Date.now()
+                });
+            }
+            
+            sendSensorDataToGame(sensorData) {
+                if (!this.sdk || !this.sdk.socket || !this.sessionConnected) return;
+                
+                // PC 게임으로 센서 데이터 전송
+                this.sdk.socket.emit('sensor-data', {
+                    sessionCode: this.gameData.sessionCode,
+                    sensorId: 'sensor',
+                    data: sensorData
+                });
+            }
+            
+            calculateDirection(beta, gamma) {
+                const threshold = this.sensorConfig.threshold;
+                
+                // 중앙 판정
+                if (Math.abs(beta) < this.sensorConfig.centerThreshold && 
+                    Math.abs(gamma) < this.sensorConfig.centerThreshold) {
+                    return 'center';
+                }
+                
+                // 방향 판정 (더 큰 값을 기준으로)
+                if (Math.abs(beta) > Math.abs(gamma)) {
+                    return beta > 0 ? 'down' : 'up';
+                } else {
+                    return gamma > 0 ? 'right' : 'left';
+                }
+            }
+            
+            async connectToSession() {
+                const sessionCode = this.elements.sessionInput.value.trim();
+                
+                if (!sessionCode || sessionCode.length !== 4) {
+                    this.showMessage('4자리 세션 코드를 입력하세요', 'error');
+                    return;
+                }
+                
+                try {
+                    this.elements.connectBtn.disabled = true;
+                    this.elements.connectBtn.textContent = '연결 중...';
+                    
+                    await this.sdk.connectSensor(sessionCode, {
+                        gameType: 'signal-flags-v3',
+                        timestamp: Date.now()
+                    });
+                    
+                } catch (error) {
+                    this.showMessage(`연결 실패: ${error.message}`, 'error');
+                    this.elements.connectBtn.disabled = false;
+                    this.elements.connectBtn.textContent = '🚩 게임 참여';
+                }
+            }
+            
+            async scanQRCode() {
+                try {
+                    const qrReaderDiv = document.getElementById('qr-reader');
+                    qrReaderDiv.style.display = 'block';
+                    
+                    const qrCodeScanner = new Html5QrcodeScanner("qr-reader", {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 }
+                    });
+                    
+                    const onScanSuccess = (decodedText) => {
+                        try {
+                            const url = new URL(decodedText);
+                            const sessionCode = url.searchParams.get('session');
+                            
+                            if (sessionCode && sessionCode.length === 4) {
+                                this.elements.sessionInput.value = sessionCode;
+                                this.showMessage('QR 코드에서 세션 코드를 가져왔습니다', 'success');
+                                qrCodeScanner.clear();
+                                qrReaderDiv.style.display = 'none';
+                                this.updateConnectButton();
+                            } else {
+                                this.showMessage('올바른 QR 코드가 아닙니다', 'error');
+                            }
+                        } catch (err) {
+                            this.showMessage('QR 코드를 해석할 수 없습니다', 'error');
+                        }
+                    };
+                    
+                    qrCodeScanner.render(onScanSuccess, () => {});
+                    
+                } catch (error) {
+                    this.showMessage('카메라에 접근할 수 없습니다', 'error');
+                }
+            }
+            
+            updateDirectionIndicator(direction) {
+                const cells = document.querySelectorAll('.direction-cell');
+                cells.forEach(cell => {
+                    cell.classList.remove('current');
+                    if (cell.dataset.direction === direction) {
+                        cell.classList.add('current');
+                    }
+                });
+            }
+            
+            showGameSection() {
+                this.elements.connectionSection.style.display = 'none';
+                this.elements.gameSection.classList.add('visible');
+            }
+            
+            hideGameSection() {
+                this.elements.connectionSection.style.display = 'block';
+                this.elements.gameSection.classList.remove('visible');
+            }
+            
+            showMessage(text, type = 'success') {
+                this.elements.message.textContent = text;
+                this.elements.message.className = `message ${type} visible`;
+                
+                setTimeout(() => {
+                    this.elements.message.classList.remove('visible');
+                }, 4000);
+            }
+        }
+        
+        // 앱 시작
+        document.addEventListener('DOMContentLoaded', () => {
+            new SignalFlagsV3Sensor();
+        });
+    </script>
+</body>
+</html>

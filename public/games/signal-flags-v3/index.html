@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🚩 Signal Flags v3 - Integrated Sensor Game</title>
+    <title>🚩 Signal Flags v3 - PC Game Screen</title>
     <style>
         :root {
             --primary: #dc2626;
@@ -63,41 +63,44 @@
             background-clip: text;
         }
 
-        /* 센서 상태 표시 */
-        .sensor-display {
-            position: fixed;
-            top: 70px;
-            right: 20px;
-            background: rgba(26, 26, 26, 0.9);
+        /* 세션 정보 */
+        .session-info {
+            background: rgba(30, 41, 59, 0.9);
             backdrop-filter: blur(15px);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 15px;
-            min-width: 200px;
-            z-index: 50;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            display: none;
+            max-width: 400px;
         }
 
-        .sensor-values {
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            margin-bottom: 10px;
+        .session-info.visible {
+            display: block;
         }
 
-        .sensor-state {
-            text-align: center;
-            padding: 8px;
-            border-radius: 5px;
+        .session-code {
+            font-size: 3rem;
             font-weight: bold;
-            margin-top: 10px;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            letter-spacing: 0.2em;
         }
 
-        .sensor-state.default {
-            background: var(--success);
-            color: white;
+        .qr-container {
+            margin-bottom: 1rem;
+            text-align: center;
         }
 
-        .sensor-state.action {
-            background: var(--warning);
+        .connection-status {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .sensor-status {
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
             color: white;
         }
 
@@ -541,10 +544,10 @@
             }
             
             generateQRCode(sessionCode) {
-                // QR 코드 URL 생성 (현재 페이지 URL 사용)
-                const qrUrl = `${window.location.origin}${window.location.pathname}`;
+                // 센서 클라이언트 URL 생성
+                const sensorClientUrl = `${window.location.origin}/games/signal-flags-v3/sensor-client.html?session=${sessionCode}`;
                 
-                console.log('📱 QR 코드 생성 중:', qrUrl);
+                console.log('📱 QR 코드 생성 중:', sensorClientUrl);
                 
                 // QRCode 라이브러리 사용 (폴백 처리)
                 if (typeof QRCode !== 'undefined') {
@@ -554,7 +557,7 @@
                         this.elements.qrContainer.innerHTML = '';
                         this.elements.qrContainer.appendChild(canvas);
                         
-                        QRCode.toCanvas(canvas, qrUrl, {
+                        QRCode.toCanvas(canvas, sensorClientUrl, {
                             width: 200,
                             height: 200,
                             colorDark: '#dc2626',
@@ -563,18 +566,18 @@
                         }, (error) => {
                             if (error) {
                                 console.error('QR 생성 오류:', error);
-                                this.showQRCodeFallback(qrUrl);
+                                this.showQRCodeFallback(sensorClientUrl);
                             } else {
                                 console.log('✅ QR 코드 생성 완료');
                             }
                         });
                     } catch (error) {
                         console.error('QR 라이브러리 오류:', error);
-                        this.showQRCodeFallback(qrUrl);
+                        this.showQRCodeFallback(sensorClientUrl);
                     }
                 } else {
                     console.warn('QRCode 라이브러리 로드되지 않음, 폴백 사용');
-                    this.showQRCodeFallback(qrUrl);
+                    this.showQRCodeFallback(sensorClientUrl);
                 }
             }
             
@@ -601,14 +604,123 @@
             }
             
             initializeSDK() {
-                // 향후 멀티플레이어 지원을 위한 SDK 초기화
+                // Signal Flags v3 세션 관리를 위한 SDK 초기화
                 try {
                     this.sdk = new SessionSDK({
                         gameId: 'signal-flags-v3',
-                        gameType: 'solo' // v3에서는 우선 솔로 모드로 구현
+                        gameType: 'solo'
                     });
+                    
+                    // SDK 이벤트 설정
+                    this.setupSDKEvents();
+                    
+                    // 세션 생성
+                    this.createGameSession();
+                    
                 } catch (error) {
                     console.warn('SDK 초기화 실패, 오프라인 모드로 진행:', error);
+                }
+            }
+            
+            setupSDKEvents() {
+                if (!this.sdk) return;
+                
+                // SDK 연결 이벤트
+                this.sdk.on('connected', () => {
+                    console.log('✅ 서버 연결됨');
+                });
+                
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;
+                    console.log('🎮 세션 생성됨:', session);
+                    
+                    // 세션 코드 업데이트
+                    if (session.sessionCode) {
+                        this.elements.sessionCode.textContent = session.sessionCode;
+                        this.generateQRCode(session.sessionCode);
+                    }
+                });
+                
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;
+                    this.handleRemoteSensorData(data);
+                });
+                
+                this.sdk.on('sensor-connected', (data) => {
+                    console.log('📱 센서 클라이언트 연결됨:', data);
+                    this.showMessage('센서 클라이언트가 연결되었습니다!', 'success');
+                    // 센서 연결 상태 표시 업데이트
+                    this.updateSensorConnectionStatus(true);
+                });
+                
+                this.sdk.on('sensor-disconnected', (data) => {
+                    console.log('📱 센서 클라이언트 연결 해제됨:', data);
+                    this.showMessage('센서 클라이언트 연결이 해제되었습니다.', 'warning');
+                    this.updateSensorConnectionStatus(false);
+                });
+            }
+            
+            createGameSession() {
+                if (!this.sdk) return;
+                
+                // 생성된 세션 코드를 이용해 세션 생성 요청
+                const sessionCode = this.elements.sessionCode.textContent;
+                
+                this.sdk.on('connected', () => {
+                    console.log('🎮 게임 세션 생성 요청');
+                    this.sdk.createSession({
+                        gameId: 'signal-flags-v3',
+                        gameType: 'solo',
+                        sessionCode: sessionCode
+                    });
+                });
+            }
+            
+            updateSensorConnectionStatus(connected) {
+                // 향후 센서 연결 상태 UI 업데이트
+                if (connected) {
+                    this.elements.startBtn.disabled = false;
+                    this.elements.gameMessage.textContent = '센서가 연결되었습니다. 게임을 시작하세요!';
+                } else {
+                    this.elements.startBtn.disabled = true;
+                    this.elements.gameMessage.textContent = '센서 연결을 기다리는 중...';
+                }
+            }
+            
+            handleRemoteSensorData(data) {
+                // 센서 클라이언트로부터 받은 센서 데이터 처리
+                if (!data || !data.data) return;
+                
+                const sensorData = data.data;
+                console.log('📡 센서 데이터 수신:', sensorData);
+                
+                // 센서 데이터를 게임 로직에 적용
+                if (this.gameState === 'playing') {
+                    this.processSensorDataForGame(sensorData);
+                }
+            }
+            
+            processSensorDataForGame(sensorData) {
+                // 센서 데이터를 게임에서 사용할 수 있는 형태로 변환
+                if (sensorData.orientation) {
+                    this.sensorData.beta = sensorData.orientation.beta || 0;
+                    this.sensorData.gamma = sensorData.orientation.gamma || 0;
+                    this.sensorData.alpha = sensorData.orientation.alpha || 0;
+                    
+                    // 기존 센서 처리 로직 호출
+                    this.handleSensorData({
+                        beta: this.sensorData.beta,
+                        gamma: this.sensorData.gamma,
+                        alpha: this.sensorData.alpha
+                    });
+                }
+            }
+            
+            showMessage(text, type = 'success') {
+                // 메시지 표시 (간단한 alert 또는 향후 UI 개선)
+                console.log(`💬 ${type.toUpperCase()}: ${text}`);
+                if (type === 'error') {
+                    alert(text);
                 }
             }
             
