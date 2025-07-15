@@ -69,7 +69,9 @@
             text-align: center;
             min-width: 350px;
             max-width: 90vw;
+            max-height: 90vh;
             width: auto;
+            overflow-y: auto;
         }
         
         .session-title {
@@ -283,23 +285,28 @@
         }
         
         .music-tracks {
-            display: flex;
-            gap: 0.5rem;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.4rem;
             margin-bottom: 0.75rem;
+            max-height: 12rem;
+            overflow-y: auto;
         }
         
         .track-option {
-            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
-            padding: 0.5rem;
+            justify-content: center;
+            padding: 0.4rem 0.3rem;
             background: rgba(30, 41, 59, 0.8);
             border: 2px solid transparent;
-            border-radius: 0.5rem;
+            border-radius: 0.4rem;
             cursor: pointer;
             transition: all 0.3s ease;
             position: relative;
+            min-height: 3.5rem;
+            aspect-ratio: 1.2;
         }
         
         .track-option:hover {
@@ -315,38 +322,40 @@
         }
         
         .track-icon {
-            font-size: 1.5rem;
-            margin-bottom: 0.25rem;
+            font-size: 1.2rem;
+            margin-bottom: 0.15rem;
         }
         
         .track-name {
-            font-size: 0.9rem;
+            font-size: 0.7rem;
             font-weight: 600;
             color: var(--text-primary);
             text-align: center;
-            margin-bottom: 0.125rem;
+            margin-bottom: 0.1rem;
+            line-height: 1;
         }
         
         .track-details {
-            font-size: 0.7rem;
+            font-size: 0.6rem;
             color: var(--text-secondary);
             text-align: center;
+            line-height: 1;
         }
         
         .track-status {
             position: absolute;
-            top: 0.25rem;
-            right: 0.25rem;
-            font-size: 1rem;
+            top: 0.2rem;
+            right: 0.2rem;
+            font-size: 0.8rem;
             color: var(--success);
         }
         
         .selected-track-info {
             text-align: center;
-            padding: 0.5rem;
+            padding: 0.4rem;
             background: rgba(59, 130, 246, 0.1);
-            border-radius: 0.5rem;
-            font-size: 0.8rem;
+            border-radius: 0.4rem;
+            font-size: 0.75rem;
             border: 1px solid var(--primary);
             color: var(--primary);
             font-weight: 600;
@@ -354,6 +363,65 @@
         
         #selectedTrackName {
             color: var(--success);
+        }
+        
+        /* 음악 트랙 스크롤바 스타일 */
+        .music-tracks::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .music-tracks::-webkit-scrollbar-track {
+            background: rgba(30, 41, 59, 0.3);
+            border-radius: 2px;
+        }
+        
+        .music-tracks::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 2px;
+        }
+        
+        .music-tracks::-webkit-scrollbar-thumb:hover {
+            background: var(--secondary);
+        }
+        
+        /* 반응형 디자인 */
+        @media (max-width: 480px) {
+            .music-tracks {
+                grid-template-columns: repeat(2, 1fr);
+                max-height: 14rem;
+            }
+            
+            .track-option {
+                min-height: 4rem;
+                padding: 0.5rem 0.3rem;
+            }
+            
+            .track-icon {
+                font-size: 1.4rem;
+            }
+            
+            .track-name {
+                font-size: 0.75rem;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            .music-tracks {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0.3rem;
+            }
+            
+            .track-option {
+                min-height: 3.8rem;
+            }
+            
+            .track-name {
+                font-size: 0.7rem;
+            }
+            
+            .track-details {
+                font-size: 0.55rem;
+            }
         }
     </style>
 </head>
@@ -384,6 +452,54 @@
                         <div class="track-icon">🌙</div>
                         <div class="track-name">Neon Nights</div>
                         <div class="track-details">Synthwave</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="cyber-beat" id="track-cyber-beat">
+                        <div class="track-icon">🤖</div>
+                        <div class="track-name">Cyber Beat</div>
+                        <div class="track-details">Techno</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="space-rhythm" id="track-space-rhythm">
+                        <div class="track-icon">🚀</div>
+                        <div class="track-name">Space Rhythm</div>
+                        <div class="track-details">Ambient</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="fire-dance" id="track-fire-dance">
+                        <div class="track-icon">🔥</div>
+                        <div class="track-name">Fire Dance</div>
+                        <div class="track-details">Drum&Bass</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="ocean-waves" id="track-ocean-waves">
+                        <div class="track-icon">🌊</div>
+                        <div class="track-name">Ocean Waves</div>
+                        <div class="track-details">Chill</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="crystal-cave" id="track-crystal-cave">
+                        <div class="track-icon">💎</div>
+                        <div class="track-name">Crystal Cave</div>
+                        <div class="track-details">Progressive</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="neon-city" id="track-neon-city">
+                        <div class="track-icon">🏙️</div>
+                        <div class="track-name">Neon City</div>
+                        <div class="track-details">Retrowave</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="thunder-storm" id="track-thunder-storm">
+                        <div class="track-icon">⛈️</div>
+                        <div class="track-name">Thunder Storm</div>
+                        <div class="track-details">Hardcore</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="starlight" id="track-starlight">
+                        <div class="track-icon">✨</div>
+                        <div class="track-name">Starlight</div>
+                        <div class="track-details">Melodic</div>
                         <div class="track-status"></div>
                     </div>
                 </div>
