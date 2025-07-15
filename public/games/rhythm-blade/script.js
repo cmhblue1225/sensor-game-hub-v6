@@ -1382,7 +1382,7 @@ class RhythmBladeDual {
             
             if (rotationSpeed > swingThreshold) {
                 const now = Date.now();
-                if (now - this.sensorStatus[sensorId].lastSwing > 250) {  // 250ms 쿨다운
+                if (now - this.sensorStatus[sensorId].lastSwing > 150) {  // 150ms 쿨다운
                     this.triggerSwing(sensorId);
                     this.sensorStatus[sensorId].lastSwing = now;
                 }
