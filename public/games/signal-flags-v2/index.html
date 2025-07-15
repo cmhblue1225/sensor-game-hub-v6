@@ -635,7 +635,13 @@
                 
                 // 디폴트 상태 준비 완료 이벤트
                 this.sdk.socket.on('signal-flags-v2-default-ready', (data) => {
-                    console.log('📍 플레이어 디폴트 상태 준비:', data);
+                    console.log('📍 [게임] 플레이어 디폴트 상태 준비 이벤트 수신:', data);
+                    console.log('📍 [게임] 이벤트 수신 시간:', new Date().toLocaleTimeString());
+                    console.log('📍 [게임] 현재 게임 상태:', {
+                        gameState: this.gameState,
+                        waitingForDefault: this.signalFlagsState.waitingForDefault,
+                        defaultReadyPlayers: Array.from(this.defaultReadyPlayers)
+                    });
                     this.handleDefaultReady(data);
                 });
                 

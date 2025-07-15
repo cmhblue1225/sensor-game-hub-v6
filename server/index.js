@@ -751,7 +751,13 @@ class GameServer {
             
             // 디폴트 상태 준비 완료 알림
             socket.on('signal-flags-v2-default-ready', (data) => {
-                console.log('📍 Signal Flags v2 디폴트 상태 준비:', data);
+                console.log('📍 [서버] Signal Flags v2 디폴트 상태 준비 이벤트 수신:', data);
+                console.log('📍 [서버] 수신된 데이터 상세:', {
+                    sessionCode: data.sessionCode,
+                    playerId: data.playerId,
+                    dataType: typeof data,
+                    timestamp: new Date().toLocaleTimeString()
+                });
                 
                 try {
                     const sessionCode = data.sessionCode;
@@ -760,20 +766,37 @@ class GameServer {
                     // 세션 찾기
                     const session = this.sessionManager.getSessionByCode(sessionCode);
                     if (!session) {
-                        console.warn(`⚠️ 세션을 찾을 수 없음: ${sessionCode}`);
+                        console.warn(`⚠️ [서버] 세션을 찾을 수 없음: ${sessionCode}`);
+                        console.log('📋 [서버] 현재 활성 세션들:', Object.keys(this.sessionManager.sessions));
                         return;
                     }
                     
+                    console.log('✅ [서버] 세션 찾음:', {
+                        sessionId: session.sessionId,
+                        hostSocketId: session.hostSocketId,
+                        connectedSensors: session.connectedSensors
+                    });
+                    
                     // 호스트에 디폴트 상태 준비 완료 알림
                     if (session.hostSocketId) {
+                        console.log('📤 [서버] 호스트에 디폴트 상태 준비 완료 알림 전송:', {
+                            hostSocketId: session.hostSocketId,
+                            playerId: playerId,
+                            sessionCode: sessionCode
+                        });
+                        
                         this.io.to(session.hostSocketId).emit('signal-flags-v2-default-ready', {
                             playerId: playerId,
                             sessionCode: sessionCode
                         });
+                        
+                        console.log('✅ [서버] 호스트에 디폴트 상태 준비 완료 알림 전송 완료');
+                    } else {
+                        console.warn('⚠️ [서버] 호스트 소켓 ID가 없음');
                     }
                     
                 } catch (error) {
-                    console.error('❌ Signal Flags v2 디폴트 상태 처리 오류:', error);
+                    console.error('❌ [서버] Signal Flags v2 디폴트 상태 처리 오류:', error);
                 }
             });
             
