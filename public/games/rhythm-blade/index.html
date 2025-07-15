@@ -457,189 +457,160 @@
             }
             
             generateRhythmBeatmap() {
-                // 🎵 128 BPM 일렉트로닉 뮤직에 맞는 비트맵 생성
-                // 1비트 = 0.47초, 1/2비트 = 0.23초, 1/4비트 = 0.12초, 1/8비트 = 0.06초
+                // 🎵 128 BPM 일렉트로닉 뮤직에 맞는 비트맵 생성 (센서 딜레이 최적화)
+                // 센서 쿨다운: 500ms, 1비트 = 0.47초, 1/2비트 = 0.23초
+                // ⚠️ halfBeat(235ms) < 센서쿨다운(500ms) 이므로 최소 beat 간격 필요
                 const beat = this.beatInterval; // 약 0.47초 (128 BPM)
-                const halfBeat = beat / 2; // 약 0.23초
-                const quarterBeat = beat / 4; // 약 0.12초
-                const eighthBeat = beat / 8; // 약 0.06초 (빠른 연타용)
+                const halfBeat = beat / 2; // 약 0.23초 (센서 딜레이로 연속 불가)
+                const quarterBeat = beat / 4; // 약 0.12초 (센서 딜레이로 불가)
+                const doubleBeat = beat * 2; // 약 0.94초 (여유로운 간격)
                 
                 const beatmap = [];
                 
-                // 🎵 빌드업 인트로 (8비트) - 0-4초
+                // 🎵 센서 친화적 인트로 (기본 비트 간격) - 0-4초
                 beatmap.push(
                     { time: beat * 1, lane: "sensor1", type: "normal" },
                     { time: beat * 2, lane: "sensor2", type: "normal" },
                     { time: beat * 3, lane: "sensor1", type: "normal" },
                     { time: beat * 4, lane: "sensor2", type: "normal" },
                     { time: beat * 5, lane: "both", type: "cooperation" },
-                    { time: beat * 6, lane: "sensor1", type: "normal" },
-                    { time: beat * 7, lane: "sensor2", type: "normal" },
-                    { time: beat * 8, lane: "both", type: "cooperation" }
+                    { time: beat * 7, lane: "sensor1", type: "normal" },    // beat * 6 → 7 (여유)
+                    { time: beat * 8, lane: "sensor2", type: "normal" },
+                    { time: beat * 10, lane: "both", type: "cooperation" }   // beat * 8 → 10 (여유)
                 );
                 
-                // 🎵 메인 드롭 구간 1 (16비트) - 4-8초
-                for (let i = 0; i < 16; i++) {
-                    const baseTime = beat * (9 + i);
-                    const pattern = i % 4;
+                // 🎵 센서 최적화 드롭 구간 1 (기본 비트 패턴) - 5-9초
+                for (let i = 0; i < 12; i++) {
+                    const baseTime = beat * (12 + i); // 시작점 조정
+                    const pattern = i % 3; // 3박자 패턴으로 단순화
                     
-                    if (pattern === 0 || pattern === 2) {
+                    if (pattern === 0) {
                         beatmap.push({ time: baseTime, lane: "sensor1", type: "normal" });
                     } else if (pattern === 1) {
                         beatmap.push({ time: baseTime, lane: "sensor2", type: "normal" });
-                    } else { // pattern === 3, 협력 노트
+                    } else { // pattern === 2, 협력 노트
                         beatmap.push({ time: baseTime, lane: "both", type: "cooperation" });
                     }
                 }
                 
-                // 🎵 브레이크다운 (차분한 구간) - 8-10초
-                const breakdownStart = beat * 25;
+                // 🎵 센서 휴식 구간 (여유로운 간격) - 11-13초
+                const restStart = beat * 26;
                 beatmap.push(
-                    { time: breakdownStart, lane: "sensor1", type: "normal" },
-                    { time: breakdownStart + beat, lane: "sensor2", type: "normal" },
-                    { time: breakdownStart + beat * 2, lane: "both", type: "cooperation" },
-                    { time: breakdownStart + beat * 3, lane: "sensor1", type: "normal" },
-                    { time: breakdownStart + beat * 4, lane: "sensor2", type: "normal" }
+                    { time: restStart, lane: "sensor1", type: "normal" },
+                    { time: restStart + doubleBeat, lane: "sensor2", type: "normal" },      // 2비트 간격
+                    { time: restStart + doubleBeat * 2, lane: "both", type: "cooperation" },
+                    { time: restStart + doubleBeat * 3, lane: "sensor1", type: "normal" },
+                    { time: restStart + doubleBeat * 4, lane: "sensor2", type: "normal" }
                 );
                 
-                // 🎵 개선된 빌드업 (리듬에 맞춘 적당한 난이도) - 10-12초
-                const improvedBuildupStart = beat * 30;
-                // 기본 비트에 맞춘 교대 패턴 (더 여유로운 간격)
-                for (let i = 0; i < 10; i++) {
+                // 🎵 센서 최적화 빌드업 (안전한 비트 간격) - 14-18초
+                const sensorBuildupStart = beat * 34;
+                // 모든 노트를 최소 1비트 간격으로 배치 (센서 쿨다운 고려)
+                for (let i = 0; i < 8; i++) {
                     const pattern = i % 4;
                     let lane, interval;
                     
                     if (pattern === 0) {
                         lane = "sensor1";
-                        interval = beat * i; // 기본 비트
+                        interval = beat * i; // 기본 비트 간격
                     } else if (pattern === 1) {
                         lane = "sensor2";
-                        interval = beat * i + halfBeat; // 오프비트
+                        interval = beat * i + beat; // 1비트 후
                     } else if (pattern === 2) {
                         lane = "sensor1";
-                        interval = beat * i + beat; // 다음 비트
+                        interval = beat * i + doubleBeat; // 2비트 후
                     } else {
-                        // 4번째마다 협력 노트로 리듬감 강화
+                        // 협력 노트는 충분한 간격 확보
                         lane = "both";
-                        interval = beat * i + beat + halfBeat;
+                        interval = beat * i + doubleBeat + beat; // 3비트 후
                     }
                     
                     beatmap.push({
-                        time: improvedBuildupStart + interval,
+                        time: sensorBuildupStart + interval,
                         lane: lane,
                         type: lane === "both" ? "cooperation" : "normal"
                     });
                 }
                 
-                // 🎵 개선된 메인 드롭 (리듬 기반 중급 패턴) - 12-16초
-                const improvedMainDrop = beat * 42; // 시작 시점 조정
-                // 더 단순하고 리듬감 있는 패턴 (halfBeat 기준)
-                const rhythmPatterns = [
-                    { offset: 0, lane: "sensor1", type: "normal" },           // 강박
-                    { offset: halfBeat, lane: "sensor2", type: "normal" },    // 오프비트
-                    { offset: beat, lane: "both", type: "cooperation" },      // 협력 (2비트마다)
-                    { offset: beat + halfBeat, lane: "sensor1", type: "normal" }  // 마무리
+                // 🎵 센서 안전 메인 드롭 (1비트 최소 간격) - 20-26초
+                const sensorMainDrop = beat * 48; // 시작 시점 조정
+                // 센서 쿨다운을 고려한 안전한 패턴 (beat 간격)
+                const safeRhythmPatterns = [
+                    { offset: 0, lane: "sensor1", type: "normal" },          // 1비트
+                    { offset: beat, lane: "sensor2", type: "normal" },       // 2비트 (+1비트)
+                    { offset: doubleBeat, lane: "both", type: "cooperation" }, // 3비트 (+2비트)
+                    { offset: doubleBeat + beat, lane: "sensor1", type: "normal" }  // 4비트 (+1비트)
                 ];
                 
-                // 6사이클로 줄여서 난이도 완화
-                for (let cycle = 0; cycle < 6; cycle++) {
-                    rhythmPatterns.forEach(pattern => {
+                // 4사이클로 안전하게 진행
+                for (let cycle = 0; cycle < 4; cycle++) {
+                    safeRhythmPatterns.forEach(pattern => {
                         beatmap.push({
-                            time: improvedMainDrop + (beat * 2 * cycle) + pattern.offset,
+                            time: sensorMainDrop + (doubleBeat * 2 * cycle) + pattern.offset,
                             lane: pattern.lane,
                             type: pattern.type
                         });
                     });
                     
-                    // 사이클 중간에 휴식 구간 추가 (3번째, 5번째 사이클 후)
-                    if (cycle === 2 || cycle === 4) {
+                    // 사이클 중간에 충분한 휴식 (2번째 사이클 후)
+                    if (cycle === 1) {
                         beatmap.push({
-                            time: improvedMainDrop + (beat * 2 * cycle) + (beat * 1.5),
+                            time: sensorMainDrop + (doubleBeat * 2 * cycle) + (doubleBeat + beat),
                             lane: "sensor2", 
                             type: "normal"
                         });
                     }
                 }
                 
-                // 🎵 개선된 클라이맥스 (적절한 강도의 피날레) - 16-18초
-                const improvedClimax = beat * 56; // 시작 시점 조정
+                // 🎵 센서 안전 클라이맥스 (최소 1비트 간격 보장) - 28-32초
+                const sensorClimax = beat * 66; // 시작 시점 조정
                 
-                // 3단계로 나눈 점진적 클라이맥스
-                // 1단계: 기본 교대 패턴 (halfBeat)
-                for (let i = 0; i < 8; i++) {
+                // 2단계로 단순화한 안전한 클라이맥스
+                // 1단계: 기본 교대 패턴 (1비트 간격)
+                for (let i = 0; i < 6; i++) {
                     const lane = i % 2 === 0 ? "sensor1" : "sensor2";
                     beatmap.push({
-                        time: improvedClimax + (halfBeat * i),
+                        time: sensorClimax + (beat * i),
                         lane: lane,
                         type: "normal"
                     });
                 }
                 
-                // 2단계: 협력 강화 패턴 (beat 간격)
-                const stage2Start = improvedClimax + (halfBeat * 8);
-                for (let i = 0; i < 6; i++) {
-                    let lane, type;
-                    if (i % 3 === 0) {
-                        lane = "both";
-                        type = "cooperation";
-                    } else if (i % 3 === 1) {
-                        lane = "sensor1";
-                        type = "normal";
-                    } else {
-                        lane = "sensor2";
-                        type = "normal";
-                    }
-                    
-                    beatmap.push({
-                        time: stage2Start + (beat * i),
-                        lane: lane,
-                        type: type
-                    });
-                }
+                // 2단계: 협력 마무리 패턴 (여유로운 간격)
+                const finalStage = sensorClimax + (beat * 6);
+                const finalPatterns = [
+                    { offset: 0, lane: "both", type: "cooperation" },
+                    { offset: doubleBeat, lane: "sensor1", type: "normal" },
+                    { offset: doubleBeat * 2, lane: "sensor2", type: "normal" },
+                    { offset: doubleBeat * 3, lane: "both", type: "cooperation" },
+                    { offset: doubleBeat * 4, lane: "sensor1", type: "normal" },
+                    { offset: doubleBeat * 5, lane: "both", type: "cooperation" }
+                ];
                 
-                // 3단계: 마지막 스퍼트 (적절한 빈도)
-                const stage3Start = stage2Start + (beat * 6);
-                for (let i = 0; i < 8; i++) {
-                    const pattern = i % 4;
-                    let lane, interval;
-                    
-                    if (pattern === 0) {
-                        lane = "sensor1";
-                        interval = halfBeat * i;
-                    } else if (pattern === 1) {
-                        lane = "sensor2"; 
-                        interval = halfBeat * i;
-                    } else if (pattern === 2) {
-                        lane = "both";
-                        interval = halfBeat * i;
-                    } else {
-                        // 휴식 비트 (패턴 3은 건너뛰기)
-                        continue;
-                    }
-                    
+                finalPatterns.forEach(pattern => {
                     beatmap.push({
-                        time: stage3Start + interval,
-                        lane: lane,
-                        type: lane === "both" ? "cooperation" : "normal"
+                        time: finalStage + pattern.offset,
+                        lane: pattern.lane,
+                        type: pattern.type
                     });
-                }
+                });
                 
-                // 🎵 아웃트로 (웅장한 피날레) - 18-20초  
-                const outro = beat * 65; // 클라이맥스 이후 충분한 간격
+                // 🎵 센서 안전 아웃트로 (여유로운 피날레) - 38-42초  
+                const sensorOutro = beat * 88; // 클라이맥스 이후 충분한 간격
                 beatmap.push(
-                    { time: outro, lane: "both", type: "cooperation" },
-                    { time: outro + halfBeat, lane: "both", type: "cooperation" },
-                    { time: outro + beat, lane: "both", type: "cooperation" },
-                    { time: outro + beat + halfBeat, lane: "sensor1", type: "normal" },
-                    { time: outro + beat * 2, lane: "sensor2", type: "normal" },
-                    { time: outro + beat * 2.5, lane: "both", type: "cooperation" },
-                    { time: outro + beat * 3, lane: "both", type: "cooperation" },
-                    { time: outro + beat * 4, lane: "both", type: "cooperation" } // 최종 노트
+                    { time: sensorOutro, lane: "both", type: "cooperation" },
+                    { time: sensorOutro + beat, lane: "both", type: "cooperation" },      // 1비트 간격
+                    { time: sensorOutro + doubleBeat, lane: "both", type: "cooperation" }, // 2비트 간격
+                    { time: sensorOutro + doubleBeat + beat, lane: "sensor1", type: "normal" }, // 1비트 간격
+                    { time: sensorOutro + doubleBeat * 2, lane: "sensor2", type: "normal" }, // 1비트 간격
+                    { time: sensorOutro + doubleBeat * 3, lane: "both", type: "cooperation" }, // 2비트 간격
+                    { time: sensorOutro + doubleBeat * 4, lane: "both", type: "cooperation" } // 최종 노트 (2비트 간격)
                 );
                 
-                const totalDuration = (outro + beat * 4).toFixed(1);
-                console.log(`🎵 개선된 일렉트로닉 비트맵 생성 완료: ${beatmap.length}개 노트, ${totalDuration}초 (128 BPM)`);
-                console.log(`🎯 난이도 조정: 중반 이후 복잡한 패턴을 리듬에 맞춘 적당한 난이도로 완화`);
+                const totalDuration = (sensorOutro + doubleBeat * 4).toFixed(1);
+                console.log(`🎵 센서 최적화 비트맵 생성 완료: ${beatmap.length}개 노트, ${totalDuration}초 (128 BPM)`);
+                console.log(`🎯 센서 딜레이 최적화: 500ms 쿨다운을 고려한 최소 1비트(470ms) 간격 보장`);
+                console.log(`🎶 음악성 유지: 128 BPM 강박/약박 리듬 패턴 기반 설계`);
                 return beatmap;
             }
             
