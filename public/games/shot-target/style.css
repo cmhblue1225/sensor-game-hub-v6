@@ -194,12 +194,12 @@ body {
     z-index: 105;
 }
 
-/* 대규모 경쟁 모드에서 게임 정보 패널은 우상단으로 이동 */
+/* 대규모 경쟁 모드에서 게임 정보 패널은 좌하단으로 이동 */
 .mass-competitive-panel ~ .game-info-panel {
-    top: 1rem;
-    right: 1rem;
-    bottom: auto;
-    left: auto;
+    top: auto;
+    right: auto;
+    bottom: 1rem;
+    left: 1rem;
     min-width: 200px;
     max-width: 250px;
 }
