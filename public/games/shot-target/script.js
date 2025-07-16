@@ -1,28 +1,3 @@
-// QR Code Generator (폴백 처리)
-class QRCodeGenerator {
-    static async generateElement(url, size = 200) {
-        if (typeof QRCode !== 'undefined') {
-            // QRCode 라이브러리 사용
-            const canvas = document.createElement('canvas');
-            await new Promise((resolve, reject) => {
-                QRCode.toCanvas(canvas, url, { width: size }, (error) => {
-                    if (error) reject(error);
-                    else resolve();
-                });
-            });
-            return canvas;
-        } else {
-            // 폴백: 외부 API 사용
-            const img = document.createElement('img');
-            img.src = `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}`;
-            img.alt = 'QR Code';
-            img.style.width = `${size}px`;
-            img.style.height = `${size}px`;
-            return img;
-        }
-    }
-}
-
 // Shot Target Game Class
 class ShotTargetGame {
     constructor() {
@@ -238,13 +213,31 @@ class ShotTargetGame {
     async displaySessionInfo(session) {
         this.elements.sessionCode.textContent = session.sessionCode || '----';
         
-        // ✅ QR 코드 폴백 처리
+        // ✅ QR 코드 폴백 처리 (AI_ASSISTANT_PROMPTS.md 지침에 따라)
         const sensorUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
         
         try {
-            const qrElement = await QRCodeGenerator.generateElement(sensorUrl, 200);
-            this.elements.qrContainer.innerHTML = '';
-            this.elements.qrContainer.appendChild(qrElement);
+            if (typeof QRCode !== 'undefined') {
+                // QRCode 라이브러리 사용
+                const canvas = document.createElement('canvas');
+                await new Promise((resolve, reject) => {
+                    QRCode.toCanvas(canvas, sensorUrl, { width: 200 }, (error) => {
+                        if (error) reject(error);
+                        else resolve();
+                    });
+                });
+                this.elements.qrContainer.innerHTML = '';
+                this.elements.qrContainer.appendChild(canvas);
+            } else {
+                // 폴백: 외부 API 사용
+                const img = document.createElement('img');
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(sensorUrl)}`;
+                img.alt = 'QR Code';
+                img.style.width = '200px';
+                img.style.height = '200px';
+                this.elements.qrContainer.innerHTML = '';
+                this.elements.qrContainer.appendChild(img);
+            }
         } catch (error) {
             console.error('QR 코드 생성 실패:', error);
             this.elements.qrContainer.innerHTML = `<p>QR 코드: ${sensorUrl}</p>`;
