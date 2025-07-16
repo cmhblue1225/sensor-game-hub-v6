@@ -252,10 +252,10 @@
                 console.log('🎭 GLB 모델 로딩 시작...');
                 
                 const modelPaths = {
-                    original: './anim/glbs/original.glb',
                     idle: './anim/glbs/idle.glb',
                     pulling: './anim/glbs/pulling.glb',
                     pushing: './anim/glbs/pushing.glb'
+                    // original.glb 제거 - 애니메이션 없어서 불필요
                 };
                 
                 let successCount = 0;
@@ -323,9 +323,12 @@
                 let playerMesh;
                 
                 if (this.loadedModels.idle) {
-                    // GLB 모델 직접 사용 (Group 없이)
-                    console.log(`🎭 GLB 모델로 플레이어 ${playerLabel} 생성 (직접 사용)`);
+                    // GLB 모델 직접 사용 - 새로운 그룹 생성하여 해결
+                    console.log(`🎭 GLB 모델로 플레이어 ${playerLabel} 생성 (기능 개선)`);
                     const glbModel = this.loadedModels.idle.model.clone();
+                    
+                    // 새로운 그룹 생성하여 GLB 모델 상속 문제 해결
+                    const playerGroup = new THREE.Group();
                     
                     // GLB 모델 색상 적용
                     glbModel.traverse((child) => {
@@ -343,11 +346,21 @@
                     const box = new THREE.Box3().setFromObject(glbModel);
                     glbModel.position.y = -box.min.y; // 바닥에 맞춤
                     
-                    // GLB 모델을 직접 playerMesh로 사용
-                    playerMesh = glbModel;
+                    // GLB 모델을 새 그룹에 추가
+                    playerGroup.add(glbModel);
+                    playerMesh = playerGroup;
+                    
+                    // GLB 모델 디버깅을 위해 참조 저장
+                    playerGroup.userData.glbModel = glbModel;
+                    playerGroup.userData.isPlayerGroup = true;
                     
                     // GLB 모델 구조 디버깅
                     console.log(`🔍 GLB 모델 구조 분석 (${playerLabel}):`, {
+                        playerGroup: {
+                            type: playerGroup.type,
+                            children: playerGroup.children.length,
+                            position: { x: playerGroup.position.x, y: playerGroup.position.y, z: playerGroup.position.z }
+                        },
                         glbModel: {
                             type: glbModel.type,
                             children: glbModel.children.length,
@@ -360,21 +373,22 @@
                     });
                     
                     // 디버깅을 위해 GLB 모델 정보 저장
-                    playerMesh.userData.isGLBModel = true;
-                    playerMesh.userData.originalGLBModel = glbModel;
+                    playerGroup.userData.isGLBModel = true;
+                    playerGroup.userData.originalGLBModel = glbModel;
                     
-                    // 애니메이션 믹서 설정
+                    // 애니메이션 믹서 설정 - GLB 모델에 직접 적용
                     if (this.loadedModels.idle.animations.length > 0) {
-                        const mixer = new THREE.AnimationMixer(playerMesh); // GLB 모델에 직접 적용
+                        const mixer = new THREE.AnimationMixer(glbModel); // playerMesh가 아닌 glbModel에 직접 적용
                         const action = mixer.clipAction(this.loadedModels.idle.animations[0]);
                         action.play();
                         this.animationMixers.push(mixer);
-                        playerMesh.userData.mixer = mixer;
+                        playerGroup.userData.mixer = mixer;
                         
                         console.log(`🎬 애니메이션 설정 완료 (${playerLabel}):`, {
                             animationCount: this.loadedModels.idle.animations.length,
-                            mixerTarget: playerMesh.type,
-                            actionName: this.loadedModels.idle.animations[0].name
+                            mixerTarget: glbModel.type,
+                            actionName: this.loadedModels.idle.animations[0].name,
+                            parentGroup: playerGroup.type
                         });
                     }
                     
@@ -546,7 +560,24 @@
                 const oldPosition = player.mesh.position.clone();
                 
                 player.velocity.lerp(targetVelocity, 0.05);
-                player.mesh.position.add(player.velocity);
+                
+                // GLB 모델의 경우 내부 모델도 함께 움직이도록 처리
+                if (player.mesh.userData.isPlayerGroup && player.mesh.userData.glbModel) {
+                    // GLB 모델이 있는 경우: 그룹 전체를 움직이면 내부 GLB 모델도 함께 움직임
+                    player.mesh.position.add(player.velocity);
+                    
+                    console.log(`🎭 GLB 모델 그룹 위치 업데이트 (${sensorId}):`, {
+                        groupPosition: { x: player.mesh.position.x, y: player.mesh.position.y, z: player.mesh.position.z },
+                        glbModelPosition: { 
+                            x: player.mesh.userData.glbModel.position.x, 
+                            y: player.mesh.userData.glbModel.position.y, 
+                            z: player.mesh.userData.glbModel.position.z 
+                        }
+                    });
+                } else {
+                    // 기본 모델의 경우
+                    player.mesh.position.add(player.velocity);
+                }
 
                 // 도로 이탈 방지
                 const roadLimit = this.roadWidth / 2 - 0.5;
