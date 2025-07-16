@@ -156,7 +156,40 @@
             </div>
         </div>
         
+        <!-- 대규모 경쟁 참가자 목록 패널 (좌상단) -->
+        <div class="ui-panel mass-player-list-panel hidden" id="massPlayerListPanel">
+             <div class="mass-waiting-list" id="massWaitingList">
+                <div class="waiting-title">🎮 참가자 대기실 (0/8)</div>
+                <div id="massWaitingPlayers"></div>
+            </div>
+        </div>
+
         <!-- 대규모 경쟁 대기실 패널 -->
+        <div class="ui-panel mass-waiting-panel hidden" id="massWaitingPanel">
+            <div class="session-title">👥 대규모 경쟁 - 대기실</div>
+            <div class="session-instructions">
+                최대 8명이 참여하는 실시간 표적 경쟁!<br>
+                조준점을 표적 중앙에 맞추면 자동으로 발사됩니다.<br>
+                아래 코드를 모바일에서 입력하거나 QR 코드를 스캔하세요.
+            </div>
+            
+            <div class="session-code" id="massSessionCode">----</div>
+            
+            <div class="qr-container" id="massQrContainer">
+                QR 코드 생성 중...
+            </div>
+            
+            <div class="session-instructions">
+                📱 센서 클라이언트: <strong>/sensor.html</strong><br>
+                플레이어가 3명 이상 연결되면 게임이 시작됩니다.
+            </div>
+            
+            <div style="margin-top: 1.5rem;">
+                <button class="btn btn-success" onclick="game.startMassCompetitive()" id="massStartBtn" disabled>
+                    🚀 게임 시작
+                </button>
+            </div>
+        </div>
         
         <!-- 상태 패널 -->
         <div class="ui-panel status-panel">

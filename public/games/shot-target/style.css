@@ -686,21 +686,16 @@ body {
     gap: 0.75rem;
 }
 
-/* 대규모 경쟁 대기실 */
-.mass-waiting-room {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(15, 23, 42, 0.95);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 500;
-    backdrop-filter: blur(10px);
+/* 대규모 경쟁 참가자 목록 패널 */
+.mass-player-list-panel {
+    top: 1rem;
+    left: 1rem;
+    min-width: 280px;
+    max-width: 320px;
+    z-index: 120;
 }
 
+/* 대규모 경쟁 대기실 */
 .mass-waiting-panel {
     top: 50%;
     left: 50%;
