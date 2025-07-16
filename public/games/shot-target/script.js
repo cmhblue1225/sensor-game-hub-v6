@@ -715,7 +715,7 @@ class ShotTargetGame {
             const distance = Math.sqrt(dx * dx + dy * dy);
             
             // 조준점이 표적의 히트존 내에 있으면 자동 발사
-            if (distance <= target.hitRadius) {
+            if (distance <= this.config.hitRadius) {
                 this.shootTarget(target, i, 1);  // 플레이어 1
                 return;
             }
