@@ -217,13 +217,25 @@
                 this.renderer.setPixelRatio(window.devicePixelRatio);
                 this.renderer.shadowMap.enabled = true;
 
-                // 조명
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+                // 조명 (밝기 개선)
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // 0.6에서 0.8로 증가
                 this.scene.add(ambientLight);
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                
+                // 메인 방향 조명
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // 0.8에서 1.0으로 증가
                 directionalLight.position.set(10, 20, 5);
                 directionalLight.castShadow = true;
                 this.scene.add(directionalLight);
+                
+                // 추가 조명 - 플레이어 주변을 더 밝게
+                const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
+                fillLight.position.set(-10, 15, -5);
+                this.scene.add(fillLight);
+                
+                // 포인트 라이트 - 지역 조명
+                const pointLight = new THREE.PointLight(0xffffff, 0.6, 30);
+                pointLight.position.set(0, 10, 0);
+                this.scene.add(pointLight);
 
                 // 별 배경 추가
                 const starsGeometry = new THREE.BufferGeometry();
@@ -615,12 +627,27 @@
                 // 모델을 바닥에 맞춤 (Y축 조정)
                 playerModel.position.y = -center.y;
                 
-                // 플레이어별 색상 적용
+                // 플레이어별 색상 적용 및 밝기 개선
                 const playerColor = isPlayer1 ? 0x3b82f6 : 0xef4444;
                 playerModel.traverse((child) => {
                     if (child.isMesh) {
+                        // 기존 재질을 복제하고 밝기 개선
                         child.material = child.material.clone();
+                        
+                        // 기본 색상 설정
                         child.material.color.setHex(playerColor);
+                        
+                        // 밝기 개선을 위한 설정
+                        child.material.emissive.setHex(playerColor);
+                        child.material.emissiveIntensity = 0.2; // 자체 발광
+                        
+                        // 반사율 설정
+                        if (child.material.metalness !== undefined) {
+                            child.material.metalness = 0.1; // 약간 금속성
+                            child.material.roughness = 0.5; // 적당한 거칠기
+                        }
+                        
+                        // 그림자 설정
                         child.castShadow = true;
                         child.receiveShadow = true;
                     }
@@ -723,8 +750,8 @@
                     velocity: new THREE.Vector3(),
                     acceleration: new THREE.Vector3(),
                     mass: 1.0,
-                    friction: 0.92,  // 마찰력을 0.95에서 0.92로 증가 (더 빨리 멈춤)
-                    maxSpeed: 0.15,   // 최대 속도를 0.3에서 0.15로 절반으로 줄임
+                    friction: 0.88,  // 마찰력 감소 (0.92 → 0.88) - 더 많이 움직임
+                    maxSpeed: 0.25,   // 최대 속도 증가 (0.15 → 0.25) - 더 빠르게 움직임
                     previousVelocity: new THREE.Vector3(), // 애니메이션 결정을 위한 이전 속도
                     animationTimer: 0 // 애니메이션 전환 딜레이용
                 };
@@ -889,8 +916,18 @@
                 if (!player) return;
 
                 const config = this.levelConfig[this.level];
-                const sensitivity = 0.005; // 민감도를 절반으로 줄임 (0.01 → 0.005)
+                const sensitivity = 0.02; // 민감도 증가 (0.005 → 0.02) - 더 반응성 좋게
                 const gravity = new THREE.Vector3(0, -0.001, 0); // 약간의 중력
+                
+                // 디버깅 로그 추가
+                if (Math.abs(orientation.gamma) > 5 || Math.abs(orientation.beta) > 5) {
+                    console.log(`📱 센서 데이터 (${sensorId}):`, {
+                        gamma: orientation.gamma?.toFixed(2),
+                        beta: orientation.beta?.toFixed(2),
+                        forceX: ((orientation.gamma || 0) * sensitivity).toFixed(4),
+                        forceZ: ((orientation.beta || 0) * sensitivity).toFixed(4)
+                    });
+                }
                 
                 // 센서 입력을 힘으로 변환
                 const forceX = (orientation.gamma || 0) * sensitivity;
