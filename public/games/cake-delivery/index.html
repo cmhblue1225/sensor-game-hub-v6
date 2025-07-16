@@ -82,7 +82,6 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/SessionSDK.js"></script>
@@ -108,10 +107,7 @@
                 this.currentScore = 0;
                 this.highScore = parseInt(localStorage.getItem('cakeDeliveryHighScore') || '0');
                 
-                // GLB 모델 로딩 시스템
-                this.gltfLoader = new THREE.GLTFLoader();
-                this.loadedModels = {};
-                this.animationMixers = [];
+                // 애니메이션 시스템
                 this.clock = new THREE.Clock();
 
                 this.levelConfig = {
@@ -125,7 +121,6 @@
                 this.initUI();
                 this.init3D();
                 this.initAudio();
-                this.loadGLBModels(); // GLB 모델 로딩
                 this.setupEvents();
                 
                 this.animate = this.animate.bind(this);
@@ -248,70 +243,7 @@
                 }
             }
             
-            async loadGLBModels() {
-                console.log('🎭 GLB 모델 로딩 시작...');
-                
-                const modelPaths = {
-                    idle: './anim/glbs/idle.glb',
-                    pulling: './anim/glbs/pulling.glb',
-                    pushing: './anim/glbs/pushing.glb'
-                    // original.glb 제거 - 애니메이션 없어서 불필요
-                };
-                
-                let successCount = 0;
-                const totalModels = Object.keys(modelPaths).length;
-                
-                for (const [name, path] of Object.entries(modelPaths)) {
-                    try {
-                        console.log(`📥 ${name} 모델 로딩 시작: ${path}`);
-                        await this.loadGLBModel(name, path);
-                        successCount++;
-                        console.log(`✅ ${name} 모델 로딩 성공 (${successCount}/${totalModels})`);
-                    } catch (error) {
-                        console.error(`❌ ${name} 모델 로딩 실패:`, error);
-                    }
-                }
-                
-                console.log(`🎭 GLB 모델 로딩 완료: ${successCount}/${totalModels} 성공`);
-            }
             
-            loadGLBModel(name, path) {
-                return new Promise((resolve, reject) => {
-                    const timeout = setTimeout(() => {
-                        reject(new Error(`${name} 모델 로딩 타임아웃`));
-                    }, 10000);
-                    
-                    this.gltfLoader.load(
-                        path,
-                        (gltf) => {
-                            clearTimeout(timeout);
-                            
-                            // 모델 크기 조정 (가시성을 위해 증가)
-                            gltf.scene.scale.setScalar(2.0);
-                            
-                            // 모델 저장
-                            this.loadedModels[name] = {
-                                model: gltf.scene,
-                                animations: gltf.animations || []
-                            };
-                            
-                            console.log(`✅ ${name} 모델 저장 완료 - 애니메이션 ${gltf.animations?.length || 0}개`);
-                            resolve(gltf);
-                        },
-                        (progress) => {
-                            if (progress.total > 0) {
-                                const percentage = Math.round(progress.loaded / progress.total * 100);
-                                console.log(`📥 ${name} 로딩 진행: ${percentage}%`);
-                            }
-                        },
-                        (error) => {
-                            clearTimeout(timeout);
-                            console.error(`❌ ${name} 모델 로딩 실패:`, error);
-                            reject(error);
-                        }
-                    );
-                });
-            }
 
             addPlayer(sensorId) {
                 const isPlayer1 = !this.players['sensor1'];
@@ -319,237 +251,89 @@
                 const startX = isPlayer1 ? -3 : 3; // 더 떨어뜨려서 배치
                 const playerLabel = isPlayer1 ? '1P' : '2P';
 
-                // GLB 모델 또는 기본 모델 사용
-                let playerMesh;
+                // 사람 모습 캐릭터 생성
+                console.log(`👤 사람 모습 모델로 플레이어 ${playerLabel} 생성`);
                 
-                if (false) { // GLB 모델 완전 비활성화
-                    // GLB Scene을 직접 사용 (Group 래퍼 제거)
-                    console.log(`🎭 GLB 모델로 플레이어 ${playerLabel} 생성 (직접 사용)`);
-                    const glbScene = this.loadedModels.idle.model.clone();
-                    
-                    // GLB Scene 색상 적용
-                    glbScene.traverse((child) => {
-                        if (child.isMesh) {
-                            child.material = child.material.clone();
-                            child.material.color.setHex(playerColor);
-                            child.material.emissive.setHex(playerColor);
-                            child.material.emissiveIntensity = 0.2;
-                            child.castShadow = true;
-                            child.receiveShadow = true;
-                        }
-                    });
-                    
-                    // GLB Scene 내부 오브젝트들의 위치 강제 조정
-                    glbScene.traverse((child) => {
-                        if (child.name === 'Scene' && child.type === 'Group') {
-                            console.log(`🔧 Scene 위치 수정: y: ${child.position.y} → 0`);
-                            child.position.y = 0; // Scene을 지상으로 올리기
-                        }
-                    });
-                    
-                    // 바운딩 박스로 모델 위치 조정
-                    const box = new THREE.Box3().setFromObject(glbScene);
-                    glbScene.position.y = Math.max(0, -box.min.y); // 최소 0 이상으로 설정
-                    
-                    // GLB Scene을 직접 playerMesh로 사용
-                    playerMesh = glbScene;
-                    
-                    // GLB 모델 디버깅을 위해 참조 저장
-                    playerMesh.userData.isGLBModel = true;
-                    playerMesh.userData.isDirectScene = true;
-                    
-                    // SkinnedMesh 제어를 위해 Armature 참조 저장
-                    let armature = null;
-                    glbScene.traverse((child) => {
-                        if (child.name === 'Armature' && child.type === 'Object3D') {
-                            armature = child;
-                        }
-                    });
-                    
-                    if (armature) {
-                        playerMesh.userData.armature = armature;
-                        console.log(`🦴 Armature 발견 및 저장 (${playerLabel}):`, {
-                            name: armature.name,
-                            type: armature.type,
-                            position: { 
-                                x: armature.position.x.toFixed(3), 
-                                y: armature.position.y.toFixed(3), 
-                                z: armature.position.z.toFixed(3) 
-                            }
-                        });
-                    } else {
-                        console.log(`❌ Armature를 찾을 수 없음 (${playerLabel})`);
-                    }
-                    
-                    console.log(`✅ GLB Scene 직접 사용 (${playerLabel}):`, {
-                        sceneType: glbScene.type,
-                        childrenCount: glbScene.children.length,
-                        scale: glbScene.scale.x,
-                        boundingBox: {
-                            min: { x: box.min.x.toFixed(2), y: box.min.y.toFixed(2), z: box.min.z.toFixed(2) },
-                            max: { x: box.max.x.toFixed(2), y: box.max.y.toFixed(2), z: box.max.z.toFixed(2) }
-                        }
-                    });
-                    
-                    // GLB 모델 내부 구조 상세 분석
-                    console.log(`🔍 GLB 내부 구조 상세 분석 (${playerLabel}):`);
-                    let meshCount = 0;
-                    glbScene.traverse((child) => {
-                        if (child.isMesh) {
-                            meshCount++;
-                            console.log(`  └─ Mesh ${meshCount}:`, {
-                                name: child.name,
-                                type: child.type,
-                                position: { 
-                                    x: child.position.x.toFixed(3), 
-                                    y: child.position.y.toFixed(3), 
-                                    z: child.position.z.toFixed(3) 
-                                },
-                                scale: { 
-                                    x: child.scale.x.toFixed(3), 
-                                    y: child.scale.y.toFixed(3), 
-                                    z: child.scale.z.toFixed(3) 
-                                },
-                                visible: child.visible,
-                                materialName: child.material?.name,
-                                geometryType: child.geometry?.type,
-                                vertices: child.geometry?.attributes.position?.count
-                            });
-                        } else {
-                            console.log(`  └─ Object:`, {
-                                name: child.name,
-                                type: child.type,
-                                childrenCount: child.children.length,
-                                position: { 
-                                    x: child.position.x.toFixed(3), 
-                                    y: child.position.y.toFixed(3), 
-                                    z: child.position.z.toFixed(3) 
-                                }
-                            });
-                        }
-                    });
-                    console.log(`📊 총 메시 개수: ${meshCount}`);
-                    
-                    // GLB 모델 구조 디버깅
-                    const debugBox = new THREE.Box3().setFromObject(playerMesh);
-                    console.log(`🔍 GLB 모델 구조 분석 (${playerLabel}):`, {
-                        glbModel: {
-                            type: playerMesh.type,
-                            children: playerMesh.children.length,
-                            position: { x: playerMesh.position.x, y: playerMesh.position.y, z: playerMesh.position.z }
-                        },
-                        boundingBox: {
-                            min: { x: debugBox.min.x.toFixed(2), y: debugBox.min.y.toFixed(2), z: debugBox.min.z.toFixed(2) },
-                            max: { x: debugBox.max.x.toFixed(2), y: debugBox.max.y.toFixed(2), z: debugBox.max.z.toFixed(2) }
-                        },
-                        isDirectGLB: true
-                    });
-                    
-                    // 애니메이션 믹서 설정 - GLB Scene에 직접 적용
-                    if (this.loadedModels.idle.animations.length > 0) {
-                        const mixer = new THREE.AnimationMixer(playerMesh); // playerMesh = glbScene
-                        const action = mixer.clipAction(this.loadedModels.idle.animations[0]);
-                        action.play();
-                        this.animationMixers.push(mixer);
-                        playerMesh.userData.mixer = mixer;
-                        
-                        console.log(`🎬 애니메이션 설정 완료 (${playerLabel}):`, {
-                            animationCount: this.loadedModels.idle.animations.length,
-                            mixerTarget: playerMesh.type,
-                            actionName: this.loadedModels.idle.animations[0].name
-                        });
-                    }
-                    
-                } else {
-                    // 사람 모습의 기본 모델 생성
-                    console.log(`👤 사람 모습 모델로 플레이어 ${playerLabel} 생성`);
-                    
-                    // 캐릭터 그룹 생성
-                    const characterGroup = new THREE.Group();
-                    
-                    // 재질 정의
-                    const bodyMaterial = new THREE.MeshStandardMaterial({ 
-                        color: playerColor,
-                        roughness: 0.3,
-                        metalness: 0.1
-                    });
-                    const headMaterial = new THREE.MeshStandardMaterial({ 
-                        color: 0xfdbcb4, // 살색
-                        roughness: 0.4,
-                        metalness: 0.1
-                    });
-                    
-                    // 머리 (구)
-                    const headGeometry = new THREE.SphereGeometry(0.25, 16, 16);
-                    const head = new THREE.Mesh(headGeometry, headMaterial);
-                    head.position.set(0, 1.25, 0);
-                    head.castShadow = true;
-                    characterGroup.add(head);
-                    
-                    // 몸통 (원통)
-                    const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.35, 0.8, 16);
-                    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-                    body.position.set(0, 0.6, 0);
-                    body.castShadow = true;
-                    characterGroup.add(body);
-                    
-                    // 팔 (좌)
-                    const armGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.6, 8);
-                    const leftArm = new THREE.Mesh(armGeometry, bodyMaterial);
-                    leftArm.position.set(-0.45, 0.7, 0);
-                    leftArm.rotation.z = Math.PI * 0.1; // 약간 벌린 자세
-                    leftArm.castShadow = true;
-                    characterGroup.add(leftArm);
-                    
-                    // 팔 (우)
-                    const rightArm = new THREE.Mesh(armGeometry, bodyMaterial);
-                    rightArm.position.set(0.45, 0.7, 0);
-                    rightArm.rotation.z = -Math.PI * 0.1; // 약간 벌린 자세
-                    rightArm.castShadow = true;
-                    characterGroup.add(rightArm);
-                    
-                    // 다리 (좌)
-                    const legGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.7, 8);
-                    const leftLeg = new THREE.Mesh(legGeometry, bodyMaterial);
-                    leftLeg.position.set(-0.15, -0.15, 0);
-                    leftLeg.castShadow = true;
-                    characterGroup.add(leftLeg);
-                    
-                    // 다리 (우)
-                    const rightLeg = new THREE.Mesh(legGeometry, bodyMaterial);
-                    rightLeg.position.set(0.15, -0.15, 0);
-                    rightLeg.castShadow = true;
-                    characterGroup.add(rightLeg);
-                    
-                    // 발 (좌)
-                    const footGeometry = new THREE.BoxGeometry(0.25, 0.1, 0.4);
-                    const footMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 }); // 검은색 신발
-                    const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
-                    leftFoot.position.set(-0.15, -0.55, 0.1);
-                    leftFoot.castShadow = true;
-                    characterGroup.add(leftFoot);
-                    
-                    // 발 (우)
-                    const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
-                    rightFoot.position.set(0.15, -0.55, 0.1);
-                    rightFoot.castShadow = true;
-                    characterGroup.add(rightFoot);
-                    
-                    playerMesh = characterGroup;
-                    console.log(`✅ 사람 모습 캐릭터 생성 완료 (${playerLabel}): ${characterGroup.children.length}개 부위`);
-                }
+                // 캐릭터 그룹 생성
+                const characterGroup = new THREE.Group();
+                
+                // 재질 정의
+                const bodyMaterial = new THREE.MeshStandardMaterial({ 
+                    color: playerColor,
+                    roughness: 0.3,
+                    metalness: 0.1
+                });
+                const headMaterial = new THREE.MeshStandardMaterial({ 
+                    color: 0xfdbcb4, // 살색
+                    roughness: 0.4,
+                    metalness: 0.1
+                });
+                
+                // 머리 (구)
+                const headGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.set(0, 1.25, 0);
+                head.castShadow = true;
+                characterGroup.add(head);
+                
+                // 몸통 (원통)
+                const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.35, 0.8, 16);
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.position.set(0, 0.6, 0);
+                body.castShadow = true;
+                characterGroup.add(body);
+                
+                // 팔 (좌)
+                const armGeometry = new THREE.CylinderGeometry(0.08, 0.1, 0.6, 8);
+                const leftArm = new THREE.Mesh(armGeometry, bodyMaterial);
+                leftArm.position.set(-0.45, 0.7, 0);
+                leftArm.rotation.z = Math.PI * 0.1; // 약간 벌린 자세
+                leftArm.castShadow = true;
+                characterGroup.add(leftArm);
+                
+                // 팔 (우)
+                const rightArm = new THREE.Mesh(armGeometry, bodyMaterial);
+                rightArm.position.set(0.45, 0.7, 0);
+                rightArm.rotation.z = -Math.PI * 0.1; // 약간 벌린 자세
+                rightArm.castShadow = true;
+                characterGroup.add(rightArm);
+                
+                // 다리 (좌)
+                const legGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.7, 8);
+                const leftLeg = new THREE.Mesh(legGeometry, bodyMaterial);
+                leftLeg.position.set(-0.15, -0.15, 0);
+                leftLeg.castShadow = true;
+                characterGroup.add(leftLeg);
+                
+                // 다리 (우)
+                const rightLeg = new THREE.Mesh(legGeometry, bodyMaterial);
+                rightLeg.position.set(0.15, -0.15, 0);
+                rightLeg.castShadow = true;
+                characterGroup.add(rightLeg);
+                
+                // 발 (좌)
+                const footGeometry = new THREE.BoxGeometry(0.25, 0.1, 0.4);
+                const footMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 }); // 검은색 신발
+                const leftFoot = new THREE.Mesh(footGeometry, footMaterial);
+                leftFoot.position.set(-0.15, -0.55, 0.1);
+                leftFoot.castShadow = true;
+                characterGroup.add(leftFoot);
+                
+                // 발 (우)
+                const rightFoot = new THREE.Mesh(footGeometry, footMaterial);
+                rightFoot.position.set(0.15, -0.55, 0.1);
+                rightFoot.castShadow = true;
+                characterGroup.add(rightFoot);
+                
+                playerMesh = characterGroup;
                 
                 playerMesh.position.set(startX, 0, 0);
 
                 const labelSprite = this.makeTextSprite(playerLabel, { fontsize: 96, fontface: 'Arial', borderColor: { r:255, g:0, b:0, a:1.0 } });
                 
-                // GLB 모델의 경우 바운딩 박스를 고려해서 라벨 높이 설정
-                let labelHeight = 1.5; // 기본값
-                if (this.loadedModels.idle) {
-                    const box = new THREE.Box3().setFromObject(playerMesh);
-                    const modelHeight = box.max.y - box.min.y;
-                    labelHeight = modelHeight + 0.5; // 모델 높이 + 0.5
-                }
+                // 캐릭터 높이 위에 라벨 배치
+                const box = new THREE.Box3().setFromObject(playerMesh);
+                const labelHeight = (box.max.y - box.min.y) + 0.3;
                 
                 labelSprite.position.set(0, labelHeight, 0);
                 labelSprite.userData.isLabel = true;
@@ -567,8 +351,7 @@
                 this.players[sensorId] = {
                     id: sensorId,
                     mesh: playerMesh,
-                    velocity: new THREE.Vector3(),
-                    isGLBModel: !!this.loadedModels.idle
+                    velocity: new THREE.Vector3()
                 };
                 
                 // 플레이어 생성 후 디버깅
@@ -576,7 +359,6 @@
                     sensorId: sensorId,
                     startPosition: { x: startX, y: 0, z: 0 },
                     actualPosition: { x: playerMesh.position.x, y: playerMesh.position.y, z: playerMesh.position.z },
-                    isGLBModel: !!this.loadedModels.idle,
                     meshType: playerMesh.type,
                     childrenCount: playerMesh.children?.length || 0,
                     hasLabel: playerMesh.children.some(child => child.userData && child.userData.isLabel)
@@ -963,9 +745,8 @@
             animate() {
                 requestAnimationFrame(this.animate);
                 
-                // GLB 애니메이션 믹서 업데이트
+                // 게임 시간 업데이트
                 const deltaTime = this.clock.getDelta();
-                this.animationMixers.forEach(mixer => mixer.update(deltaTime));
                 
                 if (this.gameState === 'playing') {
                     this.updateCakePosition();
