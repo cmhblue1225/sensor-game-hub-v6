@@ -358,6 +358,29 @@
                     playerMesh.userData.isGLBModel = true;
                     playerMesh.userData.isDirectScene = true;
                     
+                    // SkinnedMesh 제어를 위해 Armature 참조 저장
+                    let armature = null;
+                    glbScene.traverse((child) => {
+                        if (child.name === 'Armature' && child.type === 'Object3D') {
+                            armature = child;
+                        }
+                    });
+                    
+                    if (armature) {
+                        playerMesh.userData.armature = armature;
+                        console.log(`🦴 Armature 발견 및 저장 (${playerLabel}):`, {
+                            name: armature.name,
+                            type: armature.type,
+                            position: { 
+                                x: armature.position.x.toFixed(3), 
+                                y: armature.position.y.toFixed(3), 
+                                z: armature.position.z.toFixed(3) 
+                            }
+                        });
+                    } else {
+                        console.log(`❌ Armature를 찾을 수 없음 (${playerLabel})`);
+                    }
+                    
                     console.log(`✅ GLB Scene 직접 사용 (${playerLabel}):`, {
                         sceneType: glbScene.type,
                         childrenCount: glbScene.children.length,
@@ -606,16 +629,16 @@
                 
                 player.velocity.lerp(targetVelocity, 0.05);
                 
-                // GLB 모델은 이제 직접 사용되므로 단순하게 위치 업데이트
-                player.mesh.position.add(player.velocity);
-                
-                // GLB Scene 직접 사용 시 디버깅
-                if (player.mesh.userData.isDirectScene) {
-                    console.log(`🎭 GLB Scene 직접 위치 업데이트 (${sensorId}):`, {
-                        scenePosition: { 
-                            x: player.mesh.position.x.toFixed(4), 
-                            y: player.mesh.position.y.toFixed(4), 
-                            z: player.mesh.position.z.toFixed(4) 
+                // GLB SkinnedMesh는 Armature를 움직여야 실제로 움직임
+                if (player.mesh.userData.isDirectScene && player.mesh.userData.armature) {
+                    // Armature를 직접 움직이기
+                    player.mesh.userData.armature.position.add(player.velocity);
+                    
+                    console.log(`🦴 Armature 직접 위치 업데이트 (${sensorId}):`, {
+                        armaturePosition: { 
+                            x: player.mesh.userData.armature.position.x.toFixed(4), 
+                            y: player.mesh.userData.armature.position.y.toFixed(4), 
+                            z: player.mesh.userData.armature.position.z.toFixed(4) 
                         },
                         velocity: {
                             x: player.velocity.x.toFixed(4),
@@ -623,12 +646,38 @@
                             z: player.velocity.z.toFixed(4)
                         }
                     });
+                } else {
+                    // 기본 모델은 mesh 위치 업데이트
+                    player.mesh.position.add(player.velocity);
+                    
+                    // GLB Scene 직접 사용 시 디버깅
+                    if (player.mesh.userData.isDirectScene) {
+                        console.log(`🎭 GLB Scene 직접 위치 업데이트 (${sensorId}):`, {
+                            scenePosition: { 
+                                x: player.mesh.position.x.toFixed(4), 
+                                y: player.mesh.position.y.toFixed(4), 
+                                z: player.mesh.position.z.toFixed(4) 
+                            },
+                            velocity: {
+                                x: player.velocity.x.toFixed(4),
+                                y: player.velocity.y.toFixed(4),
+                                z: player.velocity.z.toFixed(4)
+                            }
+                        });
+                    }
                 }
 
-                // 도로 이탈 방지
+                // 도로 이탈 방지 - Armature 또는 mesh 위치에 따라 다르게 처리
                 const roadLimit = this.roadWidth / 2 - 0.5;
-                player.mesh.position.x = THREE.MathUtils.clamp(player.mesh.position.x, -roadLimit, roadLimit);
-                player.mesh.position.z = THREE.MathUtils.clamp(player.mesh.position.z, -100, 2);
+                if (player.mesh.userData.isDirectScene && player.mesh.userData.armature) {
+                    // Armature 위치 제한
+                    player.mesh.userData.armature.position.x = THREE.MathUtils.clamp(player.mesh.userData.armature.position.x, -roadLimit, roadLimit);
+                    player.mesh.userData.armature.position.z = THREE.MathUtils.clamp(player.mesh.userData.armature.position.z, -100, 2);
+                } else {
+                    // 기본 mesh 위치 제한
+                    player.mesh.position.x = THREE.MathUtils.clamp(player.mesh.position.x, -roadLimit, roadLimit);
+                    player.mesh.position.z = THREE.MathUtils.clamp(player.mesh.position.z, -100, 2);
+                }
                 
                 // 상세한 디버깅 로그
                 const positionChanged = !oldPosition.equals(player.mesh.position);
