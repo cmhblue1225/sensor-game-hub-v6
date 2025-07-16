@@ -42,7 +42,7 @@
             border: 2px solid var(--primary);
         }
         .controls {
-            position: absolute; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; pointer-events: auto;
+            position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; pointer-events: auto;
         }
         .controls button, .controls a {
             padding: 12px 20px; background-color: var(--primary); color: white; border: none;
@@ -50,12 +50,6 @@
             transition: background-color 0.2s;
         }
         .controls button:hover, .controls a:hover { background-color: #2563eb; }
-        .mode-btn {
-            padding: 8px 16px; background-color: var(--surface); color: var(--text-secondary); border: 2px solid var(--surface);
-            border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s;
-        }
-        .mode-btn:hover { background-color: var(--primary); color: white; border-color: var(--primary); }
-        .mode-btn.active { background-color: var(--warning); color: var(--background); border-color: var(--warning); }
     </style>
 </head>
 <body>
@@ -70,12 +64,6 @@
             <div class="score-display" style="position: absolute; top: 20px; right: 20px; background: rgba(30, 41, 59, 0.8); padding: 15px; border-radius: 12px; backdrop-filter: blur(5px); pointer-events: auto; text-align: right;">
                 <div style="font-size: 1.5em; font-weight: bold; color: var(--text-primary);">점수: <span id="currentScore">0</span></div>
                 <div style="font-size: 1em; color: var(--text-secondary);">최고 기록: <span id="highScore">0</span></div>
-                <div id="timerDisplay" style="font-size: 1.2em; font-weight: bold; color: var(--warning); margin-top: 10px; display: none;">
-                    ⏱️ <span id="timeRemaining">60</span>초
-                </div>
-                <div id="gameModeDisplay" style="font-size: 0.9em; color: var(--text-secondary); margin-top: 5px;">
-                    모드: <span id="currentGameMode">일반</span>
-                </div>
             </div>
         </div>
         <div class="session-panel">
@@ -89,33 +77,12 @@
         </div>
         <div class="controls">
             <button id="resetButton" style="display: none;">🔄 재시작</button>
-            <div id="gameModeSelector" style="display: flex; gap: 10px; margin-bottom: 10px;">
-                <button id="normalMode" class="mode-btn">🍰 일반</button>
-                <button id="timeAttackMode" class="mode-btn">⏱️ 타임어택</button>
-                <button id="endlessMode" class="mode-btn">♾️ 무한</button>
-            </div>
             <a href="/">🏠 허브로</a>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    
-    <!-- GLTFLoader 로드 -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
-    
-    <script>
-        // 라이브러리 로딩 확인
-        console.log('🔍 라이브러리 상태:', {
-            THREE: typeof THREE,
-            GLTFLoader: typeof THREE.GLTFLoader
-        });
-        
-        if (typeof THREE.GLTFLoader !== 'undefined') {
-            console.log('✅ GLTFLoader 준비 완료');
-        } else {
-            console.error('❌ GLTFLoader 로드 실패');
-        }
-    </script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/SessionSDK.js"></script>
@@ -132,41 +99,20 @@
                 this.gameState = 'waiting'; // waiting, ready, playing, success, fail, level_clear
                 this.level = 1;
                 this.maxLevel = 5;
-                this.gameMode = 'normal'; // 'normal', 'timeAttack', 'endless'
-                this.timeLimit = 0;
-                this.timeRemaining = 0;
                 this.players = {};
                 this.cake = {};
                 this.obstacles = [];
                 this.destination = null;
                 this.particles = [];
-                this.powerUps = [];
-                this.activePowerUps = {
-                    slowMotion: { active: false, endTime: 0, duration: 10000 },
-                    safeZone: { active: false, endTime: 0, duration: 8000 },
-                    extendedRange: { active: false, endTime: 0, duration: 12000 }
-                };
                 this.cameraShake = { intensity: 0, decay: 0 };
                 this.currentScore = 0;
                 this.highScore = parseInt(localStorage.getItem('cakeDeliveryHighScore') || '0');
                 
-                // 3D 모델 및 애니메이션 시스템 - GLB 모델 사용
+                // GLB 모델 로딩 시스템
                 this.gltfLoader = new THREE.GLTFLoader();
                 this.loadedModels = {};
                 this.animationMixers = [];
                 this.clock = new THREE.Clock();
-                
-                // 고급 점수 시스템
-                this.scoreSystem = {
-                    levelStartTime: 0,
-                    totalStabilityScore: 0,
-                    stabilityChecks: 0,
-                    perfectDeliveryBonus: 1000,
-                    timeBonus: 0,
-                    stabilityBonus: 0,
-                    efficiencyBonus: 0,
-                    comboMultiplier: 1
-                };
 
                 this.levelConfig = {
                     1: { forwardSpeed: 0.1, obstacles: 2, holes: 1, movingObstacles: 1, rotatingObstacles: 0 },
@@ -179,13 +125,12 @@
                 this.initUI();
                 this.init3D();
                 this.initAudio();
-                this.preloadModels();
+                this.loadGLBModels(); // GLB 모델 로딩
                 this.setupEvents();
                 
                 this.animate = this.animate.bind(this);
                 this.animate();
             }
-
 
             initUI() {
                 this.messageBox = document.getElementById('messageBox');
@@ -193,17 +138,7 @@
                 this.resetButton.onclick = () => this.resetGame();
                 this.currentScoreDisplay = document.getElementById('currentScore');
                 this.highScoreDisplay = document.getElementById('highScore');
-                this.timerDisplay = document.getElementById('timerDisplay');
-                this.timeRemainingDisplay = document.getElementById('timeRemaining');
-                this.gameModeDisplay = document.getElementById('currentGameMode');
-                
-                // 게임 모드 버튼 이벤트
-                document.getElementById('normalMode').onclick = () => this.setGameMode('normal');
-                document.getElementById('timeAttackMode').onclick = () => this.setGameMode('timeAttack');
-                document.getElementById('endlessMode').onclick = () => this.setGameMode('endless');
-                
                 this.updateScoreDisplay();
-                this.updateGameModeDisplay();
             }
 
             init3D() {
@@ -217,25 +152,15 @@
                 this.renderer.setPixelRatio(window.devicePixelRatio);
                 this.renderer.shadowMap.enabled = true;
 
-                // 조명 (밝기 개선)
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.8); // 0.6에서 0.8로 증가
+                // 조명
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
                 this.scene.add(ambientLight);
-                
-                // 메인 방향 조명
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0); // 0.8에서 1.0으로 증가
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
                 directionalLight.position.set(10, 20, 5);
                 directionalLight.castShadow = true;
                 this.scene.add(directionalLight);
-                
-                // 추가 조명 - 플레이어 주변을 더 밝게
-                const fillLight = new THREE.DirectionalLight(0xffffff, 0.4);
-                fillLight.position.set(-10, 15, -5);
-                this.scene.add(fillLight);
-                
-                // 포인트 라이트 - 지역 조명
-                const pointLight = new THREE.PointLight(0xffffff, 0.6, 30);
-                pointLight.position.set(0, 10, 0);
-                this.scene.add(pointLight);
+
+                this.scene.add(directionalLight);
 
                 // 별 배경 추가
                 const starsGeometry = new THREE.BufferGeometry();
@@ -260,260 +185,6 @@
                 floor.position.z = -50; // 도로 시작 위치 조정
                 floor.receiveShadow = true;
                 this.scene.add(floor);
-            }
-
-            async preloadModels() {
-                console.log('🎭 === GLB 모델 로딩 시작 ===');
-                
-                // 라이브러리 상태 재확인
-                console.log('📋 라이브러리 상태 재확인:', {
-                    gltfLoader: !!this.gltfLoader,
-                    pako: typeof pako,
-                    fflate: typeof window.fflate,
-                    THREE: typeof THREE,
-                    GLTFLoader: typeof THREE.GLTFLoader
-                });
-                
-                if (!this.gltfLoader) {
-                    console.error('❌ GLTFLoader 초기화 실패');
-                    return;
-                }
-                
-                const modelPaths = {
-                    original: './anim/glbs/original.glb',  // 기본 모델 먼저 로드
-                    idle: './anim/glbs/idle.glb',
-                    pulling: './anim/glbs/pulling.glb',
-                    pushing: './anim/glbs/pushing.glb'
-                };
-
-                let successCount = 0;
-                const totalModels = Object.keys(modelPaths).length;
-                
-                for (const [name, path] of Object.entries(modelPaths)) {
-                    try {
-                        console.log(`📥 ${name} 모델 로딩 시작: ${path}`);
-                        await this.loadGLBModel(name, path);
-                        successCount++;
-                        console.log(`✅ ${name} 모델 로딩 성공 (${successCount}/${totalModels})`);
-                    } catch (error) {
-                        console.error(`❌ ${name} 모델 로딩 실패:`, error);
-                        // 개별 모델 실패해도 계속 진행
-                    }
-                }
-                
-                console.log(`🎭 GLB 모델 로딩 완료: ${successCount}/${totalModels} 성공`);
-                
-                if (successCount === 0) {
-                    console.log('🔄 모든 GLB 모델 로딩 실패 - 기본 모델로 폴백');
-                } else {
-                    console.log('✅ 일부 또는 모든 GLB 모델 로딩 성공');
-                }
-            }
-
-            loadGLBModel(name, path) {
-                return new Promise((resolve, reject) => {
-                    console.log(`🔄 ${name} 모델 로딩 시작...`);
-                    
-                    // 타임아웃 설정 (10초)
-                    const timeout = setTimeout(() => {
-                        console.error(`⏰ ${name} 모델 로딩 타임아웃 (10초)`);
-                        reject(new Error(`${name} 모델 로딩 타임아웃`));
-                    }, 10000);
-                    
-                    this.gltfLoader.load(
-                        path, 
-                        (gltf) => {
-                            clearTimeout(timeout);
-                            
-                            console.log(`🎭 ${name} GLB 모델 로드 성공:`, {
-                                animations: gltf.animations?.length || 0,
-                                scene: gltf.scene?.children?.length || 0,
-                                type: gltf.scene?.type
-                            });
-                            
-                            // 모델 크기 조정
-                            gltf.scene.scale.setScalar(0.5); // GLB는 보통 더 큰 크기로 내보내짐
-                            
-                            // 바운딩 박스 계산 및 위치 조정
-                            const box = new THREE.Box3().setFromObject(gltf.scene);
-                            const center = box.getCenter(new THREE.Vector3());
-                            const size = box.getSize(new THREE.Vector3());
-                            
-                            // 모델을 바닥에 위치하도록 조정
-                            gltf.scene.position.y = -box.min.y;
-                            
-                            console.log(`📏 ${name} 모델 크기:`, {
-                                width: size.x.toFixed(2),
-                                height: size.y.toFixed(2),
-                                depth: size.z.toFixed(2),
-                                position: {
-                                    x: gltf.scene.position.x,
-                                    y: gltf.scene.position.y,
-                                    z: gltf.scene.position.z
-                                }
-                            });
-                            
-                            // 모델과 애니메이션 저장
-                            this.loadedModels[name] = {
-                                model: gltf.scene,
-                                animations: gltf.animations || []
-                            };
-                            
-                            console.log(`✅ ${name} 모델 저장 완료 - 애니메이션 ${gltf.animations?.length || 0}개`);
-                            resolve(gltf);
-                        }, 
-                        (progress) => {
-                            if (progress.total > 0) {
-                                const percentage = Math.round(progress.loaded / progress.total * 100);
-                                console.log(`📥 ${name} 로딩 진행: ${percentage}% (${progress.loaded}/${progress.total})`);
-                            } else {
-                                console.log(`📥 ${name} 로딩 중... (${progress.loaded} bytes)`);
-                            }
-                        },
-                        (error) => {
-                            clearTimeout(timeout);
-                            
-                            console.error(`❌ ${name} 모델 로딩 실패:`, {
-                                message: error.message,
-                                stack: error.stack,
-                                path: path
-                            });
-                            
-                            // 구체적인 오류 분석
-                            if (error.message.includes('404')) {
-                                console.error('📂 파일을 찾을 수 없음');
-                            } else if (error.message.includes('CORS')) {
-                                console.error('🚫 CORS 오류');
-                            }
-                            
-                            reject(error);
-                        }
-                    );
-                });
-            }
-
-            createCustomPlayerModel(playerId) {
-                const group = new THREE.Group();
-                
-                // 플레이어별 색상 설정
-                const colors = {
-                    'Player1': { primary: '#3b82f6', secondary: '#1e40af' },
-                    'Player2': { primary: '#ef4444', secondary: '#dc2626' }
-                };
-                
-                const color = colors[playerId] || colors['Player1'];
-                
-                // 몸통 (실린더 형태)
-                const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.2, 8);
-                const bodyMaterial = new THREE.MeshPhongMaterial({ 
-                    color: color.primary,
-                    shininess: 100
-                });
-                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-                body.position.y = 0.6;
-                group.add(body);
-                
-                // 머리
-                const headGeometry = new THREE.SphereGeometry(0.25, 8, 8);
-                const headMaterial = new THREE.MeshPhongMaterial({ 
-                    color: color.secondary,
-                    shininess: 100
-                });
-                const head = new THREE.Mesh(headGeometry, headMaterial);
-                head.position.y = 1.5;
-                group.add(head);
-                
-                // 팔 (왼쪽)
-                const armGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.8, 6);
-                const armMaterial = new THREE.MeshPhongMaterial({ 
-                    color: color.primary,
-                    shininess: 100
-                });
-                const leftArm = new THREE.Mesh(armGeometry, armMaterial);
-                leftArm.position.set(-0.4, 0.8, 0);
-                leftArm.rotation.z = Math.PI / 6;
-                group.add(leftArm);
-                
-                // 팔 (오른쪽)
-                const rightArm = new THREE.Mesh(armGeometry, armMaterial);
-                rightArm.position.set(0.4, 0.8, 0);
-                rightArm.rotation.z = -Math.PI / 6;
-                group.add(rightArm);
-                
-                // 다리 (왼쪽)
-                const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.9, 6);
-                const legMaterial = new THREE.MeshPhongMaterial({ 
-                    color: color.secondary,
-                    shininess: 100
-                });
-                const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
-                leftLeg.position.set(-0.15, -0.45, 0);
-                group.add(leftLeg);
-                
-                // 다리 (오른쪽)
-                const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
-                rightLeg.position.set(0.15, -0.45, 0);
-                group.add(rightLeg);
-                
-                // 그림자 설정
-                group.traverse((child) => {
-                    if (child instanceof THREE.Mesh) {
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
-                });
-                
-                // 애니메이션 상태 저장
-                group.userData = {
-                    bodyParts: { body, head, leftArm, rightArm, leftLeg, rightLeg },
-                    animationState: 'idle',
-                    animationTime: 0
-                };
-                
-                console.log(`✨ 커스텀 플레이어 모델 생성 완료: ${playerId}`);
-                return group;
-            }
-
-            updatePlayerAnimation(player, animationName) {
-                // 커스텀 애니메이션 시스템 - 간단한 포즈 변경
-                const bodyParts = player.mesh.userData.bodyParts;
-                const time = Date.now() * 0.001; // 시간 기반 애니메이션
-                
-                switch(animationName) {
-                    case 'idle':
-                        // 기본 자세 - 약간의 호흡 애니메이션
-                        bodyParts.body.position.y = 0.6 + Math.sin(time * 2) * 0.02;
-                        bodyParts.head.position.y = 1.5 + Math.sin(time * 2) * 0.02;
-                        bodyParts.leftArm.rotation.z = Math.PI / 6 + Math.sin(time * 1.5) * 0.1;
-                        bodyParts.rightArm.rotation.z = -Math.PI / 6 - Math.sin(time * 1.5) * 0.1;
-                        break;
-                        
-                    case 'pulling':
-                        // 당기는 동작 - 뒤로 기울이기
-                        bodyParts.body.rotation.z = Math.sin(time * 4) * 0.3;
-                        bodyParts.leftArm.rotation.z = Math.PI / 3 + Math.sin(time * 3) * 0.2;
-                        bodyParts.rightArm.rotation.z = -Math.PI / 3 - Math.sin(time * 3) * 0.2;
-                        break;
-                        
-                    case 'pushing':
-                        // 미는 동작 - 앞으로 기울이기
-                        bodyParts.body.rotation.z = Math.sin(time * 4) * -0.3;
-                        bodyParts.leftArm.rotation.z = Math.PI / 8 + Math.sin(time * 3) * 0.1;
-                        bodyParts.rightArm.rotation.z = -Math.PI / 8 - Math.sin(time * 3) * 0.1;
-                        break;
-                        
-                    case 'moving':
-                        // 이동 동작 - 걷기 애니메이션
-                        const walkCycle = Math.sin(time * 8);
-                        bodyParts.leftLeg.rotation.x = walkCycle * 0.5;
-                        bodyParts.rightLeg.rotation.x = -walkCycle * 0.5;
-                        bodyParts.leftArm.rotation.x = -walkCycle * 0.3;
-                        bodyParts.rightArm.rotation.x = walkCycle * 0.3;
-                        break;
-                }
-                
-                player.mesh.userData.animationState = animationName;
-                player.mesh.userData.animationTime = time;
             }
 
             setupEvents() {
@@ -543,7 +214,6 @@
                         this.sdk.startGame();
                         this.gameState = 'playing';
                         this.messageBox.style.display = 'none';
-                        this.scoreSystem.levelStartTime = Date.now(); // 레벨 시작 시간 기록
                     }, 3000);
                 });
 
@@ -577,216 +247,137 @@
                     qrContainer.appendChild(img);
                 }
             }
-
-            createPlayerModel(isPlayer1) {
-                console.log('🎯 플레이어 모델 생성 시작...', {
-                    isPlayer1: isPlayer1,
-                    originalModel: !!this.loadedModels.original,
-                    loadedModels: Object.keys(this.loadedModels)
-                });
+            
+            async loadGLBModels() {
+                console.log('🎭 GLB 모델 로딩 시작...');
                 
-                // GLB 모델 우선 사용, 실패 시 커스텀 모델로 폴백
-                if (this.loadedModels.original) {
-                    console.log('🎭 GLB 모델 사용하여 플레이어 생성');
-                    return this.createGLBPlayerModel(isPlayer1);
-                } else {
-                    console.log('🔄 원본 모델 없음 - 커스텀 모델로 폴백');
-                    const playerId = isPlayer1 ? 'Player1' : 'Player2';
-                    const playerModel = this.createCustomPlayerModel(playerId);
-                    
-                    return {
-                        mesh: playerModel,
-                        mixer: null, // 커스텀 애니메이션 시스템 사용
-                        animations: null,
-                        currentAnimation: 'idle'
-                    };
+                const modelPaths = {
+                    original: './anim/glbs/original.glb',
+                    idle: './anim/glbs/idle.glb',
+                    pulling: './anim/glbs/pulling.glb',
+                    pushing: './anim/glbs/pushing.glb'
+                };
+                
+                let successCount = 0;
+                const totalModels = Object.keys(modelPaths).length;
+                
+                for (const [name, path] of Object.entries(modelPaths)) {
+                    try {
+                        console.log(`📥 ${name} 모델 로딩 시작: ${path}`);
+                        await this.loadGLBModel(name, path);
+                        successCount++;
+                        console.log(`✅ ${name} 모델 로딩 성공 (${successCount}/${totalModels})`);
+                    } catch (error) {
+                        console.error(`❌ ${name} 모델 로딩 실패:`, error);
+                    }
                 }
+                
+                console.log(`🎭 GLB 모델 로딩 완료: ${successCount}/${totalModels} 성공`);
             }
-
-            createGLBPlayerModel(isPlayer1) {
-                console.log('🎭 GLB 플레이어 모델 생성 시작...');
-                
-                // GLB 모델 생성 - idle 모델 사용 (자연스러운 애니메이션)
-                const playerGroup = new THREE.Group();
-                
-                // idle 모델을 기본으로 사용 (원본 모델 대신)
-                let baseModel;
-                if (this.loadedModels.idle && this.loadedModels.idle.model) {
-                    baseModel = this.loadedModels.idle.model.clone();
-                    console.log('🎆 idle 모델 사용');
-                } else {
-                    baseModel = this.loadedModels.original.model.clone();
-                    console.log('🎆 original 모델 사용 (idle 없음)');
-                }
-                
-                // 모델을 그룹에 추가
-                playerGroup.add(baseModel);
-                
-                // 모델 위치 및 회전 초기화
-                playerGroup.position.set(0, 0, 0);
-                playerGroup.rotation.set(0, 0, 0);
-                originalModel.position.set(0, 0, 0);
-                originalModel.rotation.set(0, 0, 0);
-                
-                // 모델 경계 박스 확인
-                const box = new THREE.Box3().setFromObject(baseModel);
-                const size = box.getSize(new THREE.Vector3());
-                const center = box.getCenter(new THREE.Vector3());
-                
-                console.log('📏 GLB 모델 정보:', {
-                    size: { x: size.x, y: size.y, z: size.z },
-                    center: { x: center.x, y: center.y, z: center.z },
-                    isPlayer1: isPlayer1,
-                    modelType: this.loadedModels.idle ? 'idle' : 'original'
-                });
-                
-                // 모델을 바닥에 맞춤 (Y축 조정)
-                baseModel.position.y = -center.y;
-                
-                // 플레이어별 색상 적용 및 밝기 개선
-                const playerColor = isPlayer1 ? 0x3b82f6 : 0xef4444;
-                baseModel.traverse((child) => {
-                    if (child.isMesh) {
-                        // 기존 재질을 복제하고 밝기 개선
-                        child.material = child.material.clone();
-                        
-                        // 기본 색상 설정
-                        child.material.color.setHex(playerColor);
-                        
-                        // 밝기 개선을 위한 설정
-                        child.material.emissive.setHex(playerColor);
-                        child.material.emissiveIntensity = 0.2; // 자체 발광
-                        
-                        // 반사율 설정
-                        if (child.material.metalness !== undefined) {
-                            child.material.metalness = 0.1; // 약간 금속성
-                            child.material.roughness = 0.5; // 적당한 거칠기
+            
+            loadGLBModel(name, path) {
+                return new Promise((resolve, reject) => {
+                    const timeout = setTimeout(() => {
+                        reject(new Error(`${name} 모델 로딩 타임아웃`));
+                    }, 10000);
+                    
+                    this.gltfLoader.load(
+                        path,
+                        (gltf) => {
+                            clearTimeout(timeout);
+                            
+                            // 모델 크기 조정
+                            gltf.scene.scale.setScalar(0.5);
+                            
+                            // 모델 저장
+                            this.loadedModels[name] = {
+                                model: gltf.scene,
+                                animations: gltf.animations || []
+                            };
+                            
+                            console.log(`✅ ${name} 모델 저장 완료 - 애니메이션 ${gltf.animations?.length || 0}개`);
+                            resolve(gltf);
+                        },
+                        (progress) => {
+                            if (progress.total > 0) {
+                                const percentage = Math.round(progress.loaded / progress.total * 100);
+                                console.log(`📥 ${name} 로딩 진행: ${percentage}%`);
+                            }
+                        },
+                        (error) => {
+                            clearTimeout(timeout);
+                            console.error(`❌ ${name} 모델 로딩 실패:`, error);
+                            reject(error);
                         }
-                        
-                        // 그림자 설정
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
+                    );
                 });
-
-                // 애니메이션 믹서 생성
-                const mixer = new THREE.AnimationMixer(baseModel);
-                const animations = {};
-                
-                // 각 애니메이션 클립 설정
-                if (this.loadedModels.idle && this.loadedModels.idle.animations.length > 0) {
-                    animations.idle = mixer.clipAction(this.loadedModels.idle.animations[0]);
-                    animations.idle.play();
-                    console.log('🎬 idle 애니메이션 설정 완료');
-                }
-                if (this.loadedModels.pulling && this.loadedModels.pulling.animations.length > 0) {
-                    animations.pulling = mixer.clipAction(this.loadedModels.pulling.animations[0]);
-                    console.log('🎬 pulling 애니메이션 설정 완료');
-                }
-                if (this.loadedModels.pushing && this.loadedModels.pushing.animations.length > 0) {
-                    animations.pushing = mixer.clipAction(this.loadedModels.pushing.animations[0]);
-                    console.log('🎬 pushing 애니메이션 설정 완료');
-                }
-
-                this.animationMixers.push(mixer);
-
-                console.log('✅ GLB 플레이어 모델 생성 완료');
-                
-                // 그룹에 디버깅 정보 추가
-                playerGroup.userData.baseModel = baseModel;
-                playerGroup.userData.isGLBModel = true;
-                playerGroup.userData.modelType = this.loadedModels.idle ? 'idle' : 'original';
-                
-                return {
-                    mesh: playerGroup,  // 그룹을 메시로 반환
-                    mixer: mixer,
-                    animations: animations,
-                    currentAnimation: 'idle'
-                };
-            }
-
-            createFallbackPlayer(isPlayer1) {
-                // 기존 방식의 플레이어 생성 (모델 로딩 실패 시 폴백)
-                const playerColor = isPlayer1 ? 0x3b82f6 : 0x8b5cf6;
-                const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
-                const material = new THREE.MeshStandardMaterial({ color: playerColor });
-                const playerMesh = new THREE.Mesh(geometry, material);
-                playerMesh.castShadow = true;
-
-                // 폴백 모델에는 라벨을 추가하지 않음 (addPlayer에서 추가됨)
-
-                return {
-                    mesh: playerMesh,
-                    mixer: null,
-                    animations: null,
-                    currentAnimation: null
-                };
-            }
-
-            switchPlayerAnimation(player, animationName) {
-                // GLB 모델과 커스텀 모델 모두 지원
-                if (player.animations && player.animations[animationName]) {
-                    // GLB 모델 애니메이션 시스템
-                    if (player.currentAnimation && player.animations[player.currentAnimation]) {
-                        player.animations[player.currentAnimation].fadeOut(0.2);
-                    }
-                    
-                    const newAnimation = player.animations[animationName];
-                    newAnimation.reset().fadeIn(0.2).play();
-                } else if (player.mesh && player.mesh.userData.bodyParts) {
-                    // 커스텀 모델 애니메이션 시스템
-                    this.updatePlayerAnimation(player, animationName);
-                }
-                
-                player.currentAnimation = animationName;
             }
 
             addPlayer(sensorId) {
-                const playerCount = Object.keys(this.players).length;
-                const isPlayer1 = playerCount === 0;
-                const startX = isPlayer1 ? -2 : 2;
+                const isPlayer1 = !this.players['sensor1'];
+                const playerColor = isPlayer1 ? 0x3b82f6 : 0x8b5cf6;
+                const startX = isPlayer1 ? -3 : 3; // 더 떨어뜨려서 배치
                 const playerLabel = isPlayer1 ? '1P' : '2P';
 
-                // 새로운 3D 모델 생성
-                const playerData = this.createPlayerModel(isPlayer1);
+                // GLB 모델 또는 기본 모델 사용
+                let playerMesh;
                 
-                // 시작 위치 설정 (더 멀리 떨어뜨려서 겹치지 않도록)
-                const startX = isPlayer1 ? -4 : 4;  // -2, 2에서 -4, 4로 변경
-                playerData.mesh.position.set(startX, 0, 0);
+                if (this.loadedModels.idle) {
+                    // GLB 모델 사용
+                    console.log(`🎭 GLB 모델로 플레이어 ${playerLabel} 생성`);
+                    const playerGroup = new THREE.Group();
+                    const glbModel = this.loadedModels.idle.model.clone();
+                    
+                    // GLB 모델 색상 적용
+                    glbModel.traverse((child) => {
+                        if (child.isMesh) {
+                            child.material = child.material.clone();
+                            child.material.color.setHex(playerColor);
+                            child.material.emissive.setHex(playerColor);
+                            child.material.emissiveIntensity = 0.2;
+                            child.castShadow = true;
+                            child.receiveShadow = true;
+                        }
+                    });
+                    
+                    // 바운딩 박스로 모델 위치 조정
+                    const box = new THREE.Box3().setFromObject(glbModel);
+                    glbModel.position.y = -box.min.y; // 바닥에 맞춤
+                    
+                    playerGroup.add(glbModel);
+                    playerMesh = playerGroup;
+                    
+                    // 애니메이션 믹서 설정
+                    if (this.loadedModels.idle.animations.length > 0) {
+                        const mixer = new THREE.AnimationMixer(glbModel);
+                        const action = mixer.clipAction(this.loadedModels.idle.animations[0]);
+                        action.play();
+                        this.animationMixers.push(mixer);
+                        playerMesh.userData.mixer = mixer;
+                    }
+                    
+                } else {
+                    // 기본 모델 사용 (GLB 로딩 실패 시)
+                    console.log(`🗘️ 기본 모델로 플레이어 ${playerLabel} 생성`);
+                    const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
+                    const material = new THREE.MeshStandardMaterial({ color: playerColor });
+                    playerMesh = new THREE.Mesh(geometry, material);
+                    playerMesh.castShadow = true;
+                }
                 
-                // 플레이어 방향 설정 (앞쪽을 바라보도록)
-                playerData.mesh.rotation.y = 0; // 기본적으로 앞쪽(Z축 음의 방향)을 바라보도록
-                
-                console.log(`🎯 플레이어 ${isPlayer1 ? '1' : '2'} 생성:`, {
-                    position: { x: startX, y: 0, z: 0 },
-                    rotation: { y: 0 },
-                    sensorId: sensorId
-                });
+                playerMesh.position.set(startX, 0, 0);
 
-                // 플레이어 라벨 추가 (3D 모델에도)
-                const labelSprite = this.makeTextSprite(playerLabel, { 
-                    fontsize: 96, 
-                    fontface: 'Arial', 
-                    borderColor: { r:255, g:0, b:0, a:1.0 } 
-                });
-                labelSprite.position.set(0, 3, 0); // 3D 모델은 키가 더 클 수 있으므로 높이 조정
-                playerData.mesh.add(labelSprite);
+                const labelSprite = this.makeTextSprite(playerLabel, { fontsize: 96, fontface: 'Arial', borderColor: { r:255, g:0, b:0, a:1.0 } });
+                labelSprite.position.set(0, 2, 0); // GLB 모델에 맞춰 높이 조정
+                playerMesh.add(labelSprite);
 
-                this.scene.add(playerData.mesh);
+                this.scene.add(playerMesh);
 
                 this.players[sensorId] = {
                     id: sensorId,
-                    mesh: playerData.mesh,
-                    mixer: playerData.mixer,
-                    animations: playerData.animations,
-                    currentAnimation: playerData.currentAnimation,
+                    mesh: playerMesh,
                     velocity: new THREE.Vector3(),
-                    acceleration: new THREE.Vector3(),
-                    mass: 1.0,
-                    friction: 0.88,  // 마찰력 감소 (0.92 → 0.88) - 더 많이 움직임
-                    maxSpeed: 0.25,   // 최대 속도 증가 (0.15 → 0.25) - 더 빠르게 움직임
-                    previousVelocity: new THREE.Vector3(), // 애니메이션 결정을 위한 이전 속도
-                    animationTimer: 0 // 애니메이션 전환 딜레이용
+                    isGLBModel: !!this.loadedModels.idle
                 };
 
                 if (Object.keys(this.players).length === 2 && !this.cake.mesh) {
@@ -797,28 +388,15 @@
 
             removePlayer(sensorId) {
                 if (this.players[sensorId]) {
-                    const player = this.players[sensorId];
-                    
-                    // 3D 모델 제거
-                    this.scene.remove(player.mesh);
-                    
-                    // 애니메이션 믹서 정리
-                    if (player.mixer) {
-                        const mixerIndex = this.animationMixers.indexOf(player.mixer);
-                        if (mixerIndex > -1) {
-                            this.animationMixers.splice(mixerIndex, 1);
-                        }
-                    }
-                    
+                    this.scene.remove(this.players[sensorId].mesh);
                     delete this.players[sensorId];
                     this.setGameState('fail', '플레이어 연결 끊김!');
                 }
             }
 
             updatePlayerStatus() {
-                const playerIds = Object.keys(this.players);
-                document.getElementById('player1Status').className = `player-status ${playerIds.length >= 1 ? 'connected' : 'disconnected'}`;
-                document.getElementById('player2Status').className = `player-status ${playerIds.length >= 2 ? 'connected' : 'disconnected'}`;
+                document.getElementById('player1Status').className = `player-status ${this.players['sensor1'] ? 'connected' : 'disconnected'}`;
+                document.getElementById('player2Status').className = `player-status ${this.players['sensor2'] ? 'connected' : 'disconnected'}`;
             }
 
             createCake() {
@@ -826,19 +404,13 @@
                 const cakeMaterial = new THREE.MeshStandardMaterial({ color: 0xf472b6 });
                 this.cake.mesh = new THREE.Mesh(cakeGeometry, cakeMaterial);
                 this.cake.mesh.castShadow = true;
-                this.cake.velocity = new THREE.Vector3();
-                this.cake.acceleration = new THREE.Vector3();
-                this.cake.mass = 2.0; // 케이크는 플레이어보다 무거움
-                this.cake.stability = 1.0; // 안정성 지수
                 this.scene.add(this.cake.mesh);
             }
             
             createLevel() {
-                // 기존 장애물, 구멍, 파워업 제거
+                // 기존 장애물 및 구멍 제거
                 this.obstacles.forEach(obstacle => this.scene.remove(obstacle));
                 this.obstacles = [];
-                this.powerUps.forEach(powerUp => this.scene.remove(powerUp.mesh));
-                this.powerUps = [];
 
                 const config = this.levelConfig[this.level];
                 const totalLength = 100; // 목적지까지의 총 길이
@@ -873,7 +445,7 @@
                     const movingObstacle = new THREE.Mesh(movingObstacleGeometry, movingObstacleMaterial);
                     movingObstacle.position.set(0, 0, -25 - i * (totalLength / config.movingObstacles));
                     movingObstacle.userData.moveDirection = Math.random() > 0.5 ? 1 : -1;
-                    movingObstacle.userData.moveSpeed = 0.025 + Math.random() * 0.025;
+                    movingObstacle.userData.moveSpeed = 0.1 + Math.random() * 0.1;
                     movingObstacle.castShadow = true;
                     this.scene.add(movingObstacle);
                     this.obstacles.push(movingObstacle);
@@ -899,240 +471,55 @@
                     this.scene.add(this.destination);
                 }
                 this.destination.position.set(0, -0.4, destinationZ);
-                
-                // 파워업 생성 (레벨당 2-3개)
-                this.createPowerUps(totalLength);
-            }
-
-            createPowerUps(totalLength) {
-                const powerUpTypes = [
-                    { type: 'slowMotion', color: 0x00ffff, icon: '⏰' },
-                    { type: 'safeZone', color: 0x00ff00, icon: '🛡️' },
-                    { type: 'extendedRange', color: 0xff00ff, icon: '🔗' }
-                ];
-                
-                const powerUpCount = 2 + Math.floor(this.level / 2); // 레벨별 파워업 개수 증가
-                
-                for(let i = 0; i < powerUpCount; i++) {
-                    const powerUpType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
-                    
-                    const geometry = new THREE.SphereGeometry(0.8, 16, 16);
-                    const material = new THREE.MeshStandardMaterial({ 
-                        color: powerUpType.color,
-                        emissive: powerUpType.color,
-                        emissiveIntensity: 0.3,
-                        transparent: true,
-                        opacity: 0.8
-                    });
-                    
-                    const powerUpMesh = new THREE.Mesh(geometry, material);
-                    powerUpMesh.position.set(
-                        Math.random() * (this.roadWidth - 4) - (this.roadWidth / 2 - 2),
-                        1,
-                        -15 - i * (totalLength / powerUpCount)
-                    );
-                    
-                    powerUpMesh.userData.type = powerUpType.type;
-                    powerUpMesh.userData.rotationSpeed = 0.02;
-                    
-                    this.scene.add(powerUpMesh);
-                    this.powerUps.push({
-                        mesh: powerUpMesh,
-                        type: powerUpType.type,
-                        collected: false
-                    });
-                }
             }
 
             updatePlayerPosition(sensorId, orientation) {
                 const player = this.players[sensorId];
-                if (!player) {
-                    console.warn(`⚠️ 플레이어를 찾을 수 없음: ${sensorId}`);
-                    return;
-                }
-                
-                // 플레이어 상태 확인
-                if (!player.mesh) {
-                    console.error(`❌ 플레이어 메시가 없음: ${sensorId}`);
-                    return;
-                }
+                if (!player) return;
 
                 const config = this.levelConfig[this.level];
-                const sensitivity = 0.02; // 민감도 증가 (0.005 → 0.02) - 더 반응성 좋게
-                const gravity = new THREE.Vector3(0, -0.001, 0); // 약간의 중력
-                
-                // 디버깅 로그 추가 - 더 상세한 정보
-                if (Math.abs(orientation.gamma) > 2 || Math.abs(orientation.beta) > 2) {
-                    console.log(`📱 센서 데이터 (${sensorId}):`, {
-                        gamma: orientation.gamma?.toFixed(2),
-                        beta: orientation.beta?.toFixed(2),
-                        forceX: ((orientation.gamma || 0) * sensitivity).toFixed(4),
-                        forceZ: ((orientation.beta || 0) * sensitivity).toFixed(4),
-                        playerExists: !!player,
-                        meshExists: !!player.mesh,
-                        meshType: player.mesh?.userData?.modelType || 'unknown',
-                        currentPosition: {
-                            x: player.mesh?.position.x?.toFixed(2),
-                            y: player.mesh?.position.y?.toFixed(2),
-                            z: player.mesh?.position.z?.toFixed(2)
-                        }
-                    });
-                }
-                
-                // 센서 입력을 힘으로 변환
-                const forceX = (orientation.gamma || 0) * sensitivity;
-                const forceZ = (orientation.beta || 0) * sensitivity - config.forwardSpeed;
-                
-                // 가속도 계산 (F = ma, a = F/m)
-                player.acceleration.set(forceX / player.mass, 0, forceZ / player.mass);
-                player.acceleration.add(gravity);
-                
-                // 속도 업데이트 (관성 적용)
-                player.velocity.add(player.acceleration);
-                
-                // 마찰력 적용
-                player.velocity.multiplyScalar(player.friction);
-                
-                // 최대 속도 제한
-                if (player.velocity.length() > player.maxSpeed) {
-                    player.velocity.normalize().multiplyScalar(player.maxSpeed);
-                }
-                
-                // 위치 업데이트 전 위치 저장
-                const oldPosition = player.mesh.position.clone();
+                const sensitivity = 0.01;
+                const maxSpeed = 0.2;
+
+                let moveX = (orientation.gamma || 0) * sensitivity;
+                let moveZ = (orientation.beta || 0) * sensitivity;
+
+                moveX = THREE.MathUtils.clamp(moveX, -maxSpeed, maxSpeed);
+                moveZ = THREE.MathUtils.clamp(moveZ, -maxSpeed, maxSpeed);
+
+                const targetVelocity = new THREE.Vector3(moveX, 0, moveZ - config.forwardSpeed);
+
+                player.velocity.lerp(targetVelocity, 0.05);
+
                 player.mesh.position.add(player.velocity);
 
                 // 도로 이탈 방지
-                const roadLimit = this.roadWidth / 2 - 0.5;
+                const roadLimit = this.roadWidth / 2 - 0.5; // 플레이어 반지름 고려
                 player.mesh.position.x = THREE.MathUtils.clamp(player.mesh.position.x, -roadLimit, roadLimit);
                 player.mesh.position.z = THREE.MathUtils.clamp(player.mesh.position.z, -100, 2);
-                player.mesh.position.y = Math.max(0, player.mesh.position.y); // 바닥 아래로 떨어지지 않음
-                
-                // 위치 변화 디버깅
-                const positionChanged = !oldPosition.equals(player.mesh.position);
-                if (positionChanged) {
-                    console.log(`📍 플레이어 위치 변화 (${sensorId}):`, {
-                        old: { x: oldPosition.x.toFixed(2), y: oldPosition.y.toFixed(2), z: oldPosition.z.toFixed(2) },
-                        new: { x: player.mesh.position.x.toFixed(2), y: player.mesh.position.y.toFixed(2), z: player.mesh.position.z.toFixed(2) },
-                        velocity: { x: player.velocity.x.toFixed(4), y: player.velocity.y.toFixed(4), z: player.velocity.z.toFixed(4) },
-                        isGLBModel: player.mesh.userData.isGLBModel
-                    });
-                }
-                
-                // 애니메이션 전환 로직
-                this.updatePlayerAnimation(player, orientation);
-            }
-
-            updatePlayerAnimation(player, orientation) {
-                // 애니메이션이 없는 플레이어는 스킵
-                if (!player.animations) return;
-                
-                // 애니메이션 전환 딜레이 (너무 빈번한 전환 방지)
-                player.animationTimer++;
-                if (player.animationTimer < 10) return; // 10프레임마다 체크
-                player.animationTimer = 0;
-                
-                // 현재 속도 벡터 크기 계산
-                const velocityMagnitude = player.velocity.length();
-                const movementThreshold = 0.01; // 움직임 감지 임계값
-                
-                // 케이크와의 상대적 위치 확인 (당기기/밀기 판정)
-                let targetAnimation = 'idle';
-                
-                if (velocityMagnitude > movementThreshold) {
-                    // 케이크가 있고 2명의 플레이어가 있을 때만 당기기/밀기 판정
-                    if (this.cake.mesh && Object.keys(this.players).length === 2) {
-                        const playerPos = player.mesh.position;
-                        const cakePos = this.cake.mesh.position;
-                        
-                        // 플레이어에서 케이크로의 벡터
-                        const toCake = new THREE.Vector3().subVectors(cakePos, playerPos);
-                        const velocityDirection = player.velocity.clone().normalize();
-                        
-                        // 내적을 이용해 방향 판정 (1에 가까우면 같은 방향, -1에 가까우면 반대 방향)
-                        const dot = velocityDirection.dot(toCake.normalize());
-                        
-                        if (dot > 0.3) {
-                            targetAnimation = 'pushing'; // 케이크 쪽으로 움직이면 밀기
-                        } else if (dot < -0.3) {
-                            targetAnimation = 'pulling'; // 케이크 반대로 움직이면 당기기
-                        } else {
-                            targetAnimation = 'idle'; // 애매한 경우는 대기
-                        }
-                    } else {
-                        // 케이크가 없으면 단순히 움직이는 상태로
-                        targetAnimation = 'pushing';
-                    }
-                }
-                
-                // 현재 애니메이션과 다르면 전환
-                if (player.currentAnimation !== targetAnimation) {
-                    this.switchPlayerAnimation(player, targetAnimation);
-                }
             }
 
             updateCakePosition() {
                 if (!this.cake.mesh || Object.keys(this.players).length < 2) return;
 
-                const playerPositions = Object.values(this.players).map(p => p.mesh.position);
-                const p1 = playerPositions[0];
-                const p2 = playerPositions[1];
-                const distance = p1.distanceTo(p2);
-                
-                // 플레이어 간 중간점 계산
-                const targetPos = new THREE.Vector3((p1.x + p2.x) / 2, 0, (p1.z + p2.z) / 2);
-                
-                // 케이크에 작용하는 힘 계산 (관성과 중력 적용)
-                const springForce = targetPos.clone().sub(this.cake.mesh.position).multiplyScalar(0.05);
-                const dampingForce = this.cake.velocity.clone().multiplyScalar(-0.02); // 감쇠력
-                const gravity = new THREE.Vector3(0, -0.002, 0);
-                
-                // 안정성에 따른 케이크 흔들림
-                const instability = Math.max(0, distance - 3) * 0.01; // 거리 3 이상부터 불안정
-                const shake = new THREE.Vector3(
-                    (Math.random() - 0.5) * instability,
-                    0,
-                    (Math.random() - 0.5) * instability
-                );
-                
-                // 전체 힘 합성
-                this.cake.acceleration.copy(springForce).add(dampingForce).add(gravity).add(shake);
-                
-                // 케이크 속도 및 위치 업데이트
-                this.cake.velocity.add(this.cake.acceleration);
-                this.cake.velocity.multiplyScalar(0.98); // 케이크 마찰력
-                this.cake.mesh.position.add(this.cake.velocity);
-                
-                // Y축 위치 제한
-                this.cake.mesh.position.y = Math.max(0, this.cake.mesh.position.y);
+                const p1 = this.players['sensor1'].mesh.position;
+                const p2 = this.players['sensor2'].mesh.position;
 
-                // 케이크 기울기 계산 (더 현실적으로)
-                const tiltX = (p1.z - p2.z) * 0.05 + this.cake.velocity.z * 0.5;
-                const tiltZ = (p2.x - p1.x) * 0.05 + this.cake.velocity.x * 0.5;
-                
+                this.cake.mesh.position.lerp(new THREE.Vector3((p1.x + p2.x) / 2, 0, (p1.z + p2.z) / 2), 0.1);
+
+                // 케이크 회전은 고정, 기울기만 계산
                 this.cake.mesh.rotation.y = 0; // Y축 회전 고정
-                this.cake.mesh.rotation.x += (tiltX - this.cake.mesh.rotation.x) * 0.1;
-                this.cake.mesh.rotation.z += (tiltZ - this.cake.mesh.rotation.z) * 0.1;
+                this.cake.mesh.rotation.x = (p1.z - p2.z) * 0.1;
+                this.cake.mesh.rotation.z = (p2.x - p1.x) * 0.1;
 
-                const tilt = Math.abs(this.cake.mesh.rotation.x) + Math.abs(this.cake.mesh.rotation.z);
-                
-                // 안정성 계산 및 점수
-                this.cake.stability = Math.max(0, 1 - (distance / 10) - (tilt / 2));
-                
-                if (this.gameState === 'playing') {
-                    this.updateStabilityScore(distance, tilt);
-                }
-                
-                // 거리 확장 파워업 효과 적용
-                const maxDistance = this.activePowerUps.extendedRange.active ? 10 : 7;
-                
-                if (distance > maxDistance) this.setGameState('fail', '너무 멀어요!');
+                const distance = p1.distanceTo(p2);
+                if (distance > 7) this.setGameState('fail', '너무 멀어요!');
                 if (Math.abs(this.cake.mesh.rotation.x) > 0.8 || Math.abs(this.cake.mesh.rotation.z) > 0.8) {
                     this.setGameState('fail', '케이크가 떨어졌어요!');
                 }
 
                 // 도로 이탈 판정
-                const roadLimit = this.roadWidth / 2 - 1.5;
+                const roadLimit = this.roadWidth / 2 - 1.5; // 케이크 반지름 고려
                 if (Math.abs(this.cake.mesh.position.x) > roadLimit) {
                     this.setGameState('fail', '도로 밖으로 이탈!');
                 }
@@ -1142,78 +529,24 @@
                 if (!this.cake.mesh) return;
                 const cakeBox = new THREE.Box3().setFromObject(this.cake.mesh);
 
-                // 장애물 충돌 체크 (안전지대 효과 확인)
-                if (!this.activePowerUps.safeZone.active) {
-                    for (const obstacle of this.obstacles) {
-                        const obstacleBox = new THREE.Box3().setFromObject(obstacle);
-                        if (cakeBox.intersectsBox(obstacleBox)) {
-                            this.setGameState('fail', '장애물과 충돌!');
-                            return;
-                        }
-                    }
-                }
-
-                // 파워업 충돌 체크
-                for (const powerUp of this.powerUps) {
-                    if (!powerUp.collected) {
-                        const powerUpBox = new THREE.Box3().setFromObject(powerUp.mesh);
-                        if (cakeBox.intersectsBox(powerUpBox)) {
-                            this.collectPowerUp(powerUp);
-                        }
+                for (const obstacle of this.obstacles) {
+                    const obstacleBox = new THREE.Box3().setFromObject(obstacle);
+                    if (cakeBox.intersectsBox(obstacleBox)) {
+                        this.setGameState('fail', '장애물과 충돌!');
+                        return;
                     }
                 }
 
                 const destBox = new THREE.Box3().setFromObject(this.destination);
                 if (cakeBox.intersectsBox(destBox)) {
-                    const scoreResult = this.calculateLevelScore();
-                    this.currentScore += scoreResult.finalScore;
-                    
-                    if (this.gameMode === 'endless') {
-                        // 무한모드: 계속 진행하면서 난이도 증가
-                        this.setGameState('level_clear', 
-                            `레벨 ${this.level} 클리어!\n` +
-                            `점수: ${scoreResult.finalScore}점\n` +
-                            `누적: ${this.currentScore}점`
-                        );
+                    if (this.level < this.maxLevel) {
+                        this.setGameState('level_clear', `레벨 ${this.level} 클리어!`);
                         this.level++;
-                        // 무한모드에서는 레벨 설정을 동적으로 조정
-                        this.adjustEndlessLevel();
                         setTimeout(() => this.resetGame(true), 2000);
-                    } else if (this.level < this.maxLevel) {
-                        this.setGameState('level_clear', 
-                            `레벨 ${this.level} 클리어!\n` +
-                            `점수: ${scoreResult.finalScore}점\n` +
-                            `(기본: ${scoreResult.baseScore}, 시간: ${scoreResult.timeBonus}, ` +
-                            `안정: ${scoreResult.stabilityBonus}, 효율: ${scoreResult.efficiencyBonus})`
-                        );
-                        this.level++;
-                        setTimeout(() => this.resetGame(true), 3000);
                     } else {
-                        this.currentScore += this.scoreSystem.perfectDeliveryBonus;
-                        let successMessage = `최종 배달 성공!\n최종 점수: ${this.currentScore}점\n`;
-                        
-                        if (this.gameMode === 'timeAttack') {
-                            const timeBonus = Math.floor(this.timeRemaining * 10);
-                            this.currentScore += timeBonus;
-                            successMessage += `시간 보너스: +${timeBonus}점!\n`;
-                        }
-                        
-                        successMessage += `완주 보너스: +${this.scoreSystem.perfectDeliveryBonus}점!`;
-                        this.setGameState('success', successMessage);
+                        this.setGameState('success', '최종 배달 성공!');
                     }
                 }
-            }
-
-            adjustEndlessLevel() {
-                // 무한모드 난이도 동적 조정
-                const dynamicLevel = Math.min(10, Math.floor(this.level / 3) + 1);
-                this.levelConfig[this.level] = {
-                    forwardSpeed: 0.1 + (dynamicLevel * 0.02),
-                    obstacles: Math.min(8, 1 + dynamicLevel),
-                    holes: Math.min(6, Math.floor(dynamicLevel / 2)),
-                    movingObstacles: Math.min(4, Math.floor(dynamicLevel / 2)),
-                    rotatingObstacles: Math.min(3, Math.floor(dynamicLevel / 3))
-                };
             }
 
             initAudio() {
@@ -1244,16 +577,11 @@
                     this.bgm.pause();
                     if (state === 'success') {
                         this.playSound(this.sfxSuccess);
-                        // 성공 시 화려한 불꽃놀이 효과
-                        this.createParticles(this.cake.mesh.position, 0xffd700, 150, 'fire');
-                        setTimeout(() => this.createParticles(this.cake.mesh.position, 0xff69b4, 100, 'fire'), 200);
-                        setTimeout(() => this.createParticles(this.cake.mesh.position, 0x00ff00, 100, 'fire'), 400);
+                        this.createParticles(this.cake.mesh.position, 0xffd700, 100); // 성공 파티클 (금색)
                         this.currentScore += (this.maxLevel * 100); // 최종 클리어 보너스
                     } else {
                         this.playSound(this.sfxFail);
-                        // 실패 시 크림이 튀는 효과와 연기
-                        this.createParticles(this.cake.mesh.position, 0xfff8dc, 200, 'cream');
-                        setTimeout(() => this.createParticles(this.cake.mesh.position, 0x666666, 100, 'smoke'), 300);
+                        this.createParticles(this.cake.mesh.position, 0xffa07a, 200); // 실패 파티클 (주황색)
                         this.startCameraShake(0.5, 500); // 실패 시 카메라 흔들림
                     }
                     this.updateHighScore();
@@ -1261,8 +589,7 @@
                 } else if (state === 'playing') {
                     this.bgm.play().catch(e => console.log("BGM play failed:", e));
                 } else if (state === 'level_clear') {
-                    // 레벨 클리어 시 간단한 파티클 효과
-                    this.createParticles(this.cake.mesh.position, 0x00ff00, 50, 'fire');
+                    this.currentScore += (this.level * 100); // 레벨 클리어 점수
                     this.updateScoreDisplay();
                 }
             }
@@ -1270,69 +597,6 @@
             updateScoreDisplay() {
                 this.currentScoreDisplay.textContent = this.currentScore;
                 this.highScoreDisplay.textContent = this.highScore;
-                
-                if (this.gameMode === 'timeAttack' && this.gameState === 'playing') {
-                    this.timeRemainingDisplay.textContent = Math.max(0, Math.ceil(this.timeRemaining));
-                    if (this.timeRemaining <= 10) {
-                        this.timerDisplay.style.color = 'var(--error)';
-                    } else if (this.timeRemaining <= 30) {
-                        this.timerDisplay.style.color = 'var(--warning)';
-                    }
-                }
-            }
-
-            setGameMode(mode) {
-                if (this.gameState === 'playing') return; // 게임 중에는 모드 변경 불가
-                
-                this.gameMode = mode;
-                
-                // 모드별 설정
-                switch(mode) {
-                    case 'normal':
-                        this.maxLevel = 5;
-                        this.timerDisplay.style.display = 'none';
-                        break;
-                    case 'timeAttack':
-                        this.maxLevel = 3; // 타임어택은 3레벨만
-                        this.timeLimit = 180; // 3분
-                        this.timeRemaining = this.timeLimit;
-                        this.timerDisplay.style.display = 'block';
-                        this.timerDisplay.style.color = 'var(--warning)';
-                        break;
-                    case 'endless':
-                        this.maxLevel = 999; // 무한
-                        this.timerDisplay.style.display = 'none';
-                        break;
-                }
-                
-                this.updateGameModeDisplay();
-                this.resetGame();
-            }
-
-            updateGameModeDisplay() {
-                const modeNames = {
-                    'normal': '일반',
-                    'timeAttack': '타임어택',
-                    'endless': '무한모드'
-                };
-                
-                this.gameModeDisplay.textContent = modeNames[this.gameMode];
-                
-                // 버튼 활성화 상태 업데이트
-                document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-                document.getElementById(this.gameMode === 'timeAttack' ? 'timeAttackMode' : 
-                                     this.gameMode === 'endless' ? 'endlessMode' : 'normalMode').classList.add('active');
-            }
-
-            updateGameTimer() {
-                if (this.gameMode === 'timeAttack') {
-                    this.timeRemaining -= 1/60; // 60fps 기준으로 감소
-                    this.updateScoreDisplay();
-                    
-                    if (this.timeRemaining <= 0) {
-                        this.setGameState('fail', '시간 초과!');
-                    }
-                }
             }
 
             updateHighScore() {
@@ -1342,290 +606,28 @@
                 }
             }
 
-            updateStabilityScore(distance, tilt) {
-                // 안정성 점수 계산 (0-100, 높을수록 좋음)
-                const distanceScore = Math.max(0, 100 - (distance * 20)); // 거리 0-5 범위
-                const tiltScore = Math.max(0, 100 - (tilt * 125)); // 기울기 0-0.8 범위
-                const currentStability = (distanceScore + tiltScore) / 2;
-                
-                this.scoreSystem.totalStabilityScore += currentStability;
-                this.scoreSystem.stabilityChecks++;
-            }
-
-            calculateLevelScore() {
-                const levelTime = (Date.now() - this.scoreSystem.levelStartTime) / 1000; // 초 단위
-                const avgStability = this.scoreSystem.totalStabilityScore / this.scoreSystem.stabilityChecks;
-                
-                // 시간 보너스 (빠를수록 높은 점수, 최대 500점)
-                const timeTarget = 30 + (this.level * 10); // 레벨별 목표 시간
-                this.scoreSystem.timeBonus = Math.max(0, Math.floor(500 * (timeTarget - levelTime) / timeTarget));
-                
-                // 안정성 보너스 (안정할수록 높은 점수, 최대 300점)
-                this.scoreSystem.stabilityBonus = Math.floor(avgStability * 3);
-                
-                // 효율성 보너스 (거리와 시간 조합, 최대 200점)
-                const efficiency = Math.min(100, avgStability * (timeTarget / levelTime));
-                this.scoreSystem.efficiencyBonus = Math.floor(efficiency * 2);
-                
-                // 콤보 멀티플라이어 (연속 레벨 클리어)
-                if (this.level > 1) {
-                    this.scoreSystem.comboMultiplier = 1 + (this.level - 1) * 0.2;
-                }
-                
-                const baseScore = this.level * 100;
-                const bonusScore = this.scoreSystem.timeBonus + this.scoreSystem.stabilityBonus + this.scoreSystem.efficiencyBonus;
-                const finalScore = Math.floor((baseScore + bonusScore) * this.scoreSystem.comboMultiplier);
-                
-                return {
-                    baseScore,
-                    timeBonus: this.scoreSystem.timeBonus,
-                    stabilityBonus: this.scoreSystem.stabilityBonus,
-                    efficiencyBonus: this.scoreSystem.efficiencyBonus,
-                    comboMultiplier: this.scoreSystem.comboMultiplier,
-                    finalScore
-                };
-            }
-
-            resetScoreSystem() {
-                this.scoreSystem.totalStabilityScore = 0;
-                this.scoreSystem.stabilityChecks = 0;
-                this.scoreSystem.timeBonus = 0;
-                this.scoreSystem.stabilityBonus = 0;
-                this.scoreSystem.efficiencyBonus = 0;
-            }
-
-            collectPowerUp(powerUp) {
-                powerUp.collected = true;
-                powerUp.mesh.visible = false;
-                
-                // 파워업 효과 활성화
-                const now = Date.now();
-                const powerUpData = this.activePowerUps[powerUp.type];
-                powerUpData.active = true;
-                powerUpData.endTime = now + powerUpData.duration;
-                
-                // 파워업별 특별한 파티클 효과
-                const particleType = powerUp.type === 'slowMotion' ? 'fire' : 
-                                   powerUp.type === 'safeZone' ? 'smoke' : 'default';
-                this.createParticles(powerUp.mesh.position, powerUp.mesh.material.color.getHex(), 80, particleType);
-                
-                // UI 메시지 표시
-                const messages = {
-                    slowMotion: '⏰ 슬로우모션 활성화!',
-                    safeZone: '🛡️ 안전지대 활성화!',
-                    extendedRange: '🔗 거리 확장 활성화!'
-                };
-                
-                this.showPowerUpMessage(messages[powerUp.type]);
-                
-                console.log(`파워업 수집: ${powerUp.type}`);
-            }
-
-            showPowerUpMessage(message) {
-                const existingMessage = document.getElementById('powerUpMessage');
-                if (existingMessage) {
-                    existingMessage.remove();
-                }
-                
-                const messageDiv = document.createElement('div');
-                messageDiv.id = 'powerUpMessage';
-                messageDiv.style.cssText = `
-                    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-                    background: rgba(0, 0, 0, 0.8); color: white; padding: 20px 40px;
-                    border-radius: 10px; font-size: 24px; font-weight: bold;
-                    z-index: 1000; pointer-events: none;
-                `;
-                messageDiv.textContent = message;
-                document.body.appendChild(messageDiv);
-                
-                setTimeout(() => {
-                    if (messageDiv.parentNode) {
-                        messageDiv.parentNode.removeChild(messageDiv);
-                    }
-                }, 3000);
-            }
-
-            updatePowerUps() {
-                const now = Date.now();
-                
-                // 파워업 회전 효과
-                this.powerUps.forEach(powerUp => {
-                    if (!powerUp.collected) {
-                        powerUp.mesh.rotation.y += powerUp.mesh.userData.rotationSpeed;
-                        powerUp.mesh.position.y = 1 + Math.sin(now * 0.005 + powerUp.mesh.position.x) * 0.2;
-                    }
-                });
-                
-                // 활성 파워업 시간 체크
-                Object.keys(this.activePowerUps).forEach(key => {
-                    const powerUp = this.activePowerUps[key];
-                    if (powerUp.active && now > powerUp.endTime) {
-                        powerUp.active = false;
-                        console.log(`파워업 종료: ${key}`);
-                    }
-                });
-            }
-
-            createParticles(position, color, count, type = 'default') {
+            createParticles(position, color, count) {
                 const geometry = new THREE.BufferGeometry();
                 const vertices = [];
-                const velocities = [];
-                
                 for (let i = 0; i < count; i++) {
-                    // 위치 설정
                     const x = position.x + (Math.random() - 0.5) * 2;
-                    const y = position.y + Math.random() * 1;
+                    const y = position.y + (Math.random() - 0.5) * 2;
                     const z = position.z + (Math.random() - 0.5) * 2;
                     vertices.push(x, y, z);
-                    
-                    // 파티클 타입별 속도 설정
-                    let vx, vy, vz;
-                    switch(type) {
-                        case 'cream':
-                            vx = (Math.random() - 0.5) * 0.1;
-                            vy = Math.random() * 0.05 + 0.02;
-                            vz = (Math.random() - 0.5) * 0.1;
-                            break;
-                        case 'smoke':
-                            vx = (Math.random() - 0.5) * 0.02;
-                            vy = Math.random() * 0.08 + 0.04;
-                            vz = (Math.random() - 0.5) * 0.02;
-                            break;
-                        case 'fire':
-                            vx = (Math.random() - 0.5) * 0.15;
-                            vy = Math.random() * 0.1 + 0.05;
-                            vz = (Math.random() - 0.5) * 0.15;
-                            break;
-                        default:
-                            vx = (Math.random() - 0.5) * 0.05;
-                            vy = Math.random() * 0.05;
-                            vz = (Math.random() - 0.5) * 0.05;
-                    }
-                    velocities.push(vx, vy, vz);
                 }
-                
                 geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-                
-                // 파티클 타입별 재질 설정
-                let material;
-                switch(type) {
-                    case 'cream':
-                        material = new THREE.PointsMaterial({ 
-                            color: 0xfff8dc, 
-                            size: 0.3,
-                            transparent: true,
-                            opacity: 0.8,
-                            blending: THREE.AdditiveBlending
-                        });
-                        break;
-                    case 'smoke':
-                        material = new THREE.PointsMaterial({ 
-                            color: 0x666666, 
-                            size: 0.4,
-                            transparent: true,
-                            opacity: 0.6,
-                            blending: THREE.NormalBlending
-                        });
-                        break;
-                    case 'fire':
-                        material = new THREE.PointsMaterial({ 
-                            color: color || 0xff4500, 
-                            size: 0.25,
-                            transparent: true,
-                            opacity: 0.9,
-                            blending: THREE.AdditiveBlending
-                        });
-                        break;
-                    default:
-                        material = new THREE.PointsMaterial({ 
-                            color: color, 
-                            size: 0.2,
-                            transparent: true,
-                            opacity: 0.7
-                        });
-                }
-                
+                const material = new THREE.PointsMaterial({ color: color, size: 0.2 });
                 const particles = new THREE.Points(geometry, material);
                 this.scene.add(particles);
-                
-                this.particles.push({ 
-                    mesh: particles, 
-                    velocities: velocities,
-                    life: type === 'smoke' ? 150 : type === 'fire' ? 80 : 100,
-                    maxLife: type === 'smoke' ? 150 : type === 'fire' ? 80 : 100,
-                    type: type
-                });
+                this.particles.push({ mesh: particles, velocity: new THREE.Vector3(), life: 100 });
             }
 
             updateParticles() {
                 for (let i = this.particles.length - 1; i >= 0; i--) {
                     const p = this.particles[i];
-                    const positions = p.mesh.geometry.attributes.position.array;
-                    const velocities = p.velocities;
-                    
-                    // velocities가 없는 경우 (기본 파티클) 스킵
-                    if (!velocities) {
-                        p.life--;
-                        if (p.life <= 0) {
-                            this.scene.remove(p.mesh);
-                            this.particles.splice(i, 1);
-                        }
-                        continue;
-                    }
-                    
-                    // 각 파티클 위치 업데이트
-                    for (let j = 0; j < positions.length; j += 3) {
-                        positions[j] += velocities[j];         // x
-                        positions[j + 1] += velocities[j + 1]; // y
-                        positions[j + 2] += velocities[j + 2]; // z
-                        
-                        // 중력 적용
-                        if (p.type !== 'smoke') {
-                            velocities[j + 1] -= 0.001; // y 속도에 중력 적용
-                        }
-                        
-                        // 파티클 타입별 특수 효과
-                        switch(p.type) {
-                            case 'fire':
-                                // 불꽃은 위로 올라가면서 흔들림
-                                velocities[j] += (Math.random() - 0.5) * 0.002;
-                                velocities[j + 2] += (Math.random() - 0.5) * 0.002;
-                                break;
-                            case 'smoke':
-                                // 연기는 천천히 퍼짐
-                                velocities[j] *= 1.01;
-                                velocities[j + 2] *= 1.01;
-                                break;
-                            case 'cream':
-                                // 크림은 아래로 떨어짐
-                                velocities[j] *= 0.98;
-                                velocities[j + 2] *= 0.98;
-                                break;
-                        }
-                    }
-                    
-                    p.mesh.geometry.attributes.position.needsUpdate = true;
-                    
-                    // 생명력과 투명도 업데이트
+                    p.mesh.position.add(p.velocity);
+                    p.mesh.material.opacity -= 0.01;
                     p.life--;
-                    const lifeRatio = p.life / p.maxLife;
-                    
-                    // 타입별 투명도 변화
-                    switch(p.type) {
-                        case 'smoke':
-                            p.mesh.material.opacity = lifeRatio * 0.6;
-                            break;
-                        case 'fire':
-                            p.mesh.material.opacity = lifeRatio * 0.9;
-                            // 불꽃 색상 변화 (빨강 -> 주황 -> 노랑)
-                            const fireColor = new THREE.Color();
-                            fireColor.setHSL(0.1 * (1 - lifeRatio), 1, 0.5);
-                            p.mesh.material.color = fireColor;
-                            break;
-                        default:
-                            p.mesh.material.opacity = lifeRatio * 0.7;
-                    }
-                    
                     if (p.life <= 0 || p.mesh.material.opacity <= 0) {
                         this.scene.remove(p.mesh);
                         this.particles.splice(i, 1);
@@ -1662,28 +664,14 @@
                 if (!isLevelUp) {
                     this.level = 1;
                     this.currentScore = 0;
-                    this.scoreSystem.comboMultiplier = 1;
-                    
-                    // 타이머 초기화
-                    if (this.gameMode === 'timeAttack') {
-                        this.timeRemaining = this.timeLimit;
-                    }
                 }
 
-                // 파워업 효과 초기화
-                Object.keys(this.activePowerUps).forEach(key => {
-                    this.activePowerUps[key].active = false;
-                    this.activePowerUps[key].endTime = 0;
-                });
-
-                this.resetScoreSystem();
                 this.updateScoreDisplay();
 
                 this.createLevel();
 
-                const playerIds = Object.keys(this.players);
-                if (playerIds.length >= 1) this.players[playerIds[0]].mesh.position.set(-2, 0, 0);
-                if (playerIds.length >= 2) this.players[playerIds[1]].mesh.position.set(2, 0, 0);
+                if (this.players['sensor1']) this.players['sensor1'].mesh.position.set(-2, 0, 0);
+                if (this.players['sensor2']) this.players['sensor2'].mesh.position.set(2, 0, 0);
 
                 if (this.cake.mesh) {
                     this.cake.mesh.position.set(0, 0, 0);
@@ -1698,51 +686,31 @@
                 setTimeout(() => {
                     this.gameState = 'playing';
                     this.messageBox.style.display = 'none';
-                    this.scoreSystem.levelStartTime = Date.now(); // 레벨 시작 시간 기록
                     this.bgm.play().catch(e => console.log("BGM play failed:", e));
                 }, 3000);
             }
 
             updateCamera() {
                 if (!this.cake.mesh) return;
-                
-                // 카메라 타겟 위치 - 케이크만 부드럽게 따라감
                 const targetPosition = new THREE.Vector3();
                 targetPosition.copy(this.cake.mesh.position);
                 targetPosition.y += 15;
                 targetPosition.z += 10;
-                
-                // 매우 부드러운 카메라 움직임 (0.05 → 0.02)
-                this.camera.position.lerp(targetPosition, 0.02);
-                
-                // 카메라 룩앳도 부드럽게 처리
-                const lookAtTarget = new THREE.Vector3();
-                lookAtTarget.copy(this.cake.mesh.position);
-                lookAtTarget.y += 2; // 케이크 위 조금 위쪽을 바라보도록
-                
-                // 현재 카메라가 바라보는 방향 계산
-                const currentLookAt = new THREE.Vector3();
-                this.camera.getWorldDirection(currentLookAt);
-                currentLookAt.add(this.camera.position);
-                
-                // 부드러운 룩앳 전환
-                currentLookAt.lerp(lookAtTarget, 0.03);
-                this.camera.lookAt(currentLookAt);
+                this.camera.position.lerp(targetPosition, 0.05);
+                this.camera.lookAt(this.cake.mesh.position);
             }
 
             updateDynamicObstacles() {
                 const roadLimit = this.roadWidth / 2 - 1.5; // 장애물 반지름 고려
-                const speedMultiplier = this.activePowerUps.slowMotion.active ? 0.3 : 1.0; // 슬로우모션 효과
-                
                 this.obstacles.forEach(obstacle => {
                     if (obstacle.userData.moveDirection) { // 움직이는 장애물
-                        obstacle.position.x += obstacle.userData.moveDirection * obstacle.userData.moveSpeed * speedMultiplier;
+                        obstacle.position.x += obstacle.userData.moveDirection * obstacle.userData.moveSpeed;
                         if (obstacle.position.x > roadLimit || obstacle.position.x < -roadLimit) {
                             obstacle.userData.moveDirection *= -1; // 방향 반전
                         }
                     }
                     if (obstacle.userData.rotationSpeed) { // 회전하는 장애물
-                        obstacle.rotation.y += obstacle.userData.rotationSpeed * speedMultiplier;
+                        obstacle.rotation.y += obstacle.userData.rotationSpeed;
                     }
                 });
             }
@@ -1750,27 +718,14 @@
             animate() {
                 requestAnimationFrame(this.animate);
                 
-                // 애니메이션 시스템 업데이트 (항상 실행)
-                const deltaTime = this.clock.getDelta();
-                
                 // GLB 애니메이션 믹서 업데이트
+                const deltaTime = this.clock.getDelta();
                 this.animationMixers.forEach(mixer => mixer.update(deltaTime));
-                
-                // 커스텀 모델 애니메이션 업데이트
-                Object.values(this.players).forEach(player => {
-                    if (player.mesh && player.mesh.userData.bodyParts) {
-                        this.updatePlayerAnimation(player, player.currentAnimation || 'idle');
-                    }
-                });
                 
                 if (this.gameState === 'playing') {
                     this.updateCakePosition();
                     this.checkCollisions();
                     this.updateDynamicObstacles();
-                    this.updatePowerUps();
-                    this.updateGameTimer();
-                } else {
-                    this.updatePowerUps(); // 게임 진행 중이 아닐 때도 파워업 애니메이션 유지
                 }
                 this.updateCamera();
                 this.updateParticles();
