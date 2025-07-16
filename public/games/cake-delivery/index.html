@@ -42,7 +42,7 @@
             border: 2px solid var(--primary);
         }
         .controls {
-            position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; pointer-events: auto;
+            position: absolute; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; pointer-events: auto;
         }
         .controls button, .controls a {
             padding: 12px 20px; background-color: var(--primary); color: white; border: none;
@@ -118,7 +118,6 @@
                 this.gameMode = 'normal'; // 'normal', 'timeAttack', 'endless'
                 this.timeLimit = 0;
                 this.timeRemaining = 0;
-                this.endlessScore = 0;
                 this.players = {};
                 this.cake = {};
                 this.obstacles = [];
@@ -187,12 +186,6 @@
                 this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                 this.camera.position.set(0, 15, 10);
                 this.camera.lookAt(0, 0, 0);
-                
-                // 동적 카메라 설정
-                this.cameraTarget = new THREE.Vector3(0, 0, 0);
-                this.cameraOffset = new THREE.Vector3(0, 15, 10);
-                this.cameraMode = 'follow'; // 'follow', 'cinematic', 'overhead'
-                this.cinematicTime = 0;
 
                 this.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -205,8 +198,6 @@
                 const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
                 directionalLight.position.set(10, 20, 5);
                 directionalLight.castShadow = true;
-                this.scene.add(directionalLight);
-
                 this.scene.add(directionalLight);
 
                 // 별 배경 추가
@@ -297,7 +288,8 @@
             }
 
             addPlayer(sensorId) {
-                const isPlayer1 = !this.players['sensor1'];
+                const playerCount = Object.keys(this.players).length;
+                const isPlayer1 = playerCount === 0;
                 const playerColor = isPlayer1 ? 0x3b82f6 : 0x8b5cf6;
                 const startX = isPlayer1 ? -2 : 2;
                 const playerLabel = isPlayer1 ? '1P' : '2P';
@@ -339,8 +331,9 @@
             }
 
             updatePlayerStatus() {
-                document.getElementById('player1Status').className = `player-status ${this.players['sensor1'] ? 'connected' : 'disconnected'}`;
-                document.getElementById('player2Status').className = `player-status ${this.players['sensor2'] ? 'connected' : 'disconnected'}`;
+                const playerIds = Object.keys(this.players);
+                document.getElementById('player1Status').className = `player-status ${playerIds.length >= 1 ? 'connected' : 'disconnected'}`;
+                document.getElementById('player2Status').className = `player-status ${playerIds.length >= 2 ? 'connected' : 'disconnected'}`;
             }
 
             createCake() {
@@ -471,7 +464,7 @@
                 if (!player) return;
 
                 const config = this.levelConfig[this.level];
-                const sensitivity = 0.01;
+                const sensitivity = 0.005; // 민감도를 절반으로 줄임 (0.01 → 0.005)
                 const gravity = new THREE.Vector3(0, -0.001, 0); // 약간의 중력
                 
                 // 센서 입력을 힘으로 변환
@@ -506,8 +499,9 @@
             updateCakePosition() {
                 if (!this.cake.mesh || Object.keys(this.players).length < 2) return;
 
-                const p1 = this.players['sensor1'].mesh.position;
-                const p2 = this.players['sensor2'].mesh.position;
+                const playerPositions = Object.values(this.players).map(p => p.mesh.position);
+                const p1 = playerPositions[0];
+                const p2 = playerPositions[1];
                 const distance = p1.distanceTo(p2);
                 
                 // 플레이어 간 중간점 계산
@@ -601,7 +595,6 @@
                     
                     if (this.gameMode === 'endless') {
                         // 무한모드: 계속 진행하면서 난이도 증가
-                        this.endlessScore += scoreResult.finalScore;
                         this.setGameState('level_clear', 
                             `레벨 ${this.level} 클리어!\n` +
                             `점수: ${scoreResult.finalScore}점\n` +
@@ -693,7 +686,8 @@
                 } else if (state === 'playing') {
                     this.bgm.play().catch(e => console.log("BGM play failed:", e));
                 } else if (state === 'level_clear') {
-                    this.currentScore += (this.level * 100); // 레벨 클리어 점수
+                    // 레벨 클리어 시 간단한 파티클 효과
+                    this.createParticles(this.cake.mesh.position, 0x00ff00, 50, 'fire');
                     this.updateScoreDisplay();
                 }
             }
@@ -994,6 +988,16 @@
                     const positions = p.mesh.geometry.attributes.position.array;
                     const velocities = p.velocities;
                     
+                    // velocities가 없는 경우 (기본 파티클) 스킵
+                    if (!velocities) {
+                        p.life--;
+                        if (p.life <= 0) {
+                            this.scene.remove(p.mesh);
+                            this.particles.splice(i, 1);
+                        }
+                        continue;
+                    }
+                    
                     // 각 파티클 위치 업데이트
                     for (let j = 0; j < positions.length; j += 3) {
                         positions[j] += velocities[j];         // x
@@ -1102,8 +1106,9 @@
 
                 this.createLevel();
 
-                if (this.players['sensor1']) this.players['sensor1'].mesh.position.set(-2, 0, 0);
-                if (this.players['sensor2']) this.players['sensor2'].mesh.position.set(2, 0, 0);
+                const playerIds = Object.keys(this.players);
+                if (playerIds.length >= 1) this.players[playerIds[0]].mesh.position.set(-2, 0, 0);
+                if (playerIds.length >= 2) this.players[playerIds[1]].mesh.position.set(2, 0, 0);
 
                 if (this.cake.mesh) {
                     this.cake.mesh.position.set(0, 0, 0);
@@ -1125,92 +1130,12 @@
 
             updateCamera() {
                 if (!this.cake.mesh) return;
-                
-                this.cinematicTime += 0.016; // 60fps 기준
-                const cakePos = this.cake.mesh.position;
-                const cakeVel = this.cake.velocity || new THREE.Vector3();
-                
-                switch(this.cameraMode) {
-                    case 'follow':
-                        // 기본 추적 카메라 (속도에 따른 앞서 보기)
-                        const lookAhead = cakeVel.clone().multiplyScalar(2);
-                        this.cameraTarget.copy(cakePos).add(lookAhead);
-                        
-                        const followOffset = new THREE.Vector3(0, 15, 10);
-                        // 속도에 따른 카메라 거리 조정
-                        const speed = cakeVel.length();
-                        followOffset.z += speed * 5;
-                        followOffset.y += speed * 2;
-                        
-                        const followPos = cakePos.clone().add(followOffset);
-                        this.camera.position.lerp(followPos, 0.08);
-                        this.camera.lookAt(this.cameraTarget);
-                        break;
-                        
-                    case 'cinematic':
-                        // 영화적 카메라 (원형 궤도)
-                        const radius = 20;
-                        const height = 12;
-                        const angle = this.cinematicTime * 0.3;
-                        
-                        const cinematicPos = new THREE.Vector3(
-                            cakePos.x + Math.cos(angle) * radius,
-                            cakePos.y + height + Math.sin(this.cinematicTime * 0.5) * 3,
-                            cakePos.z + Math.sin(angle) * radius
-                        );
-                        
-                        this.camera.position.lerp(cinematicPos, 0.05);
-                        this.camera.lookAt(cakePos);
-                        break;
-                        
-                    case 'overhead':
-                        // 오버헤드 카메라 (위에서 아래로)
-                        const overheadPos = new THREE.Vector3(cakePos.x, cakePos.y + 25, cakePos.z + 5);
-                        this.camera.position.lerp(overheadPos, 0.1);
-                        this.camera.lookAt(cakePos);
-                        break;
-                        
-                    case 'dramatic':
-                        // 드라마틱 카메라 (저각도)
-                        const dramaticPos = new THREE.Vector3(
-                            cakePos.x + Math.sin(this.cinematicTime * 0.2) * 8,
-                            cakePos.y + 3,
-                            cakePos.z + 15
-                        );
-                        this.camera.position.lerp(dramaticPos, 0.06);
-                        this.camera.lookAt(new THREE.Vector3(cakePos.x, cakePos.y + 2, cakePos.z));
-                        break;
-                }
-                
-                // 케이크 상태에 따른 자동 카메라 모드 전환
-                this.updateCameraMode();
-            }
-
-            updateCameraMode() {
-                if (!this.cake.mesh) return;
-                
-                const cakeStability = this.cake.stability || 1;
-                const distance = Object.keys(this.players).length >= 2 ? 
-                    this.players['sensor1'].mesh.position.distanceTo(this.players['sensor2'].mesh.position) : 0;
-                
-                // 위험한 상황에서 드라마틱 카메라
-                if (cakeStability < 0.3 || distance > 6) {
-                    if (this.cameraMode !== 'dramatic' && Math.random() < 0.02) {
-                        this.cameraMode = 'dramatic';
-                        setTimeout(() => { this.cameraMode = 'follow'; }, 3000);
-                    }
-                }
-                
-                // 레벨 클리어 시 시네마틱 카메라
-                if (this.gameState === 'level_clear' || this.gameState === 'success') {
-                    this.cameraMode = 'cinematic';
-                }
-                
-                // 게임 시작 시 오버헤드 카메라
-                if (this.gameState === 'ready') {
-                    this.cameraMode = 'overhead';
-                    setTimeout(() => { this.cameraMode = 'follow'; }, 2000);
-                }
+                const targetPosition = new THREE.Vector3();
+                targetPosition.copy(this.cake.mesh.position);
+                targetPosition.y += 15;
+                targetPosition.z += 10;
+                this.camera.position.lerp(targetPosition, 0.05);
+                this.camera.lookAt(this.cake.mesh.position);
             }
 
             updateDynamicObstacles() {
