@@ -99,6 +99,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/SessionSDK.js"></script>
@@ -133,6 +134,12 @@
                 this.currentScore = 0;
                 this.highScore = parseInt(localStorage.getItem('cakeDeliveryHighScore') || '0');
                 
+                // 3D 모델 및 애니메이션 시스템
+                this.fbxLoader = new THREE.FBXLoader();
+                this.loadedModels = {};
+                this.animationMixers = [];
+                this.clock = new THREE.Clock();
+                
                 // 고급 점수 시스템
                 this.scoreSystem = {
                     levelStartTime: 0,
@@ -156,6 +163,7 @@
                 this.initUI();
                 this.init3D();
                 this.initAudio();
+                this.preloadModels();
                 this.setupEvents();
                 
                 this.animate = this.animate.bind(this);
@@ -225,6 +233,49 @@
                 this.scene.add(floor);
             }
 
+            async preloadModels() {
+                const modelPaths = {
+                    idle: './anim/idle.fbx',
+                    original: './anim/original.fbx',
+                    pulling: './anim/pulling.fbx',
+                    pushing: './anim/pushing.fbx'
+                };
+
+                try {
+                    for (const [name, path] of Object.entries(modelPaths)) {
+                        await this.loadFBXModel(name, path);
+                    }
+                    console.log('모든 3D 모델 로딩 완료');
+                } catch (error) {
+                    console.error('모델 로딩 실패:', error);
+                }
+            }
+
+            loadFBXModel(name, path) {
+                return new Promise((resolve, reject) => {
+                    this.fbxLoader.load(path, (fbx) => {
+                        // 모델 크기 조정
+                        fbx.scale.setScalar(0.01); // 1/100 크기로 축소
+                        
+                        // 모델과 애니메이션 저장
+                        this.loadedModels[name] = {
+                            model: fbx,
+                            animations: fbx.animations
+                        };
+                        
+                        console.log(`${name} 모델 로딩 완료`);
+                        resolve(fbx);
+                    }, 
+                    (progress) => {
+                        console.log(`${name} 로딩 진행: ${(progress.loaded / progress.total * 100)}%`);
+                    },
+                    (error) => {
+                        console.error(`${name} 모델 로딩 실패:`, error);
+                        reject(error);
+                    });
+                });
+            }
+
             setupEvents() {
                 this.sdk.on('connected', () => this.sdk.createSession());
 
@@ -287,33 +338,134 @@
                 }
             }
 
-            addPlayer(sensorId) {
-                const playerCount = Object.keys(this.players).length;
-                const isPlayer1 = playerCount === 0;
-                const playerColor = isPlayer1 ? 0x3b82f6 : 0x8b5cf6;
-                const startX = isPlayer1 ? -2 : 2;
-                const playerLabel = isPlayer1 ? '1P' : '2P';
+            createPlayerModel(isPlayer1) {
+                // 원본 모델 복제
+                if (!this.loadedModels.original) {
+                    console.warn('원본 모델이 로드되지 않았습니다. 기본 모델을 사용합니다.');
+                    return this.createFallbackPlayer(isPlayer1);
+                }
 
+                const playerModel = this.loadedModels.original.model.clone();
+                
+                // 플레이어별 색상 적용
+                const playerColor = isPlayer1 ? 0x3b82f6 : 0x8b5cf6;
+                playerModel.traverse((child) => {
+                    if (child.isMesh) {
+                        child.material = child.material.clone();
+                        child.material.color.setHex(playerColor);
+                        child.castShadow = true;
+                        child.receiveShadow = true;
+                    }
+                });
+
+                // 애니메이션 믹서 생성
+                const mixer = new THREE.AnimationMixer(playerModel);
+                
+                // 애니메이션 클립 설정
+                const animations = {
+                    idle: null,
+                    pulling: null,
+                    pushing: null
+                };
+
+                // 각 애니메이션 클립을 애니메이션 믹서에 추가
+                if (this.loadedModels.idle && this.loadedModels.idle.animations.length > 0) {
+                    animations.idle = mixer.clipAction(this.loadedModels.idle.animations[0]);
+                }
+                if (this.loadedModels.pulling && this.loadedModels.pulling.animations.length > 0) {
+                    animations.pulling = mixer.clipAction(this.loadedModels.pulling.animations[0]);
+                }
+                if (this.loadedModels.pushing && this.loadedModels.pushing.animations.length > 0) {
+                    animations.pushing = mixer.clipAction(this.loadedModels.pushing.animations[0]);
+                }
+
+                // 기본 애니메이션 재생
+                if (animations.idle) {
+                    animations.idle.play();
+                }
+
+                this.animationMixers.push(mixer);
+
+                return {
+                    mesh: playerModel,
+                    mixer: mixer,
+                    animations: animations,
+                    currentAnimation: 'idle'
+                };
+            }
+
+            createFallbackPlayer(isPlayer1) {
+                // 기존 방식의 플레이어 생성 (모델 로딩 실패 시 폴백)
+                const playerColor = isPlayer1 ? 0x3b82f6 : 0x8b5cf6;
                 const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
                 const material = new THREE.MeshStandardMaterial({ color: playerColor });
                 const playerMesh = new THREE.Mesh(geometry, material);
-                playerMesh.position.set(startX, 0, 0);
                 playerMesh.castShadow = true;
 
+                const playerLabel = isPlayer1 ? '1P' : '2P';
                 const labelSprite = this.makeTextSprite(playerLabel, { fontsize: 96, fontface: 'Arial', borderColor: { r:255, g:0, b:0, a:1.0 } });
                 labelSprite.position.set(0, 1.5, 0);
                 playerMesh.add(labelSprite);
 
-                this.scene.add(playerMesh);
+                return {
+                    mesh: playerMesh,
+                    mixer: null,
+                    animations: null,
+                    currentAnimation: null
+                };
+            }
+
+            switchPlayerAnimation(player, animationName) {
+                if (!player.animations || !player.animations[animationName]) {
+                    return;
+                }
+
+                // 현재 애니메이션 페이드아웃
+                if (player.currentAnimation && player.animations[player.currentAnimation]) {
+                    player.animations[player.currentAnimation].fadeOut(0.2);
+                }
+
+                // 새 애니메이션 페이드인
+                const newAnimation = player.animations[animationName];
+                newAnimation.reset().fadeIn(0.2).play();
+                
+                player.currentAnimation = animationName;
+            }
+
+            addPlayer(sensorId) {
+                const playerCount = Object.keys(this.players).length;
+                const isPlayer1 = playerCount === 0;
+                const startX = isPlayer1 ? -2 : 2;
+                const playerLabel = isPlayer1 ? '1P' : '2P';
+
+                // 새로운 3D 모델 생성
+                const playerData = this.createPlayerModel(isPlayer1);
+                playerData.mesh.position.set(startX, 0, 0);
+
+                // 플레이어 라벨 추가 (3D 모델에도)
+                const labelSprite = this.makeTextSprite(playerLabel, { 
+                    fontsize: 96, 
+                    fontface: 'Arial', 
+                    borderColor: { r:255, g:0, b:0, a:1.0 } 
+                });
+                labelSprite.position.set(0, 3, 0); // 3D 모델은 키가 더 클 수 있으므로 높이 조정
+                playerData.mesh.add(labelSprite);
+
+                this.scene.add(playerData.mesh);
 
                 this.players[sensorId] = {
                     id: sensorId,
-                    mesh: playerMesh,
+                    mesh: playerData.mesh,
+                    mixer: playerData.mixer,
+                    animations: playerData.animations,
+                    currentAnimation: playerData.currentAnimation,
                     velocity: new THREE.Vector3(),
                     acceleration: new THREE.Vector3(),
                     mass: 1.0,
                     friction: 0.92,  // 마찰력을 0.95에서 0.92로 증가 (더 빨리 멈춤)
-                    maxSpeed: 0.15   // 최대 속도를 0.3에서 0.15로 절반으로 줄임
+                    maxSpeed: 0.15,   // 최대 속도를 0.3에서 0.15로 절반으로 줄임
+                    previousVelocity: new THREE.Vector3(), // 애니메이션 결정을 위한 이전 속도
+                    animationTimer: 0 // 애니메이션 전환 딜레이용
                 };
 
                 if (Object.keys(this.players).length === 2 && !this.cake.mesh) {
@@ -324,7 +476,19 @@
 
             removePlayer(sensorId) {
                 if (this.players[sensorId]) {
-                    this.scene.remove(this.players[sensorId].mesh);
+                    const player = this.players[sensorId];
+                    
+                    // 3D 모델 제거
+                    this.scene.remove(player.mesh);
+                    
+                    // 애니메이션 믹서 정리
+                    if (player.mixer) {
+                        const mixerIndex = this.animationMixers.indexOf(player.mixer);
+                        if (mixerIndex > -1) {
+                            this.animationMixers.splice(mixerIndex, 1);
+                        }
+                    }
+                    
                     delete this.players[sensorId];
                     this.setGameState('fail', '플레이어 연결 끊김!');
                 }
@@ -494,6 +658,57 @@
                 player.mesh.position.x = THREE.MathUtils.clamp(player.mesh.position.x, -roadLimit, roadLimit);
                 player.mesh.position.z = THREE.MathUtils.clamp(player.mesh.position.z, -100, 2);
                 player.mesh.position.y = Math.max(0, player.mesh.position.y); // 바닥 아래로 떨어지지 않음
+                
+                // 애니메이션 전환 로직
+                this.updatePlayerAnimation(player, orientation);
+            }
+
+            updatePlayerAnimation(player, orientation) {
+                // 애니메이션이 없는 플레이어는 스킵
+                if (!player.animations) return;
+                
+                // 애니메이션 전환 딜레이 (너무 빈번한 전환 방지)
+                player.animationTimer++;
+                if (player.animationTimer < 10) return; // 10프레임마다 체크
+                player.animationTimer = 0;
+                
+                // 현재 속도 벡터 크기 계산
+                const velocityMagnitude = player.velocity.length();
+                const movementThreshold = 0.01; // 움직임 감지 임계값
+                
+                // 케이크와의 상대적 위치 확인 (당기기/밀기 판정)
+                let targetAnimation = 'idle';
+                
+                if (velocityMagnitude > movementThreshold) {
+                    // 케이크가 있고 2명의 플레이어가 있을 때만 당기기/밀기 판정
+                    if (this.cake.mesh && Object.keys(this.players).length === 2) {
+                        const playerPos = player.mesh.position;
+                        const cakePos = this.cake.mesh.position;
+                        
+                        // 플레이어에서 케이크로의 벡터
+                        const toCake = new THREE.Vector3().subVectors(cakePos, playerPos);
+                        const velocityDirection = player.velocity.clone().normalize();
+                        
+                        // 내적을 이용해 방향 판정 (1에 가까우면 같은 방향, -1에 가까우면 반대 방향)
+                        const dot = velocityDirection.dot(toCake.normalize());
+                        
+                        if (dot > 0.3) {
+                            targetAnimation = 'pushing'; // 케이크 쪽으로 움직이면 밀기
+                        } else if (dot < -0.3) {
+                            targetAnimation = 'pulling'; // 케이크 반대로 움직이면 당기기
+                        } else {
+                            targetAnimation = 'idle'; // 애매한 경우는 대기
+                        }
+                    } else {
+                        // 케이크가 없으면 단순히 움직이는 상태로
+                        targetAnimation = 'pushing';
+                    }
+                }
+                
+                // 현재 애니메이션과 다르면 전환
+                if (player.currentAnimation !== targetAnimation) {
+                    this.switchPlayerAnimation(player, targetAnimation);
+                }
             }
 
             updateCakePosition() {
@@ -1157,6 +1372,11 @@
 
             animate() {
                 requestAnimationFrame(this.animate);
+                
+                // 애니메이션 믹서 업데이트 (항상 실행)
+                const deltaTime = this.clock.getDelta();
+                this.animationMixers.forEach(mixer => mixer.update(deltaTime));
+                
                 if (this.gameState === 'playing') {
                     this.updateCakePosition();
                     this.checkCollisions();
