@@ -73,6 +73,7 @@
                 <div style="font-size: 1em; color: var(--warning);" id="timerDisplay">시간: <span id="remainingTime">--</span></div>
                 <div style="font-size: 1em; color: var(--success);" id="starsDisplay">⭐ <span id="currentStars">0</span>/3</div>
                 <div style="font-size: 0.9em; color: var(--text-secondary);" id="modeDisplay">모드: <span id="gameMode">일반</span></div>
+                <div style="font-size: 0.9em; color: var(--text-secondary); margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.2);" id="cakeInfo">🎂 케이크 정보</div>
             </div>
         </div>
         <div class="session-panel">
@@ -94,6 +95,18 @@
                 <button id="relayMode" class="mode-btn">🏃 릴레이</button>
                 <button id="speedrunMode" class="mode-btn">⚡ 스피드런</button>
                 <button id="coop4Mode" class="mode-btn">👥 4인 협동</button>
+            </div>
+            <div class="cake-selection" style="margin-bottom: 10px;">
+                <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px;">🎂 케이크 종류:</div>
+                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+                    <button id="basicCake" class="mode-btn" style="font-size: 0.8em; padding: 4px 8px;" data-cake="basic">🎂 기본</button>
+                    <button id="strawberryCake" class="mode-btn" style="font-size: 0.8em; padding: 4px 8px;" data-cake="strawberry">🍓 딸기</button>
+                    <button id="chocolateCake" class="mode-btn" style="font-size: 0.8em; padding: 4px 8px;" data-cake="chocolate">🍫 초콜릿</button>
+                    <button id="weddingCake" class="mode-btn" style="font-size: 0.8em; padding: 4px 8px;" data-cake="wedding">👰 웨딩</button>
+                    <button id="iceCake" class="mode-btn" style="font-size: 0.8em; padding: 4px 8px;" data-cake="ice">🍨 아이스</button>
+                    <button id="bombCake" class="mode-btn" style="font-size: 0.8em; padding: 4px 8px;" data-cake="bomb">💣 폭탄</button>
+                    <button id="randomCake" class="mode-btn active" style="font-size: 0.8em; padding: 4px 8px;" data-cake="random">🎲 랜덤</button>
+                </div>
             </div>
             <a href="/">🏠 허브로</a>
         </div>
@@ -119,6 +132,15 @@
                 this.gameMode = 'normal'; // normal, infinite, timeAttack, challenge, relay, speedrun, coop4
                 this.players = {};
                 this.cake = {};
+                this.cakeType = 'basic'; // basic, strawberry, chocolate, wedding, ice, bomb
+                this.cakeConfig = {
+                    basic: { size: 1.5, weight: 1.0, stability: 1.0, color: 0xf472b6, layers: 1 },
+                    strawberry: { size: 1.2, weight: 0.8, stability: 1.2, color: 0xff6b9d, layers: 1 },
+                    chocolate: { size: 1.8, weight: 1.5, stability: 0.7, color: 0x8b4513, layers: 2 },
+                    wedding: { size: 2.2, weight: 2.0, stability: 0.5, color: 0xfffff0, layers: 3 },
+                    ice: { size: 1.4, weight: 0.9, stability: 0.8, color: 0x87ceeb, layers: 1, melting: true },
+                    bomb: { size: 1.6, weight: 1.2, stability: 0.6, color: 0xff4500, layers: 1, timer: 30 }
+                };
                 this.obstacles = [];
                 this.destination = null;
                 this.particles = [];
@@ -155,6 +177,82 @@
                 this.coop4Players = {};
                 this.bigCakeSize = 2.0; // 더 큰 케이크
                 this.coop4Formation = 'square'; // square, diamond, line
+                
+                // 케이크 물리 및 상태
+                this.cakeInstability = 0; // 불안정도 (0-1)
+                this.cakeMeltingTimer = 0; // 녹는 타이머 (아이스크림용)
+                this.cakeBombTimer = 0; // 폭탄 타이머
+                this.cakeTemperature = 20; // 온도 (°C)
+                
+                // 고급 물리 시뮬레이션
+                this.cakeVelocity = new THREE.Vector3(0, 0, 0); // 케이크 속도
+                this.cakeAngularVelocity = new THREE.Vector3(0, 0, 0); // 각속도
+                this.cakeElasticity = 0.5; // 탄성 (0-1)
+                this.cakeViscosity = 0.1; // 액체 점성 (0-1)
+                this.windForce = new THREE.Vector3(0, 0, 0); // 바람 힘
+                this.gravityForce = new THREE.Vector3(0, -9.81, 0); // 중력
+                this.cakeVolume = 1.0; // 케이크 부피
+                this.cakeDensity = 1.0; // 케이크 밀도
+                
+                // 환경 시스템
+                this.environmentConfig = {
+                    normal: { 
+                        skyColor: 0x87ceeb, 
+                        floorColor: 0x4a5568, 
+                        ambientLight: 0.6, 
+                        directionalLight: 0.8,
+                        fogNear: 50, 
+                        fogFar: 200,
+                        name: '일반 도로'
+                    },
+                    forest: { 
+                        skyColor: 0x228b22, 
+                        floorColor: 0x8b4513, 
+                        ambientLight: 0.4, 
+                        directionalLight: 0.6,
+                        fogNear: 30, 
+                        fogFar: 100,
+                        name: '숲 속 길'
+                    },
+                    desert: { 
+                        skyColor: 0xffd700, 
+                        floorColor: 0xf4a460, 
+                        ambientLight: 0.8, 
+                        directionalLight: 1.0,
+                        fogNear: 80, 
+                        fogFar: 300,
+                        name: '사막 도로'
+                    },
+                    beach: { 
+                        skyColor: 0x00bfff, 
+                        floorColor: 0xffefd5, 
+                        ambientLight: 0.7, 
+                        directionalLight: 0.9,
+                        fogNear: 60, 
+                        fogFar: 250,
+                        name: '해변 길'
+                    },
+                    winter: { 
+                        skyColor: 0xb0c4de, 
+                        floorColor: 0xffffff, 
+                        ambientLight: 0.5, 
+                        directionalLight: 0.7,
+                        fogNear: 40, 
+                        fogFar: 150,
+                        name: '눈 덮인 길'
+                    },
+                    night: { 
+                        skyColor: 0x191970, 
+                        floorColor: 0x2f2f2f, 
+                        ambientLight: 0.2, 
+                        directionalLight: 0.4,
+                        fogNear: 20, 
+                        fogFar: 80,
+                        name: '야간 도로'
+                    }
+                };
+                
+                this.currentEnvironment = 'normal';
                 
                 // 애니메이션 시스템
                 this.clock = new THREE.Clock();
@@ -223,6 +321,13 @@
                 this.normalModeBtn.onclick = () => this.selectGameMode('normal');
                 this.infiniteModeBtn.onclick = () => this.selectGameMode('infinite');
                 this.timeAttackModeBtn.onclick = () => this.selectGameMode('timeAttack');
+                
+                // 케이크 선택 버튼들
+                this.selectedCakeType = 'random'; // 기본값은 랜덤
+                const cakeButtons = document.querySelectorAll('.cake-selection button');
+                cakeButtons.forEach(button => {
+                    button.onclick = () => this.selectCakeType(button.dataset.cake);
+                });
                 this.challengeModeBtn.onclick = () => this.selectGameMode('challenge');
                 this.relayModeBtn.onclick = () => this.selectGameMode('relay');
                 this.speedrunModeBtn.onclick = () => this.selectGameMode('speedrun');
@@ -286,6 +391,23 @@
                     case 'speedrun': this.speedrunModeBtn.classList.add('active'); break;
                     case 'coop4': this.coop4ModeBtn.classList.add('active'); break;
                 }
+            }
+            
+            selectCakeType(cakeType) {
+                this.selectedCakeType = cakeType;
+                
+                // 케이크 버튼 활성화 상태 업데이트
+                const cakeButtons = document.querySelectorAll('.cake-selection button');
+                cakeButtons.forEach(button => {
+                    button.classList.remove('active');
+                });
+                
+                const selectedButton = document.querySelector(`[data-cake="${cakeType}"]`);
+                if (selectedButton) {
+                    selectedButton.classList.add('active');
+                }
+                
+                console.log(`케이크 타입 선택: ${cakeType}`);
             }
 
             // UI 업데이트
@@ -616,11 +738,434 @@
             }
 
             createCake() {
-                const cakeGeometry = new THREE.CylinderGeometry(1.5, 1.5, 1, 64);
-                const cakeMaterial = new THREE.MeshStandardMaterial({ color: 0xf472b6 });
-                this.cake.mesh = new THREE.Mesh(cakeGeometry, cakeMaterial);
+                // 선택된 케이크 타입 사용
+                if (this.selectedCakeType === 'random') {
+                    const cakeTypes = Object.keys(this.cakeConfig);
+                    this.currentCakeType = cakeTypes[Math.floor(Math.random() * cakeTypes.length)];
+                } else {
+                    this.currentCakeType = this.selectedCakeType;
+                }
+                
+                const config = this.cakeConfig[this.currentCakeType];
+                
+                // 케이크 그룹 생성
+                const cakeGroup = new THREE.Group();
+                
+                // 케이크 층 생성
+                const layerHeight = 0.4;
+                const colors = [config.color, config.color * 0.9, config.color * 0.8];
+                
+                for (let i = 0; i < config.layers; i++) {
+                    const layerRadius = config.size * (1 - i * 0.1);
+                    const layerGeometry = new THREE.CylinderGeometry(layerRadius, layerRadius, layerHeight, 32);
+                    const layerMaterial = new THREE.MeshStandardMaterial({ 
+                        color: colors[i] || config.color,
+                        roughness: 0.3,
+                        metalness: 0.1
+                    });
+                    
+                    const layer = new THREE.Mesh(layerGeometry, layerMaterial);
+                    layer.position.y = i * layerHeight;
+                    layer.castShadow = true;
+                    cakeGroup.add(layer);
+                }
+                
+                // 케이크 장식 추가
+                this.addCakeDecorations(cakeGroup, config);
+                
+                this.cake.mesh = cakeGroup;
                 this.cake.mesh.castShadow = true;
                 this.scene.add(this.cake.mesh);
+                
+                // 케이크 타입별 물리 상태 초기화
+                this.initializeCakePhysics(config);
+                
+                // 케이크 정보 UI 업데이트
+                this.updateCakeInfo();
+            }
+            
+            addCakeDecorations(cakeGroup, config) {
+                // 케이크 타입별 장식 추가
+                switch(this.currentCakeType) {
+                    case 'strawberry':
+                        // 딸기 장식 추가
+                        for (let i = 0; i < 6; i++) {
+                            const strawberryGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+                            const strawberryMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+                            const strawberry = new THREE.Mesh(strawberryGeometry, strawberryMaterial);
+                            
+                            const angle = (i / 6) * Math.PI * 2;
+                            strawberry.position.set(
+                                Math.cos(angle) * config.size * 0.7,
+                                config.layers * 0.4,
+                                Math.sin(angle) * config.size * 0.7
+                            );
+                            cakeGroup.add(strawberry);
+                        }
+                        break;
+                        
+                    case 'chocolate':
+                        // 초콜릿 칩 장식
+                        for (let i = 0; i < 8; i++) {
+                            const chipGeometry = new THREE.BoxGeometry(0.1, 0.05, 0.1);
+                            const chipMaterial = new THREE.MeshStandardMaterial({ color: 0x2d1b14 });
+                            const chip = new THREE.Mesh(chipGeometry, chipMaterial);
+                            
+                            chip.position.set(
+                                (Math.random() - 0.5) * config.size * 1.5,
+                                Math.random() * config.layers * 0.4,
+                                (Math.random() - 0.5) * config.size * 1.5
+                            );
+                            cakeGroup.add(chip);
+                        }
+                        break;
+                        
+                    case 'wedding':
+                        // 꽃 장식
+                        for (let layer = 0; layer < config.layers; layer++) {
+                            const flowerGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+                            const flowerMaterial = new THREE.MeshStandardMaterial({ color: 0xffc0cb });
+                            const flower = new THREE.Mesh(flowerGeometry, flowerMaterial);
+                            
+                            flower.position.set(
+                                config.size * (1 - layer * 0.1),
+                                layer * 0.4 + 0.2,
+                                0
+                            );
+                            cakeGroup.add(flower);
+                        }
+                        break;
+                        
+                    case 'ice':
+                        // 얼음 효과 (반투명)
+                        const iceGeometry = new THREE.SphereGeometry(config.size * 0.3, 16, 16);
+                        const iceMaterial = new THREE.MeshStandardMaterial({ 
+                            color: 0x87ceeb,
+                            transparent: true,
+                            opacity: 0.6
+                        });
+                        const ice = new THREE.Mesh(iceGeometry, iceMaterial);
+                        ice.position.y = config.layers * 0.4;
+                        cakeGroup.add(ice);
+                        break;
+                        
+                    case 'bomb':
+                        // 폭탄 심지
+                        const fuseGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.5, 8);
+                        const fuseMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+                        const fuse = new THREE.Mesh(fuseGeometry, fuseMaterial);
+                        fuse.position.y = config.layers * 0.4 + 0.3;
+                        cakeGroup.add(fuse);
+                        
+                        // 타이머 표시
+                        const timerGeometry = new THREE.RingGeometry(0.3, 0.4, 16);
+                        const timerMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+                        const timer = new THREE.Mesh(timerGeometry, timerMaterial);
+                        timer.rotation.x = -Math.PI / 2;
+                        timer.position.y = config.layers * 0.4 + 0.1;
+                        cakeGroup.add(timer);
+                        break;
+                }
+            }
+            
+            initializeCakePhysics(config) {
+                // 케이크 타입별 물리 초기화
+                this.cakeInstability = 1.0 - config.stability;
+                this.cakeTemperature = 20;
+                
+                switch(this.currentCakeType) {
+                    case 'ice':
+                        this.cakeMeltingTimer = 60; // 60초 후 녹음
+                        this.cakeTemperature = -10;
+                        break;
+                    case 'bomb':
+                        this.cakeBombTimer = 30; // 30초 타이머
+                        break;
+                    default:
+                        this.cakeMeltingTimer = 0;
+                        this.cakeBombTimer = 0;
+                }
+            }
+            
+            updateCakeInfo() {
+                const cakeInfoDiv = document.getElementById('cakeInfo');
+                if (!cakeInfoDiv) return;
+                
+                const config = this.cakeConfig[this.currentCakeType];
+                const cakeNames = {
+                    basic: '기본 케이크',
+                    strawberry: '딸기 케이크',
+                    chocolate: '초콜릿 케이크', 
+                    wedding: '웨딩 케이크',
+                    ice: '아이스크림 케이크',
+                    bomb: '폭탄 케이크'
+                };
+                
+                let statusText = `🎂 ${cakeNames[this.currentCakeType]}`;
+                statusText += `<br>크기: ${config.size.toFixed(1)} | 무게: ${config.weight.toFixed(1)} | 안정성: ${config.stability.toFixed(1)}`;
+                
+                // 물리 상태 표시
+                statusText += `<br>🌡️ 온도: ${this.cakeTemperature.toFixed(1)}°C | 탄성: ${this.cakeElasticity.toFixed(2)}`;
+                statusText += `<br>💧 점성: ${this.cakeViscosity.toFixed(2)} | 부피: ${this.cakeVolume.toFixed(2)}`;
+                
+                if (this.currentCakeType === 'ice' && this.cakeMeltingTimer > 0) {
+                    statusText += `<br>❄️ 녹기까지: ${this.cakeMeltingTimer.toFixed(1)}초`;
+                }
+                
+                if (this.currentCakeType === 'bomb' && this.cakeBombTimer > 0) {
+                    statusText += `<br>💣 폭발까지: ${this.cakeBombTimer.toFixed(1)}초`;
+                }
+                
+                // 바람 효과 표시
+                const levelConfig = this.levelConfig[this.level];
+                if (levelConfig && levelConfig.wind > 0) {
+                    statusText += `<br>💨 바람: ${levelConfig.wind.toFixed(1)}`;
+                }
+                
+                // 환경 정보 표시
+                const envConfig = this.environmentConfig[this.currentEnvironment];
+                if (envConfig) {
+                    statusText += `<br>🌍 환경: ${envConfig.name}`;
+                }
+                
+                cakeInfoDiv.innerHTML = statusText;
+            }
+            
+            applyEnvironment(environmentType) {
+                const envConfig = this.environmentConfig[environmentType];
+                
+                // 하늘색 변경
+                this.renderer.setClearColor(envConfig.skyColor);
+                
+                // 조명 강도 조정
+                this.scene.traverse((child) => {
+                    if (child instanceof THREE.AmbientLight) {
+                        child.intensity = envConfig.ambientLight;
+                    }
+                    if (child instanceof THREE.DirectionalLight) {
+                        child.intensity = envConfig.directionalLight;
+                    }
+                });
+                
+                // 안개 효과 적용
+                this.scene.fog = new THREE.Fog(envConfig.skyColor, envConfig.fogNear, envConfig.fogFar);
+                
+                // 바닥 색상 변경
+                this.scene.traverse((child) => {
+                    if (child instanceof THREE.Mesh && child.geometry instanceof THREE.PlaneGeometry) {
+                        child.material.color.setHex(envConfig.floorColor);
+                    }
+                });
+                
+                // 환경별 특수 효과 추가
+                this.addEnvironmentEffects(environmentType);
+                
+                console.log(`🌍 환경 변경: ${envConfig.name}`);
+            }
+            
+            addEnvironmentEffects(environmentType) {
+                // 기존 환경 효과 제거
+                this.scene.children = this.scene.children.filter(child => 
+                    !child.userData.isEnvironmentEffect
+                );
+                
+                switch(environmentType) {
+                    case 'forest':
+                        this.createForestEffects();
+                        break;
+                    case 'desert':
+                        this.createDesertEffects();
+                        break;
+                    case 'beach':
+                        this.createBeachEffects();
+                        break;
+                    case 'winter':
+                        this.createWinterEffects();
+                        break;
+                    case 'night':
+                        this.createNightEffects();
+                        break;
+                }
+            }
+            
+            createForestEffects() {
+                // 나무 생성
+                for (let i = 0; i < 20; i++) {
+                    const treeGroup = new THREE.Group();
+                    treeGroup.userData.isEnvironmentEffect = true;
+                    
+                    // 나무 줄기
+                    const trunkGeometry = new THREE.CylinderGeometry(0.3, 0.5, 4, 8);
+                    const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+                    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                    trunk.position.y = 2;
+                    trunk.castShadow = true;
+                    
+                    // 나무 잎
+                    const leavesGeometry = new THREE.SphereGeometry(2, 8, 8);
+                    const leavesMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+                    const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+                    leaves.position.y = 4;
+                    leaves.castShadow = true;
+                    
+                    treeGroup.add(trunk);
+                    treeGroup.add(leaves);
+                    
+                    // 도로 양쪽에 배치
+                    const side = Math.random() > 0.5 ? 1 : -1;
+                    treeGroup.position.set(
+                        side * (this.roadWidth/2 + 3 + Math.random() * 5),
+                        0,
+                        -Math.random() * 100
+                    );
+                    
+                    this.scene.add(treeGroup);
+                }
+            }
+            
+            createDesertEffects() {
+                // 선인장 생성
+                for (let i = 0; i < 15; i++) {
+                    const cactusGeometry = new THREE.CylinderGeometry(0.5, 0.5, 3, 8);
+                    const cactusMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+                    const cactus = new THREE.Mesh(cactusGeometry, cactusMaterial);
+                    cactus.userData.isEnvironmentEffect = true;
+                    cactus.castShadow = true;
+                    
+                    const side = Math.random() > 0.5 ? 1 : -1;
+                    cactus.position.set(
+                        side * (this.roadWidth/2 + 2 + Math.random() * 8),
+                        1.5,
+                        -Math.random() * 100
+                    );
+                    
+                    this.scene.add(cactus);
+                }
+            }
+            
+            createBeachEffects() {
+                // 야자수 생성
+                for (let i = 0; i < 10; i++) {
+                    const palmGroup = new THREE.Group();
+                    palmGroup.userData.isEnvironmentEffect = true;
+                    
+                    // 야자수 줄기
+                    const trunkGeometry = new THREE.CylinderGeometry(0.2, 0.3, 5, 8);
+                    const trunkMaterial = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+                    const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+                    trunk.position.y = 2.5;
+                    trunk.castShadow = true;
+                    
+                    // 야자수 잎
+                    for (let j = 0; j < 6; j++) {
+                        const leafGeometry = new THREE.PlaneGeometry(1, 4);
+                        const leafMaterial = new THREE.MeshStandardMaterial({ 
+                            color: 0x228b22,
+                            side: THREE.DoubleSide
+                        });
+                        const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
+                        leaf.position.y = 4.5;
+                        leaf.rotation.y = (j / 6) * Math.PI * 2;
+                        leaf.rotation.x = -Math.PI / 6;
+                        palmGroup.add(leaf);
+                    }
+                    
+                    palmGroup.add(trunk);
+                    
+                    const side = Math.random() > 0.5 ? 1 : -1;
+                    palmGroup.position.set(
+                        side * (this.roadWidth/2 + 3 + Math.random() * 6),
+                        0,
+                        -Math.random() * 100
+                    );
+                    
+                    this.scene.add(palmGroup);
+                }
+            }
+            
+            createWinterEffects() {
+                // 눈 파티클 생성
+                const snowGeometry = new THREE.BufferGeometry();
+                const snowMaterial = new THREE.PointsMaterial({ 
+                    color: 0xffffff, 
+                    size: 0.1,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const snowVertices = [];
+                for (let i = 0; i < 5000; i++) {
+                    snowVertices.push(
+                        (Math.random() - 0.5) * 200,
+                        Math.random() * 50,
+                        (Math.random() - 0.5) * 200
+                    );
+                }
+                
+                snowGeometry.setAttribute('position', new THREE.Float32BufferAttribute(snowVertices, 3));
+                const snow = new THREE.Points(snowGeometry, snowMaterial);
+                snow.userData.isEnvironmentEffect = true;
+                snow.userData.isSnow = true;
+                this.scene.add(snow);
+                
+                // 눈 덮인 나무
+                for (let i = 0; i < 15; i++) {
+                    const treeGeometry = new THREE.ConeGeometry(1.5, 4, 8);
+                    const treeMaterial = new THREE.MeshStandardMaterial({ color: 0x006400 });
+                    const tree = new THREE.Mesh(treeGeometry, treeMaterial);
+                    tree.userData.isEnvironmentEffect = true;
+                    tree.castShadow = true;
+                    
+                    const side = Math.random() > 0.5 ? 1 : -1;
+                    tree.position.set(
+                        side * (this.roadWidth/2 + 2 + Math.random() * 7),
+                        2,
+                        -Math.random() * 100
+                    );
+                    
+                    this.scene.add(tree);
+                }
+            }
+            
+            createNightEffects() {
+                // 가로등 생성
+                for (let i = 0; i < 20; i++) {
+                    const lampGroup = new THREE.Group();
+                    lampGroup.userData.isEnvironmentEffect = true;
+                    
+                    // 가로등 기둥
+                    const poleGeometry = new THREE.CylinderGeometry(0.1, 0.1, 6, 8);
+                    const poleMaterial = new THREE.MeshStandardMaterial({ color: 0x333333 });
+                    const pole = new THREE.Mesh(poleGeometry, poleMaterial);
+                    pole.position.y = 3;
+                    
+                    // 가로등 조명
+                    const lightGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+                    const lightMaterial = new THREE.MeshStandardMaterial({ 
+                        color: 0xffff00,
+                        emissive: 0xffff00,
+                        emissiveIntensity: 0.5
+                    });
+                    const light = new THREE.Mesh(lightGeometry, lightMaterial);
+                    light.position.y = 5.5;
+                    
+                    // 점광원 추가
+                    const pointLight = new THREE.PointLight(0xffff00, 1, 10);
+                    pointLight.position.y = 5.5;
+                    pointLight.castShadow = true;
+                    
+                    lampGroup.add(pole);
+                    lampGroup.add(light);
+                    lampGroup.add(pointLight);
+                    
+                    lampGroup.position.set(
+                        (this.roadWidth/2 + 1),
+                        0,
+                        -i * 5
+                    );
+                    
+                    this.scene.add(lampGroup);
+                }
             }
             
             createLevel() {
@@ -631,6 +1176,10 @@
                 const config = this.levelConfig[this.level];
                 const totalLength = 100; // 목적지까지의 총 길이
                 const destinationZ = -totalLength; // 목적지 Z 좌표
+                
+                // 환경 설정 적용
+                this.currentEnvironment = config.theme || 'normal';
+                this.applyEnvironment(this.currentEnvironment);
 
                 // 고정 장애물 생성
                 const obstacleGeometry = new THREE.BoxGeometry(2, 2, 2);
@@ -982,14 +1531,245 @@
                 
                 if (this.gameState === 'playing') {
                     this.updateCakePosition();
+                    this.updateCakePhysics(deltaTime);
                     this.checkCollisions();
                     this.updateDynamicObstacles();
                 }
                 this.updateCamera();
                 this.updateParticles();
                 this.updateCameraShake();
+                this.updateEnvironmentEffects();
                 this.stars.rotation.y += 0.0001; // 별 배경 움직임
                 this.renderer.render(this.scene, this.camera);
+            }
+            
+            updateCakePhysics(deltaTime) {
+                if (!this.cake.mesh || !this.currentCakeType) return;
+                
+                const config = this.cakeConfig[this.currentCakeType];
+                
+                // 케이크 타입별 물리 효과
+                switch(this.currentCakeType) {
+                    case 'ice':
+                        // 아이스크림 케이크 녹는 효과
+                        if (this.cakeMeltingTimer > 0) {
+                            this.cakeMeltingTimer -= deltaTime;
+                            
+                            // 온도 상승 효과
+                            this.cakeTemperature += deltaTime * 2;
+                            
+                            // 케이크 크기 감소
+                            const meltFactor = this.cakeMeltingTimer / 60;
+                            this.cake.mesh.scale.setScalar(0.5 + meltFactor * 0.5);
+                            
+                            // 안정성 감소
+                            this.cakeInstability = 1.0 - (config.stability * meltFactor);
+                            
+                            if (this.cakeMeltingTimer <= 0) {
+                                this.setGameState('fail', '케이크가 다 녹았습니다!');
+                                return;
+                            }
+                        }
+                        break;
+                        
+                    case 'bomb':
+                        // 폭탄 케이크 타이머
+                        if (this.cakeBombTimer > 0) {
+                            this.cakeBombTimer -= deltaTime;
+                            
+                            // 타이머에 따른 불안정성 증가
+                            this.cakeInstability = 1.0 - (config.stability * (this.cakeBombTimer / 30));
+                            
+                            // 타이머 시각적 효과
+                            const timerRatio = this.cakeBombTimer / 30;
+                            this.cake.mesh.children.forEach(child => {
+                                if (child.geometry instanceof THREE.RingGeometry) {
+                                    child.material.color.setHex(timerRatio > 0.5 ? 0xff0000 : 0xff4400);
+                                    child.scale.setScalar(1 + (1 - timerRatio) * 0.3);
+                                }
+                            });
+                            
+                            if (this.cakeBombTimer <= 0) {
+                                this.setGameState('fail', '폭탄 케이크가 폭발했습니다!');
+                                return;
+                            }
+                        }
+                        break;
+                        
+                    case 'wedding':
+                        // 웨딩 케이크 - 높은 층으로 인한 추가 불안정성
+                        const heightInstability = Math.abs(this.cake.mesh.rotation.x) + Math.abs(this.cake.mesh.rotation.z);
+                        this.cakeInstability = (1.0 - config.stability) + heightInstability * 0.5;
+                        break;
+                        
+                    case 'chocolate':
+                        // 초콜릿 케이크 - 무게감 있는 움직임
+                        if (this.cake.mesh.position.y > 0) {
+                            this.cake.mesh.position.y -= deltaTime * config.weight;
+                        }
+                        break;
+                }
+                
+                // 불안정성에 따른 케이크 떨림 효과
+                if (this.cakeInstability > 0.3) {
+                    const shakeIntensity = (this.cakeInstability - 0.3) * 0.1;
+                    this.cake.mesh.position.x += (Math.random() - 0.5) * shakeIntensity;
+                    this.cake.mesh.position.z += (Math.random() - 0.5) * shakeIntensity;
+                }
+                
+                // 고급 물리 시뮬레이션 적용
+                this.applyAdvancedPhysics(deltaTime);
+                
+                // 케이크 정보 UI 업데이트
+                this.updateCakeInfo();
+            }
+            
+            applyAdvancedPhysics(deltaTime) {
+                if (!this.cake.mesh) return;
+                
+                const config = this.cakeConfig[this.currentCakeType];
+                
+                // 중력 적용
+                const mass = config.weight * this.cakeDensity;
+                const gravityAcceleration = this.gravityForce.clone().multiplyScalar(mass * deltaTime);
+                this.cakeVelocity.add(gravityAcceleration);
+                
+                // 바람 효과 (레벨별 설정)
+                const levelConfig = this.levelConfig[this.level];
+                if (levelConfig && levelConfig.wind > 0) {
+                    this.windForce.set(
+                        (Math.random() - 0.5) * levelConfig.wind,
+                        0,
+                        (Math.random() - 0.5) * levelConfig.wind * 0.5
+                    );
+                    this.cakeVelocity.add(this.windForce.clone().multiplyScalar(deltaTime));
+                }
+                
+                // 액체 물리 (점성 감쇠)
+                const viscosityDamping = 1 - (this.cakeViscosity * deltaTime);
+                this.cakeVelocity.multiplyScalar(viscosityDamping);
+                this.cakeAngularVelocity.multiplyScalar(viscosityDamping);
+                
+                // 탄성 효과 (케이크 변형)
+                const elasticDeformation = this.cakeElasticity * this.cakeInstability;
+                if (elasticDeformation > 0.1) {
+                    // 케이크 모양 변형
+                    const deformationScale = 1 - elasticDeformation * 0.1;
+                    this.cake.mesh.scale.y = deformationScale;
+                    this.cake.mesh.scale.x = 1 + elasticDeformation * 0.05;
+                    this.cake.mesh.scale.z = 1 + elasticDeformation * 0.05;
+                }
+                
+                // 온도 효과
+                this.updateTemperatureEffects(deltaTime);
+                
+                // 케이크 타입별 특수 물리
+                this.applySpecialPhysics(deltaTime, config);
+                
+                // 속도 제한
+                const maxVelocity = 5.0;
+                if (this.cakeVelocity.length() > maxVelocity) {
+                    this.cakeVelocity.normalize().multiplyScalar(maxVelocity);
+                }
+                
+                // 위치 및 회전 업데이트
+                this.cake.mesh.position.add(this.cakeVelocity.clone().multiplyScalar(deltaTime));
+                this.cake.mesh.rotation.x += this.cakeAngularVelocity.x * deltaTime;
+                this.cake.mesh.rotation.y += this.cakeAngularVelocity.y * deltaTime;
+                this.cake.mesh.rotation.z += this.cakeAngularVelocity.z * deltaTime;
+                
+                // 바닥 충돌 처리
+                if (this.cake.mesh.position.y < 0) {
+                    this.cake.mesh.position.y = 0;
+                    this.cakeVelocity.y *= -this.cakeElasticity; // 탄성 반발
+                }
+            }
+            
+            updateTemperatureEffects(deltaTime) {
+                // 환경 온도 영향
+                const ambientTemperature = 25; // 환경 온도
+                const temperatureChangeRate = 0.5; // 온도 변화율
+                
+                // 온도 평형화
+                const temperatureDiff = ambientTemperature - this.cakeTemperature;
+                this.cakeTemperature += temperatureDiff * temperatureChangeRate * deltaTime;
+                
+                // 온도별 물리 효과
+                if (this.cakeTemperature > 30) {
+                    // 뜨거워질수록 더 부드러움
+                    this.cakeElasticity = Math.max(0.1, this.cakeElasticity - deltaTime * 0.1);
+                    this.cakeViscosity = Math.min(0.5, this.cakeViscosity + deltaTime * 0.1);
+                } else if (this.cakeTemperature < 0) {
+                    // 차가워질수록 더 단단함
+                    this.cakeElasticity = Math.min(0.9, this.cakeElasticity + deltaTime * 0.1);
+                    this.cakeViscosity = Math.max(0.05, this.cakeViscosity - deltaTime * 0.1);
+                }
+            }
+            
+            applySpecialPhysics(deltaTime, config) {
+                switch(this.currentCakeType) {
+                    case 'ice':
+                        // 아이스크림 - 온도에 따른 녹는 효과
+                        if (this.cakeTemperature > 0) {
+                            // 부피 감소
+                            this.cakeVolume = Math.max(0.3, this.cakeVolume - deltaTime * 0.02);
+                            this.cake.mesh.scale.setScalar(this.cakeVolume);
+                            
+                            // 액체화 증가
+                            this.cakeViscosity = Math.min(0.8, this.cakeViscosity + deltaTime * 0.1);
+                        }
+                        break;
+                        
+                    case 'chocolate':
+                        // 초콜릿 - 온도에 따른 경화/연화
+                        if (this.cakeTemperature > 25) {
+                            // 녹아서 부드러워짐
+                            this.cakeElasticity = Math.max(0.2, this.cakeElasticity - deltaTime * 0.1);
+                            this.cakeViscosity = Math.min(0.4, this.cakeViscosity + deltaTime * 0.1);
+                        }
+                        break;
+                        
+                    case 'wedding':
+                        // 웨딩 케이크 - 다층 구조로 인한 불안정성
+                        const heightEffect = config.layers * 0.1;
+                        this.cakeAngularVelocity.x += (Math.random() - 0.5) * heightEffect * deltaTime;
+                        this.cakeAngularVelocity.z += (Math.random() - 0.5) * heightEffect * deltaTime;
+                        break;
+                        
+                    case 'bomb':
+                        // 폭탄 케이크 - 진동 효과
+                        if (this.cakeBombTimer > 0) {
+                            const vibrationIntensity = (1 - this.cakeBombTimer / 30) * 0.5;
+                            this.cakeVelocity.x += (Math.random() - 0.5) * vibrationIntensity;
+                            this.cakeVelocity.z += (Math.random() - 0.5) * vibrationIntensity;
+                        }
+                        break;
+                }
+            }
+            
+            updateEnvironmentEffects() {
+                // 환경별 동적 효과 업데이트
+                this.scene.traverse((child) => {
+                    if (child.userData.isEnvironmentEffect) {
+                        // 눈 내리는 효과
+                        if (child.userData.isSnow) {
+                            const positions = child.geometry.attributes.position.array;
+                            for (let i = 1; i < positions.length; i += 3) {
+                                positions[i] -= 0.1; // 눈 낙하
+                                if (positions[i] < 0) {
+                                    positions[i] = 50; // 눈 재생성
+                                }
+                            }
+                            child.geometry.attributes.position.needsUpdate = true;
+                        }
+                        
+                        // 나무 흔들림 효과
+                        if (child.children.length > 0) {
+                            const time = Date.now() * 0.001;
+                            child.rotation.z = Math.sin(time + child.position.x) * 0.02;
+                        }
+                    }
+                });
             }
 
             onWindowResize() {
