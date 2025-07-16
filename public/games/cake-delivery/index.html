@@ -339,9 +339,17 @@
                         }
                     });
                     
+                    // GLB Scene 내부 오브젝트들의 위치 강제 조정
+                    glbScene.traverse((child) => {
+                        if (child.name === 'Scene' && child.type === 'Group') {
+                            console.log(`🔧 Scene 위치 수정: y: ${child.position.y} → 0`);
+                            child.position.y = 0; // Scene을 지상으로 올리기
+                        }
+                    });
+                    
                     // 바운딩 박스로 모델 위치 조정
                     const box = new THREE.Box3().setFromObject(glbScene);
-                    glbScene.position.y = -box.min.y; // 바닥에 맞춤
+                    glbScene.position.y = Math.max(0, -box.min.y); // 최소 0 이상으로 설정
                     
                     // GLB Scene을 직접 playerMesh로 사용
                     playerMesh = glbScene;
