@@ -391,6 +391,89 @@ body {
     }
 }
 
+/* 타이머 스타일 */
+.timer-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.timer-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--warning);
+}
+
+.timer-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--warning);
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 게임 모드 선택 패널 */
+.mode-selection-panel {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    max-width: 600px;
+    min-width: 500px;
+}
+
+.mode-selection {
+    display: flex;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 2rem 1.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 2px solid var(--primary);
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    color: var(--text-primary);
+}
+
+.mode-btn:hover {
+    background: rgba(59, 130, 246, 0.2);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+}
+
+.mode-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.mode-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.mode-desc {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* 듀얼 모드 스타일 */
+.dual-mode.hidden {
+    display: none;
+}
+
+.solo-mode.hidden {
+    display: none;
+}
+
 /* 숨김 클래스 */
 .hidden {
     display: none !important;

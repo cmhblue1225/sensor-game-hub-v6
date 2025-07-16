@@ -19,6 +19,12 @@
         <div class="ui-panel score-panel">
             <div class="score-title">🎯 점수</div>
             <div class="score-value" id="scoreValue">0</div>
+            
+            <!-- 타이머 -->
+            <div class="timer-section">
+                <div class="timer-title">⏱️ 시간</div>
+                <div class="timer-value" id="timerValue">3:00</div>
+            </div>
             <div class="score-details">
                 <div class="score-item">
                     <span>적중:</span>
@@ -45,19 +51,49 @@
                 <span class="status-text">서버 연결</span>
                 <div class="status-indicator" id="serverStatus"></div>
             </div>
-            <div class="status-item">
+            <div class="status-item solo-mode" id="soloSensorStatus">
                 <span class="status-text">센서 연결</span>
                 <div class="status-indicator" id="sensorStatus"></div>
             </div>
+            <div class="status-item dual-mode hidden" id="dualSensorStatus">
+                <span class="status-text">센서1 연결</span>
+                <div class="status-indicator" id="sensor1Status"></div>
+            </div>
+            <div class="status-item dual-mode hidden" id="dualSensorStatus2">
+                <span class="status-text">센서2 연결</span>
+                <div class="status-indicator" id="sensor2Status"></div>
+            </div>
             <div class="status-item">
-                <span class="status-text" id="gameStatusText">게임 준비 중</span>
+                <span class="status-text" id="gameStatusText">게임 모드 선택</span>
+            </div>
+        </div>
+        
+        <!-- 게임 모드 선택 패널 -->
+        <div class="ui-panel mode-selection-panel fade-in" id="modeSelectionPanel">
+            <div class="session-title">🎯 Shot Target</div>
+            <div class="session-instructions">
+                게임 모드를 선택하세요!
+            </div>
+            
+            <div class="mode-selection">
+                <button class="mode-btn" id="soloModeBtn">
+                    <div class="mode-icon">🎯</div>
+                    <div class="mode-title">싱글 플레이</div>
+                    <div class="mode-desc">혼자서 표적을 맞춰보세요</div>
+                </button>
+                
+                <button class="mode-btn" id="dualModeBtn">
+                    <div class="mode-icon">⚔️</div>
+                    <div class="mode-title">경쟁 플레이</div>
+                    <div class="mode-desc">2명이 경쟁하여 플레이</div>
+                </button>
             </div>
         </div>
         
         <!-- 세션 정보 패널 -->
-        <div class="ui-panel session-panel fade-in" id="sessionPanel">
-            <div class="session-title">🎯 Shot Target</div>
-            <div class="session-instructions">
+        <div class="ui-panel session-panel fade-in hidden" id="sessionPanel">
+            <div class="session-title" id="sessionTitle">🎯 Shot Target - 싱글 플레이</div>
+            <div class="session-instructions" id="sessionInstructions">
                 모바일 센서로 조준하여 표적을 맞추는 게임!<br>
                 조준점을 표적 중앙에 맞추면 자동으로 발사됩니다.<br>
                 아래 코드를 모바일에서 입력하거나 QR 코드를 스캔하세요.

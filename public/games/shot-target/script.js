@@ -1,12 +1,9 @@
 // Shot Target Game Class
 class ShotTargetGame {
     constructor() {
-        // ✅ 필수 패턴: SessionSDK 초기화
-        this.sdk = new SessionSDK({
-            gameId: 'shot-target',
-            gameType: 'solo',  // ✅ 필수: solo 타입 설정
-            debug: true
-        });
+        // 게임 모드 (초기값: null, 선택 후 설정)
+        this.gameMode = null;
+        this.sdk = null;
         
         // 게임 요소
         this.canvas = document.getElementById('gameCanvas');
@@ -16,6 +13,8 @@ class ShotTargetGame {
         this.state = {
             connected: false,
             sensorConnected: false,
+            sensor1Connected: false,  // dual 모드용
+            sensor2Connected: false,  // dual 모드용
             playing: false,
             paused: false,
             score: 0,
@@ -23,10 +22,12 @@ class ShotTargetGame {
             misses: 0,
             comboCount: 0,
             maxCombo: 0,
-            sessionCode: null
+            sessionCode: null,
+            timeLeft: 180,  // 3분 = 180초
+            gameStartTime: null
         };
         
-        // 조준 시스템
+        // 조준 시스템 (dual 모드용으로 확장)
         this.crosshair = {
             x: 0,
             y: 0,
@@ -35,14 +36,24 @@ class ShotTargetGame {
             smoothing: 0.1  // 부드러운 움직임을 위한 보간
         };
         
+        // dual 모드용 두 번째 조준점
+        this.crosshair2 = {
+            x: 0,
+            y: 0,
+            targetX: 0,
+            targetY: 0,
+            smoothing: 0.1
+        };
+        
         // 표적 시스템
         this.targets = [];
         this.bullets = [];
         this.effects = [];
         
-        // 센서 데이터
+        // 센서 데이터 (dual 모드용으로 확장)
         this.sensorData = {
-            tilt: { x: 0, y: 0 }
+            sensor1: { tilt: { x: 0, y: 0 } },  // solo 및 dual의 첫 번째 센서
+            sensor2: { tilt: { x: 0, y: 0 } }   // dual의 두 번째 센서
         };
         
         // 게임 설정
@@ -69,17 +80,29 @@ class ShotTargetGame {
             accuracyValue: document.getElementById('accuracyValue'),
             serverStatus: document.getElementById('serverStatus'),
             sensorStatus: document.getElementById('sensorStatus'),
+            sensor1Status: document.getElementById('sensor1Status'),
+            sensor2Status: document.getElementById('sensor2Status'),
             gameStatusText: document.getElementById('gameStatusText'),
             sessionPanel: document.getElementById('sessionPanel'),
+            sessionTitle: document.getElementById('sessionTitle'),
+            sessionInstructions: document.getElementById('sessionInstructions'),
             sessionCode: document.getElementById('sessionCode'),
             qrContainer: document.getElementById('qrContainer'),
             gameInfoPanel: document.getElementById('gameInfoPanel'),
             crosshair: document.getElementById('crosshair'),
-            pauseBtn: document.getElementById('pauseBtn')
+            pauseBtn: document.getElementById('pauseBtn'),
+            timerValue: document.getElementById('timerValue'),
+            modeSelectionPanel: document.getElementById('modeSelectionPanel'),
+            soloModeBtn: document.getElementById('soloModeBtn'),
+            dualModeBtn: document.getElementById('dualModeBtn'),
+            soloSensorStatus: document.getElementById('soloSensorStatus'),
+            dualSensorStatus: document.getElementById('dualSensorStatus'),
+            dualSensorStatus2: document.getElementById('dualSensorStatus2')
         };
         
         this.gameLoop = null;
         this.lastTargetSpawn = 0;
+        this.timerInterval = null;
         
         this.initializeGame();
     }
@@ -88,12 +111,10 @@ class ShotTargetGame {
         console.log('🎯 Shot Target Game 초기화');
         
         this.setupCanvas();
-        this.setupSDKEvents();
+        this.setupModeSelection();  // 게임 모드 선택 설정
         this.setupKeyboardControls();  // 키보드 테스트용
         this.startGameLoop();
-        
-        // ✅ 필수 패턴: 서버 연결을 기다린 후 세션 생성
-        // SDK 이벤트 핸들러에서 처리됨
+        this.updateGameStatus('게임 모드를 선택하세요');
     }
     
     setupCanvas() {
@@ -110,6 +131,73 @@ class ShotTargetGame {
         
         window.addEventListener('resize', resize);
         resize();
+    }
+    
+    setupModeSelection() {
+        // 싱글 플레이 모드 선택
+        this.elements.soloModeBtn.addEventListener('click', () => {
+            this.selectGameMode('solo');
+        });
+        
+        // 경쟁 플레이 모드 선택  
+        this.elements.dualModeBtn.addEventListener('click', () => {
+            this.selectGameMode('dual');
+        });
+    }
+    
+    async selectGameMode(mode) {
+        console.log(`🎯 게임 모드 선택: ${mode}`);
+        this.gameMode = mode;
+        
+        // ✅ 필수 패턴: AI_ASSISTANT_PROMPTS.md 지침에 따라 SessionSDK 초기화
+        this.sdk = new SessionSDK({
+            gameId: 'shot-target',
+            gameType: mode,  // ✅ 선택된 모드로 설정
+            debug: true
+        });
+        
+        // 모드 선택 패널 숨기기
+        this.elements.modeSelectionPanel.classList.add('hidden');
+        
+        // 모드에 따른 UI 설정
+        this.setupModeUI(mode);
+        
+        // SDK 이벤트 설정
+        this.setupSDKEvents();
+        
+        // 세션 패널 표시
+        this.elements.sessionPanel.classList.remove('hidden');
+        
+        this.updateGameStatus('서버 연결 중...');
+    }
+    
+    setupModeUI(mode) {
+        if (mode === 'solo') {
+            // 싱글 모드 UI
+            this.elements.sessionTitle.textContent = '🎯 Shot Target - 싱글 플레이';
+            this.elements.sessionInstructions.innerHTML = 
+                '모바일 센서로 조준하여 표적을 맞추는 게임!<br>' +
+                '조준점을 표적 중앙에 맞추면 자동으로 발사됩니다.<br>' +
+                '아래 코드를 모바일에서 입력하거나 QR 코드를 스캔하세요.';
+            
+            // solo 모드 센서 상태 표시
+            this.elements.soloSensorStatus.classList.remove('hidden');
+            this.elements.dualSensorStatus.classList.add('hidden');
+            this.elements.dualSensorStatus2.classList.add('hidden');
+            
+        } else if (mode === 'dual') {
+            // 듀얼 모드 UI
+            this.elements.sessionTitle.textContent = '⚔️ Shot Target - 경쟁 플레이';
+            this.elements.sessionInstructions.innerHTML = 
+                '2명이 경쟁하는 표적 맞추기 게임!<br>' +
+                '각자 모바일로 조준하여 더 많은 표적을 맞춰보세요.<br>' +
+                '아래 코드를 두 개의 모바일에서 입력하거나 QR 코드를 스캔하세요.';
+            
+            // dual 모드 센서 상태 표시
+            this.elements.soloSensorStatus.classList.add('hidden');
+            this.elements.dualSensorStatus.classList.remove('hidden');
+            this.elements.dualSensorStatus2.classList.remove('hidden');
+        }
     }
     
     setupSDKEvents() {
@@ -137,16 +225,42 @@ class ShotTargetGame {
             this.updateGameStatus('센서 연결 대기 중...');
         });
         
-        // 센서 연결
+        // 센서 연결 (AI_ASSISTANT_PROMPTS.md 지침: data.sensorId로 구분)
         this.sdk.on('sensor-connected', (event) => {
             const data = event.detail || event;  // ✅ 중요!
-            this.state.sensorConnected = true;
-            this.updateSensorStatus(true);
-            this.updateGameStatus('센서 연결됨 - 게임 준비 완료');
+            console.log('🔍 센서 연결됨:', data);
             
-            // 세션 패널 숨기고 게임 시작
-            this.hideSessionPanel();
-            this.startGame();
+            if (this.gameMode === 'solo') {
+                this.state.sensorConnected = true;
+                this.updateSensorStatus(true);
+                this.updateGameStatus('센서 연결됨 - 게임 준비 완료');
+                
+                // 세션 패널 숨기고 게임 시작
+                this.hideSessionPanel();
+                this.startGame();
+                
+            } else if (this.gameMode === 'dual') {
+                // dual 모드에서는 sensorId로 구분
+                const sensorId = data.sensorId || 'sensor1';  // 기본값 설정
+                
+                if (sensorId === 'sensor1') {
+                    this.state.sensor1Connected = true;
+                    this.updateSensor1Status(true);
+                } else if (sensorId === 'sensor2') {
+                    this.state.sensor2Connected = true;
+                    this.updateSensor2Status(true);
+                }
+                
+                // 두 센서 모두 연결되면 게임 시작
+                if (this.state.sensor1Connected && this.state.sensor2Connected) {
+                    this.updateGameStatus('모든 센서 연결됨 - 게임 준비 완료');
+                    this.hideSessionPanel();
+                    this.startGame();
+                } else {
+                    const connectedCount = (this.state.sensor1Connected ? 1 : 0) + (this.state.sensor2Connected ? 1 : 0);
+                    this.updateGameStatus(`센서 연결됨 (${connectedCount}/2) - 추가 연결 대기 중...`);
+                }
+            }
         });
         
         this.sdk.on('sensor-disconnected', () => {
@@ -156,7 +270,7 @@ class ShotTargetGame {
             this.pauseGame();
         });
         
-        // ✅ 필수 패턴: 센서 데이터 처리
+        // ✅ 필수 패턴: 센서 데이터 처리 (AI_ASSISTANT_PROMPTS.md 지침에 따라)
         this.sdk.on('sensor-data', (event) => {
             const data = event.detail || event;  // ✅ 중요!
             this.processSensorData(data);
@@ -252,11 +366,20 @@ class ShotTargetGame {
     
     processSensorData(data) {
         const sensorData = data.data;
+        const sensorId = data.sensorId || 'sensor';  // solo 모드 기본값
         
         // 기울기 데이터로 조준점 이동
         if (sensorData.orientation) {
-            this.sensorData.tilt.x = sensorData.orientation.beta || 0;  // X축 기울기
-            this.sensorData.tilt.y = sensorData.orientation.gamma || 0; // Y축 기울기
+            if (this.gameMode === 'solo' || sensorId === 'sensor1') {
+                // solo 모드 또는 dual 모드의 첫 번째 센서
+                this.sensorData.sensor1.tilt.x = sensorData.orientation.beta || 0;
+                this.sensorData.sensor1.tilt.y = sensorData.orientation.gamma || 0;
+                
+            } else if (this.gameMode === 'dual' && sensorId === 'sensor2') {
+                // dual 모드의 두 번째 센서
+                this.sensorData.sensor2.tilt.x = sensorData.orientation.beta || 0;
+                this.sensorData.sensor2.tilt.y = sensorData.orientation.gamma || 0;
+            }
             
             // 게임 로직 적용
             if (this.state.playing && !this.state.paused) {
@@ -266,29 +389,125 @@ class ShotTargetGame {
     }
     
     applySensorMovement() {
-        // 기울기를 화면 좌표로 변환
+        // 센서 이동 범위를 전체 화면으로 확장 (요청사항)
         const sensitivity = 15;  // 센서 감도
-        const maxTilt = 30;      // 최대 기울기 각도
+        const maxTilt = 25;      // 최대 기울기 각도 (더 민감하게 조정)
         
-        // 기울기 정규화 (-1 ~ 1)
-        const normalizedTiltX = Math.max(-1, Math.min(1, this.sensorData.tilt.y / maxTilt));
-        const normalizedTiltY = Math.max(-1, Math.min(1, this.sensorData.tilt.x / maxTilt));
-        
-        // 조준점 목표 위치 계산
-        this.crosshair.targetX = this.canvas.width / 2 + (normalizedTiltX * this.canvas.width / 2 * 0.8);
-        this.crosshair.targetY = this.canvas.height / 2 + (normalizedTiltY * this.canvas.height / 2 * 0.8);
-        
-        // 화면 경계 제한
-        this.crosshair.targetX = Math.max(0, Math.min(this.canvas.width, this.crosshair.targetX));
-        this.crosshair.targetY = Math.max(0, Math.min(this.canvas.height, this.crosshair.targetY));
+        if (this.gameMode === 'solo') {
+            // 싱글 모드: 첫 번째 센서만 사용
+            const normalizedTiltX = Math.max(-1, Math.min(1, this.sensorData.sensor1.tilt.y / maxTilt));
+            const normalizedTiltY = Math.max(-1, Math.min(1, this.sensorData.sensor1.tilt.x / maxTilt));
+            
+            // 조준점 목표 위치 계산 (전체 화면 범위로 확장)
+            this.crosshair.targetX = this.canvas.width / 2 + (normalizedTiltX * this.canvas.width / 2);
+            this.crosshair.targetY = this.canvas.height / 2 + (normalizedTiltY * this.canvas.height / 2);
+            
+            // 화면 경계 제한
+            this.crosshair.targetX = Math.max(0, Math.min(this.canvas.width, this.crosshair.targetX));
+            this.crosshair.targetY = Math.max(0, Math.min(this.canvas.height, this.crosshair.targetY));
+            
+        } else if (this.gameMode === 'dual') {
+            // 듀얼 모드: 두 센서 모두 처리
+            
+            // 첫 번째 센서 (좌측 플레이어)
+            const normalizedTiltX1 = Math.max(-1, Math.min(1, this.sensorData.sensor1.tilt.y / maxTilt));
+            const normalizedTiltY1 = Math.max(-1, Math.min(1, this.sensorData.sensor1.tilt.x / maxTilt));
+            
+            this.crosshair.targetX = this.canvas.width / 4 + (normalizedTiltX1 * this.canvas.width / 4);
+            this.crosshair.targetY = this.canvas.height / 2 + (normalizedTiltY1 * this.canvas.height / 2);
+            
+            // 화면 경계 제한 (좌측 절반)
+            this.crosshair.targetX = Math.max(0, Math.min(this.canvas.width / 2, this.crosshair.targetX));
+            this.crosshair.targetY = Math.max(0, Math.min(this.canvas.height, this.crosshair.targetY));
+            
+            // 두 번째 센서 (우측 플레이어)
+            const normalizedTiltX2 = Math.max(-1, Math.min(1, this.sensorData.sensor2.tilt.y / maxTilt));
+            const normalizedTiltY2 = Math.max(-1, Math.min(1, this.sensorData.sensor2.tilt.x / maxTilt));
+            
+            this.crosshair2.targetX = this.canvas.width * 3/4 + (normalizedTiltX2 * this.canvas.width / 4);
+            this.crosshair2.targetY = this.canvas.height / 2 + (normalizedTiltY2 * this.canvas.height / 2);
+            
+            // 화면 경계 제한 (우측 절반)
+            this.crosshair2.targetX = Math.max(this.canvas.width / 2, Math.min(this.canvas.width, this.crosshair2.targetX));
+            this.crosshair2.targetY = Math.max(0, Math.min(this.canvas.height, this.crosshair2.targetY));
+        }
     }
     
     startGame() {
         this.state.playing = true;
         this.state.paused = false;
+        this.state.timeLeft = 180;  // 3분 = 180초
+        this.state.gameStartTime = Date.now();
         this.updateGameStatus('게임 진행 중...');
         this.lastTargetSpawn = Date.now();
+        
+        // 타이머 시작 (3분 게임 시간)
+        this.startTimer();
+        
         console.log('🎯 Shot Target 게임 시작!');
+    }
+    
+    startTimer() {
+        // 기존 타이머 정리
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+        }
+        
+        this.timerInterval = setInterval(() => {
+            if (this.state.playing && !this.state.paused) {
+                this.state.timeLeft--;
+                this.updateTimerDisplay();
+                
+                // 시간 종료 시 게임 끝
+                if (this.state.timeLeft <= 0) {
+                    this.endGame();
+                }
+            }
+        }, 1000);
+    }
+    
+    updateTimerDisplay() {
+        const minutes = Math.floor(this.state.timeLeft / 60);
+        const seconds = this.state.timeLeft % 60;
+        const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        this.elements.timerValue.textContent = timeString;
+        
+        // 시간이 30초 이하일 때 빨간색으로 표시
+        if (this.state.timeLeft <= 30) {
+            this.elements.timerValue.style.color = 'var(--error)';
+        } else {
+            this.elements.timerValue.style.color = 'var(--warning)';
+        }
+    }
+    
+    endGame() {
+        this.state.playing = false;
+        
+        // 타이머 정리
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+        
+        this.updateGameStatus('게임 종료!');
+        
+        // 게임 결과 표시
+        let resultMessage = `🎯 게임 종료!\n최종 점수: ${this.state.score.toLocaleString()}점\n`;
+        resultMessage += `적중: ${this.state.hits}발, 빗나감: ${this.state.misses}발\n`;
+        resultMessage += `정확도: ${this.getAccuracy()}%\n`;
+        resultMessage += `최대 콤보: ${this.state.maxCombo}`;
+        
+        setTimeout(() => {
+            alert(resultMessage);
+        }, 1000);
+        
+        console.log('🎯 게임 종료:', resultMessage);
+    }
+    
+    getAccuracy() {
+        const total = this.state.hits + this.state.misses;
+        return total > 0 ? ((this.state.hits / total) * 100).toFixed(1) : 100;
     }
     
     pauseGame() {
@@ -317,19 +536,38 @@ class ShotTargetGame {
         this.state.misses = 0;
         this.state.comboCount = 0;
         this.state.maxCombo = 0;
+        this.state.timeLeft = 180;  // 3분으로 리셋
         
         this.targets = [];
         this.bullets = [];
         this.effects = [];
         
+        // 타이머 정리
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+        
+        // 조준점 초기화
         this.crosshair.x = this.canvas.width / 2;
         this.crosshair.y = this.canvas.height / 2;
         this.crosshair.targetX = this.crosshair.x;
         this.crosshair.targetY = this.crosshair.y;
         
-        this.updateScore();
+        this.crosshair2.x = this.canvas.width / 2;
+        this.crosshair2.y = this.canvas.height / 2;
+        this.crosshair2.targetX = this.crosshair2.x;
+        this.crosshair2.targetY = this.crosshair2.y;
         
-        if (this.state.sensorConnected) {
+        this.updateScore();
+        this.updateTimerDisplay();
+        
+        // 게임 모드에 따른 재시작 조건 확인
+        const canRestart = this.gameMode === 'solo' ? 
+            this.state.sensorConnected : 
+            (this.state.sensor1Connected && this.state.sensor2Connected);
+            
+        if (canRestart) {
             this.startGame();
         }
     }
@@ -368,7 +606,7 @@ class ShotTargetGame {
     }
     
     tryShoot() {
-        // 조준점 근처의 표적 찾기
+        // 첫 번째 조준점으로 표적 찾기
         for (let i = 0; i < this.targets.length; i++) {
             const target = this.targets[i];
             const dx = this.crosshair.x - target.x;
@@ -377,21 +615,41 @@ class ShotTargetGame {
             
             // 조준점이 표적의 히트존 내에 있으면 자동 발사
             if (distance <= this.config.hitRadius) {
-                this.shootTarget(target, i);
+                this.shootTarget(target, i, 1);  // 플레이어 1
                 return;
+            }
+        }
+        
+        // dual 모드에서 두 번째 조준점도 확인
+        if (this.gameMode === 'dual') {
+            for (let i = 0; i < this.targets.length; i++) {
+                const target = this.targets[i];
+                const dx = this.crosshair2.x - target.x;
+                const dy = this.crosshair2.y - target.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // 두 번째 조준점이 표적의 히트존 내에 있으면 자동 발사
+                if (distance <= this.config.hitRadius) {
+                    this.shootTarget(target, i, 2);  // 플레이어 2
+                    return;
+                }
             }
         }
     }
     
-    shootTarget(target, index) {
-        // 총알 생성
+    shootTarget(target, index, playerId = 1) {
+        // 총알 생성 (플레이어에 따라 시작 위치 결정)
+        const shooterX = playerId === 1 ? this.crosshair.x : this.crosshair2.x;
+        const shooterY = playerId === 1 ? this.crosshair.y : this.crosshair2.y;
+        
         this.bullets.push({
-            x: this.crosshair.x,
-            y: this.crosshair.y,
+            x: shooterX,
+            y: shooterY,
             targetX: target.x,
             targetY: target.y,
             speed: this.config.bulletSpeed,
-            target: target
+            target: target,
+            playerId: playerId  // 누가 발사했는지 기록
         });
         
         // 표적 제거
@@ -478,6 +736,12 @@ class ShotTargetGame {
         // 조준점 위치를 DOM 요소에 반영
         this.elements.crosshair.style.left = this.crosshair.x + 'px';
         this.elements.crosshair.style.top = this.crosshair.y + 'px';
+        
+        // dual 모드에서 두 번째 조준점 처리
+        if (this.gameMode === 'dual') {
+            this.crosshair2.x += (this.crosshair2.targetX - this.crosshair2.x) * this.crosshair2.smoothing;
+            this.crosshair2.y += (this.crosshair2.targetY - this.crosshair2.y) * this.crosshair2.smoothing;
+        }
         
         // 새 표적 생성
         if (now - this.lastTargetSpawn > this.config.targetSpawnInterval) {
@@ -612,6 +876,28 @@ class ShotTargetGame {
         });
         
         this.ctx.globalAlpha = 1;
+        
+        // dual 모드에서 두 번째 조준점 렌더링
+        if (this.gameMode === 'dual') {
+            this.renderSecondCrosshair();
+        }
+    }
+    
+    renderSecondCrosshair() {
+        // 두 번째 조준점 (다른 색상으로 구분)
+        this.ctx.beginPath();
+        this.ctx.arc(this.crosshair2.x, this.crosshair2.y, 15, 0, Math.PI * 2);
+        this.ctx.strokeStyle = '#f59e0b';  // 주황색
+        this.ctx.lineWidth = 3;
+        this.ctx.stroke();
+        
+        // 십자 표시
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.crosshair2.x - 10, this.crosshair2.y);
+        this.ctx.lineTo(this.crosshair2.x + 10, this.crosshair2.y);
+        this.ctx.moveTo(this.crosshair2.x, this.crosshair2.y - 10);
+        this.ctx.lineTo(this.crosshair2.x, this.crosshair2.y + 10);
+        this.ctx.stroke();
     }
     
     updateScore() {
@@ -631,6 +917,18 @@ class ShotTargetGame {
     
     updateSensorStatus(connected) {
         this.elements.sensorStatus.classList.toggle('connected', connected);
+    }
+    
+    updateSensor1Status(connected) {
+        if (this.elements.sensor1Status) {
+            this.elements.sensor1Status.classList.toggle('connected', connected);
+        }
+    }
+    
+    updateSensor2Status(connected) {
+        if (this.elements.sensor2Status) {
+            this.elements.sensor2Status.classList.toggle('connected', connected);
+        }
     }
     
     updateGameStatus(status) {
