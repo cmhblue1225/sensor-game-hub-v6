@@ -371,6 +371,7 @@
                     playerMesh.userData.isDirectGLB = true;
                     
                     // GLB 모델 구조 디버깅
+                    const debugBox = new THREE.Box3().setFromObject(playerMesh);
                     console.log(`🔍 GLB 모델 구조 분석 (${playerLabel}):`, {
                         glbModel: {
                             type: playerMesh.type,
@@ -378,8 +379,8 @@
                             position: { x: playerMesh.position.x, y: playerMesh.position.y, z: playerMesh.position.z }
                         },
                         boundingBox: {
-                            min: { x: box.min.x.toFixed(2), y: box.min.y.toFixed(2), z: box.min.z.toFixed(2) },
-                            max: { x: box.max.x.toFixed(2), y: box.max.y.toFixed(2), z: box.max.z.toFixed(2) }
+                            min: { x: debugBox.min.x.toFixed(2), y: debugBox.min.y.toFixed(2), z: debugBox.min.z.toFixed(2) },
+                            max: { x: debugBox.max.x.toFixed(2), y: debugBox.max.y.toFixed(2), z: debugBox.max.z.toFixed(2) }
                         },
                         isDirectGLB: true
                     });
