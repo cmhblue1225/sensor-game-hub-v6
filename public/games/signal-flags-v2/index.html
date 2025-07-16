@@ -870,10 +870,22 @@
             }
             
             onDefaultStateDetected(data) {
+                // 현재 게임 상태가 대기 중이 아니면 무시
+                if (this.gameState !== 'playing' && this.gameState !== 'ready') {
+                    console.log('⚠️ 게임 상태가 적절하지 않음 - 디폴트 상태 감지 무시');
+                    return;
+                }
+                
                 console.log('📍 디폴트 상태 감지됨:', data);
                 
                 // 센서 ID 추출
                 const sensorId = data.playerId || data.sensorId || `sensor${this.sensorsInDefaultState.size + 1}`;
+                
+                // 이미 디폴트 상태인 센서는 무시
+                if (this.sensorsInDefaultState.has(sensorId)) {
+                    console.log(`📍 ${sensorId} 이미 디폴트 상태 - 무시`);
+                    return;
+                }
                 
                 // 디폴트 상태 센서 추가
                 this.sensorsInDefaultState.add(sensorId);
@@ -884,7 +896,7 @@
                 
                 // 모든 센서가 디폴트 상태가 되면 라운드 시작
                 if (this.sensorsInDefaultState.size >= this.connectedSensors.size && this.connectedSensors.size >= 2) {
-                    console.log('✅ 모든 센서가 디폴트 상태 - 라운드 실행');
+                    console.log('✅ 모든 센서가 디폴트 상태 - 라운드 실행 준비');
                     
                     // 사용자에게 즉시 알림
                     this.elements.statusMessage.textContent = '🚀 모든 센서 준비 완료! 1초 후 라운드 시작...';
@@ -897,6 +909,7 @@
                     
                     // 1초 후 바로 라운드 실행
                     setTimeout(() => {
+                        console.log('⏰ 1초 대기 완료 - 라운드 실행');
                         this.startRoundExecution();
                     }, 1000);
                 }
@@ -1028,29 +1041,34 @@
                 // 게임 중이 아니면 무시
                 if (this.gameState !== 'playing') return;
                 
-                console.log('📡 센서 데이터 수신:', data);
-                
                 // 센서 데이터에서 방향 판정
                 const sensorId = data.sensorId;
                 const orientation = data.data.orientation;
                 
+                // 필수 조건 체크: 데이터 존재 및 중복 응답 방지
                 if (!orientation || this.currentRoundData.responses.has(sensorId)) {
-                    return; // 이미 응답했거나 데이터 없음
+                    if (this.currentRoundData.responses.has(sensorId)) {
+                        // 이미 응답한 센서는 로그만 출력하고 무시
+                        console.log(`⚠️ ${sensorId} 이미 응답함 - 추가 응답 무시`);
+                    }
+                    return;
                 }
                 
                 const { beta, gamma } = orientation;
                 const detectedDirection = this.detectDirection(beta, gamma);
                 
                 if (detectedDirection) {
-                    console.log(`🎯 방향 감지: ${sensorId} → ${detectedDirection}`);
+                    console.log(`🎯 방향 감지: ${sensorId} → ${detectedDirection} (첫 번째 응답)`);
                     
-                    // 즉시 응답 처리
+                    // 즉시 응답 처리 - 한 번만 처리됨을 보장
                     this.handlePlayerResponse({
                         sensorId: sensorId,
                         direction: detectedDirection,
                         responseTime: Date.now() - this.currentRoundData.startTime,
                         timestamp: Date.now()
                     });
+                } else {
+                    // 방향 감지되지 않은 경우는 로그 출력하지 않음 (스팸 방지)
                 }
             }
             
@@ -1078,9 +1096,15 @@
             handlePlayerResponse(data) {
                 const { sensorId, direction, responseTime } = data;
                 
-                // 이미 응답한 센서는 무시
+                // 게임 상태 확인 - 게임 중이 아니면 무시
+                if (this.gameState !== 'playing') {
+                    console.log(`⚠️ 게임 중이 아님 - ${sensorId} 응답 무시 (상태: ${this.gameState})`);
+                    return;
+                }
+                
+                // 이미 응답한 센서는 무시 (중복 응답 방지)
                 if (this.currentRoundData.responses.has(sensorId)) {
-                    console.log(`⚠️ ${sensorId} 이미 응답함 - 무시`);
+                    console.log(`⚠️ ${sensorId} 이미 응답함 - 중복 응답 무시`);
                     return;
                 }
                 
@@ -1088,7 +1112,7 @@
                 const correctResponse = this.currentRoundData.correctResponses.get(sensorId);
                 const isCorrect = direction === correctResponse;
                 
-                // 응답 저장
+                // 응답 저장 (한 번만 저장됨을 보장)
                 this.currentRoundData.responses.set(sensorId, {
                     direction: direction,
                     responseTime: responseTime,
@@ -1096,9 +1120,9 @@
                     isCorrect: isCorrect
                 });
                 
-                console.log(`🎯 플레이어 응답 접수: ${sensorId} → ${direction} (정답: ${correctResponse}) ${isCorrect ? '✅' : '❌'}`);
+                console.log(`🎯 플레이어 응답 접수: ${sensorId} → ${direction} (정답: ${correctResponse}) ${isCorrect ? '✅' : '❌'} [응답 ${this.currentRoundData.responses.size}/${this.connectedSensors.size}]`);
                 
-                // 즉시 점수 업데이트
+                // 즉시 점수 업데이트 (한 번만 실행됨)
                 if (sensorId.includes('1') || sensorId === 'sensor1') {
                     this.scores.player1 = Math.max(0, this.scores.player1 + (isCorrect ? 1 : -1));
                     console.log(`📊 플레이어 1 점수: ${this.scores.player1} (${isCorrect ? '+1' : '-1'})`);
@@ -1112,7 +1136,7 @@
                 
                 // 모든 플레이어가 응답했으면 라운드 종료
                 if (this.currentRoundData.responses.size >= this.connectedSensors.size) {
-                    console.log('🏁 모든 플레이어 응답 완료 - 라운드 종료');
+                    console.log('🏁 모든 플레이어 응답 완료 - 라운드 즉시 종료');
                     this.endRound();
                 }
             }
@@ -1135,10 +1159,15 @@
                 // 점수 업데이트
                 this.updateScoreDisplay();
                 
-                // 다음 라운드 또는 게임 종료
+                // 다음 라운드 또는 게임 종료 준비
                 setTimeout(() => {
-                    this.startNextRound();
-                }, 2000);
+                    if (this.currentRound >= this.config.maxRounds) {
+                        this.endGame();
+                    } else {
+                        // 디폴트 상태 감지를 위해 다음 라운드 준비
+                        this.startNextRound();
+                    }
+                }, 1500); // 1.5초로 단축
             }
             
             calculateRoundResults() {
