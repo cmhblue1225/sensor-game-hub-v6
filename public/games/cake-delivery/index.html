@@ -323,9 +323,8 @@
                 let playerMesh;
                 
                 if (this.loadedModels.idle) {
-                    // GLB 모델 사용
-                    console.log(`🎭 GLB 모델로 플레이어 ${playerLabel} 생성`);
-                    const playerGroup = new THREE.Group();
+                    // GLB 모델 직접 사용 (Group 없이)
+                    console.log(`🎭 GLB 모델로 플레이어 ${playerLabel} 생성 (직접 사용)`);
                     const glbModel = this.loadedModels.idle.model.clone();
                     
                     // GLB 모델 색상 적용
@@ -344,16 +343,11 @@
                     const box = new THREE.Box3().setFromObject(glbModel);
                     glbModel.position.y = -box.min.y; // 바닥에 맞춤
                     
-                    playerGroup.add(glbModel);
-                    playerMesh = playerGroup;
+                    // GLB 모델을 직접 playerMesh로 사용
+                    playerMesh = glbModel;
                     
                     // GLB 모델 구조 디버깅
                     console.log(`🔍 GLB 모델 구조 분석 (${playerLabel}):`, {
-                        playerGroup: {
-                            type: playerGroup.type,
-                            children: playerGroup.children.length,
-                            position: { x: playerGroup.position.x, y: playerGroup.position.y, z: playerGroup.position.z }
-                        },
                         glbModel: {
                             type: glbModel.type,
                             children: glbModel.children.length,
@@ -365,17 +359,23 @@
                         }
                     });
                     
-                    // 디버깅을 위해 GLB 모델 참조 저장
-                    playerGroup.userData.glbModel = glbModel;
-                    playerGroup.userData.isGLBModel = true;
+                    // 디버깅을 위해 GLB 모델 정보 저장
+                    playerMesh.userData.isGLBModel = true;
+                    playerMesh.userData.originalGLBModel = glbModel;
                     
                     // 애니메이션 믹서 설정
                     if (this.loadedModels.idle.animations.length > 0) {
-                        const mixer = new THREE.AnimationMixer(glbModel);
+                        const mixer = new THREE.AnimationMixer(playerMesh); // GLB 모델에 직접 적용
                         const action = mixer.clipAction(this.loadedModels.idle.animations[0]);
                         action.play();
                         this.animationMixers.push(mixer);
                         playerMesh.userData.mixer = mixer;
+                        
+                        console.log(`🎬 애니메이션 설정 완료 (${playerLabel}):`, {
+                            animationCount: this.loadedModels.idle.animations.length,
+                            mixerTarget: playerMesh.type,
+                            actionName: this.loadedModels.idle.animations[0].name
+                        });
                     }
                     
                 } else {
@@ -390,12 +390,22 @@
                 playerMesh.position.set(startX, 0, 0);
 
                 const labelSprite = this.makeTextSprite(playerLabel, { fontsize: 96, fontface: 'Arial', borderColor: { r:255, g:0, b:0, a:1.0 } });
-                labelSprite.position.set(0, 2, 0); // GLB 모델에 맞춰 높이 조정
-                labelSprite.userData.isLabel = true; // 디버깅을 위한 라벨 표시
+                
+                // GLB 모델의 경우 바운딩 박스를 고려해서 라벨 높이 설정
+                let labelHeight = 1.5; // 기본값
+                if (this.loadedModels.idle) {
+                    const box = new THREE.Box3().setFromObject(playerMesh);
+                    const modelHeight = box.max.y - box.min.y;
+                    labelHeight = modelHeight + 0.5; // 모델 높이 + 0.5
+                }
+                
+                labelSprite.position.set(0, labelHeight, 0);
+                labelSprite.userData.isLabel = true;
                 playerMesh.add(labelSprite);
                 
                 console.log(`🏷️ 라벨 ${playerLabel} 추가:`, {
                     labelPosition: { x: labelSprite.position.x, y: labelSprite.position.y, z: labelSprite.position.z },
+                    labelHeight: labelHeight,
                     parentMesh: playerMesh.type,
                     parentChildren: playerMesh.children.length
                 });
