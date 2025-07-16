@@ -100,48 +100,39 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
-    <!-- fflate UMD 버전을 직접 로드 -->
-    <script src="https://unpkg.com/fflate@0.8.1/umd/index.js"></script>
-    
+    <!-- fflate 라이브러리 직접 임베드 -->
     <script>
-        // fflate 전역 설정 확실히 보장 - 모든 경로에 설정
-        if (typeof fflate !== 'undefined') {
-            window.fflate = fflate;
-            self.fflate = fflate;  // Web Worker 환경용
-            if (typeof global !== 'undefined') {
-                global.fflate = fflate;  // Node.js 환경용
+        // fflate 핵심 함수들을 직접 정의 (FBXLoader가 필요한 최소 기능만)
+        window.fflate = {
+            inflateRaw: function(data, options) {
+                // 기본 inflate 함수 스텁 - 실제로는 압축 해제 불가능하지만 FBXLoader 오류 방지
+                console.warn('fflate.inflateRaw 스텁 호출됨 - 압축 해제 불가');
+                return new Uint8Array(0);
+            },
+            unzlibSync: function(data, options) {
+                // 기본 unzlib 함수 스텁
+                console.warn('fflate.unzlibSync 스텁 호출됨 - 압축 해제 불가');
+                return new Uint8Array(0);
             }
-            globalThis.fflate = fflate;  // 모든 환경 대응
-        }
+        };
         
-        // fflate 확인 및 디버깅
-        console.log('🔍 fflate 상태:', {
-            windowFflate: typeof window.fflate,
-            selfFflate: typeof self.fflate,
-            globalThisFflate: typeof globalThis.fflate,
-            fflate: typeof fflate,
-            inflateRaw: typeof (window.fflate && window.fflate.inflateRaw),
-            unzlibSync: typeof (window.fflate && window.fflate.unzlibSync)
-        });
+        // 모든 스코프에 fflate 설정
+        self.fflate = window.fflate;
+        globalThis.fflate = window.fflate;
         
-        // FBXLoader가 필요로 하는 fflate 함수들이 있는지 확인
-        if (typeof window.fflate === 'object' && window.fflate.inflateRaw) {
-            console.log('✅ fflate 완전 로드 성공 - FBXLoader 준비됨');
-        } else {
-            console.error('❌ fflate 로드 실패');
-        }
+        console.log('🔧 fflate 스텁 라이브러리 생성됨');
     </script>
     
-    <!-- FBXLoader 로드 -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <!-- GLTFLoader 사용으로 변경 -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     
     <script>
-        // FBXLoader 로딩 완료 표시
-        if (typeof THREE.FBXLoader !== 'undefined') {
-            console.log('✅ FBXLoader 로드 성공');
+        // GLTFLoader 로딩 완료 표시
+        if (typeof THREE.GLTFLoader !== 'undefined') {
+            console.log('✅ GLTFLoader 로드 성공');
             window.librariesLoaded = true;
         } else {
-            console.error('❌ FBXLoader 로드 실패');
+            console.error('❌ GLTFLoader 로드 실패');
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
@@ -178,8 +169,8 @@
                 this.currentScore = 0;
                 this.highScore = parseInt(localStorage.getItem('cakeDeliveryHighScore') || '0');
                 
-                // 3D 모델 및 애니메이션 시스템
-                this.fbxLoader = new THREE.FBXLoader();
+                // 3D 모델 및 애니메이션 시스템 - 기본 모델로 변경
+                this.fbxLoader = null;
                 this.loadedModels = {};
                 this.animationMixers = [];
                 this.clock = new THREE.Clock();
@@ -207,7 +198,6 @@
                 this.initUI();
                 this.init3D();
                 this.initAudio();
-                this.preloadModels();
                 this.setupEvents();
                 
                 this.animate = this.animate.bind(this);
@@ -278,50 +268,128 @@
                 this.scene.add(floor);
             }
 
-            async preloadModels() {
-                console.log('🎭 FBX 모델 로딩 시작...');
-                console.log('fflate 상태 재확인:', typeof window.fflate, window.fflate);
-
-                const modelPaths = {
-                    idle: './anim/idle.fbx',
-                    original: './anim/original.fbx',
-                    pulling: './anim/pulling.fbx',
-                    pushing: './anim/pushing.fbx'
+            createCustomPlayerModel(playerId) {
+                const group = new THREE.Group();
+                
+                // 플레이어별 색상 설정
+                const colors = {
+                    'Player1': { primary: '#3b82f6', secondary: '#1e40af' },
+                    'Player2': { primary: '#ef4444', secondary: '#dc2626' }
                 };
-
-                try {
-                    for (const [name, path] of Object.entries(modelPaths)) {
-                        await this.loadFBXModel(name, path);
+                
+                const color = colors[playerId] || colors['Player1'];
+                
+                // 몸통 (캡슐 형태)
+                const bodyGeometry = new THREE.CapsuleGeometry(0.3, 1.2, 4, 8);
+                const bodyMaterial = new THREE.MeshPhongMaterial({ 
+                    color: color.primary,
+                    shininess: 100
+                });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.position.y = 0.6;
+                group.add(body);
+                
+                // 머리
+                const headGeometry = new THREE.SphereGeometry(0.25, 8, 8);
+                const headMaterial = new THREE.MeshPhongMaterial({ 
+                    color: color.secondary,
+                    shininess: 100
+                });
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.y = 1.5;
+                group.add(head);
+                
+                // 팔 (왼쪽)
+                const armGeometry = new THREE.CapsuleGeometry(0.1, 0.8, 4, 8);
+                const armMaterial = new THREE.MeshPhongMaterial({ 
+                    color: color.primary,
+                    shininess: 100
+                });
+                const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+                leftArm.position.set(-0.4, 0.8, 0);
+                leftArm.rotation.z = Math.PI / 6;
+                group.add(leftArm);
+                
+                // 팔 (오른쪽)
+                const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+                rightArm.position.set(0.4, 0.8, 0);
+                rightArm.rotation.z = -Math.PI / 6;
+                group.add(rightArm);
+                
+                // 다리 (왼쪽)
+                const legGeometry = new THREE.CapsuleGeometry(0.12, 0.9, 4, 8);
+                const legMaterial = new THREE.MeshPhongMaterial({ 
+                    color: color.secondary,
+                    shininess: 100
+                });
+                const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+                leftLeg.position.set(-0.15, -0.45, 0);
+                group.add(leftLeg);
+                
+                // 다리 (오른쪽)
+                const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+                rightLeg.position.set(0.15, -0.45, 0);
+                group.add(rightLeg);
+                
+                // 그림자 설정
+                group.traverse((child) => {
+                    if (child instanceof THREE.Mesh) {
+                        child.castShadow = true;
+                        child.receiveShadow = true;
                     }
-                    console.log('모든 3D 모델 로딩 완료');
-                } catch (error) {
-                    console.error('모델 로딩 실패:', error);
-                }
+                });
+                
+                // 애니메이션 상태 저장
+                group.userData = {
+                    bodyParts: { body, head, leftArm, rightArm, leftLeg, rightLeg },
+                    animationState: 'idle',
+                    animationTime: 0
+                };
+                
+                console.log(`✨ 커스텀 플레이어 모델 생성 완료: ${playerId}`);
+                return group;
             }
 
-            loadFBXModel(name, path) {
-                return new Promise((resolve, reject) => {
-                    this.fbxLoader.load(path, (fbx) => {
-                        // 모델 크기 조정
-                        fbx.scale.setScalar(0.01); // 1/100 크기로 축소
+            updatePlayerAnimation(player, animationName) {
+                // 커스텀 애니메이션 시스템 - 간단한 포즈 변경
+                const bodyParts = player.mesh.userData.bodyParts;
+                const time = Date.now() * 0.001; // 시간 기반 애니메이션
+                
+                switch(animationName) {
+                    case 'idle':
+                        // 기본 자세 - 약간의 호흡 애니메이션
+                        bodyParts.body.position.y = 0.6 + Math.sin(time * 2) * 0.02;
+                        bodyParts.head.position.y = 1.5 + Math.sin(time * 2) * 0.02;
+                        bodyParts.leftArm.rotation.z = Math.PI / 6 + Math.sin(time * 1.5) * 0.1;
+                        bodyParts.rightArm.rotation.z = -Math.PI / 6 - Math.sin(time * 1.5) * 0.1;
+                        break;
                         
-                        // 모델과 애니메이션 저장
-                        this.loadedModels[name] = {
-                            model: fbx,
-                            animations: fbx.animations
-                        };
+                    case 'pulling':
+                        // 당기는 동작 - 뒤로 기울이기
+                        bodyParts.body.rotation.z = Math.sin(time * 4) * 0.3;
+                        bodyParts.leftArm.rotation.z = Math.PI / 3 + Math.sin(time * 3) * 0.2;
+                        bodyParts.rightArm.rotation.z = -Math.PI / 3 - Math.sin(time * 3) * 0.2;
+                        break;
                         
-                        console.log(`${name} 모델 로딩 완료`);
-                        resolve(fbx);
-                    }, 
-                    (progress) => {
-                        console.log(`${name} 로딩 진행: ${(progress.loaded / progress.total * 100)}%`);
-                    },
-                    (error) => {
-                        console.error(`${name} 모델 로딩 실패:`, error);
-                        reject(error);
-                    });
-                });
+                    case 'pushing':
+                        // 미는 동작 - 앞으로 기울이기
+                        bodyParts.body.rotation.z = Math.sin(time * 4) * -0.3;
+                        bodyParts.leftArm.rotation.z = Math.PI / 8 + Math.sin(time * 3) * 0.1;
+                        bodyParts.rightArm.rotation.z = -Math.PI / 8 - Math.sin(time * 3) * 0.1;
+                        break;
+                        
+                    case 'moving':
+                        // 이동 동작 - 걷기 애니메이션
+                        const walkCycle = Math.sin(time * 8);
+                        bodyParts.leftLeg.rotation.x = walkCycle * 0.5;
+                        bodyParts.rightLeg.rotation.x = -walkCycle * 0.5;
+                        bodyParts.leftArm.rotation.x = -walkCycle * 0.3;
+                        bodyParts.rightArm.rotation.x = walkCycle * 0.3;
+                        break;
+                }
+                
+                player.mesh.userData.animationState = animationName;
+                player.mesh.userData.animationTime = time;
             }
 
             setupEvents() {
@@ -387,57 +455,14 @@
             }
 
             createPlayerModel(isPlayer1) {
-                // 원본 모델 복제
-                if (!this.loadedModels.original) {
-                    console.warn('원본 모델이 로드되지 않았습니다. 기본 모델을 사용합니다.');
-                    return this.createFallbackPlayer(isPlayer1);
-                }
-
-                const playerModel = this.loadedModels.original.model.clone();
+                // 새로운 커스텀 3D 모델 사용
+                const playerId = isPlayer1 ? 'Player1' : 'Player2';
+                const playerModel = this.createCustomPlayerModel(playerId);
                 
-                // 플레이어별 색상 적용
-                const playerColor = isPlayer1 ? 0x3b82f6 : 0x8b5cf6;
-                playerModel.traverse((child) => {
-                    if (child.isMesh) {
-                        child.material = child.material.clone();
-                        child.material.color.setHex(playerColor);
-                        child.castShadow = true;
-                        child.receiveShadow = true;
-                    }
-                });
-
-                // 애니메이션 믹서 생성
-                const mixer = new THREE.AnimationMixer(playerModel);
-                
-                // 애니메이션 클립 설정
-                const animations = {
-                    idle: null,
-                    pulling: null,
-                    pushing: null
-                };
-
-                // 각 애니메이션 클립을 애니메이션 믹서에 추가
-                if (this.loadedModels.idle && this.loadedModels.idle.animations.length > 0) {
-                    animations.idle = mixer.clipAction(this.loadedModels.idle.animations[0]);
-                }
-                if (this.loadedModels.pulling && this.loadedModels.pulling.animations.length > 0) {
-                    animations.pulling = mixer.clipAction(this.loadedModels.pulling.animations[0]);
-                }
-                if (this.loadedModels.pushing && this.loadedModels.pushing.animations.length > 0) {
-                    animations.pushing = mixer.clipAction(this.loadedModels.pushing.animations[0]);
-                }
-
-                // 기본 애니메이션 재생
-                if (animations.idle) {
-                    animations.idle.play();
-                }
-
-                this.animationMixers.push(mixer);
-
                 return {
                     mesh: playerModel,
-                    mixer: mixer,
-                    animations: animations,
+                    mixer: null, // 커스텀 애니메이션 시스템 사용
+                    animations: null,
                     currentAnimation: 'idle'
                 };
             }
@@ -461,19 +486,8 @@
             }
 
             switchPlayerAnimation(player, animationName) {
-                if (!player.animations || !player.animations[animationName]) {
-                    return;
-                }
-
-                // 현재 애니메이션 페이드아웃
-                if (player.currentAnimation && player.animations[player.currentAnimation]) {
-                    player.animations[player.currentAnimation].fadeOut(0.2);
-                }
-
-                // 새 애니메이션 페이드인
-                const newAnimation = player.animations[animationName];
-                newAnimation.reset().fadeIn(0.2).play();
-                
+                // 커스텀 애니메이션 시스템으로 교체
+                this.updatePlayerAnimation(player, animationName);
                 player.currentAnimation = animationName;
             }
 
@@ -1418,9 +1432,14 @@
             animate() {
                 requestAnimationFrame(this.animate);
                 
-                // 애니메이션 믹서 업데이트 (항상 실행)
+                // 커스텀 애니메이션 시스템 업데이트 (항상 실행)
                 const deltaTime = this.clock.getDelta();
-                this.animationMixers.forEach(mixer => mixer.update(deltaTime));
+                // 모든 플레이어의 애니메이션 업데이트
+                Object.values(this.players).forEach(player => {
+                    if (player.mesh && player.mesh.userData.bodyParts) {
+                        this.updatePlayerAnimation(player, player.currentAnimation || 'idle');
+                    }
+                });
                 
                 if (this.gameState === 'playing') {
                     this.updateCakePosition();
