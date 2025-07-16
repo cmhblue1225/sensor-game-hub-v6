@@ -66,13 +66,12 @@ class ShotTargetGame {
         // 게임 설정
         this.config = {
             targetTypes: {
-                large: { radius: 60, points: 100, color: '#ef4444', spawnChance: 0.4 },
-                medium: { radius: 40, points: 200, color: '#f59e0b', spawnChance: 0.4 },
-                small: { radius: 25, points: 500, color: '#10b981', spawnChance: 0.2 }
+                large: { radius: 60, points: 100, color: '#ef4444', spawnChance: 0.4, hitRadius: 25 },
+                medium: { radius: 40, points: 200, color: '#f59e0b', spawnChance: 0.4, hitRadius: 20 },
+                small: { radius: 25, points: 500, color: '#10b981', spawnChance: 0.2, hitRadius: 15 }
             },
             targetLifetime: 5000,  // 5초 후 자동 소멸
             targetSpawnInterval: 2000,  // 2초마다 새 표적 생성
-            hitRadius: 15,  // 조준점이 표적 중심에서 이 거리 내에 있으면 발사
             comboMultiplier: 1.5,
             bulletSpeed: 8,
             maxTargets: 3  // 최대 동시 표적 수
@@ -716,7 +715,7 @@ class ShotTargetGame {
             const distance = Math.sqrt(dx * dx + dy * dy);
             
             // 조준점이 표적의 히트존 내에 있으면 자동 발사
-            if (distance <= this.config.hitRadius) {
+            if (distance <= target.hitRadius) {
                 this.shootTarget(target, i, 1);  // 플레이어 1
                 return;
             }
@@ -731,7 +730,7 @@ class ShotTargetGame {
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
                 // 두 번째 조준점이 표적의 히트존 내에 있으면 자동 발사
-                if (distance <= this.config.hitRadius) {
+                if (distance <= target.hitRadius) {
                     this.shootTarget(target, i, 2);  // 플레이어 2
                     return;
                 }
