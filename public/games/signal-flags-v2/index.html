@@ -879,9 +879,15 @@
                 this.sensorsInDefaultState.add(sensorId);
                 console.log(`📍 센서 ${sensorId} 디폴트 상태 준비 완료 (${this.sensorsInDefaultState.size}/${this.connectedSensors.size})`);
                 
+                // 상태 메시지 업데이트 - 실시간 알림
+                this.elements.statusMessage.textContent = `✅ ${sensorId} 디폴트 상태 인식됨! (${this.sensorsInDefaultState.size}/${this.connectedSensors.size})`;
+                
                 // 모든 센서가 디폴트 상태가 되면 라운드 시작
                 if (this.sensorsInDefaultState.size >= this.connectedSensors.size && this.connectedSensors.size >= 2) {
                     console.log('✅ 모든 센서가 디폴트 상태 - 라운드 실행');
+                    
+                    // 사용자에게 즉시 알림
+                    this.elements.statusMessage.textContent = '🚀 모든 센서 준비 완료! 1초 후 라운드 시작...';
                     
                     // 타이머 정리
                     if (this.defaultStateTimer) {
@@ -889,7 +895,7 @@
                         this.defaultStateTimer = null;
                     }
                     
-                    // 짧은 대기 후 라운드 실행
+                    // 1초 후 바로 라운드 실행
                     setTimeout(() => {
                         this.startRoundExecution();
                     }, 1000);
@@ -900,6 +906,13 @@
                 console.log('🎯 라운드 실행 시작');
                 
                 const { command, gender } = this.currentRoundData;
+                
+                // 명령과 정답 로그 출력
+                console.log(`🚩 라운드 ${this.currentRound}: ${gender} 성별로 "${command}" 명령`);
+                console.log('📋 정답:', Object.fromEntries(this.currentRoundData.correctResponses));
+                
+                // 상태 메시지 업데이트
+                this.elements.statusMessage.textContent = `명령을 듣고 3초 이내에 반응하세요!`;
                 
                 // 명령 표시
                 this.showCommand(command, gender);
@@ -1015,9 +1028,51 @@
                 // 게임 중이 아니면 무시
                 if (this.gameState !== 'playing') return;
                 
-                // 센서 데이터에서 방향 추출 및 처리는 센서 클라이언트에서 담당
-                // 여기서는 로그만 출력
                 console.log('📡 센서 데이터 수신:', data);
+                
+                // 센서 데이터에서 방향 판정
+                const sensorId = data.sensorId;
+                const orientation = data.data.orientation;
+                
+                if (!orientation || this.currentRoundData.responses.has(sensorId)) {
+                    return; // 이미 응답했거나 데이터 없음
+                }
+                
+                const { beta, gamma } = orientation;
+                const detectedDirection = this.detectDirection(beta, gamma);
+                
+                if (detectedDirection) {
+                    console.log(`🎯 방향 감지: ${sensorId} → ${detectedDirection}`);
+                    
+                    // 즉시 응답 처리
+                    this.handlePlayerResponse({
+                        sensorId: sensorId,
+                        direction: detectedDirection,
+                        responseTime: Date.now() - this.currentRoundData.startTime,
+                        timestamp: Date.now()
+                    });
+                }
+            }
+            
+            detectDirection(beta, gamma) {
+                const thresholds = this.config.sensorThresholds.actions;
+                
+                // 방향 우선순위: up/down > left/right
+                if (Math.abs(beta) > Math.abs(gamma)) {
+                    if (beta >= Math.abs(thresholds.up.beta)) {
+                        return 'up';
+                    } else if (beta <= thresholds.down.beta) {
+                        return 'down';
+                    }
+                } else {
+                    if (gamma <= thresholds.left.gamma) {
+                        return 'left';
+                    } else if (gamma >= thresholds.right.gamma) {
+                        return 'right';
+                    }
+                }
+                
+                return null; // 방향 감지되지 않음
             }
             
             handlePlayerResponse(data) {
@@ -1025,20 +1080,39 @@
                 
                 // 이미 응답한 센서는 무시
                 if (this.currentRoundData.responses.has(sensorId)) {
+                    console.log(`⚠️ ${sensorId} 이미 응답함 - 무시`);
                     return;
                 }
+                
+                // 정답 확인
+                const correctResponse = this.currentRoundData.correctResponses.get(sensorId);
+                const isCorrect = direction === correctResponse;
                 
                 // 응답 저장
                 this.currentRoundData.responses.set(sensorId, {
                     direction: direction,
                     responseTime: responseTime,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    isCorrect: isCorrect
                 });
                 
-                console.log(`🎯 플레이어 응답 접수: ${sensorId} → ${direction}`);
+                console.log(`🎯 플레이어 응답 접수: ${sensorId} → ${direction} (정답: ${correctResponse}) ${isCorrect ? '✅' : '❌'}`);
+                
+                // 즉시 점수 업데이트
+                if (sensorId.includes('1') || sensorId === 'sensor1') {
+                    this.scores.player1 = Math.max(0, this.scores.player1 + (isCorrect ? 1 : -1));
+                    console.log(`📊 플레이어 1 점수: ${this.scores.player1} (${isCorrect ? '+1' : '-1'})`);
+                } else {
+                    this.scores.player2 = Math.max(0, this.scores.player2 + (isCorrect ? 1 : -1));
+                    console.log(`📊 플레이어 2 점수: ${this.scores.player2} (${isCorrect ? '+1' : '-1'})`);
+                }
+                
+                // 즉시 점수 표시 업데이트
+                this.updateScoreDisplay();
                 
                 // 모든 플레이어가 응답했으면 라운드 종료
                 if (this.currentRoundData.responses.size >= this.connectedSensors.size) {
+                    console.log('🏁 모든 플레이어 응답 완료 - 라운드 종료');
                     this.endRound();
                 }
             }
@@ -1072,48 +1146,48 @@
                 
                 const results = new Map();
                 
-                // 각 센서별 결과 계산
+                // 응답한 센서들 결과 정리 (점수는 이미 처리됨)
                 for (const [sensorId, response] of this.currentRoundData.responses) {
                     const correctResponse = this.currentRoundData.correctResponses.get(sensorId);
-                    const isCorrect = response.direction === correctResponse;
                     
                     results.set(sensorId, {
                         response: response.direction,
                         correct: correctResponse,
-                        isCorrect: isCorrect,
-                        points: isCorrect ? 1 : -1
+                        isCorrect: response.isCorrect,
+                        points: response.isCorrect ? 1 : -1,
+                        responseTime: response.responseTime
                     });
-                    
-                    // 점수 업데이트
-                    if (sensorId.includes('1') || sensorId === 'sensor1') {
-                        this.scores.player1 = Math.max(0, this.scores.player1 + (isCorrect ? 1 : -1));
-                    } else {
-                        this.scores.player2 = Math.max(0, this.scores.player2 + (isCorrect ? 1 : -1));
-                    }
                 }
                 
-                // 응답하지 않은 센서들 처리 (시간 초과)
+                // 응답하지 않은 센서들 처리 (시간 초과) - 점수 차감
                 for (const sensorId of this.connectedSensors) {
                     if (!this.currentRoundData.responses.has(sensorId)) {
+                        console.log(`⏰ ${sensorId} 시간 초과 - 점수 차감`);
+                        
                         results.set(sensorId, {
                             response: null,
                             correct: this.currentRoundData.correctResponses.get(sensorId),
                             isCorrect: false,
-                            points: -1
+                            points: -1,
+                            responseTime: null
                         });
                         
                         // 점수 차감
                         if (sensorId.includes('1') || sensorId === 'sensor1') {
                             this.scores.player1 = Math.max(0, this.scores.player1 - 1);
+                            console.log(`📊 플레이어 1 시간초과 점수: ${this.scores.player1} (-1)`);
                         } else {
                             this.scores.player2 = Math.max(0, this.scores.player2 - 1);
+                            console.log(`📊 플레이어 2 시간초과 점수: ${this.scores.player2} (-1)`);
                         }
                     }
                 }
                 
-                console.log('📊 라운드 결과:', {
+                console.log('📊 최종 라운드 결과:', {
                     results: Object.fromEntries(results),
-                    scores: this.scores
+                    scores: this.scores,
+                    command: this.currentRoundData.command,
+                    gender: this.currentRoundData.gender
                 });
                 
                 // 결과를 센서 클라이언트에 전송
