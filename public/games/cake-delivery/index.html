@@ -360,6 +360,45 @@
                         }
                     });
                     
+                    // GLB 모델 내부 구조 상세 분석
+                    console.log(`🔍 GLB 내부 구조 상세 분석 (${playerLabel}):`);
+                    let meshCount = 0;
+                    glbScene.traverse((child) => {
+                        if (child.isMesh) {
+                            meshCount++;
+                            console.log(`  └─ Mesh ${meshCount}:`, {
+                                name: child.name,
+                                type: child.type,
+                                position: { 
+                                    x: child.position.x.toFixed(3), 
+                                    y: child.position.y.toFixed(3), 
+                                    z: child.position.z.toFixed(3) 
+                                },
+                                scale: { 
+                                    x: child.scale.x.toFixed(3), 
+                                    y: child.scale.y.toFixed(3), 
+                                    z: child.scale.z.toFixed(3) 
+                                },
+                                visible: child.visible,
+                                materialName: child.material?.name,
+                                geometryType: child.geometry?.type,
+                                vertices: child.geometry?.attributes.position?.count
+                            });
+                        } else {
+                            console.log(`  └─ Object:`, {
+                                name: child.name,
+                                type: child.type,
+                                childrenCount: child.children.length,
+                                position: { 
+                                    x: child.position.x.toFixed(3), 
+                                    y: child.position.y.toFixed(3), 
+                                    z: child.position.z.toFixed(3) 
+                                }
+                            });
+                        }
+                    });
+                    console.log(`📊 총 메시 개수: ${meshCount}`);
+                    
                     // GLB 모델 구조 디버깅
                     const debugBox = new THREE.Box3().setFromObject(playerMesh);
                     console.log(`🔍 GLB 모델 구조 분석 (${playerLabel}):`, {
