@@ -99,7 +99,8 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <script src="https://unpkg.com/fflate@0.8.1/umd/index.js"></script>
+    <script src="https://unpkg.com/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
     <script src="/socket.io/socket.io.js"></script>
     <script src="/js/SessionSDK.js"></script>
@@ -234,6 +235,17 @@
             }
 
             async preloadModels() {
+                // fflate 라이브러리 확인
+                if (typeof fflate === 'undefined' && typeof window.fflate === 'undefined') {
+                    console.warn('fflate 라이브러리가 로드되지 않았습니다. 기본 모델을 사용합니다.');
+                    return;
+                }
+
+                // fflate를 global scope에 설정 (FBXLoader에서 필요)
+                if (typeof fflate !== 'undefined' && typeof window.fflate === 'undefined') {
+                    window.fflate = fflate;
+                }
+
                 const modelPaths = {
                     idle: './anim/idle.fbx',
                     original: './anim/original.fbx',
@@ -402,10 +414,7 @@
                 const playerMesh = new THREE.Mesh(geometry, material);
                 playerMesh.castShadow = true;
 
-                const playerLabel = isPlayer1 ? '1P' : '2P';
-                const labelSprite = this.makeTextSprite(playerLabel, { fontsize: 96, fontface: 'Arial', borderColor: { r:255, g:0, b:0, a:1.0 } });
-                labelSprite.position.set(0, 1.5, 0);
-                playerMesh.add(labelSprite);
+                // 폴백 모델에는 라벨을 추가하지 않음 (addPlayer에서 추가됨)
 
                 return {
                     mesh: playerMesh,
