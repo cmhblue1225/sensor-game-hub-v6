@@ -323,52 +323,44 @@
                 let playerMesh;
                 
                 if (this.loadedModels.idle) {
-                    // GLB Scene에서 실제 Mesh 추출
-                    console.log(`🎭 GLB 모델로 플레이어 ${playerLabel} 생성 (Mesh 추출)`);
+                    // GLB Scene을 Group으로 감싸서 사용 (SkinnedMesh 호환성)
+                    console.log(`🎭 GLB 모델로 플레이어 ${playerLabel} 생성 (Group 래퍼)`);
                     const glbScene = this.loadedModels.idle.model.clone();
                     
-                    // GLB Scene에서 첫 번째 메시 찾기
-                    let actualMesh = null;
+                    // Group으로 감싸기
+                    const playerGroup = new THREE.Group();
+                    playerGroup.add(glbScene);
+                    
+                    // GLB Scene 색상 적용
                     glbScene.traverse((child) => {
-                        if (child.isMesh && !actualMesh) {
-                            actualMesh = child;
+                        if (child.isMesh) {
+                            child.material = child.material.clone();
+                            child.material.color.setHex(playerColor);
+                            child.material.emissive.setHex(playerColor);
+                            child.material.emissiveIntensity = 0.2;
+                            child.castShadow = true;
+                            child.receiveShadow = true;
                         }
                     });
                     
-                    if (actualMesh) {
-                        // 실제 메시를 Scene에서 분리
-                        actualMesh.parent.remove(actualMesh);
-                        
-                        // 메시 색상 적용
-                        actualMesh.material = actualMesh.material.clone();
-                        actualMesh.material.color.setHex(playerColor);
-                        actualMesh.material.emissive.setHex(playerColor);
-                        actualMesh.material.emissiveIntensity = 0.2;
-                        actualMesh.castShadow = true;
-                        actualMesh.receiveShadow = true;
-                        
-                        // 바운딩 박스로 모델 위치 조정
-                        const box = new THREE.Box3().setFromObject(actualMesh);
-                        actualMesh.position.y = -box.min.y; // 바닥에 맞춤
-                        
-                        // 실제 메시를 playerMesh로 사용
-                        playerMesh = actualMesh;
-                        
-                        console.log(`✅ GLB 메시 추출 성공 (${playerLabel}):`, {
-                            meshType: actualMesh.type,
-                            isGroup: actualMesh.isGroup,
-                            isMesh: actualMesh.isMesh,
-                            geometry: actualMesh.geometry?.type,
-                            vertices: actualMesh.geometry?.attributes.position?.count
-                        });
-                    } else {
-                        console.log(`❌ GLB에서 메시를 찾지 못함 (${playerLabel}), Scene 사용`);
-                        playerMesh = glbScene;
-                    }
+                    // 바운딩 박스로 모델 위치 조정
+                    const box = new THREE.Box3().setFromObject(glbScene);
+                    glbScene.position.y = -box.min.y; // 바닥에 맞춤
+                    
+                    // Group을 playerMesh로 사용
+                    playerMesh = playerGroup;
                     
                     // GLB 모델 디버깅을 위해 참조 저장
                     playerMesh.userData.isGLBModel = true;
-                    playerMesh.userData.isDirectGLB = true;
+                    playerMesh.userData.isGroupWrapper = true;
+                    playerMesh.userData.glbScene = glbScene; // GLB Scene 참조 저장
+                    
+                    console.log(`✅ GLB Group 래퍼 생성 성공 (${playerLabel}):`, {
+                        wrapperType: playerGroup.type,
+                        sceneType: glbScene.type,
+                        childrenCount: playerGroup.children.length,
+                        isGroup: playerGroup.isGroup
+                    });
                     
                     // GLB 모델 구조 디버깅
                     const debugBox = new THREE.Box3().setFromObject(playerMesh);
@@ -385,13 +377,9 @@
                         isDirectGLB: true
                     });
                     
-                    // 애니메이션 믹서 설정 - 메시가 추출된 경우 애니메이션 건너뛰기
-                    if (this.loadedModels.idle.animations.length > 0 && actualMesh) {
-                        console.log(`⚠️ 메시 추출로 인해 애니메이션 비활성화 (${playerLabel})`);
-                        // 메시 추출 시 애니메이션은 작동하지 않으므로 비활성화
-                    } else if (this.loadedModels.idle.animations.length > 0) {
-                        // Scene을 그대로 사용하는 경우에만 애니메이션 적용
-                        const mixer = new THREE.AnimationMixer(playerMesh);
+                    // 애니메이션 믹서 설정 - GLB Scene에 적용
+                    if (this.loadedModels.idle.animations.length > 0) {
+                        const mixer = new THREE.AnimationMixer(glbScene);
                         const action = mixer.clipAction(this.loadedModels.idle.animations[0]);
                         action.play();
                         this.animationMixers.push(mixer);
@@ -399,7 +387,7 @@
                         
                         console.log(`🎬 애니메이션 설정 완료 (${playerLabel}):`, {
                             animationCount: this.loadedModels.idle.animations.length,
-                            mixerTarget: playerMesh.type,
+                            mixerTarget: glbScene.type,
                             actionName: this.loadedModels.idle.animations[0].name
                         });
                     }
@@ -576,10 +564,10 @@
                 // GLB 모델은 이제 직접 사용되므로 단순하게 위치 업데이트
                 player.mesh.position.add(player.velocity);
                 
-                // GLB 모델 직접 사용 시 디버깅
-                if (player.mesh.userData.isDirectGLB) {
-                    console.log(`🎭 GLB 모델 직접 위치 업데이트 (${sensorId}):`, {
-                        glbPosition: { 
+                // GLB 모델 Group 래퍼 사용 시 디버깅
+                if (player.mesh.userData.isGroupWrapper) {
+                    console.log(`🎭 GLB 모델 Group 위치 업데이트 (${sensorId}):`, {
+                        groupPosition: { 
                             x: player.mesh.position.x.toFixed(4), 
                             y: player.mesh.position.y.toFixed(4), 
                             z: player.mesh.position.z.toFixed(4) 
