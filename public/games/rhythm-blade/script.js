@@ -316,117 +316,135 @@ class RhythmBladeDual {
         const track = this.tracks[this.currentTrack];
         console.log(`🎼 ${track.name} 비트맵 생성 중...`);
         
-        // BPM에 따른 비트 간격 계산 (센서 딜레이 최적화)
+        // 🎯 센서 기반 타이밍 최적화 계산
+        const SENSOR_DELAY = 0.15; // 150ms 센서 쿨다운
+        const SWING_TIME = 0.25; // 250ms 평균 스윙 동작 시간
+        const REACTION_BUFFER = 0.1; // 100ms 반응 여유 시간
+        const TOTAL_SENSOR_OFFSET = SENSOR_DELAY + SWING_TIME + REACTION_BUFFER; // 500ms 총 오프셋
+        
+        // BPM에 따른 비트 간격 계산 (센서 최적화)
         const beat = this.beatInterval; // 현재 트랙의 BPM 기준
-        const halfBeat = beat / 2; // 센서 딜레이로 연속 불가
-        const quarterBeat = beat / 4; // 센서 딜레이로 불가
+        const sensorMinInterval = Math.max(beat / 2, TOTAL_SENSOR_OFFSET); // 센서 안전 최소 간격
+        const halfBeat = Math.max(beat / 2, sensorMinInterval); // 센서 친화적 하프비트
+        const quarterBeat = Math.max(beat / 4, TOTAL_SENSOR_OFFSET * 0.8); // 센서 친화적 쿼터비트
         const doubleBeat = beat * 2; // 여유로운 간격
+        
+        console.log(`🎯 센서 최적화: 총 오프셋 ${TOTAL_SENSOR_OFFSET * 1000}ms, 최소 간격 ${sensorMinInterval * 1000}ms`);
         
         // 🎼 트랙별 맞춤형 비트맵 생성
         switch (this.currentTrack) {
             case 'electric-storm':
-                return this.generateElectricStormBeatmap(beat, halfBeat, doubleBeat);
+                return this.generateElectricStormBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
             case 'neon-nights':
-                return this.generateNeonNightsBeatmap(beat, halfBeat, doubleBeat);
+                return this.generateNeonNightsBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
             case 'cyber-beat':
-                return this.generateCyberBeatBeatmap(beat, halfBeat, doubleBeat);
+                return this.generateCyberBeatBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
             case 'space-rhythm':
-                return this.generateSpaceRhythmBeatmap(beat, halfBeat, doubleBeat);
+                return this.generateSpaceRhythmBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
             case 'fire-dance':
-                return this.generateFireDanceBeatmap(beat, halfBeat, doubleBeat);
+                return this.generateFireDanceBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
             case 'ocean-waves':
-                return this.generateOceanWavesBeatmap(beat, halfBeat, doubleBeat);
+                return this.generateOceanWavesBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
             case 'crystal-cave':
-                return this.generateCrystalCaveBeatmap(beat, halfBeat, doubleBeat);
+                return this.generateCrystalCaveBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
             case 'neon-city':
-                return this.generateNeonCityBeatmap(beat, halfBeat, doubleBeat);
+                return this.generateNeonCityBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
             case 'thunder-storm':
-                return this.generateThunderStormBeatmap(beat, halfBeat, doubleBeat);
+                return this.generateThunderStormBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
             case 'starlight':
-                return this.generateStarlightBeatmap(beat, halfBeat, doubleBeat);
+                return this.generateStarlightBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
             default:
-                return this.generateDefaultBeatmap(beat, halfBeat, doubleBeat);
+                return this.generateDefaultBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
         }
     }
     
-    generateElectricStormBeatmap(beat, halfBeat, doubleBeat) {
-        // ⚡ Electric Storm - 에너지 넘치는 전기적 패턴 (2분, 강렬하고 직선적)
+    generateElectricStormBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval) {
+        // ⚡ Electric Storm - 센서 최적화된 전기적 패턴 (2분, 강렬하지만 플레이 가능한)
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
         const targetDuration = track.duration; // 120초
         
-        // ⚡ Phase 1: 전기적 시작 - 번개 같은 빠른 교대 (0-25초)
-        for (let i = 0; i < 32; i++) {
-            const time = beat * (i + 1);
-            if (i % 6 === 5) {
-                beatmap.push({ time: time, lane: "both", type: "cooperation" });
+        // 🎯 센서 최적화된 간격 계산
+        const safeBeat = Math.max(beat, sensorMinInterval); // 센서 안전 간격
+        const sensorFriendlyInterval = Math.max(halfBeat, sensorMinInterval * 1.2); // 연속 타격 안전 간격
+        
+        // ⚡ Phase 1: 전기적 시작 - 센서 친화적 번개 패턴 (0-25초)
+        let currentTime = 0;
+        for (let i = 0; i < 28; i++) { // 32->28로 줄여서 여유 확보
+            currentTime += (i % 3 === 2) ? sensorFriendlyInterval : safeBeat; // 매 3번째마다 여유 간격
+            
+            if (i % 7 === 6) { // 6->7로 늘려서 협력 빈도 줄임
+                beatmap.push({ time: currentTime, lane: "both", type: "cooperation" });
             } else {
-                beatmap.push({ time: time, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                beatmap.push({ time: currentTime, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
             }
         }
         
-        // ⚡ Phase 2: 전기 방전 구간 - 지그재그 패턴 (25-50초)
-        const phase2Start = beat * 33;
-        for (let i = 0; i < 32; i++) {
-            const time = phase2Start + beat * i;
-            const pattern = i % 5;
-            if (pattern === 4) {
-                beatmap.push({ time: time, lane: "both", type: "cooperation" });
-            } else if (pattern < 2) {
-                beatmap.push({ time: time, lane: "sensor1", type: "normal" });
-            } else {
-                beatmap.push({ time: time, lane: "sensor2", type: "normal" });
-            }
-        }
-        
-        // ⚡ Phase 3: 전기 폭풍 중반 - 협력 강화 (50-80초)
-        const phase3Start = beat * 66;
-        for (let i = 0; i < 38; i++) {
-            const time = phase3Start + beat * i;
-            if (i % 4 === 3) {
-                beatmap.push({ time: time, lane: "both", type: "cooperation" });
-            } else if (i % 4 === 0) {
-                beatmap.push({ time: time, lane: "sensor1", type: "normal" });
-            } else {
-                beatmap.push({ time: time, lane: "sensor2", type: "normal" });
-            }
-        }
-        
-        // ⚡ Phase 4: 번개 연쇄 반응 - 클라이맥스 (80-105초)
-        const phase4Start = beat * 105;
-        for (let i = 0; i < 32; i++) {
-            const time = phase4Start + beat * i;
-            const pattern = i % 7;
-            if (pattern === 6) {
-                beatmap.push({ time: time, lane: "both", type: "cooperation" });
+        // ⚡ Phase 2: 전기 방전 구간 - 센서 친화적 지그재그 패턴
+        const phase2Start = currentTime + doubleBeat; // 충분한 쉼 제공
+        currentTime = phase2Start;
+        for (let i = 0; i < 24; i++) { // 32->24로 줄여서 난이도 조절
+            currentTime += (i % 4 === 3) ? sensorFriendlyInterval : safeBeat; // 매 4번째마다 여유
+            
+            const pattern = i % 6; // 5->6으로 늘려서 협력 빈도 줄임
+            if (pattern === 5) {
+                beatmap.push({ time: currentTime, lane: "both", type: "cooperation" });
             } else if (pattern < 3) {
-                beatmap.push({ time: time, lane: "sensor1", type: "normal" });
+                beatmap.push({ time: currentTime, lane: "sensor1", type: "normal" });
             } else {
-                beatmap.push({ time: time, lane: "sensor2", type: "normal" });
+                beatmap.push({ time: currentTime, lane: "sensor2", type: "normal" });
             }
         }
         
-        // ⚡ Phase 5: 최종 전기 폭발 - 강렬한 마무리 (105-120초)
-        const phase5Start = beat * 138;
-        for (let i = 0; i < 18; i++) {
-            const time = phase5Start + beat * i;
-            if (i < 8) {
-                beatmap.push({ time: time, lane: "both", type: "cooperation" });
-            } else if (i < 12) {
-                beatmap.push({ time: time, lane: "sensor1", type: "normal" });
-            } else if (i < 16) {
-                beatmap.push({ time: time, lane: "sensor2", type: "normal" });
+        // ⚡ Phase 3: 전기 폭풍 중반 - 센서 친화적 협력 강화
+        currentTime += doubleBeat; // 페이즈 간 쉼
+        for (let i = 0; i < 28; i++) { // 38->28로 줄임
+            currentTime += (i % 5 === 4) ? doubleBeat : sensorFriendlyInterval; // 더 넉넉한 간격
+            
+            if (i % 5 === 4) { // 협력 빈도 증가하지만 안전한 간격
+                beatmap.push({ time: currentTime, lane: "both", type: "cooperation" });
+            } else if (i % 3 === 0) {
+                beatmap.push({ time: currentTime, lane: "sensor1", type: "normal" });
             } else {
-                beatmap.push({ time: time, lane: "both", type: "cooperation" });
+                beatmap.push({ time: currentTime, lane: "sensor2", type: "normal" });
             }
         }
         
-        const totalDuration = targetDuration;
-        console.log(`⚡ Electric Storm 비트맵: ${beatmap.length}개 노트, ${totalDuration}초`);
+        // ⚡ Phase 4: 번개 연쇄 반응 - 센서 친화적 클라이맥스
+        currentTime += doubleBeat * 1.5; // 충분한 쉼
+        for (let i = 0; i < 20; i++) { // 32->20으로 줄임
+            currentTime += (i % 6 === 5) ? doubleBeat : sensorFriendlyInterval;
+            
+            const pattern = i % 8; // 7->8로 늘려서 협력 빈도 조절
+            if (pattern === 7) {
+                beatmap.push({ time: currentTime, lane: "both", type: "cooperation" });
+            } else if (pattern < 4) {
+                beatmap.push({ time: currentTime, lane: "sensor1", type: "normal" });
+            } else {
+                beatmap.push({ time: currentTime, lane: "sensor2", type: "normal" });
+            }
+        }
+        
+        // ⚡ Phase 5: 최종 전기 폭발 - 센서 친화적 마무리
+        currentTime += doubleBeat * 2; // 최종 준비 시간
+        for (let i = 0; i < 12; i++) { // 18->12로 줄임
+            currentTime += (i < 4) ? doubleBeat : sensorFriendlyInterval; // 처음 몇 개는 여유롭게
+            
+            if (i < 4) { // 처음 4개는 협력으로 시작
+                beatmap.push({ time: currentTime, lane: "both", type: "cooperation" });
+            } else if (i < 8) {
+                beatmap.push({ time: currentTime, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+            } else {
+                beatmap.push({ time: currentTime, lane: "both", type: "cooperation" }); // 마지막은 협력으로
+            }
+        }
+        
+        const totalDuration = (currentTime / 60).toFixed(1);
+        console.log(`⚡ Electric Storm 센서 최적화 비트맵: ${beatmap.length}개 노트, ${totalDuration}분, 최종 시간: ${currentTime.toFixed(1)}초`);
         return beatmap;
     }
     
-    generateNeonNightsBeatmap(beat, halfBeat, doubleBeat) {
+    generateNeonNightsBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval) {
         // 🌙 Neon Nights - 몽환적이고 신스웨이브한 패턴 (1분 45초)
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
@@ -492,65 +510,74 @@ class RhythmBladeDual {
         return beatmap;
     }
     
-    generateCyberBeatBeatmap(beat, halfBeat, doubleBeat) {
-        // 🤖 Cyber Beat - 강렬한 테크노 패턴 (1분 50초, BPM 140)
+    generateCyberBeatBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval) {
+        // 🤖 Cyber Beat - 센서 최적화된 테크노 패턴 (1분 50초, BPM 140, 빠른 곡이므로 센서 안전성 강화)
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
         const targetDuration = track.duration; // 110초
         
-        // 🤖 Phase 1: 사이버 시작 - 기계적이고 정확한 패턴 (0-22초)
-        for (let i = 0; i < 30; i++) {
-            const time = beat * (i + 1);
-            if (i % 8 === 7) {
-                beatmap.push({ time: time, lane: "both", type: "cooperation" });
+        // 🎯 빠른 BPM에 대한 센서 안전 간격 (140 BPM = 0.43초/비트이므로 더 보수적으로)
+        const fastBpmSafeBeat = Math.max(beat * 1.2, sensorMinInterval); // 20% 더 여유롭게
+        const fastBpmInterval = Math.max(halfBeat * 1.5, sensorMinInterval * 1.4); // 연속 타격은 더욱 안전하게
+        
+        // 🤖 Phase 1: 사이버 시작 - 센서 친화적 기계 패턴
+        let currentTime = 0;
+        for (let i = 0; i < 24; i++) { // 30->24로 줄임 (빠른 BPM 대응)
+            currentTime += (i % 4 === 3) ? fastBpmInterval * 1.5 : fastBpmSafeBeat; // 더 넉넉한 간격
+            
+            if (i % 10 === 9) { // 8->10으로 늘려서 협력 빈도 줄임
+                beatmap.push({ time: currentTime, lane: "both", type: "cooperation" });
             } else {
-                beatmap.push({ time: time, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                beatmap.push({ time: currentTime, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
             }
         }
         
-        // 🤖 Phase 2: 테크노 드롭 - 빠른 협력 패턴 (22-44초)
-        const phase2Start = beat * 31;
-        for (let i = 0; i < 30; i++) {
-            const time = phase2Start + beat * i;
-            if (i % 6 === 5) {
-                beatmap.push({ time: time, lane: "both", type: "cooperation" });
-            } else if (i % 3 === 0) {
-                beatmap.push({ time: time, lane: "sensor1", type: "normal" });
+        // 🤖 Phase 2: 테크노 드롭 - 센서 안전 협력 패턴
+        currentTime += doubleBeat; // 페이즈 간 충분한 쉼
+        for (let i = 0; i < 20; i++) { // 30->20으로 줄임
+            currentTime += (i % 5 === 4) ? fastBpmInterval * 2 : fastBpmSafeBeat; // 더 넉넉한 간격
+            
+            if (i % 8 === 7) { // 6->8로 늘려서 협력 빈도 줄임
+                beatmap.push({ time: currentTime, lane: "both", type: "cooperation" });
+            } else if (i % 4 === 0) { // 3->4로 늘려서 패턴 단순화
+                beatmap.push({ time: currentTime, lane: "sensor1", type: "normal" });
             } else {
-                beatmap.push({ time: time, lane: "sensor2", type: "normal" });
+                beatmap.push({ time: currentTime, lane: "sensor2", type: "normal" });
             }
         }
         
-        // 🤖 Phase 3: 기계 리듬 - 복잡한 패턴 (44-77초)
-        const phase3Start = beat * 62;
-        for (let i = 0; i < 45; i++) {
-            const time = phase3Start + beat * i;
-            const pattern = i % 9;
-            if (pattern === 8) {
-                beatmap.push({ time: time, lane: "both", type: "cooperation" });
-            } else if (pattern < 4) {
-                beatmap.push({ time: time, lane: "sensor1", type: "normal" });
+        // 🤖 Phase 3: 기계 리듬 - 센서 친화적 단순 패턴
+        currentTime += doubleBeat * 1.5; // 더 긴 쉼
+        for (let i = 0; i < 30; i++) { // 45->30으로 줄임
+            currentTime += (i % 6 === 5) ? fastBpmInterval * 2 : fastBpmSafeBeat;
+            
+            const pattern = i % 12; // 9->12로 늘려서 협력 빈도 더 줄임
+            if (pattern === 11) {
+                beatmap.push({ time: currentTime, lane: "both", type: "cooperation" });
+            } else if (pattern < 6) {
+                beatmap.push({ time: currentTime, lane: "sensor1", type: "normal" });
             } else {
-                beatmap.push({ time: time, lane: "sensor2", type: "normal" });
+                beatmap.push({ time: currentTime, lane: "sensor2", type: "normal" });
             }
         }
         
-        // 🤖 Phase 4: 기계적 마무리 - 정확한 교대 (77-110초)
-        const phase4Start = beat * 108;
-        for (let i = 0; i < 45; i++) {
-            const time = phase4Start + beat * i;
-            if (i % 5 === 4) {
-                beatmap.push({ time: time, lane: "both", type: "cooperation" });
+        // 🤖 Phase 4: 기계적 마무리 - 센서 친화적 교대
+        currentTime += doubleBeat * 2; // 최종 준비 시간
+        for (let i = 0; i < 15; i++) { // 45->15로 대폭 줄임
+            currentTime += (i % 3 === 2) ? fastBpmInterval * 2 : fastBpmSafeBeat;
+            
+            if (i % 7 === 6) { // 5->7로 늘려서 협력 빈도 줄임
+                beatmap.push({ time: currentTime, lane: "both", type: "cooperation" });
             } else {
-                beatmap.push({ time: time, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+                beatmap.push({ time: currentTime, lane: i % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
             }
         }
         
-        console.log(`🤖 Cyber Beat 비트맵: ${beatmap.length}개 노트, ${targetDuration}초`);
+        console.log(`🤖 Cyber Beat 센서 최적화 비트맵: ${beatmap.length}개 노트, 최종 시간: ${currentTime.toFixed(1)}초 (빠른 BPM 대응)`);
         return beatmap;
     }
     
-    generateSpaceRhythmBeatmap(beat, halfBeat, doubleBeat) {
+    generateSpaceRhythmBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval) {
         // 🚀 Space Rhythm - 궤도와 중력장 패턴 (1분 40초, BPM 100)
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
@@ -618,7 +645,7 @@ class RhythmBladeDual {
         return beatmap;
     }
     
-    generateFireDanceBeatmap(beat, halfBeat, doubleBeat) {
+    generateFireDanceBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval) {
         // 🔥 Fire Dance - 불꽃처럼 폭발적이고 예측불가한 패턴 (1분 35초, BPM 150)
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
@@ -661,7 +688,7 @@ class RhythmBladeDual {
         return beatmap;
     }
     
-    generateOceanWavesBeatmap(beat, halfBeat, doubleBeat) {
+    generateOceanWavesBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval) {
         // 🌊 Ocean Waves - 파도처럼 밀려오고 잦아드는 자연스러운 패턴 (1분 55초, BPM 90)
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
@@ -707,7 +734,7 @@ class RhythmBladeDual {
         return beatmap;
     }
     
-    generateCrystalCaveBeatmap(beat, halfBeat, doubleBeat) {
+    generateCrystalCaveBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval) {
         // 💎 Crystal Cave - 기하학적 크리스탈 성장 패턴 (1분 48초, BPM 130)
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
@@ -765,7 +792,7 @@ class RhythmBladeDual {
         return beatmap;
     }
     
-    generateNeonCityBeatmap(beat, halfBeat, doubleBeat) {
+    generateNeonCityBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval) {
         // 🏙️ Neon City - 도시의 네온사인 점멸 패턴 (1분 42초, BPM 110)
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
@@ -810,7 +837,7 @@ class RhythmBladeDual {
         return beatmap;
     }
     
-    generateThunderStormBeatmap(beat, halfBeat, doubleBeat) {
+    generateThunderStormBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval) {
         // ⛈️ Thunder Storm - 예측불가한 번개와 천둥 패턴 (1분 30초, BPM 160)
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
@@ -873,7 +900,7 @@ class RhythmBladeDual {
         return beatmap;
     }
     
-    generateStarlightBeatmap(beat, halfBeat, doubleBeat) {
+    generateStarlightBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval) {
         // ✨ Starlight - 별자리와 별 깜빡임 패턴 (1분 58초, BPM 115)
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
@@ -943,7 +970,7 @@ class RhythmBladeDual {
         return beatmap;
     }
     
-    generateDefaultBeatmap(beat, halfBeat, doubleBeat) {
+    generateDefaultBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval) {
         // 🎵 기본 패턴 (fallback)
         const beatmap = [];
         
@@ -1896,9 +1923,22 @@ class RhythmBladeDual {
         const elapsedTime = (now - this.gameState.startTime) / 1000;
         const noteData = this.beatmap[this.noteSpawnIndex];
         
-        if (elapsedTime >= noteData.time) {
+        // 🎯 센서 반응 시간을 고려한 예측 스포닝 (음악보다 약간 앞서 노트 생성)
+        const PREDICTIVE_SPAWN_OFFSET = 0.1; // 100ms 미리 스포닝
+        const adjustedNoteTime = Math.max(0, noteData.time - PREDICTIVE_SPAWN_OFFSET);
+        
+        // 🎵 음악 재생 상태와 동기화 체크
+        const musicCurrentTime = this.musicLoaded && !this.bgMusic.paused ? this.bgMusic.currentTime : elapsedTime;
+        const syncedTime = this.musicLoaded ? musicCurrentTime : elapsedTime; // 음악이 로드되면 음악 시간 우선
+        
+        if (syncedTime >= adjustedNoteTime) {
             this.createNote(noteData);
             this.noteSpawnIndex++;
+            
+            // 🎯 센서 최적화 로깅 (디버그용)
+            if (this.sdk.options.debug) {
+                console.log(`🎼 노트 생성: 타입=${noteData.type}, 레인=${noteData.lane}, 시간=${noteData.time.toFixed(2)}s, 실제=${syncedTime.toFixed(2)}s`);
+            }
         }
     }
     
