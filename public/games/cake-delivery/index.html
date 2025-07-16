@@ -350,8 +350,8 @@
                                 type: fbx.type
                             });
                             
-                            // 모델 크기 조정
-                            fbx.scale.setScalar(0.01); // 1/100 크기로 축소
+                            // 모델 크기 조정 - 더 큰 크기로 설정
+                            fbx.scale.setScalar(0.1); // 1/10 크기로 축소 (0.01에서 0.1로 변경)
                             
                             // 모델과 애니메이션 저장
                             this.loadedModels[name] = {
@@ -606,8 +606,28 @@
             }
 
             createFBXPlayerModel(isPlayer1) {
+                console.log('🎭 FBX 플레이어 모델 생성 시작...');
+                
                 // FBX 모델 생성
                 const playerModel = this.loadedModels.original.model.clone();
+                
+                // 모델 위치 및 회전 초기화
+                playerModel.position.set(0, 0, 0);
+                playerModel.rotation.set(0, 0, 0);
+                
+                // 모델 경계 박스 확인
+                const box = new THREE.Box3().setFromObject(playerModel);
+                const size = box.getSize(new THREE.Vector3());
+                const center = box.getCenter(new THREE.Vector3());
+                
+                console.log('📏 FBX 모델 정보:', {
+                    size: { x: size.x, y: size.y, z: size.z },
+                    center: { x: center.x, y: center.y, z: center.z },
+                    isPlayer1: isPlayer1
+                });
+                
+                // 모델을 바닥에 맞춤 (Y축 조정)
+                playerModel.position.y = -center.y;
                 
                 // 플레이어별 색상 적용
                 const playerColor = isPlayer1 ? 0x3b82f6 : 0xef4444;
@@ -628,16 +648,21 @@
                 if (this.loadedModels.idle && this.loadedModels.idle.animations.length > 0) {
                     animations.idle = mixer.clipAction(this.loadedModels.idle.animations[0]);
                     animations.idle.play();
+                    console.log('🎬 idle 애니메이션 설정 완료');
                 }
                 if (this.loadedModels.pulling && this.loadedModels.pulling.animations.length > 0) {
                     animations.pulling = mixer.clipAction(this.loadedModels.pulling.animations[0]);
+                    console.log('🎬 pulling 애니메이션 설정 완료');
                 }
                 if (this.loadedModels.pushing && this.loadedModels.pushing.animations.length > 0) {
                     animations.pushing = mixer.clipAction(this.loadedModels.pushing.animations[0]);
+                    console.log('🎬 pushing 애니메이션 설정 완료');
                 }
 
                 this.animationMixers.push(mixer);
 
+                console.log('✅ FBX 플레이어 모델 생성 완료');
+                
                 return {
                     mesh: playerModel,
                     mixer: mixer,
