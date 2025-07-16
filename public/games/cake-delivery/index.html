@@ -312,8 +312,8 @@
                     velocity: new THREE.Vector3(),
                     acceleration: new THREE.Vector3(),
                     mass: 1.0,
-                    friction: 0.95,
-                    maxSpeed: 0.3
+                    friction: 0.92,  // 마찰력을 0.95에서 0.92로 증가 (더 빨리 멈춤)
+                    maxSpeed: 0.15   // 최대 속도를 0.3에서 0.15로 절반으로 줄임
                 };
 
                 if (Object.keys(this.players).length === 2 && !this.cake.mesh) {
