@@ -767,7 +767,8 @@ class ShotTargetGame {
                 this.state.player1Combo++;
                 
                 if (this.state.player1Combo > 1) {
-                    points *= Math.pow(this.config.comboMultiplier, this.state.player1Combo - 1);
+                    const comboBonus = Math.min(this.state.player1Combo - 1, 2); // 콤보 보너스를 최대 3번(지수 2)까지 제한
+                    points *= Math.pow(this.config.comboMultiplier, comboBonus);
                 }
                 this.state.player1Score += Math.floor(points);
                 
@@ -776,7 +777,8 @@ class ShotTargetGame {
                 this.state.player2Combo++;
                 
                 if (this.state.player2Combo > 1) {
-                    points *= Math.pow(this.config.comboMultiplier, this.state.player2Combo - 1);
+                    const comboBonus = Math.min(this.state.player2Combo - 1, 2); // 콤보 보너스를 최대 3번(지수 2)까지 제한
+                    points *= Math.pow(this.config.comboMultiplier, comboBonus);
                 }
                 this.state.player2Score += Math.floor(points);
             }
