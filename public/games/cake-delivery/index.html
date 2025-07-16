@@ -50,6 +50,27 @@
             transition: background-color 0.2s;
         }
         .controls button:hover, .controls a:hover { background-color: #2563eb; }
+        
+        /* 진행률 표시 추가 */
+        .progress-panel {
+            position: absolute; top: 20px; right: 20px; background: rgba(30, 41, 59, 0.8);
+            padding: 15px; border-radius: 12px; backdrop-filter: blur(5px);
+            min-width: 200px; pointer-events: auto;
+        }
+        .progress-bar {
+            width: 100%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px;
+            overflow: hidden; margin: 8px 0;
+        }
+        .progress-fill {
+            height: 100%; background: linear-gradient(90deg, var(--warning), var(--success));
+            width: 0%; transition: width 0.3s ease;
+        }
+        .distance-info, .tilt-info {
+            font-size: 14px; margin: 4px 0; display: flex; justify-content: space-between;
+        }
+        .danger { color: var(--error); font-weight: bold; }
+        .warning { color: var(--warning); font-weight: bold; }
+        .safe { color: var(--success); }
     </style>
 </head>
 <body>
@@ -65,6 +86,20 @@
             <div class="connection-status">
                 <div id="player1Status" class="player-status disconnected">P1</div>
                 <div id="player2Status" class="player-status disconnected">P2</div>
+            </div>
+        </div>
+        <div id="progressPanel" class="progress-panel" style="display: none;">
+            <div style="font-weight: bold; color: var(--primary); margin-bottom: 8px;">📊 진행 상황</div>
+            <div class="progress-bar">
+                <div id="progressFill" class="progress-fill"></div>
+            </div>
+            <div id="distanceInfo" class="distance-info">
+                <span>플레이어 거리:</span>
+                <span id="distanceValue" class="safe">0.0m</span>
+            </div>
+            <div id="tiltInfo" class="tilt-info">
+                <span>케이크 기울기:</span>
+                <span id="tiltValue" class="safe">안전</span>
             </div>
         </div>
         <div class="controls">
@@ -104,7 +139,7 @@
             initUI() {
                 this.messageBox = document.getElementById('messageBox');
                 this.resetButton = document.getElementById('resetButton');
-                this.resetButton.onclick = () => window.location.reload();
+                this.resetButton.onclick = () => this.resetGame();
             }
 
             init3D() {
@@ -159,6 +194,7 @@
                 this.sdk.on('game-ready', () => {
                     this.gameState = 'ready';
                     this.messageBox.textContent = '3초 후 시작!';
+                    document.getElementById('progressPanel').style.display = 'block';
                     setTimeout(() => {
                         this.sdk.startGame();
                         this.gameState = 'playing';
@@ -198,7 +234,9 @@
             }
 
             addPlayer(sensorId) {
-                const isPlayer1 = !this.players['sensor1'];
+                // 동적 플레이어 할당 - 센서 ID에 관계없이 순서대로 할당
+                const playerCount = Object.keys(this.players).length;
+                const isPlayer1 = playerCount === 0;
                 const playerColor = isPlayer1 ? 0x3b82f6 : 0x8b5cf6;
                 const startX = isPlayer1 ? -2 : 2;
 
@@ -213,7 +251,11 @@
                     id: sensorId,
                     mesh: playerMesh,
                     velocity: new THREE.Vector3(),
+                    playerNumber: isPlayer1 ? 1 : 2, // 플레이어 번호 추가
+                    isPlayer1: isPlayer1 // 편의성을 위한 플래그
                 };
+
+                console.log(`플레이어 ${isPlayer1 ? 1 : 2} 연결됨: ${sensorId}`);
 
                 if (Object.keys(this.players).length === 2 && !this.cake.mesh) {
                     this.createCake();
@@ -230,8 +272,18 @@
             }
 
             updatePlayerStatus() {
-                document.getElementById('player1Status').className = `player-status ${this.players['sensor1'] ? 'connected' : 'disconnected'}`;
-                document.getElementById('player2Status').className = `player-status ${this.players['sensor2'] ? 'connected' : 'disconnected'}`;
+                // 동적 플레이어 상태 업데이트
+                const connectedPlayers = Object.values(this.players);
+                
+                // 플레이어 1 상태
+                const player1 = connectedPlayers.find(p => p.isPlayer1);
+                document.getElementById('player1Status').className = `player-status ${player1 ? 'connected' : 'disconnected'}`;
+                document.getElementById('player1Status').textContent = player1 ? `P1 (${player1.id})` : 'P1';
+                
+                // 플레이어 2 상태  
+                const player2 = connectedPlayers.find(p => !p.isPlayer1);
+                document.getElementById('player2Status').className = `player-status ${player2 ? 'connected' : 'disconnected'}`;
+                document.getElementById('player2Status').textContent = player2 ? `P2 (${player2.id})` : 'P2';
             }
 
             createCake() {
@@ -281,23 +333,59 @@
             updateCakePosition() {
                 if (!this.cake.mesh || Object.keys(this.players).length < 2) return;
 
-                const p1 = this.players['sensor1'].mesh.position;
-                const p2 = this.players['sensor2'].mesh.position;
+                // 동적 플레이어 접근 - 안전한 방법으로 두 플레이어 위치 가져오기
+                const playerPositions = Object.values(this.players).map(player => player.mesh.position);
+                if (playerPositions.length < 2) return;
 
-                // 케이크 위치는 두 플레이어의 중간
+                const p1 = playerPositions[0];
+                const p2 = playerPositions[1];
+
+                // 케이크 위치는 두 플레이어의 중간 (기존 설정 유지)
                 this.cake.mesh.position.lerp(new THREE.Vector3((p1.x + p2.x) / 2, 0, (p1.z + p2.z) / 2), 0.1);
 
-                // 케이크 기울기 계산
+                // 케이크 기울기 계산 (기존 물리 설정 유지)
                 const distance = p1.distanceTo(p2);
                 const angle = Math.atan2(p1.z - p2.z, p1.x - p2.x);
                 this.cake.mesh.rotation.y = -angle;
                 this.cake.mesh.rotation.z = (p1.y - p2.y) * 0.1; // 이 게임에선 y는 안변함
                 this.cake.mesh.rotation.x = (p1.z - p2.z) * 0.1;
 
-                // 실패 조건: 너무 멀어지거나 기울어지면
+                // 진행률 및 상태 정보 업데이트
+                this.updateProgressInfo(distance);
+
+                // 실패 조건: 기존 임계값 유지 (너무 멀어지거나 기울어지면)
                 if (distance > 5) this.setGameState('fail', '너무 멀어요!');
                 if (Math.abs(this.cake.mesh.rotation.x) > 0.8 || Math.abs(this.cake.mesh.rotation.z) > 0.8) {
                     this.setGameState('fail', '케이크가 떨어졌어요!');
+                }
+            }
+
+            updateProgressInfo(distance) {
+                if (!this.cake.mesh) return;
+
+                // 진행률 계산 (시작점 z=0, 목적지 z=-90)
+                const progress = Math.max(0, Math.min(100, (Math.abs(this.cake.mesh.position.z) / 90) * 100));
+                
+                // 진행률 바 업데이트
+                document.getElementById('progressFill').style.width = `${progress}%`;
+
+                // 플레이어 간 거리 표시
+                const distanceEl = document.getElementById('distanceValue');
+                distanceEl.textContent = `${distance.toFixed(1)}m`;
+                distanceEl.className = distance > 4 ? 'danger' : distance > 3 ? 'warning' : 'safe';
+
+                // 케이크 기울기 표시
+                const maxTilt = Math.max(Math.abs(this.cake.mesh.rotation.x), Math.abs(this.cake.mesh.rotation.z));
+                const tiltEl = document.getElementById('tiltValue');
+                if (maxTilt > 0.7) {
+                    tiltEl.textContent = '위험!';
+                    tiltEl.className = 'danger';
+                } else if (maxTilt > 0.5) {
+                    tiltEl.textContent = '주의';
+                    tiltEl.className = 'warning';
+                } else {
+                    tiltEl.textContent = '안전';
+                    tiltEl.className = 'safe';
                 }
             }
 
@@ -326,7 +414,60 @@
                 this.gameState = state;
                 this.messageBox.textContent = message;
                 this.messageBox.style.display = 'flex';
+                
+                // 게임 종료 시 진행률 패널 숨김
+                if (state === 'success' || state === 'fail') {
+                    document.getElementById('progressPanel').style.display = 'none';
+                }
+                
                 this.resetButton.style.display = 'block';
+            }
+
+            resetGame() {
+                // 완전한 게임 상태 초기화
+                this.gameState = 'waiting';
+                
+                // UI 초기화
+                this.messageBox.textContent = '플레이어 연결 대기중...';
+                this.messageBox.style.display = 'flex';
+                this.resetButton.style.display = 'none';
+                document.getElementById('progressPanel').style.display = 'none';
+                
+                // 3D 객체들 정리
+                if (this.cake.mesh) {
+                    this.scene.remove(this.cake.mesh);
+                    this.cake = {};
+                }
+                
+                // 장애물 정리
+                this.obstacles.forEach(obstacle => this.scene.remove(obstacle));
+                this.obstacles = [];
+                
+                if (this.destination) {
+                    this.scene.remove(this.destination);
+                    this.destination = null;
+                }
+                
+                // 플레이어들 재배치 (연결 유지)
+                const playerCount = Object.keys(this.players).length;
+                let index = 0;
+                for (const playerId in this.players) {
+                    const isPlayer1 = index === 0;
+                    const startX = isPlayer1 ? -2 : 2;
+                    this.players[playerId].mesh.position.set(startX, 0, 0);
+                    this.players[playerId].velocity.set(0, 0, 0);
+                    this.players[playerId].isPlayer1 = isPlayer1;
+                    this.players[playerId].playerNumber = isPlayer1 ? 1 : 2;
+                    index++;
+                }
+                
+                // 2명이 연결되어 있으면 레벨 재생성
+                if (playerCount === 2) {
+                    this.createCake();
+                    this.createLevel();
+                }
+                
+                console.log('게임 리셋 완료');
             }
 
             animate() {
