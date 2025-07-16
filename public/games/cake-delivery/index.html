@@ -100,8 +100,33 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
-    <!-- 진짜 fflate 라이브러리 로드 -->
-    <script src="https://cdn.jsdelivr.net/npm/fflate@0.8.1/umd/index.min.js"></script>
+    <!-- pako 라이브러리 사용 (fflate 대신 - 더 안정적) -->
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    
+    <!-- 커스텀 fflate 호환 래퍼 -->
+    <script>
+        // pako를 사용한 fflate 호환 래퍼
+        window.fflate = {
+            inflateRaw: function(data, options) {
+                try {
+                    return pako.inflateRaw(data);
+                } catch (error) {
+                    console.error('inflateRaw 오류:', error);
+                    return new Uint8Array(0);
+                }
+            },
+            unzlibSync: function(data, options) {
+                try {
+                    return pako.inflate(data);
+                } catch (error) {
+                    console.error('unzlibSync 오류:', error);
+                    return new Uint8Array(0);
+                }
+            }
+        };
+        
+        console.log('✅ pako 기반 fflate 래퍼 생성 완료');
+    </script>
     
     <!-- FBXLoader 로드 -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
@@ -111,19 +136,15 @@
         console.log('🔍 라이브러리 상태:', {
             THREE: typeof THREE,
             FBXLoader: typeof THREE.FBXLoader,
-            fflate: typeof fflate
+            pako: typeof pako,
+            fflate: typeof window.fflate,
+            fflateInflateRaw: typeof window.fflate.inflateRaw
         });
         
-        // fflate 전역 설정
-        if (typeof fflate !== 'undefined') {
-            window.fflate = fflate;
-            console.log('✅ fflate 설정 완료');
-        }
-        
-        if (typeof THREE.FBXLoader !== 'undefined') {
-            console.log('✅ FBXLoader 로드 성공');
+        if (typeof THREE.FBXLoader !== 'undefined' && typeof window.fflate !== 'undefined') {
+            console.log('✅ FBXLoader 및 fflate 래퍼 준비 완료');
         } else {
-            console.error('❌ FBXLoader 로드 실패');
+            console.error('❌ 라이브러리 로드 실패');
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
@@ -261,48 +282,115 @@
             }
 
             async preloadModels() {
-                console.log('🎭 FBX 모델 로딩 시작...');
+                console.log('🎭 === FBX 모델 로딩 시작 ===');
+                
+                // 라이브러리 상태 재확인
+                console.log('📋 라이브러리 상태 재확인:', {
+                    fbxLoader: !!this.fbxLoader,
+                    pako: typeof pako,
+                    fflate: typeof window.fflate,
+                    THREE: typeof THREE,
+                    FBXLoader: typeof THREE.FBXLoader
+                });
+                
+                if (!this.fbxLoader) {
+                    console.error('❌ FBXLoader 초기화 실패');
+                    return;
+                }
                 
                 const modelPaths = {
+                    original: './anim/original.fbx',  // 기본 모델 먼저 로드
                     idle: './anim/idle.fbx',
-                    original: './anim/original.fbx',
                     pulling: './anim/pulling.fbx',
                     pushing: './anim/pushing.fbx'
                 };
 
-                try {
-                    for (const [name, path] of Object.entries(modelPaths)) {
+                let successCount = 0;
+                const totalModels = Object.keys(modelPaths).length;
+                
+                for (const [name, path] of Object.entries(modelPaths)) {
+                    try {
+                        console.log(`📥 ${name} 모델 로딩 시작: ${path}`);
                         await this.loadFBXModel(name, path);
+                        successCount++;
+                        console.log(`✅ ${name} 모델 로딩 성공 (${successCount}/${totalModels})`);
+                    } catch (error) {
+                        console.error(`❌ ${name} 모델 로딩 실패:`, error);
+                        // 개별 모델 실패해도 계속 진행
                     }
-                    console.log('✅ 모든 FBX 모델 로딩 완료');
-                } catch (error) {
-                    console.error('❌ FBX 모델 로딩 실패:', error);
-                    console.log('🔄 기본 모델로 폴백');
+                }
+                
+                console.log(`🎭 FBX 모델 로딩 완료: ${successCount}/${totalModels} 성공`);
+                
+                if (successCount === 0) {
+                    console.log('🔄 모든 FBX 모델 로딩 실패 - 기본 모델로 폴백');
+                } else {
+                    console.log('✅ 일부 또는 모든 FBX 모델 로딩 성공');
                 }
             }
 
             loadFBXModel(name, path) {
                 return new Promise((resolve, reject) => {
-                    this.fbxLoader.load(path, (fbx) => {
-                        // 모델 크기 조정
-                        fbx.scale.setScalar(0.01); // 1/100 크기로 축소
-                        
-                        // 모델과 애니메이션 저장
-                        this.loadedModels[name] = {
-                            model: fbx,
-                            animations: fbx.animations
-                        };
-                        
-                        console.log(`✅ ${name} 모델 로딩 완료`);
-                        resolve(fbx);
-                    }, 
-                    (progress) => {
-                        console.log(`📥 ${name} 로딩 진행: ${Math.round(progress.loaded / progress.total * 100)}%`);
-                    },
-                    (error) => {
-                        console.error(`❌ ${name} 모델 로딩 실패:`, error);
-                        reject(error);
-                    });
+                    console.log(`🔄 ${name} 모델 로딩 시작...`);
+                    
+                    // 타임아웃 설정 (10초)
+                    const timeout = setTimeout(() => {
+                        console.error(`⏰ ${name} 모델 로딩 타임아웃 (10초)`);
+                        reject(new Error(`${name} 모델 로딩 타임아웃`));
+                    }, 10000);
+                    
+                    this.fbxLoader.load(
+                        path, 
+                        (fbx) => {
+                            clearTimeout(timeout);
+                            
+                            console.log(`🎭 ${name} FBX 모델 로드 성공:`, {
+                                animations: fbx.animations?.length || 0,
+                                children: fbx.children?.length || 0,
+                                type: fbx.type
+                            });
+                            
+                            // 모델 크기 조정
+                            fbx.scale.setScalar(0.01); // 1/100 크기로 축소
+                            
+                            // 모델과 애니메이션 저장
+                            this.loadedModels[name] = {
+                                model: fbx,
+                                animations: fbx.animations || []
+                            };
+                            
+                            console.log(`✅ ${name} 모델 저장 완료 - 애니메이션 ${fbx.animations?.length || 0}개`);
+                            resolve(fbx);
+                        }, 
+                        (progress) => {
+                            if (progress.total > 0) {
+                                const percentage = Math.round(progress.loaded / progress.total * 100);
+                                console.log(`📥 ${name} 로딩 진행: ${percentage}% (${progress.loaded}/${progress.total})`);
+                            } else {
+                                console.log(`📥 ${name} 로딩 중... (${progress.loaded} bytes)`);
+                            }
+                        },
+                        (error) => {
+                            clearTimeout(timeout);
+                            
+                            console.error(`❌ ${name} 모델 로딩 실패:`, {
+                                message: error.message,
+                                stack: error.stack,
+                                path: path
+                            });
+                            
+                            // 구체적인 오류 분석
+                            if (error.message.includes('fflate')) {
+                                console.error('💥 fflate 관련 오류 - 압축 해제 실패');
+                            } else if (error.message.includes('404')) {
+                                console.error('📂 파일을 찾을 수 없음');
+                            } else if (error.message.includes('CORS')) {
+                                console.error('🚫 CORS 오류');
+                            }
+                            
+                            reject(error);
+                        }
+                    );
                 });
             }
 
@@ -493,12 +581,18 @@
             }
 
             createPlayerModel(isPlayer1) {
+                console.log('🎯 플레이어 모델 생성 시작...', {
+                    isPlayer1: isPlayer1,
+                    originalModel: !!this.loadedModels.original,
+                    loadedModels: Object.keys(this.loadedModels)
+                });
+                
                 // FBX 모델 우선 사용, 실패 시 커스텀 모델로 폴백
                 if (this.loadedModels.original) {
-                    console.log('🎭 FBX 모델 사용');
+                    console.log('🎭 FBX 모델 사용하여 플레이어 생성');
                     return this.createFBXPlayerModel(isPlayer1);
                 } else {
-                    console.log('🔄 커스텀 모델로 폴백');
+                    console.log('🔄 원본 모델 없음 - 커스텀 모델로 폴백');
                     const playerId = isPlayer1 ? 'Player1' : 'Player2';
                     const playerModel = this.createCustomPlayerModel(playerId);
                     
