@@ -125,7 +125,7 @@
                 <button id="challengeMode" class="mode-btn">🔥 챌린지</button>
                 <button id="relayMode" class="mode-btn">🏃 릴레이</button>
                 <button id="speedrunMode" class="mode-btn">⚡ 스피드런</button>
-                <button id="coop4Mode" class="mode-btn">👥 4인 협동</button>
+                <button id="coop4Mode" class="mode-btn">👥 4인 협동 (센서4개)</button>
             </div>
             <div class="cake-selection" style="margin-bottom: 10px;">
                 <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px;">🎂 케이크 종류:</div>
@@ -153,7 +153,7 @@
             constructor() {
                 this.sdk = new SessionSDK({
                     gameId: 'cake-delivery',
-                    gameType: 'dual',
+                    gameType: 'dual', // 기본값, 모드에 따라 변경됨
                     debug: false
                 });
 
@@ -316,7 +316,7 @@
                     challenge: { lives: 1, scoreMult: 3.0, description: '극한 챌린지', players: 2 },
                     relay: { lives: 2, scoreMult: 1.8, description: '릴레이 배달', players: 2 },
                     speedrun: { lives: 1, scoreMult: 2.5, description: '스피드런', players: 2 },
-                    coop4: { lives: 1, scoreMult: 4.0, description: '4인 협동', players: 4 }
+                    coop4: { lives: 1, scoreMult: 4.0, description: '4인 협동 (센서4개)', players: 4 }
                 };
 
                 this.initUI();
@@ -400,6 +400,12 @@
                 
                 this.gameMode = mode;
                 
+                // 모드별 게임 타입 변경
+                const requiredGameType = this.getRequiredGameType(mode);
+                if (this.sdk.gameType !== requiredGameType) {
+                    this.changeGameType(requiredGameType);
+                }
+                
                 // 모드별 초기 설정
                 switch(mode) {
                     case 'infinite':
@@ -422,6 +428,7 @@
                         break;
                     case 'coop4':
                         this.bigCakeSize = 2.0;
+                        this.showStatusMessage('4인 협동 모드: 센서 4개가 필요합니다!', 4000);
                         break;
                     default:
                         this.level = 1;
@@ -430,7 +437,41 @@
                 this.updateModeButtons();
                 this.updateUI();
                 
-                console.log(`🎮 게임 모드 변경: ${this.modeConfig[mode].description}`);
+                console.log(`🎮 게임 모드 변경: ${this.modeConfig[mode].description} (게임타입: ${requiredGameType})`);
+            }
+            
+            getRequiredGameType(mode) {
+                switch(mode) {
+                    case 'coop4':
+                        return 'multi'; // 4명 이상 지원
+                    default:
+                        return 'dual'; // 2명 기본
+                }
+            }
+            
+            changeGameType(newGameType) {
+                try {
+                    // 기존 세션이 있다면 정리
+                    if (this.sdk.sessionCode) {
+                        this.showStatusMessage('게임 타입을 변경하는 중...', 2000);
+                    }
+                    
+                    // 새로운 SDK 인스턴스 생성
+                    this.sdk = new SessionSDK({
+                        gameId: 'cake-delivery',
+                        gameType: newGameType,
+                        debug: false
+                    });
+                    
+                    // 이벤트 재설정
+                    this.setupEvents();
+                    
+                    console.log(`게임 타입 변경: ${newGameType}`);
+                    
+                } catch (error) {
+                    console.error('게임 타입 변경 오류:', error);
+                    this.showErrorMessage('게임 타입 변경 중 오류가 발생했습니다.');
+                }
             }
 
             // 모드 버튼 업데이트
