@@ -31,7 +31,9 @@ class ShotTargetGame {
             player1Hits: 0,
             player2Hits: 0,
             player1Combo: 0,
-            player2Combo: 0
+            player2Combo: 0,
+            player1LastHitTime: 0,
+            player2LastHitTime: 0
         };
         
         // 조준 시스템 (dual 모드용으로 확장)
@@ -639,6 +641,8 @@ class ShotTargetGame {
         this.state.player2Hits = 0;
         this.state.player1Combo = 0;
         this.state.player2Combo = 0;
+        this.state.player1LastHitTime = 0;
+        this.state.player2LastHitTime = 0;
         
         this.targets = [];
         this.bullets = [];
@@ -771,6 +775,7 @@ class ShotTargetGame {
                     points *= Math.pow(this.config.comboMultiplier, comboBonus);
                 }
                 this.state.player1Score += Math.floor(points);
+                this.state.player1LastHitTime = Date.now(); // 마지막 타격 시간 기록
                 
             } else if (playerId === 2) {
                 this.state.player2Hits++;
@@ -781,6 +786,7 @@ class ShotTargetGame {
                     points *= Math.pow(this.config.comboMultiplier, comboBonus);
                 }
                 this.state.player2Score += Math.floor(points);
+                this.state.player2LastHitTime = Date.now(); // 마지막 타격 시간 기록
             }
             
         } else {
@@ -934,6 +940,21 @@ class ShotTargetGame {
         
         // 자동 발사 체크
         this.tryShoot();
+
+        // 경쟁 모드 콤보 타임아웃 체크
+        if (this.gameMode === 'competitive') {
+            const now = Date.now();
+            if (this.state.player1Combo > 0 && now - this.state.player1LastHitTime > 3500) {
+                this.state.player1Combo = 0;
+                this.updateScore();
+                console.log('🎯 플레이어 1 콤보 리셋');
+            }
+            if (this.state.player2Combo > 0 && now - this.state.player2LastHitTime > 3500) {
+                this.state.player2Combo = 0;
+                this.updateScore();
+                console.log('🎯 플레이어 2 콤보 리셋');
+            }
+        }
     }
     
     render() {
