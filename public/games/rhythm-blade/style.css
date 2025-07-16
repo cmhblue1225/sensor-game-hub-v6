@@ -1,0 +1,424 @@
+:root {
+    --primary: #3b82f6;
+    --secondary: #8b5cf6;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --sensor1-color: #ef4444;  /* Red for left player */
+    --sensor2-color: #3b82f6;  /* Blue for right player */
+    --cooperation-color: #8b5cf6; /* Purple for cooperation */
+    --background: #0f172a;
+    --surface: #1e293b;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --border: #475569;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--background);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+}
+
+.game-ui {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.ui-panel {
+    position: absolute;
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    backdrop-filter: blur(12px);
+    pointer-events: all;
+}
+
+.session-panel {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    min-width: 350px;
+    max-width: 90vw;
+    max-height: 90vh;
+    width: auto;
+    overflow-y: auto;
+}
+
+.session-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    background: linear-gradient(135deg, var(--sensor1-color), var(--sensor2-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.session-code {
+    font-size: 2.5rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    color: var(--primary);
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 2px solid var(--primary);
+    border-radius: 0.75rem;
+    letter-spacing: 0.3em;
+}
+
+.qr-container {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: white;
+    border-radius: 0.75rem;
+    display: inline-block;
+}
+
+.sensor-status {
+    display: flex;
+    gap: 2rem;
+    justify-content: center;
+    margin: 2rem 0;
+}
+
+.sensor-info {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    min-width: 150px;
+    text-align: center;
+    border: 2px solid;
+}
+
+.sensor1 {
+    border-color: var(--sensor1-color);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.sensor2 {
+    border-color: var(--sensor2-color);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.sensor-label {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
+.sensor-state {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.game-stats {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    display: grid;
+    gap: 1rem;
+    min-width: 200px;
+}
+
+.stat-item {
+    background: rgba(30, 41, 59, 0.8);
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    text-align: center;
+}
+
+.stat-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.stat-value {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.cooperation-meter {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 200px;
+}
+
+.meter-label {
+    text-align: center;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: var(--cooperation-color);
+}
+
+.meter-bar {
+    height: 20px;
+    background: rgba(139, 92, 246, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid var(--cooperation-color);
+}
+
+.meter-fill {
+    height: 100%;
+    width: 100%;
+    background: linear-gradient(90deg, var(--sensor1-color), var(--cooperation-color), var(--sensor2-color));
+    transition: width 0.3s ease;
+}
+
+.control-panel {
+    bottom: 1rem;
+    left: 1rem;
+    display: flex;
+    gap: 1rem;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-block;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-secondary {
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+}
+
+.hidden {
+    display: none !important;
+}
+
+.game-instructions {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    max-width: 300px;
+    font-size: 0.9rem;
+    background: rgba(30, 41, 59, 0.8);
+    padding: 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+}
+
+.instruction-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--cooperation-color);
+}
+
+.instruction-item {
+    margin-bottom: 0.5rem;
+    padding-left: 1rem;
+    position: relative;
+}
+
+.instruction-item::before {
+    content: "•";
+    position: absolute;
+    left: 0;
+    color: var(--primary);
+}
+
+/* 🎵 음악 선택 UI 스타일 */
+.music-selection {
+    margin: 1rem 0;
+    padding: 0.75rem;
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+}
+
+.music-title {
+    text-align: center;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--primary);
+}
+
+.music-tracks {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 0.75rem;
+    max-height: 14rem;
+    overflow-y: auto;
+    padding: 0.2rem;
+}
+
+.track-option {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem 0.4rem;
+    background: rgba(30, 41, 59, 0.8);
+    border: 2px solid transparent;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    position: relative;
+    height: 4rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.track-option:hover {
+    background: rgba(59, 130, 246, 0.1);
+    border-color: var(--primary);
+    transform: translateY(-2px);
+}
+
+.track-option.selected {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: var(--primary);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.3);
+}
+
+.track-icon {
+    font-size: 1.2rem;
+    margin-bottom: 0.15rem;
+}
+
+.track-name {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+    margin-bottom: 0.1rem;
+    line-height: 1;
+}
+
+.track-details {
+    font-size: 0.6rem;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1;
+}
+
+.track-status {
+    position: absolute;
+    top: 0.2rem;
+    right: 0.2rem;
+    font-size: 0.8rem;
+    color: var(--success);
+}
+
+.selected-track-info {
+    text-align: center;
+    padding: 0.4rem;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 0.4rem;
+    font-size: 0.75rem;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    font-weight: 600;
+}
+
+#selectedTrackName {
+    color: var(--success);
+}
+
+/* 음악 트랙 스크롤바 스타일 */
+.music-tracks::-webkit-scrollbar {
+    width: 4px;
+}
+
+.music-tracks::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.3);
+    border-radius: 2px;
+}
+
+.music-tracks::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 2px;
+}
+
+.music-tracks::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary);
+}
+
+/* 반응형 디자인 */
+@media (max-width: 480px) {
+    .music-tracks {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.5rem;
+        max-height: 16rem;
+        padding: 0.3rem;
+    }
+    
+    .track-option {
+        height: 4.5rem;
+        padding: 0.6rem 0.4rem;
+    }
+    
+    .track-icon {
+        font-size: 1.4rem;
+    }
+    
+    .track-name {
+        font-size: 0.75rem;
+    }
+}
+
+@media (max-width: 360px) {
+    .music-tracks {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 0.4rem;
+        padding: 0.2rem;
+    }
+    
+    .track-option {
+        height: 4.2rem;
+        padding: 0.5rem 0.3rem;
+    }
+    
+    .track-name {
+        font-size: 0.7rem;
+    }
+    
+    .track-details {
+        font-size: 0.55rem;
+    }
+}
