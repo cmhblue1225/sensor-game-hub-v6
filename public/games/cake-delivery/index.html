@@ -323,28 +323,48 @@
                 let playerMesh;
                 
                 if (this.loadedModels.idle) {
-                    // GLB 모델 직접 사용 - 그룹 없이 직접 사용
-                    console.log(`🎭 GLB 모델로 플레이어 ${playerLabel} 생성 (직접 사용)`);
-                    const glbModel = this.loadedModels.idle.model.clone();
+                    // GLB Scene에서 실제 Mesh 추출
+                    console.log(`🎭 GLB 모델로 플레이어 ${playerLabel} 생성 (Mesh 추출)`);
+                    const glbScene = this.loadedModels.idle.model.clone();
                     
-                    // GLB 모델 색상 적용
-                    glbModel.traverse((child) => {
-                        if (child.isMesh) {
-                            child.material = child.material.clone();
-                            child.material.color.setHex(playerColor);
-                            child.material.emissive.setHex(playerColor);
-                            child.material.emissiveIntensity = 0.2;
-                            child.castShadow = true;
-                            child.receiveShadow = true;
+                    // GLB Scene에서 첫 번째 메시 찾기
+                    let actualMesh = null;
+                    glbScene.traverse((child) => {
+                        if (child.isMesh && !actualMesh) {
+                            actualMesh = child;
                         }
                     });
                     
-                    // 바운딩 박스로 모델 위치 조정
-                    const box = new THREE.Box3().setFromObject(glbModel);
-                    glbModel.position.y = -box.min.y; // 바닥에 맞춤
-                    
-                    // GLB 모델을 직접 playerMesh로 사용
-                    playerMesh = glbModel;
+                    if (actualMesh) {
+                        // 실제 메시를 Scene에서 분리
+                        actualMesh.parent.remove(actualMesh);
+                        
+                        // 메시 색상 적용
+                        actualMesh.material = actualMesh.material.clone();
+                        actualMesh.material.color.setHex(playerColor);
+                        actualMesh.material.emissive.setHex(playerColor);
+                        actualMesh.material.emissiveIntensity = 0.2;
+                        actualMesh.castShadow = true;
+                        actualMesh.receiveShadow = true;
+                        
+                        // 바운딩 박스로 모델 위치 조정
+                        const box = new THREE.Box3().setFromObject(actualMesh);
+                        actualMesh.position.y = -box.min.y; // 바닥에 맞춤
+                        
+                        // 실제 메시를 playerMesh로 사용
+                        playerMesh = actualMesh;
+                        
+                        console.log(`✅ GLB 메시 추출 성공 (${playerLabel}):`, {
+                            meshType: actualMesh.type,
+                            isGroup: actualMesh.isGroup,
+                            isMesh: actualMesh.isMesh,
+                            geometry: actualMesh.geometry?.type,
+                            vertices: actualMesh.geometry?.attributes.position?.count
+                        });
+                    } else {
+                        console.log(`❌ GLB에서 메시를 찾지 못함 (${playerLabel}), Scene 사용`);
+                        playerMesh = glbScene;
+                    }
                     
                     // GLB 모델 디버깅을 위해 참조 저장
                     playerMesh.userData.isGLBModel = true;
@@ -364,9 +384,13 @@
                         isDirectGLB: true
                     });
                     
-                    // 애니메이션 믹서 설정 - GLB 모델에 직접 적용
-                    if (this.loadedModels.idle.animations.length > 0) {
-                        const mixer = new THREE.AnimationMixer(playerMesh); // playerMesh(=glbModel)에 직접 적용
+                    // 애니메이션 믹서 설정 - 메시가 추출된 경우 애니메이션 건너뛰기
+                    if (this.loadedModels.idle.animations.length > 0 && actualMesh) {
+                        console.log(`⚠️ 메시 추출로 인해 애니메이션 비활성화 (${playerLabel})`);
+                        // 메시 추출 시 애니메이션은 작동하지 않으므로 비활성화
+                    } else if (this.loadedModels.idle.animations.length > 0) {
+                        // Scene을 그대로 사용하는 경우에만 애니메이션 적용
+                        const mixer = new THREE.AnimationMixer(playerMesh);
                         const action = mixer.clipAction(this.loadedModels.idle.animations[0]);
                         action.play();
                         this.animationMixers.push(mixer);
