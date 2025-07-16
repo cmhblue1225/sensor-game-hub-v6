@@ -50,34 +50,21 @@
             transition: background-color 0.2s;
         }
         .controls button:hover, .controls a:hover { background-color: #2563eb; }
-        
-        /* 진행률 표시 추가 */
-        .progress-panel {
-            position: absolute; top: 20px; right: 20px; background: rgba(30, 41, 59, 0.8);
-            padding: 15px; border-radius: 12px; backdrop-filter: blur(5px);
-            min-width: 200px; pointer-events: auto;
-        }
-        .progress-bar {
-            width: 100%; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px;
-            overflow: hidden; margin: 8px 0;
-        }
-        .progress-fill {
-            height: 100%; background: linear-gradient(90deg, var(--warning), var(--success));
-            width: 0%; transition: width 0.3s ease;
-        }
-        .distance-info, .tilt-info {
-            font-size: 14px; margin: 4px 0; display: flex; justify-content: space-between;
-        }
-        .danger { color: var(--error); font-weight: bold; }
-        .warning { color: var(--warning); font-weight: bold; }
-        .safe { color: var(--success); }
     </style>
 </head>
 <body>
+    <audio id="bgm" src="./assets/bgm.mp3" loop></audio>
+    <audio id="sfx-success" src="./assets/success.mp3"></audio>
+    <audio id="sfx-fail" src="./assets/fail.mp3"></audio>
+
     <div id="gameContainer">
         <canvas id="gameCanvas"></canvas>
         <div class="ui-overlay">
             <div id="messageBox" class="game-message">플레이어 연결 대기중...</div>
+            <div class="score-display" style="position: absolute; top: 20px; right: 20px; background: rgba(30, 41, 59, 0.8); padding: 15px; border-radius: 12px; backdrop-filter: blur(5px); pointer-events: auto; text-align: right;">
+                <div style="font-size: 1.5em; font-weight: bold; color: var(--text-primary);">점수: <span id="currentScore">0</span></div>
+                <div style="font-size: 1em; color: var(--text-secondary);">최고 기록: <span id="highScore">0</span></div>
+            </div>
         </div>
         <div class="session-panel">
             <div class="session-title">🎂 케이크 배달단</div>
@@ -86,20 +73,6 @@
             <div class="connection-status">
                 <div id="player1Status" class="player-status disconnected">P1</div>
                 <div id="player2Status" class="player-status disconnected">P2</div>
-            </div>
-        </div>
-        <div id="progressPanel" class="progress-panel" style="display: none;">
-            <div style="font-weight: bold; color: var(--primary); margin-bottom: 8px;">📊 진행 상황</div>
-            <div class="progress-bar">
-                <div id="progressFill" class="progress-fill"></div>
-            </div>
-            <div id="distanceInfo" class="distance-info">
-                <span>플레이어 거리:</span>
-                <span id="distanceValue" class="safe">0.0m</span>
-            </div>
-            <div id="tiltInfo" class="tilt-info">
-                <span>케이크 기울기:</span>
-                <span id="tiltValue" class="safe">안전</span>
             </div>
         </div>
         <div class="controls">
@@ -122,14 +95,29 @@
                     debug: false
                 });
 
-                this.gameState = 'waiting'; // waiting, ready, playing, success, fail
+                this.gameState = 'waiting'; // waiting, ready, playing, success, fail, level_clear
+                this.level = 1;
+                this.maxLevel = 5;
                 this.players = {};
                 this.cake = {};
                 this.obstacles = [];
                 this.destination = null;
+                this.particles = [];
+                this.cameraShake = { intensity: 0, decay: 0 };
+                this.currentScore = 0;
+                this.highScore = parseInt(localStorage.getItem('cakeDeliveryHighScore') || '0');
+
+                this.levelConfig = {
+                    1: { forwardSpeed: 0.1, obstacles: 2, holes: 1, movingObstacles: 1, rotatingObstacles: 0 },
+                    2: { forwardSpeed: 0.12, obstacles: 3, holes: 2, movingObstacles: 1, rotatingObstacles: 1 },
+                    3: { forwardSpeed: 0.15, obstacles: 4, holes: 3, movingObstacles: 2, rotatingObstacles: 1 },
+                    4: { forwardSpeed: 0.18, obstacles: 5, holes: 4, movingObstacles: 2, rotatingObstacles: 2 },
+                    5: { forwardSpeed: 0.2, obstacles: 6, holes: 5, movingObstacles: 3, rotatingObstacles: 2 },
+                };
 
                 this.initUI();
                 this.init3D();
+                this.initAudio();
                 this.setupEvents();
                 
                 this.animate = this.animate.bind(this);
@@ -140,6 +128,9 @@
                 this.messageBox = document.getElementById('messageBox');
                 this.resetButton = document.getElementById('resetButton');
                 this.resetButton.onclick = () => this.resetGame();
+                this.currentScoreDisplay = document.getElementById('currentScore');
+                this.highScoreDisplay = document.getElementById('highScore');
+                this.updateScoreDisplay();
             }
 
             init3D() {
@@ -161,12 +152,29 @@
                 directionalLight.castShadow = true;
                 this.scene.add(directionalLight);
 
-                // 바닥
-                const floorGeometry = new THREE.PlaneGeometry(50, 100);
+                this.scene.add(directionalLight);
+
+                // 별 배경 추가
+                const starsGeometry = new THREE.BufferGeometry();
+                const starsMaterial = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 0.5 });
+                const starVertices = [];
+                for (let i = 0; i < 10000; i++) {
+                    const x = (Math.random() - 0.5) * 2000;
+                    const y = (Math.random() - 0.5) * 2000;
+                    const z = (Math.random() - 0.5) * 2000;
+                    starVertices.push(x, y, z);
+                }
+                starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+                this.stars = new THREE.Points(starsGeometry, starsMaterial);
+                this.scene.add(this.stars);
+
+                this.roadWidth = 15; // 도로 폭 감소
+                const floorGeometry = new THREE.PlaneGeometry(this.roadWidth, 100);
                 const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x4a5568 });
                 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
                 floor.rotation.x = -Math.PI / 2;
                 floor.position.y = -0.5;
+                floor.position.z = -50; // 도로 시작 위치 조정
                 floor.receiveShadow = true;
                 this.scene.add(floor);
             }
@@ -194,7 +202,6 @@
                 this.sdk.on('game-ready', () => {
                     this.gameState = 'ready';
                     this.messageBox.textContent = '3초 후 시작!';
-                    document.getElementById('progressPanel').style.display = 'block';
                     setTimeout(() => {
                         this.sdk.startGame();
                         this.gameState = 'playing';
@@ -234,28 +241,28 @@
             }
 
             addPlayer(sensorId) {
-                // 동적 플레이어 할당 - 센서 ID에 관계없이 순서대로 할당
-                const playerCount = Object.keys(this.players).length;
-                const isPlayer1 = playerCount === 0;
+                const isPlayer1 = !this.players['sensor1'];
                 const playerColor = isPlayer1 ? 0x3b82f6 : 0x8b5cf6;
                 const startX = isPlayer1 ? -2 : 2;
+                const playerLabel = isPlayer1 ? '1P' : '2P';
 
                 const geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 32);
                 const material = new THREE.MeshStandardMaterial({ color: playerColor });
                 const playerMesh = new THREE.Mesh(geometry, material);
                 playerMesh.position.set(startX, 0, 0);
                 playerMesh.castShadow = true;
+
+                const labelSprite = this.makeTextSprite(playerLabel, { fontsize: 96, fontface: 'Arial', borderColor: { r:255, g:0, b:0, a:1.0 } });
+                labelSprite.position.set(0, 1.5, 0);
+                playerMesh.add(labelSprite);
+
                 this.scene.add(playerMesh);
 
                 this.players[sensorId] = {
                     id: sensorId,
                     mesh: playerMesh,
                     velocity: new THREE.Vector3(),
-                    playerNumber: isPlayer1 ? 1 : 2, // 플레이어 번호 추가
-                    isPlayer1: isPlayer1 // 편의성을 위한 플래그
                 };
-
-                console.log(`플레이어 ${isPlayer1 ? 1 : 2} 연결됨: ${sensorId}`);
 
                 if (Object.keys(this.players).length === 2 && !this.cake.mesh) {
                     this.createCake();
@@ -272,18 +279,8 @@
             }
 
             updatePlayerStatus() {
-                // 동적 플레이어 상태 업데이트
-                const connectedPlayers = Object.values(this.players);
-                
-                // 플레이어 1 상태
-                const player1 = connectedPlayers.find(p => p.isPlayer1);
-                document.getElementById('player1Status').className = `player-status ${player1 ? 'connected' : 'disconnected'}`;
-                document.getElementById('player1Status').textContent = player1 ? `P1 (${player1.id})` : 'P1';
-                
-                // 플레이어 2 상태  
-                const player2 = connectedPlayers.find(p => !p.isPlayer1);
-                document.getElementById('player2Status').className = `player-status ${player2 ? 'connected' : 'disconnected'}`;
-                document.getElementById('player2Status').textContent = player2 ? `P2 (${player2.id})` : 'P2';
+                document.getElementById('player1Status').className = `player-status ${this.players['sensor1'] ? 'connected' : 'disconnected'}`;
+                document.getElementById('player2Status').className = `player-status ${this.players['sensor2'] ? 'connected' : 'disconnected'}`;
             }
 
             createCake() {
@@ -295,97 +292,120 @@
             }
             
             createLevel() {
-                // 장애물 생성
+                // 기존 장애물 및 구멍 제거
+                this.obstacles.forEach(obstacle => this.scene.remove(obstacle));
+                this.obstacles = [];
+
+                const config = this.levelConfig[this.level];
+                const totalLength = 100; // 목적지까지의 총 길이
+                const destinationZ = -totalLength; // 목적지 Z 좌표
+
+                // 고정 장애물 생성
                 const obstacleGeometry = new THREE.BoxGeometry(2, 2, 2);
-                for(let i = 0; i < 5; i++) {
+                for(let i = 0; i < config.obstacles; i++) {
                     const obstacleMaterial = new THREE.MeshStandardMaterial({ color: 0xef4444 });
                     const obstacle = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
-                    obstacle.position.set(Math.random() * 8 - 4, 0, -20 - i * 15);
+                    obstacle.position.set(Math.random() * (this.roadWidth - 4) - (this.roadWidth / 2 - 2), 0, -10 - i * (totalLength / config.obstacles));
                     obstacle.castShadow = true;
                     this.scene.add(obstacle);
                     this.obstacles.push(obstacle);
                 }
 
-                // 목적지 생성
-                const destGeometry = new THREE.BoxGeometry(10, 1, 5);
-                const destMaterial = new THREE.MeshStandardMaterial({ color: 0x10b981, transparent: true, opacity: 0.5 });
-                this.destination = new THREE.Mesh(destGeometry, destMaterial);
-                this.destination.position.set(0, -0.4, -90);
-                this.scene.add(this.destination);
+                // 구멍 생성 (단순히 어두운 평면으로 표현)
+                const holeGeometry = new THREE.PlaneGeometry(3, 3);
+                const holeMaterial = new THREE.MeshStandardMaterial({ color: 0x1a202c });
+                for(let i = 0; i < config.holes; i++) {
+                    const hole = new THREE.Mesh(holeGeometry, holeMaterial);
+                    hole.rotation.x = -Math.PI / 2;
+                    hole.position.set(Math.random() * (this.roadWidth - 4) - (this.roadWidth / 2 - 2), -0.45, -5 - i * (totalLength / config.holes));
+                    this.scene.add(hole);
+                    this.obstacles.push(hole); // 구멍도 충돌 체크 대상에 포함
+                }
+
+                // 움직이는 장애물 생성
+                const movingObstacleGeometry = new THREE.BoxGeometry(3, 1, 1);
+                const movingObstacleMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700 });
+                for(let i = 0; i < config.movingObstacles; i++) {
+                    const movingObstacle = new THREE.Mesh(movingObstacleGeometry, movingObstacleMaterial);
+                    movingObstacle.position.set(0, 0, -25 - i * (totalLength / config.movingObstacles));
+                    movingObstacle.userData.moveDirection = Math.random() > 0.5 ? 1 : -1;
+                    movingObstacle.userData.moveSpeed = 0.1 + Math.random() * 0.1;
+                    movingObstacle.castShadow = true;
+                    this.scene.add(movingObstacle);
+                    this.obstacles.push(movingObstacle);
+                }
+
+                // 회전하는 장애물 생성
+                const rotatingObstacleGeometry = new THREE.BoxGeometry(1, 5, 1);
+                const rotatingObstacleMaterial = new THREE.MeshStandardMaterial({ color: 0x8a2be2 });
+                for(let i = 0; i < config.rotatingObstacles; i++) {
+                    const rotatingObstacle = new THREE.Mesh(rotatingObstacleGeometry, rotatingObstacleMaterial);
+                    rotatingObstacle.position.set(0, 2.5, -30 - i * (totalLength / config.rotatingObstacles));
+                    rotatingObstacle.userData.rotationSpeed = 0.05 + Math.random() * 0.05;
+                    rotatingObstacle.castShadow = true;
+                    this.scene.add(rotatingObstacle);
+                    this.obstacles.push(rotatingObstacle);
+                }
+
+                // 목적지 위치 조정
+                if (!this.destination) {
+                    const destGeometry = new THREE.BoxGeometry(this.roadWidth, 1, 5);
+                    const destMaterial = new THREE.MeshStandardMaterial({ color: 0x10b981, transparent: true, opacity: 0.5 });
+                    this.destination = new THREE.Mesh(destGeometry, destMaterial);
+                    this.scene.add(this.destination);
+                }
+                this.destination.position.set(0, -0.4, destinationZ);
             }
 
             updatePlayerPosition(sensorId, orientation) {
                 const player = this.players[sensorId];
                 if (!player) return;
 
-                const speed = 0.02;
-                player.velocity.x = (orientation.gamma || 0) * speed;
-                player.velocity.z = (orientation.beta || 0) * speed - 1; // 기본 전진
+                const config = this.levelConfig[this.level];
+                const sensitivity = 0.01;
+                const maxSpeed = 0.2;
 
-                player.mesh.position.x += player.velocity.x;
-                player.mesh.position.z += player.velocity.z * 0.1;
+                let moveX = (orientation.gamma || 0) * sensitivity;
+                let moveZ = (orientation.beta || 0) * sensitivity;
 
-                // 경계 체크
-                player.mesh.position.x = THREE.MathUtils.clamp(player.mesh.position.x, -24, 24);
-                player.mesh.position.z = THREE.MathUtils.clamp(player.mesh.position.z, -98, 2);
+                moveX = THREE.MathUtils.clamp(moveX, -maxSpeed, maxSpeed);
+                moveZ = THREE.MathUtils.clamp(moveZ, -maxSpeed, maxSpeed);
+
+                const targetVelocity = new THREE.Vector3(moveX, 0, moveZ - config.forwardSpeed);
+
+                player.velocity.lerp(targetVelocity, 0.05);
+
+                player.mesh.position.add(player.velocity);
+
+                // 도로 이탈 방지
+                const roadLimit = this.roadWidth / 2 - 0.5; // 플레이어 반지름 고려
+                player.mesh.position.x = THREE.MathUtils.clamp(player.mesh.position.x, -roadLimit, roadLimit);
+                player.mesh.position.z = THREE.MathUtils.clamp(player.mesh.position.z, -100, 2);
             }
 
             updateCakePosition() {
                 if (!this.cake.mesh || Object.keys(this.players).length < 2) return;
 
-                // 동적 플레이어 접근 - 안전한 방법으로 두 플레이어 위치 가져오기
-                const playerPositions = Object.values(this.players).map(player => player.mesh.position);
-                if (playerPositions.length < 2) return;
+                const p1 = this.players['sensor1'].mesh.position;
+                const p2 = this.players['sensor2'].mesh.position;
 
-                const p1 = playerPositions[0];
-                const p2 = playerPositions[1];
-
-                // 케이크 위치는 두 플레이어의 중간 (기존 설정 유지)
                 this.cake.mesh.position.lerp(new THREE.Vector3((p1.x + p2.x) / 2, 0, (p1.z + p2.z) / 2), 0.1);
 
-                // 케이크 기울기 계산 (기존 물리 설정 유지)
-                const distance = p1.distanceTo(p2);
-                const angle = Math.atan2(p1.z - p2.z, p1.x - p2.x);
-                this.cake.mesh.rotation.y = -angle;
-                this.cake.mesh.rotation.z = (p1.y - p2.y) * 0.1; // 이 게임에선 y는 안변함
+                // 케이크 회전은 고정, 기울기만 계산
+                this.cake.mesh.rotation.y = 0; // Y축 회전 고정
                 this.cake.mesh.rotation.x = (p1.z - p2.z) * 0.1;
+                this.cake.mesh.rotation.z = (p2.x - p1.x) * 0.1;
 
-                // 진행률 및 상태 정보 업데이트
-                this.updateProgressInfo(distance);
-
-                // 실패 조건: 기존 임계값 유지 (너무 멀어지거나 기울어지면)
-                if (distance > 5) this.setGameState('fail', '너무 멀어요!');
+                const distance = p1.distanceTo(p2);
+                if (distance > 7) this.setGameState('fail', '너무 멀어요!');
                 if (Math.abs(this.cake.mesh.rotation.x) > 0.8 || Math.abs(this.cake.mesh.rotation.z) > 0.8) {
                     this.setGameState('fail', '케이크가 떨어졌어요!');
                 }
-            }
 
-            updateProgressInfo(distance) {
-                if (!this.cake.mesh) return;
-
-                // 진행률 계산 (시작점 z=0, 목적지 z=-90)
-                const progress = Math.max(0, Math.min(100, (Math.abs(this.cake.mesh.position.z) / 90) * 100));
-                
-                // 진행률 바 업데이트
-                document.getElementById('progressFill').style.width = `${progress}%`;
-
-                // 플레이어 간 거리 표시
-                const distanceEl = document.getElementById('distanceValue');
-                distanceEl.textContent = `${distance.toFixed(1)}m`;
-                distanceEl.className = distance > 4 ? 'danger' : distance > 3 ? 'warning' : 'safe';
-
-                // 케이크 기울기 표시
-                const maxTilt = Math.max(Math.abs(this.cake.mesh.rotation.x), Math.abs(this.cake.mesh.rotation.z));
-                const tiltEl = document.getElementById('tiltValue');
-                if (maxTilt > 0.7) {
-                    tiltEl.textContent = '위험!';
-                    tiltEl.className = 'danger';
-                } else if (maxTilt > 0.5) {
-                    tiltEl.textContent = '주의';
-                    tiltEl.className = 'warning';
-                } else {
-                    tiltEl.textContent = '안전';
-                    tiltEl.className = 'safe';
+                // 도로 이탈 판정
+                const roadLimit = this.roadWidth / 2 - 1.5; // 케이크 반지름 고려
+                if (Math.abs(this.cake.mesh.position.x) > roadLimit) {
+                    this.setGameState('fail', '도로 밖으로 이탈!');
                 }
             }
 
@@ -393,7 +413,6 @@
                 if (!this.cake.mesh) return;
                 const cakeBox = new THREE.Box3().setFromObject(this.cake.mesh);
 
-                // 장애물 충돌
                 for (const obstacle of this.obstacles) {
                     const obstacleBox = new THREE.Box3().setFromObject(obstacle);
                     if (cakeBox.intersectsBox(obstacleBox)) {
@@ -402,72 +421,182 @@
                     }
                 }
 
-                // 목적지 도착
                 const destBox = new THREE.Box3().setFromObject(this.destination);
                 if (cakeBox.intersectsBox(destBox)) {
-                    this.setGameState('success', '배달 성공!');
+                    if (this.level < this.maxLevel) {
+                        this.setGameState('level_clear', `레벨 ${this.level} 클리어!`);
+                        this.level++;
+                        setTimeout(() => this.resetGame(true), 2000);
+                    } else {
+                        this.setGameState('success', '최종 배달 성공!');
+                    }
                 }
+            }
+
+            initAudio() {
+                this.bgm = document.getElementById('bgm');
+                this.sfxSuccess = document.getElementById('sfx-success');
+                this.sfxFail = document.getElementById('sfx-fail');
+
+                // BGM 자동 재생을 위한 처리 (사용자 제스처 필요)
+                document.addEventListener('click', () => {
+                    if (this.bgm.paused) {
+                        this.bgm.play().catch(e => console.log("BGM play failed:", e));
+                    }
+                }, { once: true });
+            }
+
+            playSound(soundElement) {
+                soundElement.currentTime = 0;
+                soundElement.play().catch(e => console.log("Sound play failed:", e));
             }
 
             setGameState(state, message) {
-                if (this.gameState === 'success' || this.gameState === 'fail') return;
+                if (this.gameState === 'fail' || this.gameState === 'success') return;
                 this.gameState = state;
                 this.messageBox.textContent = message;
                 this.messageBox.style.display = 'flex';
-                
-                // 게임 종료 시 진행률 패널 숨김
-                if (state === 'success' || state === 'fail') {
-                    document.getElementById('progressPanel').style.display = 'none';
+                if (state === 'fail' || state === 'success') {
+                    this.resetButton.style.display = 'block';
+                    this.bgm.pause();
+                    if (state === 'success') {
+                        this.playSound(this.sfxSuccess);
+                        this.createParticles(this.cake.mesh.position, 0xffd700, 100); // 성공 파티클 (금색)
+                        this.currentScore += (this.maxLevel * 100); // 최종 클리어 보너스
+                    } else {
+                        this.playSound(this.sfxFail);
+                        this.createParticles(this.cake.mesh.position, 0xffa07a, 200); // 실패 파티클 (주황색)
+                        this.startCameraShake(0.5, 500); // 실패 시 카메라 흔들림
+                    }
+                    this.updateHighScore();
+                    this.updateScoreDisplay();
+                } else if (state === 'playing') {
+                    this.bgm.play().catch(e => console.log("BGM play failed:", e));
+                } else if (state === 'level_clear') {
+                    this.currentScore += (this.level * 100); // 레벨 클리어 점수
+                    this.updateScoreDisplay();
                 }
-                
-                this.resetButton.style.display = 'block';
             }
 
-            resetGame() {
-                // 완전한 게임 상태 초기화
-                this.gameState = 'waiting';
-                
-                // UI 초기화
-                this.messageBox.textContent = '플레이어 연결 대기중...';
-                this.messageBox.style.display = 'flex';
-                this.resetButton.style.display = 'none';
-                document.getElementById('progressPanel').style.display = 'none';
-                
-                // 3D 객체들 정리
+            updateScoreDisplay() {
+                this.currentScoreDisplay.textContent = this.currentScore;
+                this.highScoreDisplay.textContent = this.highScore;
+            }
+
+            updateHighScore() {
+                if (this.currentScore > this.highScore) {
+                    this.highScore = this.currentScore;
+                    localStorage.setItem('cakeDeliveryHighScore', this.highScore);
+                }
+            }
+
+            createParticles(position, color, count) {
+                const geometry = new THREE.BufferGeometry();
+                const vertices = [];
+                for (let i = 0; i < count; i++) {
+                    const x = position.x + (Math.random() - 0.5) * 2;
+                    const y = position.y + (Math.random() - 0.5) * 2;
+                    const z = position.z + (Math.random() - 0.5) * 2;
+                    vertices.push(x, y, z);
+                }
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+                const material = new THREE.PointsMaterial({ color: color, size: 0.2 });
+                const particles = new THREE.Points(geometry, material);
+                this.scene.add(particles);
+                this.particles.push({ mesh: particles, velocity: new THREE.Vector3(), life: 100 });
+            }
+
+            updateParticles() {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.mesh.position.add(p.velocity);
+                    p.mesh.material.opacity -= 0.01;
+                    p.life--;
+                    if (p.life <= 0 || p.mesh.material.opacity <= 0) {
+                        this.scene.remove(p.mesh);
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+
+            startCameraShake(intensity, duration) {
+                this.cameraShake.intensity = intensity;
+                this.cameraShake.decay = intensity / duration;
+                this.cameraShake.startTime = Date.now();
+            }
+
+            updateCameraShake() {
+                if (this.cameraShake.intensity > 0) {
+                    const elapsed = Date.now() - this.cameraShake.startTime;
+                    const currentIntensity = Math.max(0, this.cameraShake.intensity - this.cameraShake.decay * elapsed);
+
+                    this.camera.position.x += (Math.random() - 0.5) * currentIntensity;
+                    this.camera.position.y += (Math.random() - 0.5) * currentIntensity;
+
+                    if (currentIntensity <= 0) {
+                        this.cameraShake.intensity = 0;
+                    }
+                }
+            }
+
+            resetGame(isLevelUp = false) {
+                if (!isLevelUp && Object.keys(this.players).length < 2) {
+                    window.location.reload();
+                    return;
+                }
+
+                if (!isLevelUp) {
+                    this.level = 1;
+                    this.currentScore = 0;
+                }
+
+                this.updateScoreDisplay();
+
+                this.createLevel();
+
+                if (this.players['sensor1']) this.players['sensor1'].mesh.position.set(-2, 0, 0);
+                if (this.players['sensor2']) this.players['sensor2'].mesh.position.set(2, 0, 0);
+
                 if (this.cake.mesh) {
-                    this.scene.remove(this.cake.mesh);
-                    this.cake = {};
+                    this.cake.mesh.position.set(0, 0, 0);
+                    this.cake.mesh.rotation.set(0, 0, 0);
                 }
-                
-                // 장애물 정리
-                this.obstacles.forEach(obstacle => this.scene.remove(obstacle));
-                this.obstacles = [];
-                
-                if (this.destination) {
-                    this.scene.remove(this.destination);
-                    this.destination = null;
-                }
-                
-                // 플레이어들 재배치 (연결 유지)
-                const playerCount = Object.keys(this.players).length;
-                let index = 0;
-                for (const playerId in this.players) {
-                    const isPlayer1 = index === 0;
-                    const startX = isPlayer1 ? -2 : 2;
-                    this.players[playerId].mesh.position.set(startX, 0, 0);
-                    this.players[playerId].velocity.set(0, 0, 0);
-                    this.players[playerId].isPlayer1 = isPlayer1;
-                    this.players[playerId].playerNumber = isPlayer1 ? 1 : 2;
-                    index++;
-                }
-                
-                // 2명이 연결되어 있으면 레벨 재생성
-                if (playerCount === 2) {
-                    this.createCake();
-                    this.createLevel();
-                }
-                
-                console.log('게임 리셋 완료');
+
+                this.resetButton.style.display = 'none';
+                this.gameState = 'ready';
+                this.messageBox.textContent = isLevelUp ? `레벨 ${this.level} 시작!` : '3초 후 다시 시작!';
+                this.messageBox.style.display = 'flex';
+
+                setTimeout(() => {
+                    this.gameState = 'playing';
+                    this.messageBox.style.display = 'none';
+                    this.bgm.play().catch(e => console.log("BGM play failed:", e));
+                }, 3000);
+            }
+
+            updateCamera() {
+                if (!this.cake.mesh) return;
+                const targetPosition = new THREE.Vector3();
+                targetPosition.copy(this.cake.mesh.position);
+                targetPosition.y += 15;
+                targetPosition.z += 10;
+                this.camera.position.lerp(targetPosition, 0.05);
+                this.camera.lookAt(this.cake.mesh.position);
+            }
+
+            updateDynamicObstacles() {
+                const roadLimit = this.roadWidth / 2 - 1.5; // 장애물 반지름 고려
+                this.obstacles.forEach(obstacle => {
+                    if (obstacle.userData.moveDirection) { // 움직이는 장애물
+                        obstacle.position.x += obstacle.userData.moveDirection * obstacle.userData.moveSpeed;
+                        if (obstacle.position.x > roadLimit || obstacle.position.x < -roadLimit) {
+                            obstacle.userData.moveDirection *= -1; // 방향 반전
+                        }
+                    }
+                    if (obstacle.userData.rotationSpeed) { // 회전하는 장애물
+                        obstacle.rotation.y += obstacle.userData.rotationSpeed;
+                    }
+                });
             }
 
             animate() {
@@ -475,7 +604,12 @@
                 if (this.gameState === 'playing') {
                     this.updateCakePosition();
                     this.checkCollisions();
+                    this.updateDynamicObstacles();
                 }
+                this.updateCamera();
+                this.updateParticles();
+                this.updateCameraShake();
+                this.stars.rotation.y += 0.0001; // 별 배경 움직임
                 this.renderer.render(this.scene, this.camera);
             }
 
@@ -483,6 +617,38 @@
                 this.camera.aspect = window.innerWidth / window.innerHeight;
                 this.camera.updateProjectionMatrix();
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+            makeTextSprite(message, parameters) {
+                const fontface = parameters.hasOwnProperty("fontface") ? parameters["fontface"] : "Arial";
+                const fontsize = parameters.hasOwnProperty("fontsize") ? parameters["fontsize"] : 18;
+                const borderThickness = parameters.hasOwnProperty("borderThickness") ? parameters["borderThickness"] : 4;
+                const borderColor = parameters.hasOwnProperty("borderColor") ? parameters["borderColor"] : { r:0, g:0, b:0, a:1.0 };
+                const backgroundColor = parameters.hasOwnProperty("backgroundColor") ? parameters["backgroundColor"] : { r:255, g:255, b:255, a:1.0 };
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                context.font = "Bold " + fontsize + "px " + fontface;
+
+                const metrics = context.measureText(message);
+                const textWidth = metrics.width;
+
+                context.fillStyle   = "rgba(" + backgroundColor.r + "," + backgroundColor.g + "," + backgroundColor.b + "," + backgroundColor.a + ")";
+                context.strokeStyle = "rgba(" + borderColor.r + "," + borderColor.g + "," + borderColor.b + "," + borderColor.a + ")";
+
+                context.lineWidth = borderThickness;
+                // roundRect(context, borderThickness/2, borderThickness/2, textWidth + borderThickness, fontsize * 1.4 + borderThickness, 6);
+
+                context.fillStyle = "rgba(255, 255, 255, 1.0)";
+                context.fillText(message, borderThickness, fontsize + borderThickness);
+
+                const texture = new THREE.Texture(canvas);
+                texture.needsUpdate = true;
+
+                const spriteMaterial = new THREE.SpriteMaterial({ map: texture });
+                const sprite = new THREE.Sprite(spriteMaterial);
+                sprite.scale.set(8, 4, 1.0);
+                return sprite;
             }
         }
 
