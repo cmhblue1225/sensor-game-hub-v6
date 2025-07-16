@@ -606,12 +606,21 @@
             createGLBPlayerModel(isPlayer1) {
                 console.log('🎭 GLB 플레이어 모델 생성 시작...');
                 
-                // GLB 모델 생성 - 새로운 그룹으로 감싸서 구조 개선
+                // GLB 모델 생성 - idle 모델 사용 (자연스러운 애니메이션)
                 const playerGroup = new THREE.Group();
-                const originalModel = this.loadedModels.original.model.clone();
                 
-                // 원본 모델을 그룹에 추가
-                playerGroup.add(originalModel);
+                // idle 모델을 기본으로 사용 (원본 모델 대신)
+                let baseModel;
+                if (this.loadedModels.idle && this.loadedModels.idle.model) {
+                    baseModel = this.loadedModels.idle.model.clone();
+                    console.log('🎆 idle 모델 사용');
+                } else {
+                    baseModel = this.loadedModels.original.model.clone();
+                    console.log('🎆 original 모델 사용 (idle 없음)');
+                }
+                
+                // 모델을 그룹에 추가
+                playerGroup.add(baseModel);
                 
                 // 모델 위치 및 회전 초기화
                 playerGroup.position.set(0, 0, 0);
@@ -620,22 +629,23 @@
                 originalModel.rotation.set(0, 0, 0);
                 
                 // 모델 경계 박스 확인
-                const box = new THREE.Box3().setFromObject(originalModel);
+                const box = new THREE.Box3().setFromObject(baseModel);
                 const size = box.getSize(new THREE.Vector3());
                 const center = box.getCenter(new THREE.Vector3());
                 
                 console.log('📏 GLB 모델 정보:', {
                     size: { x: size.x, y: size.y, z: size.z },
                     center: { x: center.x, y: center.y, z: center.z },
-                    isPlayer1: isPlayer1
+                    isPlayer1: isPlayer1,
+                    modelType: this.loadedModels.idle ? 'idle' : 'original'
                 });
                 
                 // 모델을 바닥에 맞춤 (Y축 조정)
-                originalModel.position.y = -center.y;
+                baseModel.position.y = -center.y;
                 
                 // 플레이어별 색상 적용 및 밝기 개선
                 const playerColor = isPlayer1 ? 0x3b82f6 : 0xef4444;
-                originalModel.traverse((child) => {
+                baseModel.traverse((child) => {
                     if (child.isMesh) {
                         // 기존 재질을 복제하고 밝기 개선
                         child.material = child.material.clone();
@@ -660,7 +670,7 @@
                 });
 
                 // 애니메이션 믹서 생성
-                const mixer = new THREE.AnimationMixer(originalModel);
+                const mixer = new THREE.AnimationMixer(baseModel);
                 const animations = {};
                 
                 // 각 애니메이션 클립 설정
@@ -683,8 +693,9 @@
                 console.log('✅ GLB 플레이어 모델 생성 완료');
                 
                 // 그룹에 디버깅 정보 추가
-                playerGroup.userData.originalModel = originalModel;
+                playerGroup.userData.baseModel = baseModel;
                 playerGroup.userData.isGLBModel = true;
+                playerGroup.userData.modelType = this.loadedModels.idle ? 'idle' : 'original';
                 
                 return {
                     mesh: playerGroup,  // 그룹을 메시로 반환
@@ -738,7 +749,19 @@
 
                 // 새로운 3D 모델 생성
                 const playerData = this.createPlayerModel(isPlayer1);
+                
+                // 시작 위치 설정 (더 멀리 떨어뜨려서 겹치지 않도록)
+                const startX = isPlayer1 ? -4 : 4;  // -2, 2에서 -4, 4로 변경
                 playerData.mesh.position.set(startX, 0, 0);
+                
+                // 플레이어 방향 설정 (앞쪽을 바라보도록)
+                playerData.mesh.rotation.y = 0; // 기본적으로 앞쪽(Z축 음의 방향)을 바라보도록
+                
+                console.log(`🎯 플레이어 ${isPlayer1 ? '1' : '2'} 생성:`, {
+                    position: { x: startX, y: 0, z: 0 },
+                    rotation: { y: 0 },
+                    sensorId: sensorId
+                });
 
                 // 플레이어 라벨 추가 (3D 모델에도)
                 const labelSprite = this.makeTextSprite(playerLabel, { 
@@ -938,13 +961,21 @@
                 const sensitivity = 0.02; // 민감도 증가 (0.005 → 0.02) - 더 반응성 좋게
                 const gravity = new THREE.Vector3(0, -0.001, 0); // 약간의 중력
                 
-                // 디버깅 로그 추가
-                if (Math.abs(orientation.gamma) > 5 || Math.abs(orientation.beta) > 5) {
+                // 디버깅 로그 추가 - 더 상세한 정보
+                if (Math.abs(orientation.gamma) > 2 || Math.abs(orientation.beta) > 2) {
                     console.log(`📱 센서 데이터 (${sensorId}):`, {
                         gamma: orientation.gamma?.toFixed(2),
                         beta: orientation.beta?.toFixed(2),
                         forceX: ((orientation.gamma || 0) * sensitivity).toFixed(4),
-                        forceZ: ((orientation.beta || 0) * sensitivity).toFixed(4)
+                        forceZ: ((orientation.beta || 0) * sensitivity).toFixed(4),
+                        playerExists: !!player,
+                        meshExists: !!player.mesh,
+                        meshType: player.mesh?.userData?.modelType || 'unknown',
+                        currentPosition: {
+                            x: player.mesh?.position.x?.toFixed(2),
+                            y: player.mesh?.position.y?.toFixed(2),
+                            z: player.mesh?.position.z?.toFixed(2)
+                        }
                     });
                 }
                 
