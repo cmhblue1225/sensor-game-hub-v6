@@ -322,7 +322,7 @@
                 // GLB 모델 또는 기본 모델 사용
                 let playerMesh;
                 
-                if (this.loadedModels.idle) {
+                if (false && this.loadedModels.idle) { // GLB 모델 임시 비활성화
                     // GLB Scene을 Group으로 감싸서 사용 (SkinnedMesh 호환성)
                     console.log(`🎭 GLB 모델로 플레이어 ${playerLabel} 생성 (Group 래퍼)`);
                     const glbScene = this.loadedModels.idle.model.clone();
