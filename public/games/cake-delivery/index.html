@@ -50,6 +50,12 @@
             transition: background-color 0.2s;
         }
         .controls button:hover, .controls a:hover { background-color: #2563eb; }
+        .mode-btn {
+            padding: 8px 16px; background-color: var(--surface); color: var(--text-secondary); border: 2px solid var(--surface);
+            border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; transition: all 0.2s;
+        }
+        .mode-btn:hover { background-color: var(--primary); color: white; border-color: var(--primary); }
+        .mode-btn.active { background-color: var(--warning); color: var(--background); border-color: var(--warning); }
     </style>
 </head>
 <body>
@@ -64,6 +70,12 @@
             <div class="score-display" style="position: absolute; top: 20px; right: 20px; background: rgba(30, 41, 59, 0.8); padding: 15px; border-radius: 12px; backdrop-filter: blur(5px); pointer-events: auto; text-align: right;">
                 <div style="font-size: 1.5em; font-weight: bold; color: var(--text-primary);">점수: <span id="currentScore">0</span></div>
                 <div style="font-size: 1em; color: var(--text-secondary);">최고 기록: <span id="highScore">0</span></div>
+                <div id="timerDisplay" style="font-size: 1.2em; font-weight: bold; color: var(--warning); margin-top: 10px; display: none;">
+                    ⏱️ <span id="timeRemaining">60</span>초
+                </div>
+                <div id="gameModeDisplay" style="font-size: 0.9em; color: var(--text-secondary); margin-top: 5px;">
+                    모드: <span id="currentGameMode">일반</span>
+                </div>
             </div>
         </div>
         <div class="session-panel">
@@ -77,6 +89,11 @@
         </div>
         <div class="controls">
             <button id="resetButton" style="display: none;">🔄 재시작</button>
+            <div id="gameModeSelector" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <button id="normalMode" class="mode-btn">🍰 일반</button>
+                <button id="timeAttackMode" class="mode-btn">⏱️ 타임어택</button>
+                <button id="endlessMode" class="mode-btn">♾️ 무한</button>
+            </div>
             <a href="/">🏠 허브로</a>
         </div>
     </div>
@@ -98,14 +115,36 @@
                 this.gameState = 'waiting'; // waiting, ready, playing, success, fail, level_clear
                 this.level = 1;
                 this.maxLevel = 5;
+                this.gameMode = 'normal'; // 'normal', 'timeAttack', 'endless'
+                this.timeLimit = 0;
+                this.timeRemaining = 0;
+                this.endlessScore = 0;
                 this.players = {};
                 this.cake = {};
                 this.obstacles = [];
                 this.destination = null;
                 this.particles = [];
+                this.powerUps = [];
+                this.activePowerUps = {
+                    slowMotion: { active: false, endTime: 0, duration: 10000 },
+                    safeZone: { active: false, endTime: 0, duration: 8000 },
+                    extendedRange: { active: false, endTime: 0, duration: 12000 }
+                };
                 this.cameraShake = { intensity: 0, decay: 0 };
                 this.currentScore = 0;
                 this.highScore = parseInt(localStorage.getItem('cakeDeliveryHighScore') || '0');
+                
+                // 고급 점수 시스템
+                this.scoreSystem = {
+                    levelStartTime: 0,
+                    totalStabilityScore: 0,
+                    stabilityChecks: 0,
+                    perfectDeliveryBonus: 1000,
+                    timeBonus: 0,
+                    stabilityBonus: 0,
+                    efficiencyBonus: 0,
+                    comboMultiplier: 1
+                };
 
                 this.levelConfig = {
                     1: { forwardSpeed: 0.1, obstacles: 2, holes: 1, movingObstacles: 1, rotatingObstacles: 0 },
@@ -130,7 +169,17 @@
                 this.resetButton.onclick = () => this.resetGame();
                 this.currentScoreDisplay = document.getElementById('currentScore');
                 this.highScoreDisplay = document.getElementById('highScore');
+                this.timerDisplay = document.getElementById('timerDisplay');
+                this.timeRemainingDisplay = document.getElementById('timeRemaining');
+                this.gameModeDisplay = document.getElementById('currentGameMode');
+                
+                // 게임 모드 버튼 이벤트
+                document.getElementById('normalMode').onclick = () => this.setGameMode('normal');
+                document.getElementById('timeAttackMode').onclick = () => this.setGameMode('timeAttack');
+                document.getElementById('endlessMode').onclick = () => this.setGameMode('endless');
+                
                 this.updateScoreDisplay();
+                this.updateGameModeDisplay();
             }
 
             init3D() {
@@ -138,6 +187,12 @@
                 this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
                 this.camera.position.set(0, 15, 10);
                 this.camera.lookAt(0, 0, 0);
+                
+                // 동적 카메라 설정
+                this.cameraTarget = new THREE.Vector3(0, 0, 0);
+                this.cameraOffset = new THREE.Vector3(0, 15, 10);
+                this.cameraMode = 'follow'; // 'follow', 'cinematic', 'overhead'
+                this.cinematicTime = 0;
 
                 this.renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('gameCanvas'), antialias: true });
                 this.renderer.setSize(window.innerWidth, window.innerHeight);
@@ -206,6 +261,7 @@
                         this.sdk.startGame();
                         this.gameState = 'playing';
                         this.messageBox.style.display = 'none';
+                        this.scoreSystem.levelStartTime = Date.now(); // 레벨 시작 시간 기록
                     }, 3000);
                 });
 
@@ -262,6 +318,10 @@
                     id: sensorId,
                     mesh: playerMesh,
                     velocity: new THREE.Vector3(),
+                    acceleration: new THREE.Vector3(),
+                    mass: 1.0,
+                    friction: 0.95,
+                    maxSpeed: 0.3
                 };
 
                 if (Object.keys(this.players).length === 2 && !this.cake.mesh) {
@@ -288,13 +348,19 @@
                 const cakeMaterial = new THREE.MeshStandardMaterial({ color: 0xf472b6 });
                 this.cake.mesh = new THREE.Mesh(cakeGeometry, cakeMaterial);
                 this.cake.mesh.castShadow = true;
+                this.cake.velocity = new THREE.Vector3();
+                this.cake.acceleration = new THREE.Vector3();
+                this.cake.mass = 2.0; // 케이크는 플레이어보다 무거움
+                this.cake.stability = 1.0; // 안정성 지수
                 this.scene.add(this.cake.mesh);
             }
             
             createLevel() {
-                // 기존 장애물 및 구멍 제거
+                // 기존 장애물, 구멍, 파워업 제거
                 this.obstacles.forEach(obstacle => this.scene.remove(obstacle));
                 this.obstacles = [];
+                this.powerUps.forEach(powerUp => this.scene.remove(powerUp.mesh));
+                this.powerUps = [];
 
                 const config = this.levelConfig[this.level];
                 const totalLength = 100; // 목적지까지의 총 길이
@@ -329,7 +395,7 @@
                     const movingObstacle = new THREE.Mesh(movingObstacleGeometry, movingObstacleMaterial);
                     movingObstacle.position.set(0, 0, -25 - i * (totalLength / config.movingObstacles));
                     movingObstacle.userData.moveDirection = Math.random() > 0.5 ? 1 : -1;
-                    movingObstacle.userData.moveSpeed = 0.1 + Math.random() * 0.1;
+                    movingObstacle.userData.moveSpeed = 0.05 + Math.random() * 0.05;
                     movingObstacle.castShadow = true;
                     this.scene.add(movingObstacle);
                     this.obstacles.push(movingObstacle);
@@ -355,6 +421,49 @@
                     this.scene.add(this.destination);
                 }
                 this.destination.position.set(0, -0.4, destinationZ);
+                
+                // 파워업 생성 (레벨당 2-3개)
+                this.createPowerUps(totalLength);
+            }
+
+            createPowerUps(totalLength) {
+                const powerUpTypes = [
+                    { type: 'slowMotion', color: 0x00ffff, icon: '⏰' },
+                    { type: 'safeZone', color: 0x00ff00, icon: '🛡️' },
+                    { type: 'extendedRange', color: 0xff00ff, icon: '🔗' }
+                ];
+                
+                const powerUpCount = 2 + Math.floor(this.level / 2); // 레벨별 파워업 개수 증가
+                
+                for(let i = 0; i < powerUpCount; i++) {
+                    const powerUpType = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                    
+                    const geometry = new THREE.SphereGeometry(0.8, 16, 16);
+                    const material = new THREE.MeshStandardMaterial({ 
+                        color: powerUpType.color,
+                        emissive: powerUpType.color,
+                        emissiveIntensity: 0.3,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    const powerUpMesh = new THREE.Mesh(geometry, material);
+                    powerUpMesh.position.set(
+                        Math.random() * (this.roadWidth - 4) - (this.roadWidth / 2 - 2),
+                        1,
+                        -15 - i * (totalLength / powerUpCount)
+                    );
+                    
+                    powerUpMesh.userData.type = powerUpType.type;
+                    powerUpMesh.userData.rotationSpeed = 0.02;
+                    
+                    this.scene.add(powerUpMesh);
+                    this.powerUps.push({
+                        mesh: powerUpMesh,
+                        type: powerUpType.type,
+                        collected: false
+                    });
+                }
             }
 
             updatePlayerPosition(sensorId, orientation) {
@@ -363,24 +472,35 @@
 
                 const config = this.levelConfig[this.level];
                 const sensitivity = 0.01;
-                const maxSpeed = 0.2;
-
-                let moveX = (orientation.gamma || 0) * sensitivity;
-                let moveZ = (orientation.beta || 0) * sensitivity;
-
-                moveX = THREE.MathUtils.clamp(moveX, -maxSpeed, maxSpeed);
-                moveZ = THREE.MathUtils.clamp(moveZ, -maxSpeed, maxSpeed);
-
-                const targetVelocity = new THREE.Vector3(moveX, 0, moveZ - config.forwardSpeed);
-
-                player.velocity.lerp(targetVelocity, 0.05);
-
+                const gravity = new THREE.Vector3(0, -0.001, 0); // 약간의 중력
+                
+                // 센서 입력을 힘으로 변환
+                const forceX = (orientation.gamma || 0) * sensitivity;
+                const forceZ = (orientation.beta || 0) * sensitivity - config.forwardSpeed;
+                
+                // 가속도 계산 (F = ma, a = F/m)
+                player.acceleration.set(forceX / player.mass, 0, forceZ / player.mass);
+                player.acceleration.add(gravity);
+                
+                // 속도 업데이트 (관성 적용)
+                player.velocity.add(player.acceleration);
+                
+                // 마찰력 적용
+                player.velocity.multiplyScalar(player.friction);
+                
+                // 최대 속도 제한
+                if (player.velocity.length() > player.maxSpeed) {
+                    player.velocity.normalize().multiplyScalar(player.maxSpeed);
+                }
+                
+                // 위치 업데이트
                 player.mesh.position.add(player.velocity);
 
                 // 도로 이탈 방지
-                const roadLimit = this.roadWidth / 2 - 0.5; // 플레이어 반지름 고려
+                const roadLimit = this.roadWidth / 2 - 0.5;
                 player.mesh.position.x = THREE.MathUtils.clamp(player.mesh.position.x, -roadLimit, roadLimit);
                 player.mesh.position.z = THREE.MathUtils.clamp(player.mesh.position.z, -100, 2);
+                player.mesh.position.y = Math.max(0, player.mesh.position.y); // 바닥 아래로 떨어지지 않음
             }
 
             updateCakePosition() {
@@ -388,22 +508,62 @@
 
                 const p1 = this.players['sensor1'].mesh.position;
                 const p2 = this.players['sensor2'].mesh.position;
-
-                this.cake.mesh.position.lerp(new THREE.Vector3((p1.x + p2.x) / 2, 0, (p1.z + p2.z) / 2), 0.1);
-
-                // 케이크 회전은 고정, 기울기만 계산
-                this.cake.mesh.rotation.y = 0; // Y축 회전 고정
-                this.cake.mesh.rotation.x = (p1.z - p2.z) * 0.1;
-                this.cake.mesh.rotation.z = (p2.x - p1.x) * 0.1;
-
                 const distance = p1.distanceTo(p2);
-                if (distance > 7) this.setGameState('fail', '너무 멀어요!');
+                
+                // 플레이어 간 중간점 계산
+                const targetPos = new THREE.Vector3((p1.x + p2.x) / 2, 0, (p1.z + p2.z) / 2);
+                
+                // 케이크에 작용하는 힘 계산 (관성과 중력 적용)
+                const springForce = targetPos.clone().sub(this.cake.mesh.position).multiplyScalar(0.05);
+                const dampingForce = this.cake.velocity.clone().multiplyScalar(-0.02); // 감쇠력
+                const gravity = new THREE.Vector3(0, -0.002, 0);
+                
+                // 안정성에 따른 케이크 흔들림
+                const instability = Math.max(0, distance - 3) * 0.01; // 거리 3 이상부터 불안정
+                const shake = new THREE.Vector3(
+                    (Math.random() - 0.5) * instability,
+                    0,
+                    (Math.random() - 0.5) * instability
+                );
+                
+                // 전체 힘 합성
+                this.cake.acceleration.copy(springForce).add(dampingForce).add(gravity).add(shake);
+                
+                // 케이크 속도 및 위치 업데이트
+                this.cake.velocity.add(this.cake.acceleration);
+                this.cake.velocity.multiplyScalar(0.98); // 케이크 마찰력
+                this.cake.mesh.position.add(this.cake.velocity);
+                
+                // Y축 위치 제한
+                this.cake.mesh.position.y = Math.max(0, this.cake.mesh.position.y);
+
+                // 케이크 기울기 계산 (더 현실적으로)
+                const tiltX = (p1.z - p2.z) * 0.05 + this.cake.velocity.z * 0.5;
+                const tiltZ = (p2.x - p1.x) * 0.05 + this.cake.velocity.x * 0.5;
+                
+                this.cake.mesh.rotation.y = 0; // Y축 회전 고정
+                this.cake.mesh.rotation.x += (tiltX - this.cake.mesh.rotation.x) * 0.1;
+                this.cake.mesh.rotation.z += (tiltZ - this.cake.mesh.rotation.z) * 0.1;
+
+                const tilt = Math.abs(this.cake.mesh.rotation.x) + Math.abs(this.cake.mesh.rotation.z);
+                
+                // 안정성 계산 및 점수
+                this.cake.stability = Math.max(0, 1 - (distance / 10) - (tilt / 2));
+                
+                if (this.gameState === 'playing') {
+                    this.updateStabilityScore(distance, tilt);
+                }
+                
+                // 거리 확장 파워업 효과 적용
+                const maxDistance = this.activePowerUps.extendedRange.active ? 10 : 7;
+                
+                if (distance > maxDistance) this.setGameState('fail', '너무 멀어요!');
                 if (Math.abs(this.cake.mesh.rotation.x) > 0.8 || Math.abs(this.cake.mesh.rotation.z) > 0.8) {
                     this.setGameState('fail', '케이크가 떨어졌어요!');
                 }
 
                 // 도로 이탈 판정
-                const roadLimit = this.roadWidth / 2 - 1.5; // 케이크 반지름 고려
+                const roadLimit = this.roadWidth / 2 - 1.5;
                 if (Math.abs(this.cake.mesh.position.x) > roadLimit) {
                     this.setGameState('fail', '도로 밖으로 이탈!');
                 }
@@ -413,24 +573,79 @@
                 if (!this.cake.mesh) return;
                 const cakeBox = new THREE.Box3().setFromObject(this.cake.mesh);
 
-                for (const obstacle of this.obstacles) {
-                    const obstacleBox = new THREE.Box3().setFromObject(obstacle);
-                    if (cakeBox.intersectsBox(obstacleBox)) {
-                        this.setGameState('fail', '장애물과 충돌!');
-                        return;
+                // 장애물 충돌 체크 (안전지대 효과 확인)
+                if (!this.activePowerUps.safeZone.active) {
+                    for (const obstacle of this.obstacles) {
+                        const obstacleBox = new THREE.Box3().setFromObject(obstacle);
+                        if (cakeBox.intersectsBox(obstacleBox)) {
+                            this.setGameState('fail', '장애물과 충돌!');
+                            return;
+                        }
+                    }
+                }
+
+                // 파워업 충돌 체크
+                for (const powerUp of this.powerUps) {
+                    if (!powerUp.collected) {
+                        const powerUpBox = new THREE.Box3().setFromObject(powerUp.mesh);
+                        if (cakeBox.intersectsBox(powerUpBox)) {
+                            this.collectPowerUp(powerUp);
+                        }
                     }
                 }
 
                 const destBox = new THREE.Box3().setFromObject(this.destination);
                 if (cakeBox.intersectsBox(destBox)) {
-                    if (this.level < this.maxLevel) {
-                        this.setGameState('level_clear', `레벨 ${this.level} 클리어!`);
+                    const scoreResult = this.calculateLevelScore();
+                    this.currentScore += scoreResult.finalScore;
+                    
+                    if (this.gameMode === 'endless') {
+                        // 무한모드: 계속 진행하면서 난이도 증가
+                        this.endlessScore += scoreResult.finalScore;
+                        this.setGameState('level_clear', 
+                            `레벨 ${this.level} 클리어!\n` +
+                            `점수: ${scoreResult.finalScore}점\n` +
+                            `누적: ${this.currentScore}점`
+                        );
                         this.level++;
+                        // 무한모드에서는 레벨 설정을 동적으로 조정
+                        this.adjustEndlessLevel();
                         setTimeout(() => this.resetGame(true), 2000);
+                    } else if (this.level < this.maxLevel) {
+                        this.setGameState('level_clear', 
+                            `레벨 ${this.level} 클리어!\n` +
+                            `점수: ${scoreResult.finalScore}점\n` +
+                            `(기본: ${scoreResult.baseScore}, 시간: ${scoreResult.timeBonus}, ` +
+                            `안정: ${scoreResult.stabilityBonus}, 효율: ${scoreResult.efficiencyBonus})`
+                        );
+                        this.level++;
+                        setTimeout(() => this.resetGame(true), 3000);
                     } else {
-                        this.setGameState('success', '최종 배달 성공!');
+                        this.currentScore += this.scoreSystem.perfectDeliveryBonus;
+                        let successMessage = `최종 배달 성공!\n최종 점수: ${this.currentScore}점\n`;
+                        
+                        if (this.gameMode === 'timeAttack') {
+                            const timeBonus = Math.floor(this.timeRemaining * 10);
+                            this.currentScore += timeBonus;
+                            successMessage += `시간 보너스: +${timeBonus}점!\n`;
+                        }
+                        
+                        successMessage += `완주 보너스: +${this.scoreSystem.perfectDeliveryBonus}점!`;
+                        this.setGameState('success', successMessage);
                     }
                 }
+            }
+
+            adjustEndlessLevel() {
+                // 무한모드 난이도 동적 조정
+                const dynamicLevel = Math.min(10, Math.floor(this.level / 3) + 1);
+                this.levelConfig[this.level] = {
+                    forwardSpeed: 0.1 + (dynamicLevel * 0.02),
+                    obstacles: Math.min(8, 1 + dynamicLevel),
+                    holes: Math.min(6, Math.floor(dynamicLevel / 2)),
+                    movingObstacles: Math.min(4, Math.floor(dynamicLevel / 2)),
+                    rotatingObstacles: Math.min(3, Math.floor(dynamicLevel / 3))
+                };
             }
 
             initAudio() {
@@ -461,11 +676,16 @@
                     this.bgm.pause();
                     if (state === 'success') {
                         this.playSound(this.sfxSuccess);
-                        this.createParticles(this.cake.mesh.position, 0xffd700, 100); // 성공 파티클 (금색)
+                        // 성공 시 화려한 불꽃놀이 효과
+                        this.createParticles(this.cake.mesh.position, 0xffd700, 150, 'fire');
+                        setTimeout(() => this.createParticles(this.cake.mesh.position, 0xff69b4, 100, 'fire'), 200);
+                        setTimeout(() => this.createParticles(this.cake.mesh.position, 0x00ff00, 100, 'fire'), 400);
                         this.currentScore += (this.maxLevel * 100); // 최종 클리어 보너스
                     } else {
                         this.playSound(this.sfxFail);
-                        this.createParticles(this.cake.mesh.position, 0xffa07a, 200); // 실패 파티클 (주황색)
+                        // 실패 시 크림이 튀는 효과와 연기
+                        this.createParticles(this.cake.mesh.position, 0xfff8dc, 200, 'cream');
+                        setTimeout(() => this.createParticles(this.cake.mesh.position, 0x666666, 100, 'smoke'), 300);
                         this.startCameraShake(0.5, 500); // 실패 시 카메라 흔들림
                     }
                     this.updateHighScore();
@@ -481,6 +701,69 @@
             updateScoreDisplay() {
                 this.currentScoreDisplay.textContent = this.currentScore;
                 this.highScoreDisplay.textContent = this.highScore;
+                
+                if (this.gameMode === 'timeAttack' && this.gameState === 'playing') {
+                    this.timeRemainingDisplay.textContent = Math.max(0, Math.ceil(this.timeRemaining));
+                    if (this.timeRemaining <= 10) {
+                        this.timerDisplay.style.color = 'var(--error)';
+                    } else if (this.timeRemaining <= 30) {
+                        this.timerDisplay.style.color = 'var(--warning)';
+                    }
+                }
+            }
+
+            setGameMode(mode) {
+                if (this.gameState === 'playing') return; // 게임 중에는 모드 변경 불가
+                
+                this.gameMode = mode;
+                
+                // 모드별 설정
+                switch(mode) {
+                    case 'normal':
+                        this.maxLevel = 5;
+                        this.timerDisplay.style.display = 'none';
+                        break;
+                    case 'timeAttack':
+                        this.maxLevel = 3; // 타임어택은 3레벨만
+                        this.timeLimit = 180; // 3분
+                        this.timeRemaining = this.timeLimit;
+                        this.timerDisplay.style.display = 'block';
+                        this.timerDisplay.style.color = 'var(--warning)';
+                        break;
+                    case 'endless':
+                        this.maxLevel = 999; // 무한
+                        this.timerDisplay.style.display = 'none';
+                        break;
+                }
+                
+                this.updateGameModeDisplay();
+                this.resetGame();
+            }
+
+            updateGameModeDisplay() {
+                const modeNames = {
+                    'normal': '일반',
+                    'timeAttack': '타임어택',
+                    'endless': '무한모드'
+                };
+                
+                this.gameModeDisplay.textContent = modeNames[this.gameMode];
+                
+                // 버튼 활성화 상태 업데이트
+                document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+                document.getElementById(this.gameMode === 'timeAttack' ? 'timeAttackMode' : 
+                                     this.gameMode === 'endless' ? 'endlessMode' : 'normalMode').classList.add('active');
+            }
+
+            updateGameTimer() {
+                if (this.gameMode === 'timeAttack') {
+                    this.timeRemaining -= 1/60; // 60fps 기준으로 감소
+                    this.updateScoreDisplay();
+                    
+                    if (this.timeRemaining <= 0) {
+                        this.setGameState('fail', '시간 초과!');
+                    }
+                }
             }
 
             updateHighScore() {
@@ -490,28 +773,280 @@
                 }
             }
 
-            createParticles(position, color, count) {
+            updateStabilityScore(distance, tilt) {
+                // 안정성 점수 계산 (0-100, 높을수록 좋음)
+                const distanceScore = Math.max(0, 100 - (distance * 20)); // 거리 0-5 범위
+                const tiltScore = Math.max(0, 100 - (tilt * 125)); // 기울기 0-0.8 범위
+                const currentStability = (distanceScore + tiltScore) / 2;
+                
+                this.scoreSystem.totalStabilityScore += currentStability;
+                this.scoreSystem.stabilityChecks++;
+            }
+
+            calculateLevelScore() {
+                const levelTime = (Date.now() - this.scoreSystem.levelStartTime) / 1000; // 초 단위
+                const avgStability = this.scoreSystem.totalStabilityScore / this.scoreSystem.stabilityChecks;
+                
+                // 시간 보너스 (빠를수록 높은 점수, 최대 500점)
+                const timeTarget = 30 + (this.level * 10); // 레벨별 목표 시간
+                this.scoreSystem.timeBonus = Math.max(0, Math.floor(500 * (timeTarget - levelTime) / timeTarget));
+                
+                // 안정성 보너스 (안정할수록 높은 점수, 최대 300점)
+                this.scoreSystem.stabilityBonus = Math.floor(avgStability * 3);
+                
+                // 효율성 보너스 (거리와 시간 조합, 최대 200점)
+                const efficiency = Math.min(100, avgStability * (timeTarget / levelTime));
+                this.scoreSystem.efficiencyBonus = Math.floor(efficiency * 2);
+                
+                // 콤보 멀티플라이어 (연속 레벨 클리어)
+                if (this.level > 1) {
+                    this.scoreSystem.comboMultiplier = 1 + (this.level - 1) * 0.2;
+                }
+                
+                const baseScore = this.level * 100;
+                const bonusScore = this.scoreSystem.timeBonus + this.scoreSystem.stabilityBonus + this.scoreSystem.efficiencyBonus;
+                const finalScore = Math.floor((baseScore + bonusScore) * this.scoreSystem.comboMultiplier);
+                
+                return {
+                    baseScore,
+                    timeBonus: this.scoreSystem.timeBonus,
+                    stabilityBonus: this.scoreSystem.stabilityBonus,
+                    efficiencyBonus: this.scoreSystem.efficiencyBonus,
+                    comboMultiplier: this.scoreSystem.comboMultiplier,
+                    finalScore
+                };
+            }
+
+            resetScoreSystem() {
+                this.scoreSystem.totalStabilityScore = 0;
+                this.scoreSystem.stabilityChecks = 0;
+                this.scoreSystem.timeBonus = 0;
+                this.scoreSystem.stabilityBonus = 0;
+                this.scoreSystem.efficiencyBonus = 0;
+            }
+
+            collectPowerUp(powerUp) {
+                powerUp.collected = true;
+                powerUp.mesh.visible = false;
+                
+                // 파워업 효과 활성화
+                const now = Date.now();
+                const powerUpData = this.activePowerUps[powerUp.type];
+                powerUpData.active = true;
+                powerUpData.endTime = now + powerUpData.duration;
+                
+                // 파워업별 특별한 파티클 효과
+                const particleType = powerUp.type === 'slowMotion' ? 'fire' : 
+                                   powerUp.type === 'safeZone' ? 'smoke' : 'default';
+                this.createParticles(powerUp.mesh.position, powerUp.mesh.material.color.getHex(), 80, particleType);
+                
+                // UI 메시지 표시
+                const messages = {
+                    slowMotion: '⏰ 슬로우모션 활성화!',
+                    safeZone: '🛡️ 안전지대 활성화!',
+                    extendedRange: '🔗 거리 확장 활성화!'
+                };
+                
+                this.showPowerUpMessage(messages[powerUp.type]);
+                
+                console.log(`파워업 수집: ${powerUp.type}`);
+            }
+
+            showPowerUpMessage(message) {
+                const existingMessage = document.getElementById('powerUpMessage');
+                if (existingMessage) {
+                    existingMessage.remove();
+                }
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.id = 'powerUpMessage';
+                messageDiv.style.cssText = `
+                    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+                    background: rgba(0, 0, 0, 0.8); color: white; padding: 20px 40px;
+                    border-radius: 10px; font-size: 24px; font-weight: bold;
+                    z-index: 1000; pointer-events: none;
+                `;
+                messageDiv.textContent = message;
+                document.body.appendChild(messageDiv);
+                
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.parentNode.removeChild(messageDiv);
+                    }
+                }, 3000);
+            }
+
+            updatePowerUps() {
+                const now = Date.now();
+                
+                // 파워업 회전 효과
+                this.powerUps.forEach(powerUp => {
+                    if (!powerUp.collected) {
+                        powerUp.mesh.rotation.y += powerUp.mesh.userData.rotationSpeed;
+                        powerUp.mesh.position.y = 1 + Math.sin(now * 0.005 + powerUp.mesh.position.x) * 0.2;
+                    }
+                });
+                
+                // 활성 파워업 시간 체크
+                Object.keys(this.activePowerUps).forEach(key => {
+                    const powerUp = this.activePowerUps[key];
+                    if (powerUp.active && now > powerUp.endTime) {
+                        powerUp.active = false;
+                        console.log(`파워업 종료: ${key}`);
+                    }
+                });
+            }
+
+            createParticles(position, color, count, type = 'default') {
                 const geometry = new THREE.BufferGeometry();
                 const vertices = [];
+                const velocities = [];
+                
                 for (let i = 0; i < count; i++) {
+                    // 위치 설정
                     const x = position.x + (Math.random() - 0.5) * 2;
-                    const y = position.y + (Math.random() - 0.5) * 2;
+                    const y = position.y + Math.random() * 1;
                     const z = position.z + (Math.random() - 0.5) * 2;
                     vertices.push(x, y, z);
+                    
+                    // 파티클 타입별 속도 설정
+                    let vx, vy, vz;
+                    switch(type) {
+                        case 'cream':
+                            vx = (Math.random() - 0.5) * 0.1;
+                            vy = Math.random() * 0.05 + 0.02;
+                            vz = (Math.random() - 0.5) * 0.1;
+                            break;
+                        case 'smoke':
+                            vx = (Math.random() - 0.5) * 0.02;
+                            vy = Math.random() * 0.08 + 0.04;
+                            vz = (Math.random() - 0.5) * 0.02;
+                            break;
+                        case 'fire':
+                            vx = (Math.random() - 0.5) * 0.15;
+                            vy = Math.random() * 0.1 + 0.05;
+                            vz = (Math.random() - 0.5) * 0.15;
+                            break;
+                        default:
+                            vx = (Math.random() - 0.5) * 0.05;
+                            vy = Math.random() * 0.05;
+                            vz = (Math.random() - 0.5) * 0.05;
+                    }
+                    velocities.push(vx, vy, vz);
                 }
+                
                 geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
-                const material = new THREE.PointsMaterial({ color: color, size: 0.2 });
+                
+                // 파티클 타입별 재질 설정
+                let material;
+                switch(type) {
+                    case 'cream':
+                        material = new THREE.PointsMaterial({ 
+                            color: 0xfff8dc, 
+                            size: 0.3,
+                            transparent: true,
+                            opacity: 0.8,
+                            blending: THREE.AdditiveBlending
+                        });
+                        break;
+                    case 'smoke':
+                        material = new THREE.PointsMaterial({ 
+                            color: 0x666666, 
+                            size: 0.4,
+                            transparent: true,
+                            opacity: 0.6,
+                            blending: THREE.NormalBlending
+                        });
+                        break;
+                    case 'fire':
+                        material = new THREE.PointsMaterial({ 
+                            color: color || 0xff4500, 
+                            size: 0.25,
+                            transparent: true,
+                            opacity: 0.9,
+                            blending: THREE.AdditiveBlending
+                        });
+                        break;
+                    default:
+                        material = new THREE.PointsMaterial({ 
+                            color: color, 
+                            size: 0.2,
+                            transparent: true,
+                            opacity: 0.7
+                        });
+                }
+                
                 const particles = new THREE.Points(geometry, material);
                 this.scene.add(particles);
-                this.particles.push({ mesh: particles, velocity: new THREE.Vector3(), life: 100 });
+                
+                this.particles.push({ 
+                    mesh: particles, 
+                    velocities: velocities,
+                    life: type === 'smoke' ? 150 : type === 'fire' ? 80 : 100,
+                    maxLife: type === 'smoke' ? 150 : type === 'fire' ? 80 : 100,
+                    type: type
+                });
             }
 
             updateParticles() {
                 for (let i = this.particles.length - 1; i >= 0; i--) {
                     const p = this.particles[i];
-                    p.mesh.position.add(p.velocity);
-                    p.mesh.material.opacity -= 0.01;
+                    const positions = p.mesh.geometry.attributes.position.array;
+                    const velocities = p.velocities;
+                    
+                    // 각 파티클 위치 업데이트
+                    for (let j = 0; j < positions.length; j += 3) {
+                        positions[j] += velocities[j];         // x
+                        positions[j + 1] += velocities[j + 1]; // y
+                        positions[j + 2] += velocities[j + 2]; // z
+                        
+                        // 중력 적용
+                        if (p.type !== 'smoke') {
+                            velocities[j + 1] -= 0.001; // y 속도에 중력 적용
+                        }
+                        
+                        // 파티클 타입별 특수 효과
+                        switch(p.type) {
+                            case 'fire':
+                                // 불꽃은 위로 올라가면서 흔들림
+                                velocities[j] += (Math.random() - 0.5) * 0.002;
+                                velocities[j + 2] += (Math.random() - 0.5) * 0.002;
+                                break;
+                            case 'smoke':
+                                // 연기는 천천히 퍼짐
+                                velocities[j] *= 1.01;
+                                velocities[j + 2] *= 1.01;
+                                break;
+                            case 'cream':
+                                // 크림은 아래로 떨어짐
+                                velocities[j] *= 0.98;
+                                velocities[j + 2] *= 0.98;
+                                break;
+                        }
+                    }
+                    
+                    p.mesh.geometry.attributes.position.needsUpdate = true;
+                    
+                    // 생명력과 투명도 업데이트
                     p.life--;
+                    const lifeRatio = p.life / p.maxLife;
+                    
+                    // 타입별 투명도 변화
+                    switch(p.type) {
+                        case 'smoke':
+                            p.mesh.material.opacity = lifeRatio * 0.6;
+                            break;
+                        case 'fire':
+                            p.mesh.material.opacity = lifeRatio * 0.9;
+                            // 불꽃 색상 변화 (빨강 -> 주황 -> 노랑)
+                            const fireColor = new THREE.Color();
+                            fireColor.setHSL(0.1 * (1 - lifeRatio), 1, 0.5);
+                            p.mesh.material.color = fireColor;
+                            break;
+                        default:
+                            p.mesh.material.opacity = lifeRatio * 0.7;
+                    }
+                    
                     if (p.life <= 0 || p.mesh.material.opacity <= 0) {
                         this.scene.remove(p.mesh);
                         this.particles.splice(i, 1);
@@ -548,8 +1083,21 @@
                 if (!isLevelUp) {
                     this.level = 1;
                     this.currentScore = 0;
+                    this.scoreSystem.comboMultiplier = 1;
+                    
+                    // 타이머 초기화
+                    if (this.gameMode === 'timeAttack') {
+                        this.timeRemaining = this.timeLimit;
+                    }
                 }
 
+                // 파워업 효과 초기화
+                Object.keys(this.activePowerUps).forEach(key => {
+                    this.activePowerUps[key].active = false;
+                    this.activePowerUps[key].endTime = 0;
+                });
+
+                this.resetScoreSystem();
                 this.updateScoreDisplay();
 
                 this.createLevel();
@@ -570,31 +1118,114 @@
                 setTimeout(() => {
                     this.gameState = 'playing';
                     this.messageBox.style.display = 'none';
+                    this.scoreSystem.levelStartTime = Date.now(); // 레벨 시작 시간 기록
                     this.bgm.play().catch(e => console.log("BGM play failed:", e));
                 }, 3000);
             }
 
             updateCamera() {
                 if (!this.cake.mesh) return;
-                const targetPosition = new THREE.Vector3();
-                targetPosition.copy(this.cake.mesh.position);
-                targetPosition.y += 15;
-                targetPosition.z += 10;
-                this.camera.position.lerp(targetPosition, 0.05);
-                this.camera.lookAt(this.cake.mesh.position);
+                
+                this.cinematicTime += 0.016; // 60fps 기준
+                const cakePos = this.cake.mesh.position;
+                const cakeVel = this.cake.velocity || new THREE.Vector3();
+                
+                switch(this.cameraMode) {
+                    case 'follow':
+                        // 기본 추적 카메라 (속도에 따른 앞서 보기)
+                        const lookAhead = cakeVel.clone().multiplyScalar(2);
+                        this.cameraTarget.copy(cakePos).add(lookAhead);
+                        
+                        const followOffset = new THREE.Vector3(0, 15, 10);
+                        // 속도에 따른 카메라 거리 조정
+                        const speed = cakeVel.length();
+                        followOffset.z += speed * 5;
+                        followOffset.y += speed * 2;
+                        
+                        const followPos = cakePos.clone().add(followOffset);
+                        this.camera.position.lerp(followPos, 0.08);
+                        this.camera.lookAt(this.cameraTarget);
+                        break;
+                        
+                    case 'cinematic':
+                        // 영화적 카메라 (원형 궤도)
+                        const radius = 20;
+                        const height = 12;
+                        const angle = this.cinematicTime * 0.3;
+                        
+                        const cinematicPos = new THREE.Vector3(
+                            cakePos.x + Math.cos(angle) * radius,
+                            cakePos.y + height + Math.sin(this.cinematicTime * 0.5) * 3,
+                            cakePos.z + Math.sin(angle) * radius
+                        );
+                        
+                        this.camera.position.lerp(cinematicPos, 0.05);
+                        this.camera.lookAt(cakePos);
+                        break;
+                        
+                    case 'overhead':
+                        // 오버헤드 카메라 (위에서 아래로)
+                        const overheadPos = new THREE.Vector3(cakePos.x, cakePos.y + 25, cakePos.z + 5);
+                        this.camera.position.lerp(overheadPos, 0.1);
+                        this.camera.lookAt(cakePos);
+                        break;
+                        
+                    case 'dramatic':
+                        // 드라마틱 카메라 (저각도)
+                        const dramaticPos = new THREE.Vector3(
+                            cakePos.x + Math.sin(this.cinematicTime * 0.2) * 8,
+                            cakePos.y + 3,
+                            cakePos.z + 15
+                        );
+                        this.camera.position.lerp(dramaticPos, 0.06);
+                        this.camera.lookAt(new THREE.Vector3(cakePos.x, cakePos.y + 2, cakePos.z));
+                        break;
+                }
+                
+                // 케이크 상태에 따른 자동 카메라 모드 전환
+                this.updateCameraMode();
+            }
+
+            updateCameraMode() {
+                if (!this.cake.mesh) return;
+                
+                const cakeStability = this.cake.stability || 1;
+                const distance = Object.keys(this.players).length >= 2 ? 
+                    this.players['sensor1'].mesh.position.distanceTo(this.players['sensor2'].mesh.position) : 0;
+                
+                // 위험한 상황에서 드라마틱 카메라
+                if (cakeStability < 0.3 || distance > 6) {
+                    if (this.cameraMode !== 'dramatic' && Math.random() < 0.02) {
+                        this.cameraMode = 'dramatic';
+                        setTimeout(() => { this.cameraMode = 'follow'; }, 3000);
+                    }
+                }
+                
+                // 레벨 클리어 시 시네마틱 카메라
+                if (this.gameState === 'level_clear' || this.gameState === 'success') {
+                    this.cameraMode = 'cinematic';
+                }
+                
+                // 게임 시작 시 오버헤드 카메라
+                if (this.gameState === 'ready') {
+                    this.cameraMode = 'overhead';
+                    setTimeout(() => { this.cameraMode = 'follow'; }, 2000);
+                }
             }
 
             updateDynamicObstacles() {
                 const roadLimit = this.roadWidth / 2 - 1.5; // 장애물 반지름 고려
+                const speedMultiplier = this.activePowerUps.slowMotion.active ? 0.3 : 1.0; // 슬로우모션 효과
+                
                 this.obstacles.forEach(obstacle => {
                     if (obstacle.userData.moveDirection) { // 움직이는 장애물
-                        obstacle.position.x += obstacle.userData.moveDirection * obstacle.userData.moveSpeed;
+                        obstacle.position.x += obstacle.userData.moveDirection * obstacle.userData.moveSpeed * speedMultiplier;
                         if (obstacle.position.x > roadLimit || obstacle.position.x < -roadLimit) {
                             obstacle.userData.moveDirection *= -1; // 방향 반전
                         }
                     }
                     if (obstacle.userData.rotationSpeed) { // 회전하는 장애물
-                        obstacle.rotation.y += obstacle.userData.rotationSpeed;
+                        obstacle.rotation.y += obstacle.userData.rotationSpeed * speedMultiplier;
                     }
                 });
             }
@@ -605,6 +1236,10 @@
                     this.updateCakePosition();
                     this.checkCollisions();
                     this.updateDynamicObstacles();
+                    this.updatePowerUps();
+                    this.updateGameTimer();
+                } else {
+                    this.updatePowerUps(); // 게임 진행 중이 아닐 때도 파워업 애니메이션 유지
                 }
                 this.updateCamera();
                 this.updateParticles();
