@@ -687,6 +687,20 @@ body {
 }
 
 /* 대규모 경쟁 대기실 */
+.mass-waiting-room {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.95);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 500;
+    backdrop-filter: blur(10px);
+}
+
 .mass-waiting-panel {
     top: 50%;
     left: 50%;

@@ -126,6 +126,7 @@ class ShotTargetGame {
             player2Score: document.getElementById('player2Score'),
             scoreDetails: document.getElementById('scoreDetails'),
             // 대규모 경쟁 모드용 요소들
+            massWaitingRoom: document.getElementById('massWaitingRoom'),
             massCompetitivePanel: document.getElementById('massCompetitivePanel'),
             massCompetitiveTimerValue: document.getElementById('massCompetitiveTimerValue'),
             massPlayerCount: document.getElementById('massPlayerCount'),
@@ -235,7 +236,7 @@ class ShotTargetGame {
         
         // 세션 패널 또는 대기실 패널 표시
         if (mode === 'mass-competitive') {
-            this.elements.massWaitingPanel.classList.remove('hidden');
+            this.elements.massWaitingRoom.classList.remove('hidden');
         } else {
             this.elements.sessionPanel.classList.remove('hidden');
         }
@@ -1387,7 +1388,7 @@ class ShotTargetGame {
     }
     
     hideMassWaitingPanel() {
-        this.elements.massWaitingPanel.classList.add('hidden');
+        this.elements.massWaitingRoom.classList.add('hidden');
         this.elements.massCompetitivePanel.classList.remove('hidden');
         this.elements.myMassInfoPanel.classList.remove('hidden');
         this.elements.gameInfoPanel.classList.remove('hidden');

@@ -14,6 +14,41 @@
     <div class="hud-crosshair hidden" id="crosshair"></div>
     
     <!-- UI 오버레이 -->
+    <!-- 대규모 경쟁 대기실 (전체 화면) -->
+    <div class="mass-waiting-room hidden" id="massWaitingRoom">
+        <div class="ui-panel mass-waiting-panel" id="massWaitingPanel">
+            <div class="session-title">👥 대규모 경쟁 - 대기실</div>
+            <div class="session-instructions">
+                최대 8명이 참여하는 실시간 표적 경쟁!<br>
+                조준점을 표적 중앙에 맞추면 자동으로 발사됩니다.<br>
+                아래 코드를 모바일에서 입력하거나 QR 코드를 스캔하세요.
+            </div>
+            
+            <div class="session-code" id="massSessionCode">----</div>
+            
+            <div class="qr-container" id="massQrContainer">
+                QR 코드 생성 중...
+            </div>
+            
+            <div class="mass-waiting-list" id="massWaitingList">
+                <div class="waiting-title">🎮 참가자 대기실 (0/8)</div>
+                <div id="massWaitingPlayers"></div>
+            </div>
+            
+            <div class="session-instructions">
+                📱 센서 클라이언트: <strong>/sensor.html</strong><br>
+                플레이어가 3명 이상 연결되면 게임이 시작됩니다.
+            </div>
+            
+            <div style="margin-top: 1.5rem;">
+                <button class="btn btn-success" onclick="game.startMassCompetitive()" id="massStartBtn" disabled>
+                    🚀 게임 시작
+                </button>
+                 <button class="btn btn-secondary" onclick="window.location.href='/'">🏠 허브로</button>
+            </div>
+        </div>
+    </div>
+
     <div class="game-ui">
         <!-- 점수 패널 (싱글/협동 모드용) -->
         <div class="ui-panel score-panel" id="normalScorePanel">
@@ -122,34 +157,27 @@
         </div>
         
         <!-- 대규모 경쟁 대기실 패널 -->
-        <div class="ui-panel mass-waiting-panel hidden" id="massWaitingPanel">
-            <div class="session-title">👥 대규모 경쟁 - 대기실</div>
-            <div class="session-instructions">
-                최대 8명이 참여하는 실시간 표적 경쟁!<br>
-                조준점을 표적 중앙에 맞추면 자동으로 발사됩니다.<br>
-                아래 코드를 모바일에서 입력하거나 QR 코드를 스캔하세요.
+        
+        <!-- 상태 패널 -->
+        <div class="ui-panel status-panel">
+            <div class="status-item">
+                <div class="status-indicator" id="serverStatus"></div>
+                <span class="status-text">서버 연결</span>
             </div>
-            
-            <div class="session-code" id="massSessionCode">----</div>
-            
-            <div class="qr-container" id="massQrContainer">
-                QR 코드 생성 중...
+            <div class="status-item solo-mode" id="soloSensorStatus">
+                <div class="status-indicator" id="sensorStatus"></div>
+                <span class="status-text">센서 연결</span>
             </div>
-            
-            <div class="mass-waiting-list" id="massWaitingList">
-                <div class="waiting-title">🎮 참가자 대기실 (0/8)</div>
-                <div id="massWaitingPlayers"></div>
+            <div class="status-item dual-mode hidden" id="dualSensorStatus">
+                <div class="status-indicator" id="sensor1Status"></div>
+                <span class="status-text">센서1 연결</span>
             </div>
-            
-            <div class="session-instructions">
-                📱 센서 클라이언트: <strong>/sensor.html</strong><br>
-                플레이어가 3명 이상 연결되면 게임이 시작됩니다.
+            <div class="status-item dual-mode hidden" id="dualSensorStatus2">
+                <div class="status-indicator" id="sensor2Status"></div>
+                <span class="status-text">센서2 연결</span>
             </div>
-            
-            <div style="margin-top: 1.5rem;">
-                <button class="btn btn-success" onclick="game.startMassCompetitive()" id="massStartBtn" disabled>
-                    🚀 게임 시작
-                </button>
+            <div class="status-item">
+                <span class="status-text" id="gameStatusText">게임 모드 선택</span>
             </div>
         </div>
         
