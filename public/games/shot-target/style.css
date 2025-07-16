@@ -100,7 +100,7 @@ body {
 .status-panel {
     top: 1rem;
     right: 1rem;
-    text-align: right;
+    text-align: left;
     min-width: 200px;
 }
 
@@ -200,7 +200,6 @@ body {
     right: auto;
     bottom: 1rem;
     left: 1rem;
-    min-width: 200px;
     max-width: 250px;
 }
 
