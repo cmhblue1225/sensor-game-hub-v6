@@ -388,7 +388,7 @@
                     const movingObstacle = new THREE.Mesh(movingObstacleGeometry, movingObstacleMaterial);
                     movingObstacle.position.set(0, 0, -25 - i * (totalLength / config.movingObstacles));
                     movingObstacle.userData.moveDirection = Math.random() > 0.5 ? 1 : -1;
-                    movingObstacle.userData.moveSpeed = 0.05 + Math.random() * 0.05;
+                    movingObstacle.userData.moveSpeed = 0.025 + Math.random() * 0.025;
                     movingObstacle.castShadow = true;
                     this.scene.add(movingObstacle);
                     this.obstacles.push(movingObstacle);
