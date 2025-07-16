@@ -24,7 +24,14 @@ class ShotTargetGame {
             maxCombo: 0,
             sessionCode: null,
             timeLeft: 180,  // 3분 = 180초
-            gameStartTime: null
+            gameStartTime: null,
+            // 경쟁 모드용 개별 점수
+            player1Score: 0,
+            player2Score: 0,
+            player1Hits: 0,
+            player2Hits: 0,
+            player1Combo: 0,
+            player2Combo: 0
         };
         
         // 조준 시스템 (dual 모드용으로 확장)
@@ -94,10 +101,17 @@ class ShotTargetGame {
             timerValue: document.getElementById('timerValue'),
             modeSelectionPanel: document.getElementById('modeSelectionPanel'),
             soloModeBtn: document.getElementById('soloModeBtn'),
-            dualModeBtn: document.getElementById('dualModeBtn'),
+            coopModeBtn: document.getElementById('coopModeBtn'),
+            competitiveModeBtn: document.getElementById('competitiveModeBtn'),
             soloSensorStatus: document.getElementById('soloSensorStatus'),
             dualSensorStatus: document.getElementById('dualSensorStatus'),
-            dualSensorStatus2: document.getElementById('dualSensorStatus2')
+            dualSensorStatus2: document.getElementById('dualSensorStatus2'),
+            normalScorePanel: document.getElementById('normalScorePanel'),
+            competitiveScorePanel: document.getElementById('competitiveScorePanel'),
+            competitiveTimerValue: document.getElementById('competitiveTimerValue'),
+            player1Score: document.getElementById('player1Score'),
+            player2Score: document.getElementById('player2Score'),
+            scoreDetails: document.getElementById('scoreDetails')
         };
         
         this.gameLoop = null;
@@ -139,9 +153,14 @@ class ShotTargetGame {
             this.selectGameMode('solo');
         });
         
-        // 경쟁 플레이 모드 선택  
-        this.elements.dualModeBtn.addEventListener('click', () => {
-            this.selectGameMode('dual');
+        // 협동 플레이 모드 선택  
+        this.elements.coopModeBtn.addEventListener('click', () => {
+            this.selectGameMode('coop');
+        });
+        
+        // 경쟁 플레이 모드 선택
+        this.elements.competitiveModeBtn.addEventListener('click', () => {
+            this.selectGameMode('competitive');
         });
     }
     
@@ -150,9 +169,11 @@ class ShotTargetGame {
         this.gameMode = mode;
         
         // ✅ 필수 패턴: AI_ASSISTANT_PROMPTS.md 지침에 따라 SessionSDK 초기화
+        // 협동/경쟁 모드는 모두 dual로 처리 (AI_ASSISTANT_PROMPTS.md 지침)
+        const sdkGameType = mode === 'solo' ? 'solo' : 'dual';
         this.sdk = new SessionSDK({
             gameId: 'shot-target',
-            gameType: mode,  // ✅ 선택된 모드로 설정
+            gameType: sdkGameType,  // ✅ 선택된 모드로 설정
             debug: true
         });
         
@@ -185,18 +206,43 @@ class ShotTargetGame {
             this.elements.dualSensorStatus.classList.add('hidden');
             this.elements.dualSensorStatus2.classList.add('hidden');
             
-        } else if (mode === 'dual') {
-            // 듀얼 모드 UI
-            this.elements.sessionTitle.textContent = '⚔️ Shot Target - 경쟁 플레이';
+            // 점수 패널 설정
+            this.elements.normalScorePanel.classList.remove('hidden');
+            this.elements.competitiveScorePanel.classList.add('hidden');
+            
+        } else if (mode === 'coop') {
+            // 협동 모드 UI (기존 dual 코드 활용)
+            this.elements.sessionTitle.textContent = '🤝 Shot Target - 협동 플레이';
             this.elements.sessionInstructions.innerHTML = 
-                '2명이 경쟁하는 표적 맞추기 게임!<br>' +
-                '각자 모바일로 조준하여 더 많은 표적을 맞춰보세요.<br>' +
+                '2명이 협력하는 표적 맞추기 게임!<br>' +
+                '각자 화면 절반에서 조준하여 함께 점수를 얻어보세요.<br>' +
                 '아래 코드를 두 개의 모바일에서 입력하거나 QR 코드를 스캔하세요.';
             
             // dual 모드 센서 상태 표시
             this.elements.soloSensorStatus.classList.add('hidden');
             this.elements.dualSensorStatus.classList.remove('hidden');
             this.elements.dualSensorStatus2.classList.remove('hidden');
+            
+            // 점수 패널 설정
+            this.elements.normalScorePanel.classList.remove('hidden');
+            this.elements.competitiveScorePanel.classList.add('hidden');
+            
+        } else if (mode === 'competitive') {
+            // 경쟁 모드 UI
+            this.elements.sessionTitle.textContent = '⚔️ Shot Target - 경쟁 플레이';
+            this.elements.sessionInstructions.innerHTML = 
+                '2명이 경쟁하는 표적 맞추기 게임!<br>' +
+                '각자 모바일로 조준하여 더 높은 점수를 얻어보세요.<br>' +
+                '아래 코드를 두 개의 모바일에서 입력하거나 QR 코드를 스캔하세요.';
+            
+            // dual 모드 센서 상태 표시
+            this.elements.soloSensorStatus.classList.add('hidden');
+            this.elements.dualSensorStatus.classList.remove('hidden');
+            this.elements.dualSensorStatus2.classList.remove('hidden');
+            
+            // 경쟁 모드 점수 패널 설정
+            this.elements.normalScorePanel.classList.add('hidden');
+            this.elements.competitiveScorePanel.classList.remove('hidden');
         }
     }
     
@@ -239,7 +285,7 @@ class ShotTargetGame {
                 this.hideSessionPanel();
                 this.startGame();
                 
-            } else if (this.gameMode === 'dual') {
+            } else if (this.gameMode === 'coop' || this.gameMode === 'competitive') {
                 // dual 모드에서는 sensorId로 구분
                 const sensorId = data.sensorId || 'sensor1';  // 기본값 설정
                 
@@ -406,8 +452,8 @@ class ShotTargetGame {
             this.crosshair.targetX = Math.max(0, Math.min(this.canvas.width, this.crosshair.targetX));
             this.crosshair.targetY = Math.max(0, Math.min(this.canvas.height, this.crosshair.targetY));
             
-        } else if (this.gameMode === 'dual') {
-            // 듀얼 모드: 두 센서 모두 처리
+        } else if (this.gameMode === 'coop') {
+            // 협동 모드: 화면 좌우 분할 (기존 dual 코드)
             
             // 첫 번째 센서 (좌측 플레이어)
             const normalizedTiltX1 = Math.max(-1, Math.min(1, this.sensorData.sensor1.tilt.y / maxTilt));
@@ -429,6 +475,31 @@ class ShotTargetGame {
             
             // 화면 경계 제한 (우측 절반)
             this.crosshair2.targetX = Math.max(this.canvas.width / 2, Math.min(this.canvas.width, this.crosshair2.targetX));
+            this.crosshair2.targetY = Math.max(0, Math.min(this.canvas.height, this.crosshair2.targetY));
+            
+        } else if (this.gameMode === 'competitive') {
+            // 경쟁 모드: 두 센서 모두 전체 화면 범위
+            
+            // 첫 번째 센서 (전체 화면)
+            const normalizedTiltX1 = Math.max(-1, Math.min(1, this.sensorData.sensor1.tilt.y / maxTilt));
+            const normalizedTiltY1 = Math.max(-1, Math.min(1, this.sensorData.sensor1.tilt.x / maxTilt));
+            
+            this.crosshair.targetX = this.canvas.width / 2 + (normalizedTiltX1 * this.canvas.width / 2);
+            this.crosshair.targetY = this.canvas.height / 2 + (normalizedTiltY1 * this.canvas.height / 2);
+            
+            // 화면 경계 제한 (전체 화면)
+            this.crosshair.targetX = Math.max(0, Math.min(this.canvas.width, this.crosshair.targetX));
+            this.crosshair.targetY = Math.max(0, Math.min(this.canvas.height, this.crosshair.targetY));
+            
+            // 두 번째 센서 (전체 화면)
+            const normalizedTiltX2 = Math.max(-1, Math.min(1, this.sensorData.sensor2.tilt.y / maxTilt));
+            const normalizedTiltY2 = Math.max(-1, Math.min(1, this.sensorData.sensor2.tilt.x / maxTilt));
+            
+            this.crosshair2.targetX = this.canvas.width / 2 + (normalizedTiltX2 * this.canvas.width / 2);
+            this.crosshair2.targetY = this.canvas.height / 2 + (normalizedTiltY2 * this.canvas.height / 2);
+            
+            // 화면 경계 제한 (전체 화면)
+            this.crosshair2.targetX = Math.max(0, Math.min(this.canvas.width, this.crosshair2.targetX));
             this.crosshair2.targetY = Math.max(0, Math.min(this.canvas.height, this.crosshair2.targetY));
         }
     }
@@ -493,10 +564,33 @@ class ShotTargetGame {
         this.updateGameStatus('게임 종료!');
         
         // 게임 결과 표시
-        let resultMessage = `🎯 게임 종료!\n최종 점수: ${this.state.score.toLocaleString()}점\n`;
-        resultMessage += `적중: ${this.state.hits}발, 빗나감: ${this.state.misses}발\n`;
-        resultMessage += `정확도: ${this.getAccuracy()}%\n`;
-        resultMessage += `최대 콤보: ${this.state.maxCombo}`;
+        let resultMessage;
+        
+        if (this.gameMode === 'competitive') {
+            // 경쟁 모드: 승부 결과 표시
+            const player1Score = this.state.player1Score;
+            const player2Score = this.state.player2Score;
+            
+            let winner;
+            if (player1Score > player2Score) {
+                winner = '플레이어 1 승리!';
+            } else if (player2Score > player1Score) {
+                winner = '플레이어 2 승리!';
+            } else {
+                winner = '무승부!';
+            }
+            
+            resultMessage = `⚔️ 경쟁 게임 종료!\n${winner}\n\n`;
+            resultMessage += `플레이어 1: ${player1Score.toLocaleString()}점\n`;
+            resultMessage += `플레이어 2: ${player2Score.toLocaleString()}점`;
+            
+        } else {
+            // 싱글/협동 모드: 기존 결과 표시
+            resultMessage = `🎯 게임 종료!\n최종 점수: ${this.state.score.toLocaleString()}점\n`;
+            resultMessage += `적중: ${this.state.hits}발, 빗나감: ${this.state.misses}발\n`;
+            resultMessage += `정확도: ${this.getAccuracy()}%\n`;
+            resultMessage += `최대 콤보: ${this.state.maxCombo}`;
+        }
         
         setTimeout(() => {
             alert(resultMessage);
@@ -537,6 +631,14 @@ class ShotTargetGame {
         this.state.comboCount = 0;
         this.state.maxCombo = 0;
         this.state.timeLeft = 180;  // 3분으로 리셋
+        
+        // 경쟁 모드 점수 초기화
+        this.state.player1Score = 0;
+        this.state.player2Score = 0;
+        this.state.player1Hits = 0;
+        this.state.player2Hits = 0;
+        this.state.player1Combo = 0;
+        this.state.player2Combo = 0;
         
         this.targets = [];
         this.bullets = [];
@@ -620,8 +722,8 @@ class ShotTargetGame {
             }
         }
         
-        // dual 모드에서 두 번째 조준점도 확인
-        if (this.gameMode === 'dual') {
+        // 협동/경쟁 모드에서 두 번째 조준점도 확인
+        if (this.gameMode === 'coop' || this.gameMode === 'competitive') {
             for (let i = 0; i < this.targets.length; i++) {
                 const target = this.targets[i];
                 const dx = this.crosshair2.x - target.x;
@@ -655,17 +757,43 @@ class ShotTargetGame {
         // 표적 제거
         this.targets.splice(index, 1);
         
-        // 점수 계산
-        this.state.hits++;
-        this.state.comboCount++;
-        
-        let points = target.points;
-        if (this.state.comboCount > 1) {
-            points *= Math.pow(this.config.comboMultiplier, this.state.comboCount - 1);
+        // 점수 계산 (모드별 처리)
+        if (this.gameMode === 'competitive') {
+            // 경쟁 모드: 플레이어별 개별 점수
+            if (playerId === 1) {
+                this.state.player1Hits++;
+                this.state.player1Combo++;
+                
+                let points = target.points;
+                if (this.state.player1Combo > 1) {
+                    points *= Math.pow(this.config.comboMultiplier, this.state.player1Combo - 1);
+                }
+                this.state.player1Score += Math.floor(points);
+                
+            } else if (playerId === 2) {
+                this.state.player2Hits++;
+                this.state.player2Combo++;
+                
+                let points = target.points;
+                if (this.state.player2Combo > 1) {
+                    points *= Math.pow(this.config.comboMultiplier, this.state.player2Combo - 1);
+                }
+                this.state.player2Score += Math.floor(points);
+            }
+            
+        } else {
+            // 싱글/협동 모드: 공통 점수
+            this.state.hits++;
+            this.state.comboCount++;
+            
+            let points = target.points;
+            if (this.state.comboCount > 1) {
+                points *= Math.pow(this.config.comboMultiplier, this.state.comboCount - 1);
+            }
+            
+            this.state.score += Math.floor(points);
+            this.state.maxCombo = Math.max(this.state.maxCombo, this.state.comboCount);
         }
-        
-        this.state.score += Math.floor(points);
-        this.state.maxCombo = Math.max(this.state.maxCombo, this.state.comboCount);
         
         // 타격 효과
         this.createHitEffect(target.x, target.y, points, target.color);
@@ -737,8 +865,8 @@ class ShotTargetGame {
         this.elements.crosshair.style.left = this.crosshair.x + 'px';
         this.elements.crosshair.style.top = this.crosshair.y + 'px';
         
-        // dual 모드에서 두 번째 조준점 처리
-        if (this.gameMode === 'dual') {
+        // 협동/경쟁 모드에서 두 번째 조준점 처리
+        if (this.gameMode === 'coop' || this.gameMode === 'competitive') {
             this.crosshair2.x += (this.crosshair2.targetX - this.crosshair2.x) * this.crosshair2.smoothing;
             this.crosshair2.y += (this.crosshair2.targetY - this.crosshair2.y) * this.crosshair2.smoothing;
         }
@@ -877,10 +1005,33 @@ class ShotTargetGame {
         
         this.ctx.globalAlpha = 1;
         
-        // dual 모드에서 두 번째 조준점 렌더링
-        if (this.gameMode === 'dual') {
+        // 협동 모드에서 중앙 경계선 렌더링
+        if (this.gameMode === 'coop') {
+            this.renderCenterDivider();
+        }
+        
+        // 협동/경쟁 모드에서 두 번째 조준점 렌더링
+        if (this.gameMode === 'coop' || this.gameMode === 'competitive') {
             this.renderSecondCrosshair();
         }
+    }
+    
+    renderCenterDivider() {
+        // 협동 모드 중앙 경계선
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.canvas.width / 2, 0);
+        this.ctx.lineTo(this.canvas.width / 2, this.canvas.height);
+        this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+        this.ctx.lineWidth = 2;
+        this.ctx.setLineDash([10, 10]);  // 점선 효과
+        this.ctx.stroke();
+        this.ctx.setLineDash([]);  // 점선 해제
+        
+        // 경계선 글로우 효과
+        this.ctx.shadowColor = 'rgba(255, 255, 255, 0.5)';
+        this.ctx.shadowBlur = 10;
+        this.ctx.stroke();
+        this.ctx.shadowBlur = 0;
     }
     
     renderSecondCrosshair() {
@@ -901,14 +1052,23 @@ class ShotTargetGame {
     }
     
     updateScore() {
-        this.elements.scoreValue.textContent = this.state.score.toLocaleString();
-        this.elements.hitsCount.textContent = this.state.hits;
-        this.elements.missesCount.textContent = this.state.misses;
-        this.elements.comboCount.textContent = this.state.comboCount;
-        
-        const total = this.state.hits + this.state.misses;
-        const accuracy = total > 0 ? (this.state.hits / total * 100) : 100;
-        this.elements.accuracyValue.textContent = accuracy.toFixed(1) + '%';
+        if (this.gameMode === 'competitive') {
+            // 경쟁 모드: 플레이어별 점수 표시
+            this.elements.player1Score.textContent = this.state.player1Score.toLocaleString();
+            this.elements.player2Score.textContent = this.state.player2Score.toLocaleString();
+            this.elements.competitiveTimerValue.textContent = this.elements.timerValue.textContent;
+            
+        } else {
+            // 싱글/협동 모드: 공통 점수 표시
+            this.elements.scoreValue.textContent = this.state.score.toLocaleString();
+            this.elements.hitsCount.textContent = this.state.hits;
+            this.elements.missesCount.textContent = this.state.misses;
+            this.elements.comboCount.textContent = this.state.comboCount;
+            
+            const total = this.state.hits + this.state.misses;
+            const accuracy = total > 0 ? (this.state.hits / total * 100) : 100;
+            this.elements.accuracyValue.textContent = accuracy.toFixed(1) + '%';
+        }
     }
     
     updateServerStatus(connected) {

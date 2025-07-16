@@ -419,13 +419,13 @@ body {
     left: 50%;
     transform: translate(-50%, -50%);
     text-align: center;
-    max-width: 600px;
-    min-width: 500px;
+    max-width: 800px;
+    min-width: 700px;
 }
 
 .mode-selection {
     display: flex;
-    gap: 2rem;
+    gap: 1.5rem;
     margin-top: 2rem;
 }
 
@@ -463,6 +463,56 @@ body {
     font-size: 0.9rem;
     color: var(--text-secondary);
     line-height: 1.4;
+}
+
+/* 경쟁 모드용 점수 패널 */
+.competitive-score-panel {
+    top: 1rem;
+    left: 1rem;
+    min-width: 280px;
+}
+
+.player-scores {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.player-score {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 0.5rem;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.player-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.player-score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--success);
+    font-family: 'Courier New', monospace;
+}
+
+/* 협동 모드 중앙 경계선 */
+.center-divider {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateX(-50%);
+    z-index: 50;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }
 
 /* 듀얼 모드 스타일 */
