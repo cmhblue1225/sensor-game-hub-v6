@@ -421,8 +421,8 @@ class ShotTargetGame {
                 this.sensorData.sensor1.tilt.x = sensorData.orientation.beta || 0;
                 this.sensorData.sensor1.tilt.y = sensorData.orientation.gamma || 0;
                 
-            } else if (this.gameMode === 'dual' && sensorId === 'sensor2') {
-                // dual 모드의 두 번째 센서
+            } else if ((this.gameMode === 'coop' || this.gameMode === 'competitive') && sensorId === 'sensor2') {
+                // dual 모드(협동/경쟁)의 두 번째 센서
                 this.sensorData.sensor2.tilt.x = sensorData.orientation.beta || 0;
                 this.sensorData.sensor2.tilt.y = sensorData.orientation.gamma || 0;
             }
@@ -758,13 +758,14 @@ class ShotTargetGame {
         this.targets.splice(index, 1);
         
         // 점수 계산 (모드별 처리)
+        let points = target.points;  // 변수를 상위 스코프로 이동
+        
         if (this.gameMode === 'competitive') {
             // 경쟁 모드: 플레이어별 개별 점수
             if (playerId === 1) {
                 this.state.player1Hits++;
                 this.state.player1Combo++;
                 
-                let points = target.points;
                 if (this.state.player1Combo > 1) {
                     points *= Math.pow(this.config.comboMultiplier, this.state.player1Combo - 1);
                 }
@@ -774,7 +775,6 @@ class ShotTargetGame {
                 this.state.player2Hits++;
                 this.state.player2Combo++;
                 
-                let points = target.points;
                 if (this.state.player2Combo > 1) {
                     points *= Math.pow(this.config.comboMultiplier, this.state.player2Combo - 1);
                 }
@@ -786,7 +786,6 @@ class ShotTargetGame {
             this.state.hits++;
             this.state.comboCount++;
             
-            let points = target.points;
             if (this.state.comboCount > 1) {
                 points *= Math.pow(this.config.comboMultiplier, this.state.comboCount - 1);
             }
