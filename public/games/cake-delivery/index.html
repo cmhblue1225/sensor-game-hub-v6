@@ -91,6 +91,9 @@
                 <button id="infiniteMode" class="mode-btn">♾️ 무한 모드</button>
                 <button id="timeAttackMode" class="mode-btn">⏱️ 타임 어택</button>
                 <button id="challengeMode" class="mode-btn">🔥 챌린지</button>
+                <button id="relayMode" class="mode-btn">🏃 릴레이</button>
+                <button id="speedrunMode" class="mode-btn">⚡ 스피드런</button>
+                <button id="coop4Mode" class="mode-btn">👥 4인 협동</button>
             </div>
             <a href="/">🏠 허브로</a>
         </div>
@@ -113,7 +116,7 @@
                 this.gameState = 'waiting'; // waiting, ready, playing, success, fail, level_clear
                 this.level = 1;
                 this.maxLevel = 10; // 확장된 레벨
-                this.gameMode = 'normal'; // normal, infinite, timeAttack, challenge
+                this.gameMode = 'normal'; // normal, infinite, timeAttack, challenge, relay, speedrun, coop4
                 this.players = {};
                 this.cake = {};
                 this.obstacles = [];
@@ -138,6 +141,21 @@
                 this.infiniteLevel = 1;
                 this.consecutiveDeliveries = 0;
                 
+                // 릴레이 모드
+                this.relaySegments = 3; // 구간 수
+                this.currentSegment = 1;
+                this.segmentTargets = []; // 각 구간의 목적지
+                
+                // 스피드런 모드
+                this.speedrunTime = 0;
+                this.speedrunBestTime = parseFloat(localStorage.getItem('speedrunBest') || '999');
+                this.speedrunCheckpoints = [];
+                
+                // 4인 협동 모드
+                this.coop4Players = {};
+                this.bigCakeSize = 2.0; // 더 큰 케이크
+                this.coop4Formation = 'square'; // square, diamond, line
+                
                 // 애니메이션 시스템
                 this.clock = new THREE.Clock();
 
@@ -157,10 +175,13 @@
                 
                 // 게임 모드별 설정
                 this.modeConfig = {
-                    normal: { lives: 3, scoreMult: 1.0, description: '일반 모드' },
-                    infinite: { lives: 1, scoreMult: 1.5, description: '무한 도전 모드' },
-                    timeAttack: { lives: 1, scoreMult: 2.0, description: '시간 제한 모드' },
-                    challenge: { lives: 1, scoreMult: 3.0, description: '극한 챌린지' }
+                    normal: { lives: 3, scoreMult: 1.0, description: '일반 모드', players: 2 },
+                    infinite: { lives: 1, scoreMult: 1.5, description: '무한 도전 모드', players: 2 },
+                    timeAttack: { lives: 1, scoreMult: 2.0, description: '시간 제한 모드', players: 2 },
+                    challenge: { lives: 1, scoreMult: 3.0, description: '극한 챌린지', players: 2 },
+                    relay: { lives: 2, scoreMult: 1.8, description: '릴레이 배달', players: 2 },
+                    speedrun: { lives: 1, scoreMult: 2.5, description: '스피드런', players: 2 },
+                    coop4: { lives: 1, scoreMult: 4.0, description: '4인 협동', players: 4 }
                 };
 
                 this.initUI();
@@ -194,12 +215,18 @@
                 this.infiniteModeBtn = document.getElementById('infiniteMode');
                 this.timeAttackModeBtn = document.getElementById('timeAttackMode');
                 this.challengeModeBtn = document.getElementById('challengeMode');
+                this.relayModeBtn = document.getElementById('relayMode');
+                this.speedrunModeBtn = document.getElementById('speedrunMode');
+                this.coop4ModeBtn = document.getElementById('coop4Mode');
                 
                 // 모드 버튼 이벤트 리스너
                 this.normalModeBtn.onclick = () => this.selectGameMode('normal');
                 this.infiniteModeBtn.onclick = () => this.selectGameMode('infinite');
                 this.timeAttackModeBtn.onclick = () => this.selectGameMode('timeAttack');
                 this.challengeModeBtn.onclick = () => this.selectGameMode('challenge');
+                this.relayModeBtn.onclick = () => this.selectGameMode('relay');
+                this.speedrunModeBtn.onclick = () => this.selectGameMode('speedrun');
+                this.coop4ModeBtn.onclick = () => this.selectGameMode('coop4');
                 
                 this.updateScoreDisplay();
             }
@@ -222,6 +249,17 @@
                     case 'challenge':
                         this.level = 5; // 챌린지는 중간 레벨부터 시작
                         break;
+                    case 'relay':
+                        this.currentSegment = 1;
+                        this.setupRelayTargets();
+                        break;
+                    case 'speedrun':
+                        this.speedrunTime = 0;
+                        this.setupSpeedrunCheckpoints();
+                        break;
+                    case 'coop4':
+                        this.bigCakeSize = 2.0;
+                        break;
                     default:
                         this.level = 1;
                 }
@@ -234,7 +272,8 @@
 
             // 모드 버튼 업데이트
             updateModeButtons() {
-                [this.normalModeBtn, this.infiniteModeBtn, this.timeAttackModeBtn, this.challengeModeBtn].forEach(btn => {
+                [this.normalModeBtn, this.infiniteModeBtn, this.timeAttackModeBtn, this.challengeModeBtn, 
+                 this.relayModeBtn, this.speedrunModeBtn, this.coop4ModeBtn].forEach(btn => {
                     btn.classList.remove('active');
                 });
                 
@@ -243,6 +282,9 @@
                     case 'infinite': this.infiniteModeBtn.classList.add('active'); break;
                     case 'timeAttack': this.timeAttackModeBtn.classList.add('active'); break;
                     case 'challenge': this.challengeModeBtn.classList.add('active'); break;
+                    case 'relay': this.relayModeBtn.classList.add('active'); break;
+                    case 'speedrun': this.speedrunModeBtn.classList.add('active'); break;
+                    case 'coop4': this.coop4ModeBtn.classList.add('active'); break;
                 }
             }
 
@@ -260,13 +302,69 @@
                 
                 // 타임 어택 모드에서만 타이머 표시
                 if (this.timerDisplay) {
-                    this.timerDisplay.style.display = this.gameMode === 'timeAttack' ? 'block' : 'none';
+                    this.timerDisplay.style.display = (this.gameMode === 'timeAttack' || this.gameMode === 'speedrun') ? 'block' : 'none';
                 }
-                if (this.remainingTimeDisplay && this.gameMode === 'timeAttack') {
-                    this.remainingTimeDisplay.textContent = Math.ceil(this.remainingTime);
+                if (this.remainingTimeDisplay) {
+                    if (this.gameMode === 'timeAttack') {
+                        this.remainingTimeDisplay.textContent = Math.ceil(this.remainingTime);
+                    } else if (this.gameMode === 'speedrun') {
+                        this.remainingTimeDisplay.textContent = this.speedrunTime.toFixed(1);
+                    }
                 }
                 
                 this.updateScoreDisplay();
+            }
+
+            // 릴레이 모드 목표 설정
+            setupRelayTargets() {
+                this.segmentTargets = [];
+                const segmentLength = 30; // 각 구간의 길이
+                
+                for (let i = 0; i < this.relaySegments; i++) {
+                    this.segmentTargets.push({
+                        position: new THREE.Vector3(0, 0, -(i + 1) * segmentLength),
+                        reached: false,
+                        theme: ['normal', 'city', 'forest'][i] || 'normal'
+                    });
+                }
+                
+                console.log(`🏃 릴레이 구간 설정: ${this.relaySegments}개 구간`);
+            }
+
+            // 스피드런 체크포인트 설정
+            setupSpeedrunCheckpoints() {
+                this.speedrunCheckpoints = [];
+                const checkpointDistance = 20;
+                
+                for (let i = 1; i <= 5; i++) {
+                    this.speedrunCheckpoints.push({
+                        position: new THREE.Vector3(0, 0, -i * checkpointDistance),
+                        reached: false,
+                        targetTime: i * 15 // 각 체크포인트까지의 목표 시간 (초)
+                    });
+                }
+                
+                console.log(`⚡ 스피드런 체크포인트 설정: ${this.speedrunCheckpoints.length}개`);
+            }
+
+            // 4인 협동 플레이어 배치
+            setup4PlayerPositions() {
+                const positions = {
+                    square: [
+                        { x: -2, z: -2 }, { x: 2, z: -2 },
+                        { x: -2, z: 2 }, { x: 2, z: 2 }
+                    ],
+                    diamond: [
+                        { x: 0, z: -3 }, { x: -2, z: 0 },
+                        { x: 2, z: 0 }, { x: 0, z: 3 }
+                    ],
+                    line: [
+                        { x: -3, z: 0 }, { x: -1, z: 0 },
+                        { x: 1, z: 0 }, { x: 3, z: 0 }
+                    ]
+                };
+                
+                return positions[this.coop4Formation] || positions.square;
             }
 
             init3D() {
