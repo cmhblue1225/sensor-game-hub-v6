@@ -2,7 +2,7 @@
 class ShotTargetGame {
     constructor() {
         // 게임 모드 (초기값: null, 선택 후 설정)
-        this.gameMode = null;
+        this.gameMode = null; // 'solo', 'coop', 'competitive', 'mass-competitive'
         this.sdk = null;
         
         // 게임 요소
@@ -33,8 +33,18 @@ class ShotTargetGame {
             player1Combo: 0,
             player2Combo: 0,
             player1LastHitTime: 0,
-            player2LastHitTime: 0
+            player2LastHitTime: 0,
+            // 대규모 경쟁 모드용
+            myPlayerId: null,
+            totalTargetsCreated: 0
         };
+        
+        // 대규모 경쟁 모드용 플레이어 관리
+        this.massPlayers = new Map(); // playerId -> player data
+        this.playerColors = [
+            '#3b82f6', '#ef4444', '#10b981', '#f59e0b', 
+            '#8b5cf6', '#06b6d4', '#f97316', '#84cc16'
+        ];
         
         // 조준 시스템 (dual 모드용으로 확장)
         this.crosshair = {
@@ -105,6 +115,7 @@ class ShotTargetGame {
             soloModeBtn: document.getElementById('soloModeBtn'),
             coopModeBtn: document.getElementById('coopModeBtn'),
             competitiveModeBtn: document.getElementById('competitiveModeBtn'),
+            massCompetitiveModeBtn: document.getElementById('massCompetitiveModeBtn'),
             soloSensorStatus: document.getElementById('soloSensorStatus'),
             dualSensorStatus: document.getElementById('dualSensorStatus'),
             dualSensorStatus2: document.getElementById('dualSensorStatus2'),
@@ -113,7 +124,25 @@ class ShotTargetGame {
             competitiveTimerValue: document.getElementById('competitiveTimerValue'),
             player1Score: document.getElementById('player1Score'),
             player2Score: document.getElementById('player2Score'),
-            scoreDetails: document.getElementById('scoreDetails')
+            scoreDetails: document.getElementById('scoreDetails'),
+            // 대규모 경쟁 모드용 요소들
+            massCompetitivePanel: document.getElementById('massCompetitivePanel'),
+            massCompetitiveTimerValue: document.getElementById('massCompetitiveTimerValue'),
+            massPlayerCount: document.getElementById('massPlayerCount'),
+            totalTargetsCreated: document.getElementById('totalTargetsCreated'),
+            massLeaderboard: document.getElementById('massLeaderboard'),
+            myMassInfoPanel: document.getElementById('myMassInfoPanel'),
+            myMassScore: document.getElementById('myMassScore'),
+            myMassRank: document.getElementById('myMassRank'),
+            myMassHits: document.getElementById('myMassHits'),
+            myMassCombo: document.getElementById('myMassCombo'),
+            myMassAccuracy: document.getElementById('myMassAccuracy'),
+            massWaitingPanel: document.getElementById('massWaitingPanel'),
+            massSessionCode: document.getElementById('massSessionCode'),
+            massQrContainer: document.getElementById('massQrContainer'),
+            massWaitingList: document.getElementById('massWaitingList'),
+            massWaitingPlayers: document.getElementById('massWaitingPlayers'),
+            massStartBtn: document.getElementById('massStartBtn')
         };
         
         this.gameLoop = null;
@@ -164,6 +193,11 @@ class ShotTargetGame {
         this.elements.competitiveModeBtn.addEventListener('click', () => {
             this.selectGameMode('competitive');
         });
+        
+        // 대규모 경쟁 모드 선택
+        this.elements.massCompetitiveModeBtn.addEventListener('click', () => {
+            this.selectGameMode('mass-competitive');
+        });
     }
     
     async selectGameMode(mode) {
@@ -171,8 +205,16 @@ class ShotTargetGame {
         this.gameMode = mode;
         
         // ✅ 필수 패턴: AI_ASSISTANT_PROMPTS.md 지침에 따라 SessionSDK 초기화
-        // 협동/경쟁 모드는 모두 dual로 처리 (AI_ASSISTANT_PROMPTS.md 지침)
-        const sdkGameType = mode === 'solo' ? 'solo' : 'dual';
+        // 대규모 경쟁 모드는 multi로, 나머지는 기존 방식 유지
+        let sdkGameType;
+        if (mode === 'solo') {
+            sdkGameType = 'solo';
+        } else if (mode === 'mass-competitive') {
+            sdkGameType = 'multi';  // ✅ 3-8명 지원을 위해 multi 타입 사용
+        } else {
+            sdkGameType = 'dual';   // coop, competitive는 기존대로 dual
+        }
+        
         this.sdk = new SessionSDK({
             gameId: 'shot-target',
             gameType: sdkGameType,  // ✅ 선택된 모드로 설정
@@ -188,8 +230,12 @@ class ShotTargetGame {
         // SDK 이벤트 설정
         this.setupSDKEvents();
         
-        // 세션 패널 표시
-        this.elements.sessionPanel.classList.remove('hidden');
+        // 세션 패널 또는 대기실 패널 표시
+        if (mode === 'mass-competitive') {
+            this.elements.massWaitingPanel.classList.remove('hidden');
+        } else {
+            this.elements.sessionPanel.classList.remove('hidden');
+        }
         
         this.updateGameStatus('서버 연결 중...');
     }
@@ -245,6 +291,17 @@ class ShotTargetGame {
             // 경쟁 모드 점수 패널 설정
             this.elements.normalScorePanel.classList.add('hidden');
             this.elements.competitiveScorePanel.classList.remove('hidden');
+            
+        } else if (mode === 'mass-competitive') {
+            // 대규모 경쟁 모드 UI
+            // 대기실 패널은 이미 표시되므로 추가 설정 없음
+            
+            // 다른 패널들 숨기기
+            this.elements.soloSensorStatus.classList.add('hidden');
+            this.elements.dualSensorStatus.classList.add('hidden');
+            this.elements.dualSensorStatus2.classList.add('hidden');
+            this.elements.normalScorePanel.classList.add('hidden');
+            this.elements.competitiveScorePanel.classList.add('hidden');
         }
     }
     
@@ -269,8 +326,14 @@ class ShotTargetGame {
         this.sdk.on('session-created', (event) => {
             const session = event.detail || event;  // ✅ 중요!
             this.state.sessionCode = session.sessionCode;
-            this.displaySessionInfo(session);
-            this.updateGameStatus('센서 연결 대기 중...');
+            
+            if (this.gameMode === 'mass-competitive') {
+                this.displayMassSessionInfo(session);
+                this.updateGameStatus('플레이어 연결 대기 중...');
+            } else {
+                this.displaySessionInfo(session);
+                this.updateGameStatus('센서 연결 대기 중...');
+            }
         });
         
         // 센서 연결 (AI_ASSISTANT_PROMPTS.md 지침: data.sensorId로 구분)
@@ -307,6 +370,31 @@ class ShotTargetGame {
                 } else {
                     const connectedCount = (this.state.sensor1Connected ? 1 : 0) + (this.state.sensor2Connected ? 1 : 0);
                     this.updateGameStatus(`센서 연결됨 (${connectedCount}/2) - 추가 연결 대기 중...`);
+                }
+                
+            } else if (this.gameMode === 'mass-competitive') {
+                // ✅ 대규모 경쟁 모드: 멀티플레이어 센서 연결 처리
+                const playerId = data.sensorId;
+                const totalConnected = data.connectedSensors || 1;
+                
+                if (!this.state.myPlayerId) {
+                    // 첫 번째 연결이 내 플레이어
+                    this.state.myPlayerId = playerId;
+                    this.state.sensorConnected = true;
+                    this.updateSensorStatus(true);
+                }
+                
+                // 플레이어 추가
+                this.addMassPlayer(playerId, totalConnected - 1);
+                this.updateMassWaitingList();
+                this.updateMassPlayerCount(totalConnected);
+                
+                // 3명 이상이면 게임 시작 가능
+                if (totalConnected >= 3) {
+                    this.elements.massStartBtn.disabled = false;
+                    this.updateGameStatus(`플레이어 대기 중 (${totalConnected}/8) - 시작 가능`);
+                } else {
+                    this.updateGameStatus(`플레이어 대기 중 (${totalConnected}/8) - 최소 3명 필요`);
                 }
             }
         });
@@ -427,6 +515,31 @@ class ShotTargetGame {
                 // dual 모드(협동/경쟁)의 두 번째 센서
                 this.sensorData.sensor2.tilt.x = sensorData.orientation.beta || 0;
                 this.sensorData.sensor2.tilt.y = sensorData.orientation.gamma || 0;
+                
+            } else if (this.gameMode === 'mass-competitive') {
+                // ✅ 대규모 경쟁 모드: 각 플레이어의 센서 데이터 처리
+                const player = this.massPlayers.get(sensorId);
+                if (player) {
+                    // ✅ 성능 최적화: 센서 데이터 throttling (AI_ASSISTANT_PROMPTS.md 지침)
+                    const now = Date.now();
+                    if (!player.lastSensorUpdate) player.lastSensorUpdate = 0;
+                    if (now - player.lastSensorUpdate < 33) return;  // 30fps = 33ms 간격
+                    player.lastSensorUpdate = now;
+                    
+                    // 플레이어 조준점 위치 업데이트
+                    player.tilt = {
+                        x: sensorData.orientation.beta || 0,
+                        y: sensorData.orientation.gamma || 0
+                    };
+                    
+                    // 내 플레이어인 경우 메인 조준점 업데이트
+                    if (sensorId === this.state.myPlayerId) {
+                        this.sensorData.sensor1.tilt.x = player.tilt.x;
+                        this.sensorData.sensor1.tilt.y = player.tilt.y;
+                    }
+                    
+                    player.lastActivity = now;
+                }
             }
             
             // 게임 로직 적용
@@ -712,35 +825,81 @@ class ShotTargetGame {
     }
     
     tryShoot() {
-        // 첫 번째 조준점으로 표적 찾기
-        for (let i = 0; i < this.targets.length; i++) {
-            const target = this.targets[i];
-            const dx = this.crosshair.x - target.x;
-            const dy = this.crosshair.y - target.y;
-            const distance = Math.sqrt(dx * dx + dy * dy);
+        if (this.gameMode === 'mass-competitive') {
+            // ✅ 대규모 경쟁 모드: 모든 플레이어의 조준점 확인
+            this.massPlayers.forEach((player, playerId) => {
+                if (!player.isActive) return;
+                
+                // 각 플레이어의 조준점 위치 계산
+                const playerCrosshairX = this.calculatePlayerCrosshairX(player);
+                const playerCrosshairY = this.calculatePlayerCrosshairY(player);
+                
+                for (let i = 0; i < this.targets.length; i++) {
+                    const target = this.targets[i];
+                    const dx = playerCrosshairX - target.x;
+                    const dy = playerCrosshairY - target.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // 조준점이 표적의 히트존 내에 있으면 자동 발사
+                    if (distance <= this.config.hitRadius) {
+                        this.handleMassTargetHit(target, i, playerId);
+                        return;
+                    }
+                }
+            });
             
-            // 조준점이 표적의 히트존 내에 있으면 자동 발사
-            if (distance <= this.config.hitRadius) {
-                this.shootTarget(target, i, 1);  // 플레이어 1
-                return;
-            }
-        }
-        
-        // 협동/경쟁 모드에서 두 번째 조준점도 확인
-        if (this.gameMode === 'coop' || this.gameMode === 'competitive') {
+        } else {
+            // 기존 모드들 (solo, coop, competitive)
+            
+            // 첫 번째 조준점으로 표적 찾기
             for (let i = 0; i < this.targets.length; i++) {
                 const target = this.targets[i];
-                const dx = this.crosshair2.x - target.x;
-                const dy = this.crosshair2.y - target.y;
+                const dx = this.crosshair.x - target.x;
+                const dy = this.crosshair.y - target.y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
-                // 두 번째 조준점이 표적의 히트존 내에 있으면 자동 발사
+                // 조준점이 표적의 히트존 내에 있으면 자동 발사
                 if (distance <= this.config.hitRadius) {
-                    this.shootTarget(target, i, 2);  // 플레이어 2
+                    this.shootTarget(target, i, 1);  // 플레이어 1
                     return;
                 }
             }
+            
+            // 협동/경쟁 모드에서 두 번째 조준점도 확인
+            if (this.gameMode === 'coop' || this.gameMode === 'competitive') {
+                for (let i = 0; i < this.targets.length; i++) {
+                    const target = this.targets[i];
+                    const dx = this.crosshair2.x - target.x;
+                    const dy = this.crosshair2.y - target.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // 두 번째 조준점이 표적의 히트존 내에 있으면 자동 발사
+                    if (distance <= this.config.hitRadius) {
+                        this.shootTarget(target, i, 2);  // 플레이어 2
+                        return;
+                    }
+                }
+            }
         }
+    }
+    
+    // 대규모 경쟁 모드용 플레이어별 조준점 위치 계산
+    calculatePlayerCrosshairX(player) {
+        const sensitivity = 15;
+        const maxTilt = 25;
+        const normalizedTiltX = Math.max(-1, Math.min(1, player.tilt.y / maxTilt));
+        
+        let crosshairX = this.canvas.width / 2 + (normalizedTiltX * this.canvas.width / 2);
+        return Math.max(0, Math.min(this.canvas.width, crosshairX));
+    }
+    
+    calculatePlayerCrosshairY(player) {
+        const sensitivity = 15;
+        const maxTilt = 25;
+        const normalizedTiltY = Math.max(-1, Math.min(1, player.tilt.x / maxTilt));
+        
+        let crosshairY = this.canvas.height / 2 + (normalizedTiltY * this.canvas.height / 2);
+        return Math.max(0, Math.min(this.canvas.height, crosshairY));
     }
     
     shootTarget(target, index, playerId = 1) {
@@ -1080,6 +1239,11 @@ class ShotTargetGame {
             this.elements.player2Score.textContent = this.state.player2Score.toLocaleString();
             this.elements.competitiveTimerValue.textContent = this.elements.timerValue.textContent;
             
+        } else if (this.gameMode === 'mass-competitive') {
+            // 대규모 경쟁 모드: 리더보드 업데이트
+            this.updateMassLeaderboard();
+            this.elements.massCompetitiveTimerValue.textContent = this.elements.timerValue.textContent;
+            
         } else {
             // 싱글/협동 모드: 공통 점수 표시
             this.elements.scoreValue.textContent = this.state.score.toLocaleString();
@@ -1115,6 +1279,186 @@ class ShotTargetGame {
     
     updateGameStatus(status) {
         this.elements.gameStatusText.textContent = status;
+    }
+    
+    // ============================================
+    // 🔥 대규모 경쟁 모드 전용 함수들
+    // ============================================
+    
+    async displayMassSessionInfo(session) {
+        this.elements.massSessionCode.textContent = session.sessionCode || '----';
+        
+        // ✅ QR 코드 폴백 처리 (AI_ASSISTANT_PROMPTS.md 지침에 따라)
+        const sensorUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+        
+        try {
+            if (typeof QRCode !== 'undefined') {
+                // QRCode 라이브러리 사용
+                const canvas = document.createElement('canvas');
+                await new Promise((resolve, reject) => {
+                    QRCode.toCanvas(canvas, sensorUrl, { width: 200 }, (error) => {
+                        if (error) reject(error);
+                        else resolve();
+                    });
+                });
+                this.elements.massQrContainer.innerHTML = '';
+                this.elements.massQrContainer.appendChild(canvas);
+            } else {
+                // 폴백: 외부 API 사용
+                const img = document.createElement('img');
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(sensorUrl)}`;
+                img.alt = 'QR Code';
+                img.style.width = '200px';
+                img.style.height = '200px';
+                this.elements.massQrContainer.innerHTML = '';
+                this.elements.massQrContainer.appendChild(img);
+            }
+        } catch (error) {
+            console.error('QR 코드 생성 실패:', error);
+            this.elements.massQrContainer.innerHTML = `<p>QR 코드: ${sensorUrl}</p>`;
+        }
+    }
+    
+    addMassPlayer(playerId, colorIndex) {
+        if (this.massPlayers.has(playerId)) return;
+        
+        const player = {
+            id: playerId,
+            name: `Player ${colorIndex + 1}`,
+            color: this.playerColors[colorIndex % this.playerColors.length],
+            score: 0,
+            hits: 0,
+            combo: 0,
+            accuracy: 100,
+            isActive: true,
+            position: {
+                x: Math.random() * (this.canvas.width - 100) + 50,
+                y: Math.random() * (this.canvas.height - 100) + 50
+            },
+            tilt: { x: 0, y: 0 },
+            lastActivity: Date.now(),
+            lastSensorUpdate: 0,
+            lastHitTime: 0
+        };
+        
+        this.massPlayers.set(playerId, player);
+        console.log(`👤 대규모 경쟁 플레이어 추가: ${player.name} (${playerId})`);
+    }
+    
+    updateMassWaitingList() {
+        const waitingTitle = this.elements.massWaitingList.querySelector('.waiting-title');
+        waitingTitle.textContent = `🎮 참가자 대기실 (${this.massPlayers.size}/8)`;
+        
+        const waitingPlayers = this.elements.massWaitingPlayers;
+        waitingPlayers.innerHTML = '';
+        
+        Array.from(this.massPlayers.values()).forEach(player => {
+            const playerElement = document.createElement('div');
+            playerElement.className = 'mass-waiting-player';
+            playerElement.innerHTML = `
+                <div class="mass-player-color" style="background-color: ${player.color};"></div>
+                <span>${player.name}</span>
+                ${player.id === this.state.myPlayerId ? '<span style="color: var(--success); font-weight: 600;">(나)</span>' : ''}
+            `;
+            waitingPlayers.appendChild(playerElement);
+        });
+    }
+    
+    updateMassPlayerCount(count) {
+        this.elements.massPlayerCount.textContent = `${count}/8`;
+    }
+    
+    startMassCompetitive() {
+        if (this.massPlayers.size >= 3) {
+            this.hideMassWaitingPanel();
+            this.startGame();
+        }
+    }
+    
+    hideMassWaitingPanel() {
+        this.elements.massWaitingPanel.classList.add('hidden');
+        this.elements.massCompetitivePanel.classList.remove('hidden');
+        this.elements.myMassInfoPanel.classList.remove('hidden');
+        this.elements.gameInfoPanel.classList.remove('hidden');
+        this.elements.crosshair.classList.remove('hidden');
+    }
+    
+    updateMassLeaderboard() {
+        const sortedPlayers = Array.from(this.massPlayers.values())
+            .sort((a, b) => b.score - a.score);
+        
+        const leaderboard = this.elements.massLeaderboard;
+        leaderboard.innerHTML = '';
+        
+        sortedPlayers.forEach((player, index) => {
+            const playerElement = document.createElement('div');
+            playerElement.className = `mass-player-item ${player.id === this.state.myPlayerId ? 'me' : ''}`;
+            playerElement.innerHTML = `
+                <div class="mass-player-info">
+                    <span class="mass-player-rank">${index + 1}</span>
+                    <div class="mass-player-color" style="background-color: ${player.color};"></div>
+                    <span class="mass-player-name">${player.name}</span>
+                </div>
+                <span class="mass-player-score">${player.score.toLocaleString()}</span>
+            `;
+            leaderboard.appendChild(playerElement);
+        });
+        
+        // 내 순위 업데이트
+        const myPlayerIndex = sortedPlayers.findIndex(p => p.id === this.state.myPlayerId);
+        if (myPlayerIndex !== -1) {
+            this.updateMyMassStats(sortedPlayers[myPlayerIndex], myPlayerIndex + 1);
+        }
+    }
+    
+    updateMyMassStats(myPlayer, rank) {
+        if (!myPlayer) return;
+        
+        this.elements.myMassScore.textContent = myPlayer.score.toLocaleString();
+        this.elements.myMassRank.textContent = rank;
+        this.elements.myMassHits.textContent = myPlayer.hits;
+        this.elements.myMassCombo.textContent = myPlayer.combo;
+        this.elements.myMassAccuracy.textContent = `${myPlayer.accuracy}%`;
+    }
+    
+    // 대규모 경쟁 모드에서 표적 명중 처리
+    handleMassTargetHit(target, targetIndex, playerId) {
+        const player = this.massPlayers.get(playerId);
+        if (!player) return;
+        
+        // 점수 계산
+        let points = target.points;
+        player.combo++;
+        
+        if (player.combo > 1) {
+            const comboBonus = Math.min(player.combo - 1, 2); // 최대 3배까지
+            points *= Math.pow(this.config.comboMultiplier, comboBonus);
+        }
+        
+        player.score += Math.floor(points);
+        player.hits++;
+        player.lastHitTime = Date.now();
+        
+        // 정확도 계산 (간단히 hits 기준)
+        player.accuracy = Math.round((player.hits / (player.hits + 1)) * 100); // +1은 빗나감 추정
+        
+        // 표적 제거
+        this.targets.splice(targetIndex, 1);
+        
+        // 타격 효과
+        this.createHitEffect(target.x, target.y, points, player.color);
+        
+        // 새 표적 생성
+        setTimeout(() => {
+            this.spawnTarget();
+            this.state.totalTargetsCreated++;
+            this.elements.totalTargetsCreated.textContent = this.state.totalTargetsCreated;
+        }, 500);
+        
+        // 리더보드 업데이트
+        this.updateMassLeaderboard();
+        
+        console.log(`🎯 ${player.name} 표적 명중! +${Math.floor(points)}pt (콤보 x${player.combo})`);
     }
 }
 

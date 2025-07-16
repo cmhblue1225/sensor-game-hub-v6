@@ -502,6 +502,160 @@ body {
     font-family: 'Courier New', monospace;
 }
 
+/* 대규모 경쟁 모드용 스타일 */
+.mass-competitive-panel {
+    top: 1rem;
+    left: 1rem;
+    min-width: 300px;
+    max-width: 350px;
+}
+
+.mass-game-info {
+    margin: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.mass-game-info .info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: rgba(59, 130, 246, 0.05);
+    border-radius: 0.3rem;
+}
+
+.mass-leaderboard {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-top: 1rem;
+}
+
+.mass-player-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    transition: all 0.2s ease;
+}
+
+.mass-player-item:hover {
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.mass-player-item.me {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: var(--success);
+    transform: scale(1.02);
+}
+
+.mass-player-item.winner {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: var(--warning);
+}
+
+.mass-player-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.mass-player-rank {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--warning);
+    min-width: 20px;
+}
+
+.mass-player-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mass-player-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.mass-player-score {
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    color: var(--success);
+}
+
+/* 대규모 경쟁 내 정보 패널 */
+.my-mass-info-panel {
+    bottom: 1rem;
+    left: 1rem;
+    min-width: 250px;
+}
+
+.my-mass-score {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--success);
+    font-family: 'Courier New', monospace;
+    text-align: center;
+    margin-bottom: 1rem;
+}
+
+.my-mass-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+/* 대규모 경쟁 대기실 */
+.mass-waiting-panel {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    max-width: 500px;
+    min-width: 400px;
+}
+
+.mass-waiting-list {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: var(--surface);
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+}
+
+.mass-waiting-players {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.mass-waiting-player {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    margin-bottom: 0.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 0.5rem;
+}
+
+/* 플레이어 색상 팔레트 */
+.player-color-1 { background-color: #3b82f6 !important; }
+.player-color-2 { background-color: #ef4444 !important; }
+.player-color-3 { background-color: #10b981 !important; }
+.player-color-4 { background-color: #f59e0b !important; }
+.player-color-5 { background-color: #8b5cf6 !important; }
+.player-color-6 { background-color: #06b6d4 !important; }
+.player-color-7 { background-color: #f97316 !important; }
+.player-color-8 { background-color: #84cc16 !important; }
+
 /* 협동 모드 중앙 경계선 */
 .center-divider {
     position: absolute;

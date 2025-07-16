@@ -67,6 +67,90 @@
             </div>
         </div>
         
+        <!-- 대규모 경쟁 모드용 리더보드 패널 -->
+        <div class="ui-panel mass-competitive-panel hidden" id="massCompetitivePanel">
+            <div class="score-title">👥 실시간 리더보드</div>
+            
+            <!-- 타이머 -->
+            <div class="timer-section">
+                <div class="timer-title">⏱️ 시간</div>
+                <div class="timer-value" id="massCompetitiveTimerValue">3:00</div>
+            </div>
+            
+            <!-- 게임 정보 -->
+            <div class="mass-game-info">
+                <div class="info-item">
+                    <span>참가자:</span>
+                    <span id="massPlayerCount">0/8</span>
+                </div>
+                <div class="info-item">
+                    <span>표적 생성:</span>
+                    <span id="totalTargetsCreated">0</span>
+                </div>
+            </div>
+            
+            <!-- 리더보드 -->
+            <div class="mass-leaderboard" id="massLeaderboard">
+                <!-- 플레이어 목록이 동적으로 추가됨 -->
+            </div>
+        </div>
+        
+        <!-- 대규모 경쟁 모드용 내 정보 패널 -->
+        <div class="ui-panel my-mass-info-panel hidden" id="myMassInfoPanel">
+            <div class="score-title">📊 내 기록</div>
+            <div class="my-mass-score" id="myMassScore">0</div>
+            <div class="my-mass-stats">
+                <div class="stat-item">
+                    <div class="stat-label">순위</div>
+                    <div class="stat-value" id="myMassRank">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">적중</div>
+                    <div class="stat-value" id="myMassHits">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">콤보</div>
+                    <div class="stat-value" id="myMassCombo">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">정확도</div>
+                    <div class="stat-value" id="myMassAccuracy">100%</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 대규모 경쟁 대기실 패널 -->
+        <div class="ui-panel mass-waiting-panel hidden" id="massWaitingPanel">
+            <div class="session-title">👥 대규모 경쟁 - 대기실</div>
+            <div class="session-instructions">
+                최대 8명이 참여하는 실시간 표적 경쟁!<br>
+                조준점을 표적 중앙에 맞추면 자동으로 발사됩니다.<br>
+                아래 코드를 모바일에서 입력하거나 QR 코드를 스캔하세요.
+            </div>
+            
+            <div class="session-code" id="massSessionCode">----</div>
+            
+            <div class="qr-container" id="massQrContainer">
+                QR 코드 생성 중...
+            </div>
+            
+            <div class="mass-waiting-list" id="massWaitingList">
+                <div class="waiting-title">🎮 참가자 대기실 (0/8)</div>
+                <div id="massWaitingPlayers"></div>
+            </div>
+            
+            <div class="session-instructions">
+                📱 센서 클라이언트: <strong>/sensor.html</strong><br>
+                플레이어가 3명 이상 연결되면 게임이 시작됩니다.
+            </div>
+            
+            <div style="margin-top: 1.5rem;">
+                <button class="btn btn-success" onclick="game.startMassCompetitive()" id="massStartBtn" disabled>
+                    🚀 게임 시작
+                </button>
+            </div>
+        </div>
+        
         <!-- 상태 패널 -->
         <div class="ui-panel status-panel">
             <div class="status-item">
@@ -114,6 +198,12 @@
                     <div class="mode-icon">⚔️</div>
                     <div class="mode-title">경쟁 플레이</div>
                     <div class="mode-desc">2명이 경쟁하여 플레이</div>
+                </button>
+                
+                <button class="mode-btn" id="massCompetitiveModeBtn">
+                    <div class="mode-icon">👥</div>
+                    <div class="mode-title">대규모 경쟁</div>
+                    <div class="mode-desc">3-8명 실시간 경쟁</div>
                 </button>
             </div>
         </div>
