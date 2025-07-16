@@ -100,28 +100,26 @@
         .connection-status {
             display: flex;
             justify-content: space-between;
-            gap: 0.8rem;
+            gap: 0.5rem;
         }
 
         .sensor-status {
-            padding: 0.4rem 0.8rem;
-            border-radius: 0.4rem;
-            font-weight: 600;
+            padding: 0.3rem 0.6rem;
+            border-radius: 0.5rem;
             font-size: 0.8rem;
+            font-weight: 600;
             text-align: center;
             flex: 1;
         }
 
         .sensor-status.connected {
-            background: rgba(22, 163, 74, 0.2);
-            border: 1px solid var(--success);
-            color: var(--success);
+            background: var(--success);
+            color: white;
         }
 
         .sensor-status.disconnected {
-            background: rgba(239, 68, 68, 0.2);
-            border: 1px solid var(--error);
-            color: var(--error);
+            background: var(--error);
+            color: white;
         }
 
         /* 게임 메인 영역 */
@@ -131,11 +129,10 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 2rem;
-            z-index: 10;
+            padding: 6rem 2rem 2rem;
         }
 
-        /* 게임 상태 표시 */
+        /* 게임 상태 */
         .game-status {
             text-align: center;
             margin-bottom: 2rem;
@@ -148,10 +145,43 @@
             color: var(--accent);
         }
 
-        .game-message {
+        .status-message {
             font-size: 1.2rem;
             color: var(--text-secondary);
             margin-bottom: 1rem;
+        }
+
+        /* 플레이어 점수 */
+        .players-container {
+            display: flex;
+            gap: 2rem;
+            margin-bottom: 2rem;
+            justify-content: center;
+        }
+
+        .player {
+            background: var(--surface);
+            border: 2px solid var(--primary);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            min-width: 150px;
+        }
+
+        .player.active {
+            box-shadow: 0 0 20px rgba(220, 38, 38, 0.5);
+        }
+
+        .player-name {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--accent);
+        }
+
+        .player-score {
+            font-size: 3rem;
+            font-weight: bold;
+            color: var(--primary);
         }
 
         /* 명령 표시 영역 */
@@ -200,6 +230,12 @@
             color: var(--female-color);
         }
 
+        .action-hint {
+            font-size: 1.2rem;
+            margin-top: 1rem;
+            color: var(--text-secondary);
+        }
+
         /* 타이머 */
         .timer-container {
             position: absolute;
@@ -218,51 +254,6 @@
             background: linear-gradient(90deg, var(--error), var(--warning), var(--success));
             width: 100%;
             transition: width 0.1s linear;
-        }
-
-        /* 점수판 */
-        .scoreboard {
-            display: flex;
-            justify-content: center;
-            gap: 3rem;
-            margin-bottom: 2rem;
-        }
-
-        .player-score {
-            text-align: center;
-            background: var(--surface);
-            padding: 1.5rem;
-            border-radius: 1rem;
-            border: 2px solid var(--primary);
-            min-width: 120px;
-        }
-
-        .player-score.player1 {
-            border-color: var(--male-color);
-        }
-
-        .player-score.player2 {
-            border-color: var(--female-color);
-        }
-
-        .player-name {
-            font-size: 1rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.5rem;
-        }
-
-        .score-value {
-            font-size: 3rem;
-            font-weight: bold;
-            color: var(--primary);
-        }
-
-        .player-score.player1 .score-value {
-            color: var(--male-color);
-        }
-
-        .player-score.player2 .score-value {
-            color: var(--female-color);
         }
 
         /* 게임 컨트롤 */
@@ -292,12 +283,19 @@
             color: white;
         }
 
+        .control-btn.secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
         .control-btn.home {
             background: var(--warning);
             color: white;
         }
 
         .control-btn.primary:hover,
+        .control-btn.secondary:hover,
         .control-btn.home:hover {
             transform: translateY(-2px);
             opacity: 0.9;
@@ -309,44 +307,26 @@
             transform: none;
         }
 
-        /* 게임 결과 */
-        .game-result {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.9);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
-
-        .game-result.visible {
-            display: flex;
-        }
-
-        .result-content {
-            background: var(--surface);
-            border: 2px solid var(--primary);
-            border-radius: 2rem;
-            padding: 3rem;
+        /* 결과 화면 */
+        .result-screen {
             text-align: center;
-            max-width: 500px;
+            display: none;
+        }
+
+        .result-screen.visible {
+            display: block;
         }
 
         .result-title {
             font-size: 3rem;
-            font-weight: bold;
             margin-bottom: 1rem;
         }
 
-        .result-title.winner {
+        .result-title.win {
             color: var(--success);
         }
 
-        .result-title.loser {
+        .result-title.lose {
             color: var(--error);
         }
 
@@ -355,29 +335,22 @@
         }
 
         .final-scores {
-            display: flex;
-            justify-content: center;
-            gap: 2rem;
-            margin: 2rem 0;
-        }
-
-        .final-score {
-            text-align: center;
-        }
-
-        .final-score-label {
-            font-size: 1rem;
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
             color: var(--text-secondary);
-        }
-
-        .final-score-value {
-            font-size: 2rem;
-            font-weight: bold;
-            color: var(--primary);
         }
 
         /* 반응형 */
         @media (max-width: 768px) {
+            .game-main {
+                padding: 4rem 1rem 1rem;
+            }
+            
+            .players-container {
+                flex-direction: column;
+                gap: 1rem;
+            }
+            
             .command-display {
                 min-width: 300px;
                 padding: 2rem 1rem;
@@ -389,15 +362,6 @@
             
             .command-text {
                 font-size: 2rem;
-            }
-            
-            .scoreboard {
-                gap: 1rem;
-            }
-            
-            .game-controls {
-                flex-direction: column;
-                align-items: center;
             }
         }
 
@@ -412,18 +376,14 @@
         <!-- 상단 헤더 -->
         <div class="game-header">
             <div class="session-title">🚩 Signal Flags v2</div>
-            <div class="session-info" id="sessionInfo">
+            <div class="session-info visible" id="sessionInfo">
                 <div class="session-code" id="sessionCode">----</div>
                 <div class="qr-container" id="qrContainer">
                     <!-- QR 코드가 여기에 생성됩니다 -->
                 </div>
                 <div class="connection-status">
-                    <div class="sensor-status disconnected" id="sensor1Status">
-                        플레이어 1
-                    </div>
-                    <div class="sensor-status disconnected" id="sensor2Status">
-                        플레이어 2
-                    </div>
+                    <div class="sensor-status disconnected" id="sensorStatus1">센서 1</div>
+                    <div class="sensor-status disconnected" id="sensorStatus2">센서 2</div>
                 </div>
             </div>
         </div>
@@ -433,56 +393,42 @@
             <!-- 게임 상태 -->
             <div class="game-status">
                 <div class="round-info" id="roundInfo">게임 준비 중...</div>
-                <div class="game-message" id="gameMessage">두 명의 플레이어가 연결되면 게임이 시작됩니다</div>
+                <div class="status-message" id="statusMessage">센서 클라이언트 연결을 기다리는 중...</div>
+            </div>
+
+            <!-- 플레이어 점수 -->
+            <div class="players-container" id="playersContainer">
+                <div class="player" id="player1">
+                    <div class="player-name">플레이어 1</div>
+                    <div class="player-score" id="player1Score">0</div>
+                </div>
+                <div class="player" id="player2">
+                    <div class="player-name">플레이어 2</div>
+                    <div class="player-score" id="player2Score">0</div>
+                </div>
             </div>
 
             <!-- 명령 표시 영역 -->
             <div class="command-display" id="commandDisplay">
                 <div class="commander-icon" id="commanderIcon">🚩</div>
                 <div class="command-text" id="commandText">준비하세요</div>
+                <div class="action-hint" id="actionHint">지시에 따라 움직이세요</div>
                 <div class="timer-container">
                     <div class="timer-fill" id="timerFill"></div>
-                </div>
-            </div>
-
-            <!-- 점수판 -->
-            <div class="scoreboard">
-                <div class="player-score player1">
-                    <div class="player-name">플레이어 1</div>
-                    <div class="score-value" id="score1">0</div>
-                </div>
-                <div class="player-score player2">
-                    <div class="player-name">플레이어 2</div>
-                    <div class="score-value" id="score2">0</div>
                 </div>
             </div>
 
             <!-- 게임 컨트롤 -->
             <div class="game-controls">
                 <button class="control-btn primary" id="startBtn" disabled>🚩 게임 시작</button>
-                <button class="control-btn primary" id="resetBtn" disabled>🔄 다시 시작</button>
+                <button class="control-btn secondary" id="resetBtn">🔄 다시 시작</button>
                 <a href="/" class="control-btn home">🏠 허브로</a>
             </div>
-        </div>
 
-        <!-- 게임 결과 -->
-        <div class="game-result" id="gameResult">
-            <div class="result-content">
-                <div class="result-title" id="resultTitle">게임 종료</div>
-                <div class="final-scores">
-                    <div class="final-score">
-                        <div class="final-score-label">플레이어 1</div>
-                        <div class="final-score-value" id="finalScore1">0</div>
-                    </div>
-                    <div class="final-score">
-                        <div class="final-score-label">플레이어 2</div>
-                        <div class="final-score-value" id="finalScore2">0</div>
-                    </div>
-                </div>
-                <div class="game-controls">
-                    <button class="control-btn primary" onclick="location.reload()">🔄 새 게임</button>
-                    <a href="/" class="control-btn home">🏠 허브로</a>
-                </div>
+            <!-- 결과 화면 -->
+            <div class="result-screen" id="resultScreen">
+                <div class="result-title" id="resultTitle">🏆 게임 종료!</div>
+                <div class="final-scores" id="finalScores">최종 점수를 확인하세요</div>
             </div>
         </div>
     </div>
@@ -493,194 +439,119 @@
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 
     <script>
-        class SignalFlagsV2Game {
+        class SignalFlagsV2Refactored {
             constructor() {
-                console.log('🚩 Signal Flags v2 게임 초기화 시작');
-                
-                // 게임 상태
-                this.gameState = 'waiting'; // waiting, ready, playing, finished
-                this.connectedSensors = new Map();
-                this.session = null;
-                this.defaultReadyPlayers = new Set(); // 디폴트 상태 준비 완료된 플레이어들
-                
-                // Signal Flags v2 전용 상태 (중요!)
-                this.signalFlagsState = {
-                    waitingForDefault: false,
-                    isPlaying: false,
-                    currentRound: 0,
-                    currentCommand: null,
-                    currentGender: null
-                };
+                console.log('🚩 Signal Flags v2 (리팩토링 버전) 초기화 시작');
                 
                 // 게임 설정
                 this.config = {
-                    totalRounds: 10,
-                    responseTime: 3000, // 3초
-                    defaultStateTime: 2000, // 2초간 디폴트 상태 유지
-                    commands: ['up', 'down', 'left', 'right'],
-                    genders: ['male', 'female'],
+                    maxRounds: 10,
+                    responseTime: 3000,
+                    defaultStateTime: 2000,
                     sensorThresholds: {
-                        defaultState: { beta: 15, gamma: 15 }, // 디폴트 상태: ±15도 이내
+                        defaultState: { beta: 15, gamma: 15 },
                         actions: {
-                            up: { beta: 30 },      // UP: beta ≥ 30도 (위쪽 기울기)
-                            down: { beta: -30 },   // DOWN: beta ≤ -30도 (아래쪽 기울기)
-                            left: { gamma: -30 },  // LEFT: gamma ≤ -30도 (왼쪽 기울기)
-                            right: { gamma: 30 }   // RIGHT: gamma ≥ 30도 (오른쪽 기울기)
+                            up: { beta: 30 },
+                            down: { beta: -30 },
+                            left: { gamma: -30 },
+                            right: { gamma: 30 }
                         }
                     }
                 };
                 
-                // 게임 데이터
-                this.gameData = {
-                    currentRound: 0,
-                    maxRounds: this.config.totalRounds,
-                    currentCommand: null,
-                    currentGender: null,
-                    roundStartTime: 0,
-                    playerScores: { player1: 0, player2: 0 },
-                    playerResponses: new Map(),
-                    responseCount: 0
+                // 게임 상태
+                this.gameState = 'waiting'; // waiting, ready, playing, finished
+                this.currentRound = 0;
+                this.scores = { player1: 0, player2: 0 };
+                this.connectedSensors = new Set();
+                this.sensorsInDefaultState = new Set(); // 디폴트 상태인 센서들 추적
+                
+                // 라운드 데이터
+                this.currentRoundData = {
+                    command: null,
+                    gender: null,
+                    responses: new Map(),
+                    correctResponses: new Map(),
+                    startTime: 0
                 };
                 
                 // 타이머
-                this.gameTimer = null;
                 this.responseTimer = null;
+                this.defaultStateTimer = null;
                 
-                // DOM 요소들
+                // DOM 요소
                 this.elements = {
                     sessionInfo: document.getElementById('sessionInfo'),
                     sessionCode: document.getElementById('sessionCode'),
                     qrContainer: document.getElementById('qrContainer'),
-                    sensor1Status: document.getElementById('sensor1Status'),
-                    sensor2Status: document.getElementById('sensor2Status'),
+                    sensorStatus1: document.getElementById('sensorStatus1'),
+                    sensorStatus2: document.getElementById('sensorStatus2'),
                     roundInfo: document.getElementById('roundInfo'),
-                    gameMessage: document.getElementById('gameMessage'),
+                    statusMessage: document.getElementById('statusMessage'),
+                    playersContainer: document.getElementById('playersContainer'),
+                    player1: document.getElementById('player1'),
+                    player2: document.getElementById('player2'),
+                    player1Score: document.getElementById('player1Score'),
+                    player2Score: document.getElementById('player2Score'),
                     commandDisplay: document.getElementById('commandDisplay'),
                     commanderIcon: document.getElementById('commanderIcon'),
                     commandText: document.getElementById('commandText'),
+                    actionHint: document.getElementById('actionHint'),
                     timerFill: document.getElementById('timerFill'),
-                    score1: document.getElementById('score1'),
-                    score2: document.getElementById('score2'),
                     startBtn: document.getElementById('startBtn'),
                     resetBtn: document.getElementById('resetBtn'),
-                    gameResult: document.getElementById('gameResult'),
+                    resultScreen: document.getElementById('resultScreen'),
                     resultTitle: document.getElementById('resultTitle'),
-                    finalScore1: document.getElementById('finalScore1'),
-                    finalScore2: document.getElementById('finalScore2')
+                    finalScores: document.getElementById('finalScores')
                 };
+                
+                // 초기화
+                this.initializeGame();
+            }
+            
+            initializeGame() {
+                console.log('🎮 게임 초기화');
+                
+                // 이벤트 리스너 설정
+                this.setupEventListeners();
+                
+                // 세션 코드 생성
+                this.generateSessionCode();
                 
                 // SDK 초기화
                 this.initializeSDK();
-                this.setupEvents();
                 
-                console.log('✅ Signal Flags v2 게임 초기화 완료');
+                console.log('✅ Signal Flags v2 리팩토링 버전 초기화 완료');
             }
             
-            initializeSDK() {
-                this.sdk = new SessionSDK({
-                    gameId: 'signal-flags-v2',
-                    gameType: 'dual'
-                });
-            }
-            
-            setupEvents() {
-                // SDK 이벤트 (AI_ASSISTANT_PROMPTS.md 지침 준수)
-                this.sdk.on('connected', () => {
-                    console.log('✅ 서버 연결됨');
-                    this.createSession();
-                });
-                
-                this.sdk.on('session-created', (event) => {
-                    const session = event.detail || event; // 필수 패턴!
-                    console.log('🚩 세션 생성됨:', session);
-                    this.displaySessionInfo(session);
-                });
-                
-                this.sdk.on('sensor-connected', (event) => {
-                    const data = event.detail || event; // 필수 패턴!
-                    console.log('🎮 센서 연결됨:', data);
-                    this.handleSensorConnection(data);
-                });
-                
-                this.sdk.on('sensor-disconnected', (event) => {
-                    const data = event.detail || event; // 필수 패턴!
-                    console.log('❌ 센서 연결 해제됨:', data);
-                    this.handleSensorDisconnection(data);
-                });
-                
-                this.sdk.on('sensor-data', (event) => {
-                    const data = event.detail || event; // 필수 패턴!
-                    this.handleSensorData(data);
-                });
-                
-                // Signal Flags v2 전용 이벤트
-                this.setupSignalFlagsEvents();
-                
-                // UI 이벤트
+            setupEventListeners() {
+                // 게임 시작 버튼
                 this.elements.startBtn.addEventListener('click', () => {
                     this.startGame();
                 });
                 
+                // 리셋 버튼
                 this.elements.resetBtn.addEventListener('click', () => {
                     this.resetGame();
                 });
             }
             
-            setupSignalFlagsEvents() {
-                // 소켓 연결 확인
-                if (!this.sdk.socket) {
-                    setTimeout(() => this.setupSignalFlagsEvents(), 100);
-                    return;
-                }
+            generateSessionCode() {
+                // 4자리 랜덤 코드 생성
+                const code = Math.floor(1000 + Math.random() * 9000).toString();
+                this.elements.sessionCode.textContent = code;
+                console.log('📱 세션 코드 생성:', code);
                 
-                // 디폴트 상태 준비 완료 이벤트
-                this.sdk.socket.on('signal-flags-v2-default-ready', (data) => {
-                    console.log('📍 [게임] 플레이어 디폴트 상태 준비 이벤트 수신:', data);
-                    console.log('📍 [게임] 이벤트 수신 시간:', new Date().toLocaleTimeString());
-                    console.log('📍 [게임] 현재 게임 상태:', {
-                        gameState: this.gameState,
-                        waitingForDefault: this.signalFlagsState.waitingForDefault,
-                        defaultReadyPlayers: Array.from(this.defaultReadyPlayers)
-                    });
-                    this.handleDefaultReady(data);
-                });
-                
-                // 디폴트 상태 벗어남 이벤트
-                this.sdk.socket.on('signal-flags-v2-default-lost', (data) => {
-                    console.log('⚠️ 플레이어 디폴트 상태 벗어남:', data);
-                    this.handleDefaultLost(data);
-                });
-                
-                // 플레이어 응답 이벤트
-                this.sdk.socket.on('signal-flags-v2-player-response', (data) => {
-                    console.log('📡 플레이어 응답 수신:', data);
-                    this.handlePlayerResponse(data);
-                });
-            }
-            
-            createSession() {
-                this.sdk.createSession({
-                    maxPlayers: 2,
-                    gameMode: 'signal-flags-v2'
-                });
-            }
-            
-            displaySessionInfo(session) {
-                this.session = session;
-                this.elements.sessionCode.textContent = session.sessionCode;
-                this.elements.sessionInfo.classList.add('visible');
-                
-                // QR 코드 생성 (AI_ASSISTANT_PROMPTS.md 지침 준수)
-                this.generateQRCode(session.sessionCode);
+                // QR 코드 생성
+                this.generateQRCode(code);
             }
             
             generateQRCode(sessionCode) {
                 const qrUrl = `${window.location.origin}/sensor.html?session=${sessionCode}`;
+                console.log('📱 QR 코드 생성 중:', qrUrl);
                 
-                // QRCode 라이브러리 사용 (폴백 처리)
                 if (typeof QRCode !== 'undefined') {
                     try {
-                        // 캔버스 생성
                         const canvas = document.createElement('canvas');
                         this.elements.qrContainer.innerHTML = '';
                         this.elements.qrContainer.appendChild(canvas);
@@ -689,11 +560,14 @@
                             width: 150,
                             height: 150,
                             colorDark: '#dc2626',
-                            colorLight: '#ffffff'
+                            colorLight: '#ffffff',
+                            margin: 2
                         }, (error) => {
                             if (error) {
                                 console.error('QR 생성 오류:', error);
                                 this.showQRCodeFallback(qrUrl);
+                            } else {
+                                console.log('✅ QR 코드 생성 완료');
                             }
                         });
                     } catch (error) {
@@ -701,323 +575,424 @@
                         this.showQRCodeFallback(qrUrl);
                     }
                 } else {
+                    console.warn('QRCode 라이브러리 로드되지 않음, 폴백 사용');
                     this.showQRCodeFallback(qrUrl);
                 }
             }
             
             showQRCodeFallback(qrUrl) {
-                // 폴백: 외부 QR 생성 API 사용
+                console.log('📱 QR 코드 폴백 API 사용');
                 const img = document.createElement('img');
                 img.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&color=dc2626&bgcolor=ffffff&data=${encodeURIComponent(qrUrl)}`;
                 img.alt = 'QR Code';
+                img.style.maxWidth = '150px';
+                img.style.height = 'auto';
+                
                 this.elements.qrContainer.innerHTML = '';
                 this.elements.qrContainer.appendChild(img);
+                
+                img.onload = () => {
+                    console.log('✅ QR 코드 폴백 로드 완료');
+                };
+                
+                img.onerror = () => {
+                    console.error('❌ QR 코드 폴백도 실패');
+                    this.elements.qrContainer.innerHTML = '<p style="color: #ef4444; font-size: 0.9rem;">QR 코드 생성 실패</p>';
+                };
             }
             
-            handleSensorConnection(data) {
-                const sensorId = data.sensorId;
-                this.connectedSensors.set(sensorId, {
-                    id: sensorId,
-                    connected: true,
-                    lastActivity: Date.now()
+            initializeSDK() {
+                try {
+                    this.sdk = new SessionSDK({
+                        gameId: 'signal-flags-v2',
+                        gameType: 'dual'
+                    });
+                    
+                    this.setupSDKEvents();
+                    this.createGameSession();
+                    
+                } catch (error) {
+                    console.error('SDK 초기화 실패:', error);
+                    this.elements.statusMessage.textContent = 'SDK 초기화 실패 - 오프라인 모드';
+                }
+            }
+            
+            setupSDKEvents() {
+                if (!this.sdk) return;
+                
+                // 서버 연결
+                this.sdk.on('connected', () => {
+                    console.log('✅ 서버 연결됨');
+                    this.elements.statusMessage.textContent = '센서 클라이언트 연결을 기다리는 중...';
                 });
                 
-                this.updateSensorStatus();
+                // 세션 생성
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;
+                    console.log('🎮 세션 생성됨:', session);
+                    
+                    if (session.sessionCode) {
+                        this.elements.sessionCode.textContent = session.sessionCode;
+                        this.generateQRCode(session.sessionCode);
+                    }
+                });
                 
-                if (this.connectedSensors.size === 2) {
-                    this.setGameState('ready');
-                }
+                // 센서 연결
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;
+                    console.log('📱 센서 연결됨:', data);
+                    
+                    this.onSensorConnected(data);
+                });
+                
+                // 센서 연결 해제
+                this.sdk.on('sensor-disconnected', (event) => {
+                    const data = event.detail || event;
+                    console.log('📱 센서 연결 해제:', data);
+                    
+                    this.onSensorDisconnected(data);
+                });
+                
+                // 센서 데이터
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;
+                    this.handleSensorData(data);
+                });
+                
+                // 디폴트 상태 감지 - SessionSDK 기본 이벤트
+                this.sdk.on('default-state-detected', (event) => {
+                    const data = event.detail || event;
+                    console.log('📍 디폴트 상태 감지됨:', data);
+                    this.onDefaultStateDetected(data);
+                });
+                
+                // Signal Flags v2 전용 디폴트 상태 준비 완료
+                this.sdk.socket.on('signal-flags-v2-default-ready', (data) => {
+                    console.log('🚩 Signal Flags v2 디폴트 상태 준비 완료:', data);
+                    this.onDefaultStateDetected(data);
+                });
+                
+                // 플레이어 응답 - SessionSDK 기본 이벤트
+                this.sdk.on('player-response', (event) => {
+                    const data = event.detail || event;
+                    console.log('🎯 플레이어 응답:', data);
+                    this.handlePlayerResponse(data);
+                });
+                
+                // Signal Flags v2 전용 플레이어 응답
+                this.sdk.socket.on('signal-flags-v2-player-response', (data) => {
+                    console.log('🚩 Signal Flags v2 플레이어 응답:', data);
+                    this.handlePlayerResponse({
+                        sensorId: data.playerId || data.sensorId,
+                        direction: data.direction,
+                        responseTime: Date.now() - this.currentRoundData.startTime,
+                        timestamp: data.timestamp
+                    });
+                });
             }
             
-            handleSensorDisconnection(data) {
-                const sensorId = data.sensorId;
+            createGameSession() {
+                if (!this.sdk) return;
+                
+                const sessionCode = this.elements.sessionCode.textContent;
+                
+                this.sdk.on('connected', () => {
+                    console.log('🎮 게임 세션 생성 요청');
+                    this.sdk.createSession({
+                        gameId: 'signal-flags-v2',
+                        gameType: 'dual',
+                        sessionCode: sessionCode
+                    });
+                });
+            }
+            
+            onSensorConnected(data) {
+                const sensorId = data.sensorId || data.sensor || 'sensor';
+                this.connectedSensors.add(sensorId);
+                
+                // UI 업데이트
+                if (sensorId.includes('1') || this.connectedSensors.size === 1) {
+                    this.elements.sensorStatus1.textContent = '센서 1 ✓';
+                    this.elements.sensorStatus1.classList.remove('disconnected');
+                    this.elements.sensorStatus1.classList.add('connected');
+                } else if (sensorId.includes('2') || this.connectedSensors.size === 2) {
+                    this.elements.sensorStatus2.textContent = '센서 2 ✓';
+                    this.elements.sensorStatus2.classList.remove('disconnected');
+                    this.elements.sensorStatus2.classList.add('connected');
+                }
+                
+                this.updateGameReadiness();
+            }
+            
+            onSensorDisconnected(data) {
+                const sensorId = data.sensorId || data.sensor || 'sensor';
                 this.connectedSensors.delete(sensorId);
                 
-                this.updateSensorStatus();
-                
-                // 게임 중이었다면 즉시 종료
-                if (this.gameState === 'playing') {
-                    this.endGameByDisconnection();
-                } else {
-                    this.setGameState('waiting');
+                // UI 업데이트
+                if (sensorId.includes('1')) {
+                    this.elements.sensorStatus1.textContent = '센서 1';
+                    this.elements.sensorStatus1.classList.remove('connected');
+                    this.elements.sensorStatus1.classList.add('disconnected');
+                } else if (sensorId.includes('2')) {
+                    this.elements.sensorStatus2.textContent = '센서 2';
+                    this.elements.sensorStatus2.classList.remove('connected');
+                    this.elements.sensorStatus2.classList.add('disconnected');
                 }
+                
+                this.updateGameReadiness();
             }
             
-            updateSensorStatus() {
-                const sensor1Connected = this.connectedSensors.has('sensor1');
-                const sensor2Connected = this.connectedSensors.has('sensor2');
+            updateGameReadiness() {
+                const requiredSensors = 2;
+                const connectedCount = this.connectedSensors.size;
                 
-                this.elements.sensor1Status.className = `sensor-status ${sensor1Connected ? 'connected' : 'disconnected'}`;
-                this.elements.sensor1Status.textContent = sensor1Connected ? '플레이어 1 ✅' : '플레이어 1';
-                
-                this.elements.sensor2Status.className = `sensor-status ${sensor2Connected ? 'connected' : 'disconnected'}`;
-                this.elements.sensor2Status.textContent = sensor2Connected ? '플레이어 2 ✅' : '플레이어 2';
-            }
-            
-            setGameState(state) {
-                this.gameState = state;
-                
-                switch (state) {
-                    case 'waiting':
-                        this.elements.gameMessage.textContent = '두 명의 플레이어가 연결되면 게임이 시작됩니다';
-                        this.elements.startBtn.disabled = true;
-                        this.elements.resetBtn.disabled = true;
-                        break;
-                        
-                    case 'ready':
-                        this.elements.gameMessage.textContent = '🎮 준비 완료! 게임을 시작하세요';
-                        this.elements.startBtn.disabled = false;
-                        this.elements.resetBtn.disabled = false;
-                        break;
-                        
-                    case 'playing':
-                        // 세션 정보 숨김 (AI_ASSISTANT_PROMPTS.md 지침)
-                        this.elements.sessionInfo.classList.remove('visible');
-                        this.elements.startBtn.disabled = true;
-                        break;
-                        
-                    case 'finished':
-                        // 세션 정보 다시 표시 (AI_ASSISTANT_PROMPTS.md 지침)
-                        this.elements.sessionInfo.classList.add('visible');
-                        this.elements.startBtn.disabled = false;
-                        this.elements.resetBtn.disabled = false;
-                        break;
+                if (connectedCount >= requiredSensors) {
+                    this.elements.statusMessage.textContent = '모든 센서가 연결되었습니다! 게임을 시작하세요.';
+                    this.elements.startBtn.disabled = false;
+                    this.gameState = 'ready';
+                } else {
+                    this.elements.statusMessage.textContent = `센서 연결 중... (${connectedCount}/${requiredSensors})`;
+                    this.elements.startBtn.disabled = true;
+                    if (this.gameState === 'ready') {
+                        this.gameState = 'waiting';
+                    }
                 }
             }
             
             startGame() {
-                if (this.connectedSensors.size < 2) {
-                    alert('두 명의 플레이어가 모두 연결되어야 합니다!');
+                if (this.gameState !== 'ready') {
+                    console.warn('게임 시작 불가 - 상태:', this.gameState);
                     return;
                 }
                 
                 console.log('🚩 게임 시작!');
-                this.setGameState('playing');
+                this.gameState = 'playing';
+                this.currentRound = 0;
+                this.scores = { player1: 0, player2: 0 };
                 
-                // 게임 데이터 초기화
-                this.gameData = {
-                    currentRound: 0,
-                    maxRounds: this.config.totalRounds,
-                    currentCommand: null,
-                    currentGender: null,
-                    roundStartTime: 0,
-                    playerScores: { player1: 0, player2: 0 },
-                    playerResponses: new Map(),
-                    responseCount: 0
-                };
+                // UI 업데이트
+                this.elements.startBtn.disabled = true;
+                this.elements.sessionInfo.classList.remove('visible');
+                this.updateScoreDisplay();
                 
-                this.updateScoreboard();
-                this.showCountdown();
-            }
-            
-            showCountdown() {
-                let count = 3;
-                const countdownInterval = setInterval(() => {
-                    if (count > 0) {
-                        this.elements.gameMessage.textContent = `게임 시작까지 ${count}초`;
-                        count--;
-                    } else {
-                        this.elements.gameMessage.textContent = '디폴트 상태로 대기하세요';
-                        clearInterval(countdownInterval);
-                        this.waitForDefaultState();
-                    }
-                }, 1000);
-            }
-            
-            waitForDefaultState() {
-                this.elements.gameMessage.textContent = '📱 모든 플레이어가 핸드폰을 앞으로 쭉 뻗어 수평으로 유지하세요 (0/2)';
-                this.defaultReadyPlayers.clear();
-                
-                // Signal Flags 상태 업데이트
-                this.signalFlagsState.waitingForDefault = true;
-                console.log('📍 디폴트 상태 대기 시작 - waitingForDefault = true');
-                
-                // 센서 클라이언트에게 디폴트 상태 대기 시작 알림
-                if (this.sdk.socket) {
-                    this.sdk.socket.emit('signal-flags-v2-wait-default', {
-                        sessionCode: this.session.sessionCode
-                    });
-                    console.log('✅ 디폴트 상태 대기 알림 전송 완료:', this.session.sessionCode);
-                } else {
-                    console.error('❌ 소켓 연결이 없어 디폴트 상태 알림 전송 실패');
-                }
-            }
-            
-            handleDefaultReady(data) {
-                console.log('🔍 디폴트 준비 이벤트 상세:', {
-                    playerId: data.playerId,
-                    playerIdType: typeof data.playerId,
-                    currentPlayers: Array.from(this.defaultReadyPlayers),
-                    waitingForDefault: this.signalFlagsState.waitingForDefault,
-                    gameState: this.gameState
-                });
-                
-                // 디폴트 상태 대기 중이 아니면 무시
-                if (!this.signalFlagsState.waitingForDefault) {
-                    console.warn('⚠️ 디폴트 상태 대기 중이 아닌데 디폴트 준비 이벤트 수신');
-                    return;
-                }
-                
-                // 디폴트 상태 준비 완료 플레이어 추가
-                this.defaultReadyPlayers.add(data.playerId);
-                console.log(`📍 Player${data.playerId} 디폴트 상태 준비 완료 (${this.defaultReadyPlayers.size}/2)`);
-                console.log('🔍 현재 대기 플레이어 목록:', Array.from(this.defaultReadyPlayers));
-                
-                // 메시지 업데이트
-                this.elements.gameMessage.textContent = `📱 모든 플레이어가 디폴트 상태를 유지하세요 (${this.defaultReadyPlayers.size}/2)`;
-                
-                // 정확히 두 플레이어 모두 디폴트 상태에 있으면 라운드 시작
-                if (this.defaultReadyPlayers.size === 2) {
-                    console.log('🚀 모든 플레이어 디폴트 상태 준비 완료 - 라운드 시작');
-                    console.log('🔍 라운드 시작 전 최종 플레이어 목록:', Array.from(this.defaultReadyPlayers));
-                    this.elements.gameMessage.textContent = '🚀 모든 플레이어 준비 완료! 곧 다음 라운드가 시작됩니다...';
-                    
-                    // 디폴트 상태 대기 해제
-                    this.signalFlagsState.waitingForDefault = false;
-                    this.defaultReadyPlayers.clear();
-                    
-                    setTimeout(() => {
-                        this.startNextRound();
-                    }, 500);
-                } else {
-                    console.log(`⏳ 디폴트 상태 대기 중... (${this.defaultReadyPlayers.size}/2)`);
-                }
+                // 첫 라운드 시작
+                this.startNextRound();
             }
             
             startNextRound() {
-                this.gameData.currentRound++;
+                this.currentRound++;
                 
-                if (this.gameData.currentRound > this.gameData.maxRounds) {
+                if (this.currentRound > this.config.maxRounds) {
                     this.endGame();
                     return;
                 }
                 
-                // 랜덤 명령과 성별 선택
-                this.gameData.currentCommand = this.config.commands[Math.floor(Math.random() * this.config.commands.length)];
-                this.gameData.currentGender = this.config.genders[Math.floor(Math.random() * this.config.genders.length)];
-                this.gameData.roundStartTime = Date.now();
-                this.gameData.playerResponses.clear();
-                this.gameData.responseCount = 0;
+                console.log(`🚩 라운드 ${this.currentRound} 시작`);
                 
-                this.updateRoundDisplay();
-                this.playVoiceCommand();
-                this.startResponseTimer();
+                // 라운드 데이터 초기화
+                this.currentRoundData = {
+                    command: this.getRandomCommand(),
+                    gender: this.getRandomGender(),
+                    responses: new Map(),
+                    correctResponses: new Map(),
+                    startTime: Date.now()
+                };
                 
-                // 센서 클라이언트에 라운드 시작 알림
-                if (this.sdk.socket) {
-                    this.sdk.socket.emit('signal-flags-v2-round-start', {
-                        sessionCode: this.session.sessionCode,
-                        round: this.gameData.currentRound,
-                        command: this.gameData.currentCommand,
-                        gender: this.gameData.currentGender
+                // 디폴트 상태 추적 초기화
+                this.sensorsInDefaultState.clear();
+                
+                // 정답 계산
+                this.calculateCorrectResponses();
+                
+                // UI 업데이트
+                this.elements.roundInfo.textContent = `라운드 ${this.currentRound} / ${this.config.maxRounds}`;
+                this.elements.statusMessage.textContent = '디폴트 상태를 유지하고 명령을 기다리세요';
+                
+                // 디폴트 상태 대기 시작
+                this.waitForDefaultState();
+            }
+            
+            getRandomCommand() {
+                const commands = ['up', 'down', 'left', 'right'];
+                return commands[Math.floor(Math.random() * commands.length)];
+            }
+            
+            getRandomGender() {
+                const genders = ['male', 'female'];
+                return genders[Math.floor(Math.random() * genders.length)];
+            }
+            
+            calculateCorrectResponses() {
+                const { command, gender } = this.currentRoundData;
+                
+                if (gender === 'female') {
+                    // 여성의 명령은 그대로
+                    this.currentRoundData.correctResponses.set('sensor1', command);
+                    this.currentRoundData.correctResponses.set('sensor2', command);
+                } else {
+                    // 남성의 명령은 반대로
+                    const opposites = {
+                        'up': 'down',
+                        'down': 'up', 
+                        'left': 'right',
+                        'right': 'left'
+                    };
+                    const correctResponse = opposites[command];
+                    this.currentRoundData.correctResponses.set('sensor1', correctResponse);
+                    this.currentRoundData.correctResponses.set('sensor2', correctResponse);
+                }
+                
+                console.log('🎯 정답 계산:', {
+                    command: this.currentRoundData.command,
+                    gender: this.currentRoundData.gender,
+                    correctResponses: Object.fromEntries(this.currentRoundData.correctResponses)
+                });
+            }
+            
+            waitForDefaultState() {
+                console.log('📍 디폴트 상태 대기 시작');
+                
+                // 센서 클라이언트에게 디폴트 상태 대기 요청 전송
+                if (this.sdk && this.sdk.socket) {
+                    this.sdk.socket.emit('signal-flags-v2-wait-default', {
+                        sessionCode: this.elements.sessionCode.textContent,
+                        roundNumber: this.currentRound,
+                        command: this.currentRoundData.command,
+                        gender: this.currentRoundData.gender
                     });
                 }
                 
-                console.log(`🚩 라운드 ${this.gameData.currentRound}: ${this.gameData.currentGender} says "${this.gameData.currentCommand}"`);
+                // 타임아웃 설정 (10초 후에도 디폴트 상태가 감지되지 않으면 강제 시작)
+                this.defaultStateTimer = setTimeout(() => {
+                    console.warn('⚠️ 디폴트 상태 타임아웃 - 강제 라운드 시작');
+                    this.startRoundExecution();
+                }, 10000);
             }
             
-            updateRoundDisplay() {
-                this.elements.roundInfo.textContent = `라운드 ${this.gameData.currentRound} / ${this.gameData.maxRounds}`;
+            onDefaultStateDetected(data) {
+                console.log('📍 디폴트 상태 감지됨:', data);
                 
-                // 성별 아이콘 업데이트
-                this.elements.commanderIcon.textContent = this.gameData.currentGender === 'male' ? '👨' : '👩';
+                // 센서 ID 추출
+                const sensorId = data.playerId || data.sensorId || `sensor${this.sensorsInDefaultState.size + 1}`;
                 
-                // 명령 텍스트 업데이트
-                this.elements.commandText.textContent = this.gameData.currentCommand.toUpperCase();
-                this.elements.commandText.className = `command-text ${this.gameData.currentGender}`;
-                this.elements.commandDisplay.className = `command-display visible ${this.gameData.currentGender}`;
-            }
-            
-            playVoiceCommand() {
-                // 실제 음성 파일 재생
-                const audioPath = `/games/signal-flags-v2/assets/${this.gameData.currentGender}/_${this.gameData.currentCommand.toLowerCase()}.m4a`;
+                // 디폴트 상태 센서 추가
+                this.sensorsInDefaultState.add(sensorId);
+                console.log(`📍 센서 ${sensorId} 디폴트 상태 준비 완료 (${this.sensorsInDefaultState.size}/${this.connectedSensors.size})`);
                 
-                console.log(`🎤 음성 파일 재생 시도: ${audioPath}`);
-                
-                const audio = new Audio(audioPath);
-                audio.volume = 1.0;
-                
-                // 로딩 타임아웃 설정 (3초)
-                const loadTimeout = setTimeout(() => {
-                    console.warn(`⏰ 음성 파일 로딩 타임아웃: ${audioPath}`);
-                    this.playTTSFallback();
-                }, 3000);
-                
-                audio.addEventListener('loadeddata', () => {
-                    clearTimeout(loadTimeout);
-                    console.log(`✅ 음성 파일 로딩 완료: ${audioPath}`);
-                });
-                
-                audio.addEventListener('error', (error) => {
-                    clearTimeout(loadTimeout);
-                    console.warn(`❌ 음성 파일 로딩 실패: ${audioPath}`, error);
-                    this.playTTSFallback();
-                });
-                
-                audio.play().then(() => {
-                    clearTimeout(loadTimeout);
-                    console.log(`🎵 음성 파일 재생 성공: ${audioPath}`);
-                }).catch(error => {
-                    clearTimeout(loadTimeout);
-                    console.warn(`🔇 음성 파일 재생 실패: ${audioPath}`, error);
-                    this.playTTSFallback();
-                });
-            }
-            
-            playTTSFallback() {
-                console.log(`🎤 TTS 폴백 시작: ${this.gameData.currentGender}_${this.gameData.currentCommand}`);
-                
-                if ('speechSynthesis' in window) {
-                    // 기존 TTS 중지
-                    speechSynthesis.cancel();
+                // 모든 센서가 디폴트 상태가 되면 라운드 시작
+                if (this.sensorsInDefaultState.size >= this.connectedSensors.size && this.connectedSensors.size >= 2) {
+                    console.log('✅ 모든 센서가 디폴트 상태 - 라운드 실행');
                     
-                    // 명령어를 한국어로 변환
-                    const koreanCommands = {
-                        'up': '위',
-                        'down': '아래', 
-                        'left': '왼쪽',
-                        'right': '오른쪽'
-                    };
-                    
-                    const commandText = koreanCommands[this.gameData.currentCommand] || this.gameData.currentCommand;
-                    
-                    const utterance = new SpeechSynthesisUtterance(commandText);
-                    
-                    // 성별에 따른 음성 설정
-                    utterance.pitch = this.gameData.currentGender === 'male' ? 0.6 : 1.4;
-                    utterance.rate = 1.0;
-                    utterance.volume = 1.0;
-                    utterance.lang = 'ko-KR';
-                    
-                    // 음성 선택 (가능한 경우)
-                    const voices = speechSynthesis.getVoices();
-                    const koreanVoices = voices.filter(voice => voice.lang.includes('ko'));
-                    
-                    if (koreanVoices.length > 0) {
-                        // 성별에 맞는 음성 선택 시도
-                        const genderVoice = koreanVoices.find(voice => 
-                            this.gameData.currentGender === 'female' ? 
-                            voice.name.includes('Female') || voice.name.includes('여성') :
-                            voice.name.includes('Male') || voice.name.includes('남성')
-                        );
-                        utterance.voice = genderVoice || koreanVoices[0];
+                    // 타이머 정리
+                    if (this.defaultStateTimer) {
+                        clearTimeout(this.defaultStateTimer);
+                        this.defaultStateTimer = null;
                     }
                     
-                    utterance.onstart = () => {
-                        console.log(`🎵 TTS 재생 시작: ${commandText} (${this.gameData.currentGender})`);
-                    };
+                    // 짧은 대기 후 라운드 실행
+                    setTimeout(() => {
+                        this.startRoundExecution();
+                    }, 1000);
+                }
+            }
+            
+            startRoundExecution() {
+                console.log('🎯 라운드 실행 시작');
+                
+                const { command, gender } = this.currentRoundData;
+                
+                // 명령 표시
+                this.showCommand(command, gender);
+                
+                // 음성 재생
+                this.playVoiceCommand(command, gender);
+                
+                // 응답 타이머 시작
+                this.startResponseTimer();
+                
+                // 라운드 시작 알림 전송 - Signal Flags v2 전용 이벤트명 사용
+                if (this.sdk && this.sdk.socket) {
+                    this.sdk.socket.emit('signal-flags-v2-round-start', {
+                        sessionCode: this.elements.sessionCode.textContent,
+                        roundNumber: this.currentRound,
+                        command: command,
+                        gender: gender,
+                        responseTime: this.config.responseTime
+                    });
+                }
+            }
+            
+            showCommand(command, gender) {
+                // 아이콘 설정
+                this.elements.commanderIcon.textContent = gender === 'male' ? '👨' : '👩';
+                
+                // 명령 텍스트
+                this.elements.commandText.textContent = command.toUpperCase();
+                this.elements.commandText.className = `command-text ${gender}`;
+                
+                // 힌트 텍스트
+                const hint = gender === 'female' ? 
+                    `👩 여성: ${this.getKoreanDirection(command)}로 움직이세요` :
+                    `👨 남성: ${this.getKoreanDirection(this.getOppositeDirection(command))}로 움직이세요`;
+                this.elements.actionHint.textContent = hint;
+                
+                // 표시 설정
+                this.elements.commandDisplay.className = `command-display visible ${gender}`;
+                
+                console.log(`📢 명령 표시: ${gender} says "${command}"`);
+            }
+            
+            getKoreanDirection(direction) {
+                const directions = {
+                    'up': '위',
+                    'down': '아래',
+                    'left': '왼쪽',
+                    'right': '오른쪽'
+                };
+                return directions[direction] || direction;
+            }
+            
+            getOppositeDirection(direction) {
+                const opposites = {
+                    'up': 'down',
+                    'down': 'up',
+                    'left': 'right',
+                    'right': 'left'
+                };
+                return opposites[direction] || direction;
+            }
+            
+            playVoiceCommand(command, gender) {
+                try {
+                    // 오디오 파일 재생 시도
+                    const audioPath = `/games/signal-flags-v2/assets/${gender}/_${command}.m4a`;
+                    const audio = new Audio(audioPath);
                     
-                    utterance.onend = () => {
-                        console.log(`✅ TTS 재생 완료: ${commandText}`);
-                    };
+                    audio.play().then(() => {
+                        console.log(`🔊 음성 재생 성공: ${audioPath}`);
+                    }).catch((error) => {
+                        console.warn(`🔊 음성 재생 실패: ${audioPath}`, error);
+                        // TTS 폴백
+                        this.playTTSFallback(command, gender);
+                    });
                     
-                    utterance.onerror = (error) => {
-                        console.error(`❌ TTS 재생 오류:`, error);
-                    };
+                } catch (error) {
+                    console.warn('🔊 오디오 로드 실패:', error);
+                    this.playTTSFallback(command, gender);
+                }
+            }
+            
+            playTTSFallback(command, gender) {
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(this.getKoreanDirection(command));
+                    utterance.lang = 'ko-KR';
+                    utterance.rate = 1.0;
+                    utterance.pitch = gender === 'male' ? 0.6 : 1.4;
                     
                     speechSynthesis.speak(utterance);
+                    console.log(`🗣️ TTS 폴백 재생: ${command} (${gender})`);
                 } else {
-                    console.warn('⚠️ TTS를 지원하지 않는 브라우저입니다.');
+                    console.warn('⚠️ TTS 지원하지 않는 브라우저');
                 }
             }
             
@@ -1037,316 +1012,39 @@
             }
             
             handleSensorData(data) {
-                // 센서 데이터 구조 상세 분석
-                console.log('🔍 센서 데이터 원본 분석:', {
-                    wholeData: data,
-                    sensorData: data.sensorData,
-                    dataProperty: data.data,
-                    dataOrientation: data.data?.orientation,
-                    sensorDataOrientation: data.sensorData?.orientation,
-                    directAccess: {
-                        beta: data.data?.orientation?.beta,
-                        gamma: data.data?.orientation?.gamma,
-                        alpha: data.data?.orientation?.alpha
-                    }
-                });
+                // 게임 중이 아니면 무시
+                if (this.gameState !== 'playing') return;
                 
-                // 올바른 센서 데이터 추출 (data.data.orientation이 실제 경로)
-                let orientationData = null;
-                
-                if (data.data?.orientation) {
-                    orientationData = data.data.orientation;
-                } else if (data.sensorData?.orientation) {
-                    orientationData = data.sensorData.orientation;
-                } else if (data.orientation) {
-                    orientationData = data.orientation;
-                } else {
-                    console.warn('⚠️ 센서 orientation 데이터를 찾을 수 없음');
-                    return;
-                }
-                
-                // 센서 데이터 수신 로깅
-                console.log('📡 게임에서 센서 데이터 수신:', {
-                    sensorId: data.sensorId,
-                    gameState: this.gameState,
-                    waitingForDefault: this.signalFlagsState.waitingForDefault,
-                    beta: orientationData.beta?.toFixed(1),
-                    gamma: orientationData.gamma?.toFixed(1),
-                    alpha: orientationData.alpha?.toFixed(1),
-                    orientationData: orientationData,
-                    timestamp: new Date().toLocaleTimeString()
-                });
-                
-                // 디폴트 상태 대기 중에는 게임에서 센서 데이터를 처리하지 않음
-                // 센서 클라이언트에서만 처리하고 서버를 통해 알림을 받음
-                if (this.signalFlagsState.waitingForDefault) {
-                    console.log('📍 디폴트 상태 대기 중 - 센서 클라이언트의 알림 대기');
-                    return;
-                }
-                
-                // 게임 중이 아니면 센서 데이터 무시
-                if (this.gameState !== 'playing') {
-                    console.log('⚠️ 게임 상태가 playing이 아니므로 센서 데이터 무시');
-                    return;
-                }
-                
-                // 실제 센서 기반 게임 로직은 센서 클라이언트에서 처리됨
-                // 여기서는 UI 업데이트만 수행
+                // 센서 데이터에서 방향 추출 및 처리는 센서 클라이언트에서 담당
+                // 여기서는 로그만 출력
+                console.log('📡 센서 데이터 수신:', data);
             }
             
             handlePlayerResponse(data) {
-                // 응답 데이터 검증
-                if (!data.playerId || !data.direction || !data.sessionCode) {
-                    console.warn('⚠️ 잘못된 응답 데이터:', data);
+                const { sensorId, direction, responseTime } = data;
+                
+                // 이미 응답한 센서는 무시
+                if (this.currentRoundData.responses.has(sensorId)) {
                     return;
                 }
                 
-                // 이미 응답한 플레이어는 무시
-                if (this.gameData.playerResponses.has(data.playerId)) {
-                    console.log('⚠️ 이미 응답한 플레이어:', data.playerId);
-                    return;
-                }
-                
-                // 응답 저장 및 점수 계산
-                const isCorrect = this.evaluateResponse(data.direction);
-                const scoreChange = isCorrect ? 1 : -1;
-                
-                this.gameData.playerResponses.set(data.playerId, {
-                    direction: data.direction,
-                    isCorrect: isCorrect,
-                    scoreChange: scoreChange,
+                // 응답 저장
+                this.currentRoundData.responses.set(sensorId, {
+                    direction: direction,
+                    responseTime: responseTime,
                     timestamp: Date.now()
                 });
                 
-                // 점수 업데이트 (최소 0점)
-                const currentScore = this.gameData.playerScores[`player${data.playerId}`];
-                this.gameData.playerScores[`player${data.playerId}`] = Math.max(0, currentScore + scoreChange);
+                console.log(`🎯 플레이어 응답 접수: ${sensorId} → ${direction}`);
                 
-                this.gameData.responseCount++;
-                this.updateScoreboard();
-                
-                console.log(`📊 응답 처리: Player${data.playerId} - ${data.direction} (${isCorrect ? '정답' : '오답'}) 점수변화: ${scoreChange}`);
-                
-                // 두 플레이어 모두 응답했으면 디폴트 상태 대기로 전환
-                if (this.gameData.responseCount >= 2) {
-                    console.log('📍 모든 플레이어 응답 완료 - 디폴트 상태 대기 모드로 전환');
-                    this.waitForDefaultStateAfterResponse();
+                // 모든 플레이어가 응답했으면 라운드 종료
+                if (this.currentRoundData.responses.size >= this.connectedSensors.size) {
+                    this.endRound();
                 }
-            }
-            
-            handleDefaultLost(data) {
-                console.log('🔍 디폴트 벗어남 이벤트 상세:', {
-                    playerId: data.playerId,
-                    playerIdType: typeof data.playerId,
-                    currentPlayers: Array.from(this.defaultReadyPlayers),
-                    waitingForDefault: this.signalFlagsState.waitingForDefault,
-                    gameState: this.gameState
-                });
-                
-                // 디폴트 상태 대기 중이 아니면 무시
-                if (!this.signalFlagsState.waitingForDefault) {
-                    console.warn('⚠️ 디폴트 상태 대기 중이 아닌데 디폴트 벗어남 이벤트 수신');
-                    return;
-                }
-                
-                // 디폴트 상태에서 벗어난 플레이어 제거
-                const wasInSet = this.defaultReadyPlayers.has(data.playerId);
-                this.defaultReadyPlayers.delete(data.playerId);
-                console.log(`⚠️ Player${data.playerId} 디폴트 상태 벗어남 - 대기 플레이어에서 제거 (${this.defaultReadyPlayers.size}/2)`);
-                console.log('🔍 벗어남 후 플레이어 목록:', Array.from(this.defaultReadyPlayers));
-                console.log('🔍 플레이어가 목록에 있었는지:', wasInSet);
-                
-                // 메시지 업데이트
-                this.elements.gameMessage.textContent = `📱 모든 플레이어가 디폴트 상태를 유지해야 합니다 (${this.defaultReadyPlayers.size}/2)`;
-            }
-            
-            waitForDefaultStateAfterResponse() {
-                // 응답 타이머 정리
-                if (this.responseTimer) {
-                    clearInterval(this.responseTimer);
-                    this.responseTimer = null;
-                }
-                
-                // 명령 표시 숨김
-                this.elements.commandDisplay.classList.remove('visible');
-                
-                // 디폴트 상태 복귀 대기 시작
-                this.elements.gameMessage.textContent = '📱 모든 플레이어가 디폴트 상태로 복귀하세요 (0/2)';
-                this.defaultReadyPlayers.clear();
-                
-                // Signal Flags 상태 업데이트
-                this.signalFlagsState.waitingForDefault = true;
-                this.signalFlagsState.isPlaying = false; // 응답 완료 후이므로 플레이 상태 해제
-                
-                console.log('📍 응답 완료 후 디폴트 상태 대기 시작');
-                
-                // 라운드 결과를 센서 클라이언트에 전송
-                if (this.sdk.socket) {
-                    this.sdk.socket.emit('signal-flags-v2-round-end', {
-                        sessionCode: this.session.sessionCode,
-                        round: this.gameData.currentRound,
-                        responses: Object.fromEntries(this.gameData.playerResponses),
-                        scores: this.gameData.playerScores
-                    });
-                    
-                    // 센서 클라이언트에게 디폴트 상태 대기 시작 알림
-                    this.sdk.socket.emit('signal-flags-v2-wait-default', {
-                        sessionCode: this.session.sessionCode
-                    });
-                    
-                    console.log('✅ 라운드 결과 및 디폴트 상태 대기 알림 전송 완료');
-                }
-            }
-            
-            evaluateResponse(direction) {
-                const command = this.gameData.currentCommand;
-                const gender = this.gameData.currentGender;
-                
-                // 여성의 명령은 그대로, 남성의 명령은 반대로
-                let expectedDirection;
-                if (gender === 'female') {
-                    expectedDirection = command;
-                } else {
-                    // 남성의 명령은 반대로 수행
-                    const oppositeMap = {
-                        'up': 'down',
-                        'down': 'up',
-                        'left': 'right',
-                        'right': 'left'
-                    };
-                    expectedDirection = oppositeMap[command];
-                }
-                
-                return direction === expectedDirection;
             }
             
             endRound() {
-                if (this.responseTimer) {
-                    clearInterval(this.responseTimer);
-                    this.responseTimer = null;
-                }
-                
-                // 시간 초과한 플레이어들 처리
-                const playerIds = ['1', '2'];
-                playerIds.forEach(playerId => {
-                    if (!this.gameData.playerResponses.has(playerId)) {
-                        // 시간 초과 - 점수 -1 (최소 0점)
-                        const currentScore = this.gameData.playerScores[`player${playerId}`];
-                        this.gameData.playerScores[`player${playerId}`] = Math.max(0, currentScore - 1);
-                        
-                        this.gameData.playerResponses.set(playerId, {
-                            direction: 'timeout',
-                            isCorrect: false,
-                            scoreChange: -1,
-                            timestamp: Date.now()
-                        });
-                    }
-                });
-                
-                this.updateScoreboard();
-                
-                // 라운드 결과를 센서 클라이언트에 전송
-                if (this.sdk.socket) {
-                    this.sdk.socket.emit('signal-flags-v2-round-end', {
-                        sessionCode: this.session.sessionCode,
-                        round: this.gameData.currentRound,
-                        responses: Object.fromEntries(this.gameData.playerResponses),
-                        scores: this.gameData.playerScores
-                    });
-                }
-                
-                // 명령 표시 숨김
-                this.elements.commandDisplay.classList.remove('visible');
-                
-                // 다음 라운드 또는 게임 종료
-                setTimeout(() => {
-                    if (this.gameData.currentRound >= this.gameData.maxRounds) {
-                        this.endGame();
-                    } else {
-                        this.waitForDefaultState();
-                    }
-                }, 1500);
-            }
-            
-            updateScoreboard() {
-                this.elements.score1.textContent = this.gameData.playerScores.player1;
-                this.elements.score2.textContent = this.gameData.playerScores.player2;
-            }
-            
-            endGame() {
-                this.setGameState('finished');
-                
-                if (this.responseTimer) {
-                    clearInterval(this.responseTimer);
-                    this.responseTimer = null;
-                }
-                
-                // 최종 점수 확인
-                const score1 = this.gameData.playerScores.player1;
-                const score2 = this.gameData.playerScores.player2;
-                
-                // 결과 표시
-                this.elements.finalScore1.textContent = score1;
-                this.elements.finalScore2.textContent = score2;
-                
-                let resultText, resultClass;
-                if (score1 > score2) {
-                    resultText = '🏆 플레이어 1 승리!';
-                    resultClass = 'winner';
-                } else if (score2 > score1) {
-                    resultText = '🏆 플레이어 2 승리!';
-                    resultClass = 'winner';
-                } else {
-                    resultText = '🤝 무승부!';
-                    resultClass = 'draw';
-                }
-                
-                this.elements.resultTitle.textContent = resultText;
-                this.elements.resultTitle.className = `result-title ${resultClass}`;
-                this.elements.gameResult.classList.add('visible');
-                
-                // 센서 클라이언트에 게임 종료 알림
-                if (this.sdk.socket) {
-                    this.sdk.socket.emit('signal-flags-v2-game-end', {
-                        sessionCode: this.session.sessionCode,
-                        finalScores: this.gameData.playerScores,
-                        winner: score1 > score2 ? 1 : (score2 > score1 ? 2 : 0)
-                    });
-                }
-                
-                console.log('🏆 게임 종료:', resultText);
-            }
-            
-            endGameByDisconnection() {
-                this.setGameState('finished');
-                
-                if (this.responseTimer) {
-                    clearInterval(this.responseTimer);
-                    this.responseTimer = null;
-                }
-                
-                this.elements.gameMessage.textContent = '❌ 플레이어 연결이 해제되어 게임이 종료되었습니다';
-                this.elements.commandDisplay.classList.remove('visible');
-                
-                alert('플레이어 연결이 해제되어 게임이 종료되었습니다.');
-            }
-            
-            resetGame() {
-                // 게임 상태 초기화
-                this.setGameState('ready');
-                this.defaultReadyPlayers.clear();
-                
-                // 게임 데이터 초기화
-                this.gameData = {
-                    currentRound: 0,
-                    maxRounds: this.config.totalRounds,
-                    currentCommand: null,
-                    currentGender: null,
-                    roundStartTime: 0,
-                    playerScores: { player1: 0, player2: 0 },
-                    playerResponses: new Map(),
-                    responseCount: 0
-                };
+                console.log('🏁 라운드 종료');
                 
                 // 타이머 정리
                 if (this.responseTimer) {
@@ -1354,21 +1052,172 @@
                     this.responseTimer = null;
                 }
                 
+                // 결과 계산
+                this.calculateRoundResults();
+                
+                // 명령 표시 숨김
+                this.elements.commandDisplay.classList.remove('visible');
+                
+                // 점수 업데이트
+                this.updateScoreDisplay();
+                
+                // 다음 라운드 또는 게임 종료
+                setTimeout(() => {
+                    this.startNextRound();
+                }, 2000);
+            }
+            
+            calculateRoundResults() {
+                console.log('📊 라운드 결과 계산');
+                
+                const results = new Map();
+                
+                // 각 센서별 결과 계산
+                for (const [sensorId, response] of this.currentRoundData.responses) {
+                    const correctResponse = this.currentRoundData.correctResponses.get(sensorId);
+                    const isCorrect = response.direction === correctResponse;
+                    
+                    results.set(sensorId, {
+                        response: response.direction,
+                        correct: correctResponse,
+                        isCorrect: isCorrect,
+                        points: isCorrect ? 1 : -1
+                    });
+                    
+                    // 점수 업데이트
+                    if (sensorId.includes('1') || sensorId === 'sensor1') {
+                        this.scores.player1 = Math.max(0, this.scores.player1 + (isCorrect ? 1 : -1));
+                    } else {
+                        this.scores.player2 = Math.max(0, this.scores.player2 + (isCorrect ? 1 : -1));
+                    }
+                }
+                
+                // 응답하지 않은 센서들 처리 (시간 초과)
+                for (const sensorId of this.connectedSensors) {
+                    if (!this.currentRoundData.responses.has(sensorId)) {
+                        results.set(sensorId, {
+                            response: null,
+                            correct: this.currentRoundData.correctResponses.get(sensorId),
+                            isCorrect: false,
+                            points: -1
+                        });
+                        
+                        // 점수 차감
+                        if (sensorId.includes('1') || sensorId === 'sensor1') {
+                            this.scores.player1 = Math.max(0, this.scores.player1 - 1);
+                        } else {
+                            this.scores.player2 = Math.max(0, this.scores.player2 - 1);
+                        }
+                    }
+                }
+                
+                console.log('📊 라운드 결과:', {
+                    results: Object.fromEntries(results),
+                    scores: this.scores
+                });
+                
+                // 결과를 센서 클라이언트에 전송
+                if (this.sdk && this.sdk.socket) {
+                    this.sdk.socket.emit('round-results', {
+                        sessionCode: this.elements.sessionCode.textContent,
+                        roundNumber: this.currentRound,
+                        results: Object.fromEntries(results),
+                        scores: this.scores
+                    });
+                }
+            }
+            
+            updateScoreDisplay() {
+                this.elements.player1Score.textContent = this.scores.player1;
+                this.elements.player2Score.textContent = this.scores.player2;
+            }
+            
+            endGame() {
+                console.log('🏆 게임 종료');
+                this.gameState = 'finished';
+                
+                // 승자 결정
+                let resultType, resultText;
+                if (this.scores.player1 > this.scores.player2) {
+                    resultType = 'win';
+                    resultText = '🏆 플레이어 1 승리!';
+                } else if (this.scores.player2 > this.scores.player1) {
+                    resultType = 'win';
+                    resultText = '🏆 플레이어 2 승리!';
+                } else {
+                    resultType = 'draw';
+                    resultText = '🤝 무승부!';
+                }
+                
+                // 결과 화면 표시
+                this.elements.resultTitle.textContent = resultText;
+                this.elements.resultTitle.className = `result-title ${resultType}`;
+                this.elements.finalScores.textContent = `최종 점수 - 플레이어 1: ${this.scores.player1}점, 플레이어 2: ${this.scores.player2}점`;
+                
+                // UI 전환
+                this.elements.playersContainer.classList.add('hidden');
+                this.elements.resultScreen.classList.add('visible');
+                this.elements.sessionInfo.classList.add('visible');
+                this.elements.startBtn.disabled = false;
+                this.elements.startBtn.textContent = '🚩 다시 시작';
+                
+                // 게임 종료 알림 전송
+                if (this.sdk && this.sdk.socket) {
+                    this.sdk.socket.emit('game-ended', {
+                        sessionCode: this.elements.sessionCode.textContent,
+                        finalScores: this.scores,
+                        winner: this.scores.player1 > this.scores.player2 ? 'player1' : 
+                                this.scores.player2 > this.scores.player1 ? 'player2' : 'draw'
+                    });
+                }
+            }
+            
+            resetGame() {
+                console.log('🔄 게임 리셋');
+                
+                // 타이머 정리
+                if (this.responseTimer) {
+                    clearInterval(this.responseTimer);
+                    this.responseTimer = null;
+                }
+                if (this.defaultStateTimer) {
+                    clearTimeout(this.defaultStateTimer);
+                    this.defaultStateTimer = null;
+                }
+                
+                // 상태 초기화
+                this.gameState = this.connectedSensors.size >= 2 ? 'ready' : 'waiting';
+                this.currentRound = 0;
+                this.scores = { player1: 0, player2: 0 };
+                this.sensorsInDefaultState.clear(); // 디폴트 상태 추적 초기화
+                this.currentRoundData = {
+                    command: null,
+                    gender: null,
+                    responses: new Map(),
+                    correctResponses: new Map(),
+                    startTime: 0
+                };
+                
                 // UI 초기화
                 this.elements.roundInfo.textContent = '게임 준비 중...';
-                this.elements.gameMessage.textContent = '🎮 준비 완료! 게임을 시작하세요';
+                this.elements.statusMessage.textContent = this.connectedSensors.size >= 2 ? 
+                    '모든 센서가 연결되었습니다! 게임을 시작하세요.' :
+                    `센서 연결 중... (${this.connectedSensors.size}/2)`;
                 this.elements.commandDisplay.classList.remove('visible');
-                this.elements.gameResult.classList.remove('visible');
                 this.elements.timerFill.style.width = '100%';
-                this.updateScoreboard();
+                this.elements.playersContainer.classList.remove('hidden');
+                this.elements.resultScreen.classList.remove('visible');
+                this.elements.startBtn.disabled = this.connectedSensors.size < 2;
+                this.elements.startBtn.textContent = '🚩 게임 시작';
                 
-                console.log('🔄 게임 리셋');
+                this.updateScoreDisplay();
+                this.updateGameReadiness();
             }
         }
         
         // 게임 시작
         document.addEventListener('DOMContentLoaded', () => {
-            new SignalFlagsV2Game();
+            new SignalFlagsV2Refactored();
         });
     </script>
 </body>
