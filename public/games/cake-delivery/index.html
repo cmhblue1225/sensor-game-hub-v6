@@ -322,10 +322,13 @@
                 // GLB 모델 또는 기본 모델 사용
                 let playerMesh;
                 
-                if (false && this.loadedModels.idle) { // GLB 모델 임시 비활성화
+                if (this.loadedModels.idle) { // GLB 모델 재활성화
                     // GLB Scene을 Group으로 감싸서 사용 (SkinnedMesh 호환성)
                     console.log(`🎭 GLB 모델로 플레이어 ${playerLabel} 생성 (Group 래퍼)`);
                     const glbScene = this.loadedModels.idle.model.clone();
+                    
+                    // GLB 모델 스케일 대폭 증가 (가시성 확보)
+                    glbScene.scale.setScalar(5.0); // 0.5 → 5.0 (10배 증가)
                     
                     // Group으로 감싸기
                     const playerGroup = new THREE.Group();
@@ -346,6 +349,16 @@
                     // 바운딩 박스로 모델 위치 조정
                     const box = new THREE.Box3().setFromObject(glbScene);
                     glbScene.position.y = -box.min.y; // 바닥에 맞춤
+                    
+                    console.log(`🔍 GLB 스케일 및 위치 정보 (${playerLabel}):`, {
+                        originalScale: 0.5,
+                        newScale: 5.0,
+                        boundingBox: {
+                            min: { x: box.min.x.toFixed(2), y: box.min.y.toFixed(2), z: box.min.z.toFixed(2) },
+                            max: { x: box.max.x.toFixed(2), y: box.max.y.toFixed(2), z: box.max.z.toFixed(2) }
+                        },
+                        adjustedY: glbScene.position.y.toFixed(2)
+                    });
                     
                     // Group을 playerMesh로 사용
                     playerMesh = playerGroup;
