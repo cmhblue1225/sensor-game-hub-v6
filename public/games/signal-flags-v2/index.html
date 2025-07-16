@@ -449,12 +449,12 @@
                     responseTime: 3000,
                     defaultStateTime: 2000,
                     sensorThresholds: {
-                        defaultState: { beta: 15, gamma: 15 },
+                        defaultState: { beta: 10, gamma: 10 }, // 더 엄격한 디폴트 상태 (±10도)
                         actions: {
-                            up: { beta: 30 },
-                            down: { beta: -30 },
-                            left: { gamma: -30 },
-                            right: { gamma: 30 }
+                            up: { beta: 25 },    // 액션 임계값도 조정
+                            down: { beta: -25 },
+                            left: { gamma: -25 },
+                            right: { gamma: 25 }
                         }
                     }
                 };
@@ -870,9 +870,15 @@
             }
             
             onDefaultStateDetected(data) {
-                // 현재 게임 상태가 대기 중이 아니면 무시
-                if (this.gameState !== 'playing' && this.gameState !== 'ready') {
-                    console.log('⚠️ 게임 상태가 적절하지 않음 - 디폴트 상태 감지 무시');
+                // 게임이 진행 중이 아니면 무시 (디폴트 상태 대기 중에만 처리)
+                if (this.gameState !== 'playing') {
+                    console.log(`⚠️ 게임 상태 부적절 - 디폴트 상태 감지 무시 (현재: ${this.gameState})`);
+                    return;
+                }
+                
+                // 이미 라운드 실행 중이면 무시 (디폴트 상태 대기 중에만 처리)
+                if (this.responseTimer) {
+                    console.log('⚠️ 라운드 실행 중 - 디폴트 상태 감지 무시');
                     return;
                 }
                 
@@ -883,49 +889,59 @@
                 
                 // 이미 디폴트 상태인 센서는 무시
                 if (this.sensorsInDefaultState.has(sensorId)) {
-                    console.log(`📍 ${sensorId} 이미 디폴트 상태 - 무시`);
+                    console.log(`📍 ${sensorId} 이미 디폴트 상태 - 중복 감지 무시`);
                     return;
                 }
                 
                 // 디폴트 상태 센서 추가
                 this.sensorsInDefaultState.add(sensorId);
-                console.log(`📍 센서 ${sensorId} 디폴트 상태 준비 완료 (${this.sensorsInDefaultState.size}/${this.connectedSensors.size})`);
+                console.log(`✅ ${sensorId} 디폴트 상태 준비 완료 (${this.sensorsInDefaultState.size}/${this.connectedSensors.size})`);
                 
                 // 상태 메시지 업데이트 - 실시간 알림
-                this.elements.statusMessage.textContent = `✅ ${sensorId} 디폴트 상태 인식됨! (${this.sensorsInDefaultState.size}/${this.connectedSensors.size})`;
+                this.elements.statusMessage.textContent = `✅ ${sensorId} 디폴트 상태 인식! (${this.sensorsInDefaultState.size}/${this.connectedSensors.size})`;
                 
                 // 모든 센서가 디폴트 상태가 되면 라운드 시작
                 if (this.sensorsInDefaultState.size >= this.connectedSensors.size && this.connectedSensors.size >= 2) {
-                    console.log('✅ 모든 센서가 디폴트 상태 - 라운드 실행 준비');
+                    console.log('🚀 모든 센서 디폴트 상태 준비 완료 - 라운드 실행 예약');
                     
                     // 사용자에게 즉시 알림
                     this.elements.statusMessage.textContent = '🚀 모든 센서 준비 완료! 1초 후 라운드 시작...';
                     
-                    // 타이머 정리
+                    // 기존 타이머 정리
                     if (this.defaultStateTimer) {
                         clearTimeout(this.defaultStateTimer);
                         this.defaultStateTimer = null;
                     }
                     
-                    // 1초 후 바로 라운드 실행
-                    setTimeout(() => {
-                        console.log('⏰ 1초 대기 완료 - 라운드 실행');
+                    // 1초 후 라운드 실행 (한 번만 실행되도록 보장)
+                    this.defaultStateTimer = setTimeout(() => {
+                        console.log('⏰ 1초 대기 완료 - 라운드 실행 시작');
+                        this.defaultStateTimer = null;
                         this.startRoundExecution();
                     }, 1000);
                 }
             }
             
             startRoundExecution() {
+                // 중복 실행 방지 - 이미 라운드가 실행 중이면 무시
+                if (this.responseTimer) {
+                    console.warn('⚠️ 라운드 이미 실행 중 - 중복 실행 방지');
+                    return;
+                }
+                
                 console.log('🎯 라운드 실행 시작');
                 
                 const { command, gender } = this.currentRoundData;
+                
+                // 라운드 시작 시간 기록
+                this.currentRoundData.startTime = Date.now();
                 
                 // 명령과 정답 로그 출력
                 console.log(`🚩 라운드 ${this.currentRound}: ${gender} 성별로 "${command}" 명령`);
                 console.log('📋 정답:', Object.fromEntries(this.currentRoundData.correctResponses));
                 
                 // 상태 메시지 업데이트
-                this.elements.statusMessage.textContent = `명령을 듣고 3초 이내에 반응하세요!`;
+                this.elements.statusMessage.textContent = `${gender === 'male' ? '👨' : '👩'} ${command.toUpperCase()} - 3초 이내에 반응하세요!`;
                 
                 // 명령 표시
                 this.showCommand(command, gender);
@@ -1038,60 +1054,19 @@
             }
             
             handleSensorData(data) {
-                // 게임 중이 아니면 무시
-                if (this.gameState !== 'playing') return;
-                
-                // 센서 데이터에서 방향 판정
-                const sensorId = data.sensorId;
-                const orientation = data.data.orientation;
-                
-                // 필수 조건 체크: 데이터 존재 및 중복 응답 방지
-                if (!orientation || this.currentRoundData.responses.has(sensorId)) {
-                    if (this.currentRoundData.responses.has(sensorId)) {
-                        // 이미 응답한 센서는 로그만 출력하고 무시
-                        console.log(`⚠️ ${sensorId} 이미 응답함 - 추가 응답 무시`);
+                // PC 게임에서는 센서 데이터를 직접 처리하지 않음
+                // 센서 클라이언트에서 처리된 이벤트만 수신
+                // 디버깅용 로그만 출력
+                if (this.gameState === 'playing') {
+                    // 게임 중에만 간단한 로그 출력 (스팸 방지)
+                    if (Math.random() < 0.01) { // 1% 확률로만 로그 출력
+                        console.log(`📡 센서 데이터 수신 중... (${data.sensorId})`);
                     }
-                    return;
-                }
-                
-                const { beta, gamma } = orientation;
-                const detectedDirection = this.detectDirection(beta, gamma);
-                
-                if (detectedDirection) {
-                    console.log(`🎯 방향 감지: ${sensorId} → ${detectedDirection} (첫 번째 응답)`);
-                    
-                    // 즉시 응답 처리 - 한 번만 처리됨을 보장
-                    this.handlePlayerResponse({
-                        sensorId: sensorId,
-                        direction: detectedDirection,
-                        responseTime: Date.now() - this.currentRoundData.startTime,
-                        timestamp: Date.now()
-                    });
-                } else {
-                    // 방향 감지되지 않은 경우는 로그 출력하지 않음 (스팸 방지)
                 }
             }
             
-            detectDirection(beta, gamma) {
-                const thresholds = this.config.sensorThresholds.actions;
-                
-                // 방향 우선순위: up/down > left/right
-                if (Math.abs(beta) > Math.abs(gamma)) {
-                    if (beta >= Math.abs(thresholds.up.beta)) {
-                        return 'up';
-                    } else if (beta <= thresholds.down.beta) {
-                        return 'down';
-                    }
-                } else {
-                    if (gamma <= thresholds.left.gamma) {
-                        return 'left';
-                    } else if (gamma >= thresholds.right.gamma) {
-                        return 'right';
-                    }
-                }
-                
-                return null; // 방향 감지되지 않음
-            }
+            // PC 게임에서는 센서 클라이언트가 보내는 이벤트만 처리하므로 
+            // detectDirection 함수는 제거됨
             
             handlePlayerResponse(data) {
                 const { sensorId, direction, responseTime } = data;
