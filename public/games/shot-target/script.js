@@ -155,6 +155,9 @@ class ShotTargetGame {
     async initializeGame() {
         console.log('🎯 Shot Target Game 초기화');
         
+        // ✅ UI 클래스 초기화
+        document.body.classList.remove('mass-competitive-mode');
+        
         this.setupCanvas();
         this.setupModeSelection();  // 게임 모드 선택 설정
         this.setupKeyboardControls();  // 키보드 테스트용
@@ -756,6 +759,14 @@ class ShotTargetGame {
         this.state.player2Combo = 0;
         this.state.player1LastHitTime = 0;
         this.state.player2LastHitTime = 0;
+        
+        // ✅ 대규모 경쟁 모드 데이터 초기화
+        this.massPlayers.clear();
+        this.state.myPlayerId = null;
+        this.state.totalTargetsCreated = 0;
+        
+        // ✅ UI 클래스 정리
+        document.body.classList.remove('mass-competitive-mode');
         
         this.targets = [];
         this.bullets = [];
@@ -1381,6 +1392,9 @@ class ShotTargetGame {
         this.elements.myMassInfoPanel.classList.remove('hidden');
         this.elements.gameInfoPanel.classList.remove('hidden');
         this.elements.crosshair.classList.remove('hidden');
+        
+        // ✅ 대규모 경쟁 모드 클래스 추가하여 CSS 스타일 적용
+        document.body.classList.add('mass-competitive-mode');
     }
     
     updateMassLeaderboard() {
