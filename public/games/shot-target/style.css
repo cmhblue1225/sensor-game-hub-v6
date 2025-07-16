@@ -686,15 +686,6 @@ body {
     gap: 0.75rem;
 }
 
-/* 대규모 경쟁 참가자 목록 패널 */
-.mass-player-list-panel {
-    top: 1rem;
-    left: 1rem;
-    min-width: 280px;
-    max-width: 320px;
-    z-index: 120;
-}
-
 /* 대규모 경쟁 대기실 */
 .mass-waiting-panel {
     top: 50%;
