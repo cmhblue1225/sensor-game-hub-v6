@@ -50,6 +50,12 @@
             transition: background-color 0.2s;
         }
         .controls button:hover, .controls a:hover { background-color: #2563eb; }
+        .mode-btn {
+            padding: 8px 16px; background-color: var(--surface); color: var(--text-secondary); border: 1px solid var(--primary);
+            border-radius: 6px; font-size: 14px; cursor: pointer; transition: all 0.2s;
+        }
+        .mode-btn:hover { background-color: var(--primary); color: white; }
+        .mode-btn.active { background-color: var(--primary); color: white; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -62,8 +68,11 @@
         <div class="ui-overlay">
             <div id="messageBox" class="game-message">플레이어 연결 대기중...</div>
             <div class="score-display" style="position: absolute; top: 20px; right: 20px; background: rgba(30, 41, 59, 0.8); padding: 15px; border-radius: 12px; backdrop-filter: blur(5px); pointer-events: auto; text-align: right;">
-                <div style="font-size: 1.5em; font-weight: bold; color: var(--text-primary);">점수: <span id="currentScore">0</span></div>
+                <div style="font-size: 1.2em; font-weight: bold; color: var(--text-primary);">레벨: <span id="currentLevel">1</span> | 점수: <span id="currentScore">0</span></div>
                 <div style="font-size: 1em; color: var(--text-secondary);">최고 기록: <span id="highScore">0</span></div>
+                <div style="font-size: 1em; color: var(--warning);" id="timerDisplay">시간: <span id="remainingTime">--</span></div>
+                <div style="font-size: 1em; color: var(--success);" id="starsDisplay">⭐ <span id="currentStars">0</span>/3</div>
+                <div style="font-size: 0.9em; color: var(--text-secondary);" id="modeDisplay">모드: <span id="gameMode">일반</span></div>
             </div>
         </div>
         <div class="session-panel">
@@ -77,6 +86,12 @@
         </div>
         <div class="controls">
             <button id="resetButton" style="display: none;">🔄 재시작</button>
+            <div class="mode-selector" style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px;">
+                <button id="normalMode" class="mode-btn active">🎯 일반 모드</button>
+                <button id="infiniteMode" class="mode-btn">♾️ 무한 모드</button>
+                <button id="timeAttackMode" class="mode-btn">⏱️ 타임 어택</button>
+                <button id="challengeMode" class="mode-btn">🔥 챌린지</button>
+            </div>
             <a href="/">🏠 허브로</a>
         </div>
     </div>
@@ -97,25 +112,55 @@
 
                 this.gameState = 'waiting'; // waiting, ready, playing, success, fail, level_clear
                 this.level = 1;
-                this.maxLevel = 5;
+                this.maxLevel = 10; // 확장된 레벨
+                this.gameMode = 'normal'; // normal, infinite, timeAttack, challenge
                 this.players = {};
                 this.cake = {};
                 this.obstacles = [];
                 this.destination = null;
                 this.particles = [];
                 this.cameraShake = { intensity: 0, decay: 0 };
+                
+                // 확장된 점수 시스템
                 this.currentScore = 0;
                 this.highScore = parseInt(localStorage.getItem('cakeDeliveryHighScore') || '0');
+                this.stars = 0; // 0-3 별점
+                this.deliveryTime = 0;
+                this.perfectDeliveries = 0;
+                this.totalDeliveries = 0;
+                
+                // 타임 어택 모드
+                this.timeLimit = 60; // 초
+                this.remainingTime = this.timeLimit;
+                this.isTimerActive = false;
+                
+                // 무한 모드
+                this.infiniteLevel = 1;
+                this.consecutiveDeliveries = 0;
                 
                 // 애니메이션 시스템
                 this.clock = new THREE.Clock();
 
+                // 확장된 레벨 설정
                 this.levelConfig = {
-                    1: { forwardSpeed: 0.1, obstacles: 2, holes: 1, movingObstacles: 1, rotatingObstacles: 0 },
-                    2: { forwardSpeed: 0.12, obstacles: 3, holes: 2, movingObstacles: 1, rotatingObstacles: 1 },
-                    3: { forwardSpeed: 0.15, obstacles: 4, holes: 3, movingObstacles: 2, rotatingObstacles: 1 },
-                    4: { forwardSpeed: 0.18, obstacles: 5, holes: 4, movingObstacles: 2, rotatingObstacles: 2 },
-                    5: { forwardSpeed: 0.2, obstacles: 6, holes: 5, movingObstacles: 3, rotatingObstacles: 2 },
+                    1: { forwardSpeed: 0.08, obstacles: 2, holes: 1, movingObstacles: 0, wind: 0, timeLimit: 45, theme: 'normal' },
+                    2: { forwardSpeed: 0.10, obstacles: 3, holes: 1, movingObstacles: 1, wind: 0.1, timeLimit: 40, theme: 'normal' },
+                    3: { forwardSpeed: 0.12, obstacles: 4, holes: 2, movingObstacles: 1, wind: 0.15, timeLimit: 38, theme: 'city' },
+                    4: { forwardSpeed: 0.14, obstacles: 5, holes: 2, movingObstacles: 2, wind: 0.2, timeLimit: 35, theme: 'city' },
+                    5: { forwardSpeed: 0.16, obstacles: 6, holes: 3, movingObstacles: 2, wind: 0.25, timeLimit: 33, theme: 'forest' },
+                    6: { forwardSpeed: 0.18, obstacles: 7, holes: 3, movingObstacles: 3, wind: 0.3, timeLimit: 30, theme: 'forest' },
+                    7: { forwardSpeed: 0.20, obstacles: 8, holes: 4, movingObstacles: 3, wind: 0.35, timeLimit: 28, theme: 'mountain' },
+                    8: { forwardSpeed: 0.22, obstacles: 9, holes: 4, movingObstacles: 4, wind: 0.4, timeLimit: 25, theme: 'beach' },
+                    9: { forwardSpeed: 0.24, obstacles: 10, holes: 5, movingObstacles: 4, wind: 0.45, timeLimit: 23, theme: 'winter' },
+                    10: { forwardSpeed: 0.26, obstacles: 12, holes: 6, movingObstacles: 5, wind: 0.5, timeLimit: 20, theme: 'night' }
+                };
+                
+                // 게임 모드별 설정
+                this.modeConfig = {
+                    normal: { lives: 3, scoreMult: 1.0, description: '일반 모드' },
+                    infinite: { lives: 1, scoreMult: 1.5, description: '무한 도전 모드' },
+                    timeAttack: { lives: 1, scoreMult: 2.0, description: '시간 제한 모드' },
+                    challenge: { lives: 1, scoreMult: 3.0, description: '극한 챌린지' }
                 };
 
                 this.initUI();
@@ -131,8 +176,96 @@
                 this.messageBox = document.getElementById('messageBox');
                 this.resetButton = document.getElementById('resetButton');
                 this.resetButton.onclick = () => this.resetGame();
+                
+                // 기존 UI 요소들
                 this.currentScoreDisplay = document.getElementById('currentScore');
                 this.highScoreDisplay = document.getElementById('highScore');
+                
+                // 확장된 UI 요소들
+                this.currentLevelDisplay = document.getElementById('currentLevel');
+                this.remainingTimeDisplay = document.getElementById('remainingTime');
+                this.currentStarsDisplay = document.getElementById('currentStars');
+                this.gameModeDisplay = document.getElementById('gameMode');
+                this.timerDisplay = document.getElementById('timerDisplay');
+                this.starsDisplay = document.getElementById('starsDisplay');
+                
+                // 게임 모드 버튼들
+                this.normalModeBtn = document.getElementById('normalMode');
+                this.infiniteModeBtn = document.getElementById('infiniteMode');
+                this.timeAttackModeBtn = document.getElementById('timeAttackMode');
+                this.challengeModeBtn = document.getElementById('challengeMode');
+                
+                // 모드 버튼 이벤트 리스너
+                this.normalModeBtn.onclick = () => this.selectGameMode('normal');
+                this.infiniteModeBtn.onclick = () => this.selectGameMode('infinite');
+                this.timeAttackModeBtn.onclick = () => this.selectGameMode('timeAttack');
+                this.challengeModeBtn.onclick = () => this.selectGameMode('challenge');
+                
+                this.updateScoreDisplay();
+            }
+
+            // 게임 모드 선택
+            selectGameMode(mode) {
+                if (this.gameState === 'playing') return; // 게임 중에는 모드 변경 불가
+                
+                this.gameMode = mode;
+                
+                // 모드별 초기 설정
+                switch(mode) {
+                    case 'infinite':
+                        this.infiniteLevel = 1;
+                        this.consecutiveDeliveries = 0;
+                        break;
+                    case 'timeAttack':
+                        this.remainingTime = this.timeLimit;
+                        break;
+                    case 'challenge':
+                        this.level = 5; // 챌린지는 중간 레벨부터 시작
+                        break;
+                    default:
+                        this.level = 1;
+                }
+                
+                this.updateModeButtons();
+                this.updateUI();
+                
+                console.log(`🎮 게임 모드 변경: ${this.modeConfig[mode].description}`);
+            }
+
+            // 모드 버튼 업데이트
+            updateModeButtons() {
+                [this.normalModeBtn, this.infiniteModeBtn, this.timeAttackModeBtn, this.challengeModeBtn].forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                
+                switch(this.gameMode) {
+                    case 'normal': this.normalModeBtn.classList.add('active'); break;
+                    case 'infinite': this.infiniteModeBtn.classList.add('active'); break;
+                    case 'timeAttack': this.timeAttackModeBtn.classList.add('active'); break;
+                    case 'challenge': this.challengeModeBtn.classList.add('active'); break;
+                }
+            }
+
+            // UI 업데이트
+            updateUI() {
+                if (this.currentLevelDisplay) {
+                    this.currentLevelDisplay.textContent = this.gameMode === 'infinite' ? this.infiniteLevel : this.level;
+                }
+                if (this.gameModeDisplay) {
+                    this.gameModeDisplay.textContent = this.modeConfig[this.gameMode].description;
+                }
+                if (this.currentStarsDisplay) {
+                    this.currentStarsDisplay.textContent = this.stars;
+                }
+                
+                // 타임 어택 모드에서만 타이머 표시
+                if (this.timerDisplay) {
+                    this.timerDisplay.style.display = this.gameMode === 'timeAttack' ? 'block' : 'none';
+                }
+                if (this.remainingTimeDisplay && this.gameMode === 'timeAttack') {
+                    this.remainingTimeDisplay.textContent = Math.ceil(this.remainingTime);
+                }
+                
                 this.updateScoreDisplay();
             }
 
