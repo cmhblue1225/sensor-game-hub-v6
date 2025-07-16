@@ -100,51 +100,20 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     
-    <!-- pako 라이브러리 사용 (fflate 대신 - 더 안정적) -->
-    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
-    
-    <!-- 커스텀 fflate 호환 래퍼 -->
-    <script>
-        // pako를 사용한 fflate 호환 래퍼
-        window.fflate = {
-            inflateRaw: function(data, options) {
-                try {
-                    return pako.inflateRaw(data);
-                } catch (error) {
-                    console.error('inflateRaw 오류:', error);
-                    return new Uint8Array(0);
-                }
-            },
-            unzlibSync: function(data, options) {
-                try {
-                    return pako.inflate(data);
-                } catch (error) {
-                    console.error('unzlibSync 오류:', error);
-                    return new Uint8Array(0);
-                }
-            }
-        };
-        
-        console.log('✅ pako 기반 fflate 래퍼 생성 완료');
-    </script>
-    
-    <!-- FBXLoader 로드 -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+    <!-- GLTFLoader 로드 -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     
     <script>
         // 라이브러리 로딩 확인
         console.log('🔍 라이브러리 상태:', {
             THREE: typeof THREE,
-            FBXLoader: typeof THREE.FBXLoader,
-            pako: typeof pako,
-            fflate: typeof window.fflate,
-            fflateInflateRaw: typeof window.fflate.inflateRaw
+            GLTFLoader: typeof THREE.GLTFLoader
         });
         
-        if (typeof THREE.FBXLoader !== 'undefined' && typeof window.fflate !== 'undefined') {
-            console.log('✅ FBXLoader 및 fflate 래퍼 준비 완료');
+        if (typeof THREE.GLTFLoader !== 'undefined') {
+            console.log('✅ GLTFLoader 준비 완료');
         } else {
-            console.error('❌ 라이브러리 로드 실패');
+            console.error('❌ GLTFLoader 로드 실패');
         }
     </script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator/qrcode.js"></script>
@@ -181,8 +150,8 @@
                 this.currentScore = 0;
                 this.highScore = parseInt(localStorage.getItem('cakeDeliveryHighScore') || '0');
                 
-                // 3D 모델 및 애니메이션 시스템 - FBX 모델 사용
-                this.fbxLoader = new THREE.FBXLoader();
+                // 3D 모델 및 애니메이션 시스템 - GLB 모델 사용
+                this.gltfLoader = new THREE.GLTFLoader();
                 this.loadedModels = {};
                 this.animationMixers = [];
                 this.clock = new THREE.Clock();
@@ -282,27 +251,27 @@
             }
 
             async preloadModels() {
-                console.log('🎭 === FBX 모델 로딩 시작 ===');
+                console.log('🎭 === GLB 모델 로딩 시작 ===');
                 
                 // 라이브러리 상태 재확인
                 console.log('📋 라이브러리 상태 재확인:', {
-                    fbxLoader: !!this.fbxLoader,
+                    gltfLoader: !!this.gltfLoader,
                     pako: typeof pako,
                     fflate: typeof window.fflate,
                     THREE: typeof THREE,
-                    FBXLoader: typeof THREE.FBXLoader
+                    GLTFLoader: typeof THREE.GLTFLoader
                 });
                 
-                if (!this.fbxLoader) {
-                    console.error('❌ FBXLoader 초기화 실패');
+                if (!this.gltfLoader) {
+                    console.error('❌ GLTFLoader 초기화 실패');
                     return;
                 }
                 
                 const modelPaths = {
-                    original: './anim/original.fbx',  // 기본 모델 먼저 로드
-                    idle: './anim/idle.fbx',
-                    pulling: './anim/pulling.fbx',
-                    pushing: './anim/pushing.fbx'
+                    original: './anim/glbs/original.glb',  // 기본 모델 먼저 로드
+                    idle: './anim/glbs/idle.glb',
+                    pulling: './anim/glbs/pulling.glb',
+                    pushing: './anim/glbs/pushing.glb'
                 };
 
                 let successCount = 0;
@@ -311,7 +280,7 @@
                 for (const [name, path] of Object.entries(modelPaths)) {
                     try {
                         console.log(`📥 ${name} 모델 로딩 시작: ${path}`);
-                        await this.loadFBXModel(name, path);
+                        await this.loadGLBModel(name, path);
                         successCount++;
                         console.log(`✅ ${name} 모델 로딩 성공 (${successCount}/${totalModels})`);
                     } catch (error) {
@@ -320,16 +289,16 @@
                     }
                 }
                 
-                console.log(`🎭 FBX 모델 로딩 완료: ${successCount}/${totalModels} 성공`);
+                console.log(`🎭 GLB 모델 로딩 완료: ${successCount}/${totalModels} 성공`);
                 
                 if (successCount === 0) {
-                    console.log('🔄 모든 FBX 모델 로딩 실패 - 기본 모델로 폴백');
+                    console.log('🔄 모든 GLB 모델 로딩 실패 - 기본 모델로 폴백');
                 } else {
-                    console.log('✅ 일부 또는 모든 FBX 모델 로딩 성공');
+                    console.log('✅ 일부 또는 모든 GLB 모델 로딩 성공');
                 }
             }
 
-            loadFBXModel(name, path) {
+            loadGLBModel(name, path) {
                 return new Promise((resolve, reject) => {
                     console.log(`🔄 ${name} 모델 로딩 시작...`);
                     
@@ -339,28 +308,47 @@
                         reject(new Error(`${name} 모델 로딩 타임아웃`));
                     }, 10000);
                     
-                    this.fbxLoader.load(
+                    this.gltfLoader.load(
                         path, 
-                        (fbx) => {
+                        (gltf) => {
                             clearTimeout(timeout);
                             
-                            console.log(`🎭 ${name} FBX 모델 로드 성공:`, {
-                                animations: fbx.animations?.length || 0,
-                                children: fbx.children?.length || 0,
-                                type: fbx.type
+                            console.log(`🎭 ${name} GLB 모델 로드 성공:`, {
+                                animations: gltf.animations?.length || 0,
+                                scene: gltf.scene?.children?.length || 0,
+                                type: gltf.scene?.type
                             });
                             
-                            // 모델 크기 조정 - 더 큰 크기로 설정
-                            fbx.scale.setScalar(0.1); // 1/10 크기로 축소 (0.01에서 0.1로 변경)
+                            // 모델 크기 조정
+                            gltf.scene.scale.setScalar(0.5); // GLB는 보통 더 큰 크기로 내보내짐
+                            
+                            // 바운딩 박스 계산 및 위치 조정
+                            const box = new THREE.Box3().setFromObject(gltf.scene);
+                            const center = box.getCenter(new THREE.Vector3());
+                            const size = box.getSize(new THREE.Vector3());
+                            
+                            // 모델을 바닥에 위치하도록 조정
+                            gltf.scene.position.y = -box.min.y;
+                            
+                            console.log(`📏 ${name} 모델 크기:`, {
+                                width: size.x.toFixed(2),
+                                height: size.y.toFixed(2),
+                                depth: size.z.toFixed(2),
+                                position: {
+                                    x: gltf.scene.position.x,
+                                    y: gltf.scene.position.y,
+                                    z: gltf.scene.position.z
+                                }
+                            });
                             
                             // 모델과 애니메이션 저장
                             this.loadedModels[name] = {
-                                model: fbx,
-                                animations: fbx.animations || []
+                                model: gltf.scene,
+                                animations: gltf.animations || []
                             };
                             
-                            console.log(`✅ ${name} 모델 저장 완료 - 애니메이션 ${fbx.animations?.length || 0}개`);
-                            resolve(fbx);
+                            console.log(`✅ ${name} 모델 저장 완료 - 애니메이션 ${gltf.animations?.length || 0}개`);
+                            resolve(gltf);
                         }, 
                         (progress) => {
                             if (progress.total > 0) {
@@ -380,9 +368,7 @@
                             });
                             
                             // 구체적인 오류 분석
-                            if (error.message.includes('fflate')) {
-                                console.error('💥 fflate 관련 오류 - 압축 해제 실패');
-                            } else if (error.message.includes('404')) {
+                            if (error.message.includes('404')) {
                                 console.error('📂 파일을 찾을 수 없음');
                             } else if (error.message.includes('CORS')) {
                                 console.error('🚫 CORS 오류');
@@ -587,10 +573,10 @@
                     loadedModels: Object.keys(this.loadedModels)
                 });
                 
-                // FBX 모델 우선 사용, 실패 시 커스텀 모델로 폴백
+                // GLB 모델 우선 사용, 실패 시 커스텀 모델로 폴백
                 if (this.loadedModels.original) {
-                    console.log('🎭 FBX 모델 사용하여 플레이어 생성');
-                    return this.createFBXPlayerModel(isPlayer1);
+                    console.log('🎭 GLB 모델 사용하여 플레이어 생성');
+                    return this.createGLBPlayerModel(isPlayer1);
                 } else {
                     console.log('🔄 원본 모델 없음 - 커스텀 모델로 폴백');
                     const playerId = isPlayer1 ? 'Player1' : 'Player2';
@@ -605,10 +591,10 @@
                 }
             }
 
-            createFBXPlayerModel(isPlayer1) {
-                console.log('🎭 FBX 플레이어 모델 생성 시작...');
+            createGLBPlayerModel(isPlayer1) {
+                console.log('🎭 GLB 플레이어 모델 생성 시작...');
                 
-                // FBX 모델 생성
+                // GLB 모델 생성
                 const playerModel = this.loadedModels.original.model.clone();
                 
                 // 모델 위치 및 회전 초기화
@@ -620,7 +606,7 @@
                 const size = box.getSize(new THREE.Vector3());
                 const center = box.getCenter(new THREE.Vector3());
                 
-                console.log('📏 FBX 모델 정보:', {
+                console.log('📏 GLB 모델 정보:', {
                     size: { x: size.x, y: size.y, z: size.z },
                     center: { x: center.x, y: center.y, z: center.z },
                     isPlayer1: isPlayer1
@@ -661,7 +647,7 @@
 
                 this.animationMixers.push(mixer);
 
-                console.log('✅ FBX 플레이어 모델 생성 완료');
+                console.log('✅ GLB 플레이어 모델 생성 완료');
                 
                 return {
                     mesh: playerModel,
@@ -690,9 +676,9 @@
             }
 
             switchPlayerAnimation(player, animationName) {
-                // FBX 모델과 커스텀 모델 모두 지원
+                // GLB 모델과 커스텀 모델 모두 지원
                 if (player.animations && player.animations[animationName]) {
-                    // FBX 모델 애니메이션 시스템
+                    // GLB 모델 애니메이션 시스템
                     if (player.currentAnimation && player.animations[player.currentAnimation]) {
                         player.animations[player.currentAnimation].fadeOut(0.2);
                     }
@@ -1668,7 +1654,7 @@
                 // 애니메이션 시스템 업데이트 (항상 실행)
                 const deltaTime = this.clock.getDelta();
                 
-                // FBX 애니메이션 믹서 업데이트
+                // GLB 애니메이션 믹서 업데이트
                 this.animationMixers.forEach(mixer => mixer.update(deltaTime));
                 
                 // 커스텀 모델 애니메이션 업데이트
