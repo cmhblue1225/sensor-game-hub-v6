@@ -713,6 +713,10 @@
                 if (this.remainingTimeDisplay) {
                     if (this.gameMode === 'timeAttack') {
                         this.remainingTimeDisplay.textContent = Math.ceil(this.remainingTime);
+                        // 초기 색상 설정
+                        if (this.remainingTime > 30) {
+                            this.remainingTimeDisplay.style.color = '#f8fafc'; // 기본 흰색
+                        }
                     } else if (this.gameMode === 'speedrun') {
                         this.remainingTimeDisplay.textContent = this.speedrunTime.toFixed(1);
                     }
@@ -1838,6 +1842,7 @@
 
             setGameState(state, message) {
                 if (this.gameState === 'fail' || this.gameState === 'success') return;
+                console.log(`🎮 게임 상태 변경: ${this.gameState} → ${state} (${message})`);
                 this.gameState = state;
                 this.messageBox.textContent = message;
                 this.messageBox.style.display = 'flex';
@@ -1861,6 +1866,7 @@
                     if (this.gameMode === 'timeAttack') {
                         this.isTimerActive = true;
                         this.remainingTime = this.timeLimit;
+                        console.log(`⏰ 타임 어택 모드 타이머 활성화: ${this.remainingTime}초`);
                     }
                     // 스피드런 모드에서 게임 시작 시 타이머 초기화
                     if (this.gameMode === 'speedrun') {
@@ -1965,9 +1971,8 @@
                 this.messageBox.style.display = 'flex';
 
                 setTimeout(() => {
-                    this.gameState = 'playing';
+                    this.setGameState('playing', '');
                     this.messageBox.style.display = 'none';
-                    this.bgm.play().catch(e => console.log("BGM play failed:", e));
                 }, 3000);
             }
 
@@ -2060,6 +2065,11 @@
                             this.remainingTimeDisplay.style.color = '#f59e0b'; // 주황색
                         }
                     }
+                }
+                
+                // 타임어택 UI 강제 업데이트 (디버깅용)
+                if (this.gameMode === 'timeAttack' && this.remainingTimeDisplay) {
+                    this.remainingTimeDisplay.textContent = Math.ceil(this.remainingTime);
                 }
             }
 
