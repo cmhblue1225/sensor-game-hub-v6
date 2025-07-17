@@ -3075,11 +3075,16 @@ class CarPhysicsEngine {
         this.velocity = { x: 0, y: 0, z: 0 };
         this.speed = 0;
     }
-}tiveCurve * 1000, // Convert curve to world units
-            y: segment.hill,
-            z: segmentZ
-        };
-    }
+}
+
+// Track segment position calculation utility
+function calculateSegmentPosition(segment, segmentZ) {
+    return {
+        x: segment.curve * 1000, // Convert curve to world units
+        y: segment.hill,
+        z: segmentZ
+    };
+}
     
     /**
      * Render a single track segment
