@@ -694,6 +694,24 @@
                 };
             }
 
+            // 별점 계산 (성과 기반)
+            calculateStars(deliveryTime, instability, collisions = 0) {
+                let stars = 3; // 기본 3점 만점
+                
+                // 배달 시간 기준 감점
+                if (deliveryTime > 60) stars -= 1;
+                else if (deliveryTime > 30) stars -= 0.5;
+                
+                // 케이크 불안정도 기준 감점
+                if (instability > 0.7) stars -= 1;
+                else if (instability > 0.4) stars -= 0.5;
+                
+                // 충돌 횟수 기준 감점
+                stars -= Math.min(collisions * 0.5, 2);
+                
+                return Math.max(0, Math.floor(stars));
+            }
+
             // UI 업데이트
             updateUI() {
                 if (this.currentLevelDisplay) {
@@ -703,7 +721,7 @@
                     this.gameModeDisplay.textContent = this.modeConfig[this.gameMode].description;
                 }
                 if (this.currentStarsDisplay) {
-                    this.currentStarsDisplay.textContent = this.stars;
+                    this.currentStarsDisplay.textContent = this.stars || 0;
                 }
                 
                 // 타임 어택 모드에서만 타이머 표시
@@ -809,8 +827,8 @@
                     starVertices.push(x, y, z);
                 }
                 starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
-                this.stars = new THREE.Points(starsGeometry, starsMaterial);
-                this.scene.add(this.stars);
+                this.starField = new THREE.Points(starsGeometry, starsMaterial);
+                this.scene.add(this.starField);
 
                 this.roadWidth = 15; // 도로 폭 감소
                 const floorGeometry = new THREE.PlaneGeometry(this.roadWidth, 100);
@@ -1778,12 +1796,18 @@
                     case 'normal':
                     case 'challenge':
                     case 'timeAttack':
+                        // 별점 계산
+                        const deliveryTime = Date.now() / 1000 - this.gameStartTime || 30;
+                        const instability = this.cakePhysics ? this.cakePhysics.instability : 0;
+                        this.stars = this.calculateStars(deliveryTime, instability);
+                        console.log(`⭐ 별점 계산: ${this.stars}/3 (시간: ${deliveryTime.toFixed(1)}초, 불안정도: ${instability.toFixed(2)})`);
+                        
                         if (this.level < this.maxLevel) {
-                            this.setGameState('level_clear', `레벨 ${this.level} 클리어!`);
+                            this.setGameState('level_clear', `레벨 ${this.level} 클리어! ⭐${this.stars}/3`);
                             this.level++;
                             setTimeout(() => this.resetGame(true), 2000);
                         } else {
-                            this.setGameState('success', '최종 배달 성공!');
+                            this.setGameState('success', `최종 배달 성공! ⭐${this.stars}/3`);
                         }
                         break;
                         
@@ -1862,6 +1886,9 @@
                     this.updateScoreDisplay();
                 } else if (state === 'playing') {
                     this.bgm.play().catch(e => console.log("BGM play failed:", e));
+                    // 게임 시작 시간 기록
+                    this.gameStartTime = Date.now() / 1000;
+                    
                     // 타임 어택 모드에서 게임 시작 시 타이머 활성화
                     if (this.gameMode === 'timeAttack') {
                         this.isTimerActive = true;
@@ -1948,6 +1975,7 @@
                 if (!isLevelUp) {
                     this.level = 1;
                     this.currentScore = 0;
+                    this.stars = 0; // 별점 초기화
                 }
 
                 this.updateScoreDisplay();
@@ -2018,7 +2046,7 @@
                 this.updateParticles();
                 this.updateCameraShake();
                 this.updateEnvironmentEffects();
-                this.stars.rotation.y += 0.0001; // 별 배경 움직임
+                this.starField.rotation.y += 0.0001; // 별 배경 움직임
                 this.renderer.render(this.scene, this.camera);
             }
             
