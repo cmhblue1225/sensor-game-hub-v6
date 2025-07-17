@@ -1803,6 +1803,20 @@
             handleSensorConnected(sensorId) {
                 this.connectedSensors.add(sensorId);
                 this.connectionStatus[sensorId] = true;
+                
+                // 플레이어 객체가 없으면 생성
+                if (!this.players[sensorId]) {
+                    this.players[sensorId] = {
+                        connected: false,
+                        car: null,
+                        lapCount: 0,
+                        checkpoints: [],
+                        lastCheckpoint: -1,
+                        raceTime: 0,
+                        finished: false
+                    };
+                }
+                
                 this.players[sensorId].connected = true;
                 
                 console.log(`✅ ${sensorId} 센서 연결됨`);
@@ -3176,7 +3190,7 @@
                 
                 // QR 코드 생성 URL
                 const baseUrl = window.location.origin;
-                const qrUrl = `${baseUrl}/sensor?code=${sessionCode}`;
+                const qrUrl = `${baseUrl}/sensor.html?code=${sessionCode}`;
                 
                 // QRCode 라이브러리 사용 (폴백 처리 포함)
                 if (typeof QRCode !== 'undefined') {
@@ -3199,7 +3213,7 @@
             
             generateQRCodeFallback(sessionCode, container) {
                 const baseUrl = window.location.origin;
-                const qrUrl = `${baseUrl}/sensor?code=${sessionCode}`;
+                const qrUrl = `${baseUrl}/sensor.html?code=${sessionCode}`;
                 const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
                 
                 container.innerHTML = `<img src="${qrApiUrl}" alt="QR Code" style="width: 200px; height: 200px;">`;
