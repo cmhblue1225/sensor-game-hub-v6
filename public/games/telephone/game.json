@@ -1,0 +1,31 @@
+{
+  "id": "telephone",
+  "title": "Telephone",
+  "description": "📞 전화벨이 울리면 최대한 빨리 센서를 들어 올리세요!<br>2명이 함께 즐기는 순발력 대결 게임",
+  "category": "dual",
+  "icon": "📞",
+  "version": "1.0.0",
+  "author": "Sensor Game Hub Team",
+  "sensors": ["motion", "orientation"],
+  "maxPlayers": 2,
+  "difficulty": "easy",
+  "status": "active",
+  "featured": true,
+  "tags": ["reflex", "competition", "fast", "telephone"],
+  "instructions": [
+    "두 명이 각자 센서 클라이언트에 연결하세요",
+    "모바일 기기를 평평한 곳에 놓고 대기하세요",
+    "전화벨이 울리면 최대한 빨리 기기를 들어 올리세요",
+    "먼저 든 사람이 승리합니다!"
+  ],
+  "controls": {
+    "lift": "기기를 빠르게 들어 올리기",
+    "wait": "평평한 곳에 놓고 대기"
+  },
+  "gameFeatures": {
+    "sessionPersistence": true,
+    "quickRestart": true,
+    "realtimeCompetition": true,
+    "soundEffects": true
+  }
+}

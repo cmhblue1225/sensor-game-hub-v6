@@ -1,0 +1,26 @@
+{
+  "id": "dual",
+  "title": "Dual Sensor Game", 
+  "description": "2개 센서로 협력하는 미션 게임<br>공동 목표 달성 시스템",
+  "category": "dual",
+  "icon": "🎮",
+  "version": "6.0.0",
+  "author": "Sensor Game Hub Team",
+  "created": "2025-01-01T00:00:00Z",
+  "sensors": ["orientation", "motion"],
+  "maxPlayers": 2,
+  "difficulty": "medium",
+  "status": "active",
+  "featured": true,
+  "tags": ["cooperative", "teamwork", "coordination", "mission"],
+  "instructions": [
+    "두 개의 모바일 센서로 협력하여 플레이하세요",
+    "Sensor 1: 빨간색 공을 조작합니다",
+    "Sensor 2: 파란색 공을 조작합니다", 
+    "함께 목표를 달성하세요"
+  ],
+  "controls": {
+    "sensor1": "빨간색 공 제어",
+    "sensor2": "파란색 공 제어"
+  }
+}

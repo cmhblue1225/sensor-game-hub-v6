@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚔️ Rhythm Blade</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="game-ui">
+        <!-- 세션 대기 패널 -->
+        <div class="ui-panel session-panel" id="sessionPanel">
+            <div class="session-title">⚔️ Rhythm Blade</div>
+            <div style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.6;">
+                두 명이 협력하여 플레이하는 3D 리듬 게임!<br>
+                선택한 음악에 맞춘 특별한 비트맵으로 플레이하세요!<br>
+                완벽한 타이밍과 협력으로 최고 점수를 달성하세요!
+            </div>
+            
+            <!-- 🎵 음악 선택 섹션 -->
+            <div class="music-selection" id="musicSelection">
+                <div class="music-title">🎵 음악 선택</div>
+                <div class="music-tracks">
+                    <div class="track-option" data-track="electric-storm" id="track-electric-storm">
+                        <div class="track-icon">⚡</div>
+                        <div class="track-name">Electric Storm</div>
+                        <div class="track-details">Electronic</div>
+                        <div class="track-status">✓</div>
+                    </div>
+                    <div class="track-option" data-track="neon-nights" id="track-neon-nights">
+                        <div class="track-icon">🌙</div>
+                        <div class="track-name">Neon Nights</div>
+                        <div class="track-details">Synthwave</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="cyber-beat" id="track-cyber-beat">
+                        <div class="track-icon">🤖</div>
+                        <div class="track-name">Cyber Beat</div>
+                        <div class="track-details">Techno</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="space-rhythm" id="track-space-rhythm">
+                        <div class="track-icon">🚀</div>
+                        <div class="track-name">Space Rhythm</div>
+                        <div class="track-details">Ambient</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="fire-dance" id="track-fire-dance">
+                        <div class="track-icon">🔥</div>
+                        <div class="track-name">Fire Dance</div>
+                        <div class="track-details">Drum&Bass</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="ocean-waves" id="track-ocean-waves">
+                        <div class="track-icon">🌊</div>
+                        <div class="track-name">Ocean Waves</div>
+                        <div class="track-details">Chill</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="crystal-cave" id="track-crystal-cave">
+                        <div class="track-icon">💎</div>
+                        <div class="track-name">Crystal Cave</div>
+                        <div class="track-details">Progressive</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="neon-city" id="track-neon-city">
+                        <div class="track-icon">🏙️</div>
+                        <div class="track-name">Neon City</div>
+                        <div class="track-details">Retrowave</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="thunder-storm" id="track-thunder-storm">
+                        <div class="track-icon">⛈️</div>
+                        <div class="track-name">Thunder Storm</div>
+                        <div class="track-details">Hardcore</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="starlight" id="track-starlight">
+                        <div class="track-icon">✨</div>
+                        <div class="track-name">Starlight</div>
+                        <div class="track-details">Melodic</div>
+                        <div class="track-status"></div>
+                    </div>
+                </div>
+                <div class="selected-track-info" id="selectedTrackInfo">
+                    <span id="selectedTrackName">Electric Storm</span> 선택됨
+                </div>
+            </div>
+            
+            <div class="session-code" id="sessionCode">----</div>
+            
+            <div class="qr-container" id="qrContainer">
+                <div style="color: #666; padding: 2rem;">QR 코드 생성 중...</div>
+            </div>
+            
+            <div class="sensor-status">
+                <div class="sensor-info sensor1">
+                    <div class="sensor-label">🔴 Player 1 (Left)</div>
+                    <div class="sensor-state" id="sensor1Status">대기 중...</div>
+                </div>
+                <div class="sensor-info sensor2">
+                    <div class="sensor-label">🔵 Player 2 (Right)</div>
+                    <div class="sensor-state" id="sensor2Status">대기 중...</div>
+                </div>
+            </div>
+            
+            <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 1rem;">
+                📱 두 명의 플레이어가 각자 모바일로 QR 코드를 스캔하거나<br>
+                센서 클라이언트에서 세션 코드를 입력하세요
+            </div>
+        </div>
+        
+        <!-- 게임 통계 패널 -->
+        <div class="ui-panel game-stats hidden" id="gameStats">
+            <div class="stat-item">
+                <div class="stat-label">Score</div>
+                <div class="stat-value" id="scoreValue">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Combo</div>
+                <div class="stat-value" id="comboValue">0</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-label">Accuracy</div>
+                <div class="stat-value" id="accuracyValue">100%</div>
+            </div>
+        </div>
+        
+        <!-- 협력 미터 -->
+        <div class="ui-panel cooperation-meter hidden" id="cooperationMeter">
+            <div class="meter-label">Cooperation Sync</div>
+            <div class="meter-bar">
+                <div class="meter-fill" id="cooperationFill"></div>
+            </div>
+        </div>
+        
+        <!-- 컨트롤 패널 -->
+        <div class="ui-panel control-panel hidden" id="controlPanel">
+            <button class="btn btn-secondary" onclick="game.resetGame()">🔄 재시작</button>
+            <button class="btn btn-secondary" onclick="game.togglePause()">⏸️ 일시정지</button>
+            <a href="/" class="btn btn-secondary">🏠 허브로</a>
+        </div>
+        
+        <!-- ✅ 바닥 가이드라인 게임 설명 (탭소닉 스타일) -->
+        <div class="game-instructions hidden" id="gameInstructions">
+            <div class="instruction-title">🎵 Rhythm Blade 게임 방법</div>
+            <div class="instruction-item">🎯 바닥의 탭소닉 스타일 가이드라인으로 완벽한 타이밍!</div>
+            <div class="instruction-item">🔴 빨간 바닥 패드: 플레이어1, 오른쪽으로 스윙</div>
+            <div class="instruction-item">🔵 파란 바닥 패드: 플레이어2, 왼쪽으로 스윙</div>
+            <div class="instruction-item">🟣 보라 바닥 패드: 협력 노트 (동시 타격)</div>
+            <div class="instruction-item">✨ 노트가 바닥 원형 인디케이터에 도달할 때 타격!</div>
+            <div class="instruction-item">🛤️ 트랙 라인을 따라 다가오는 노트를 추적하세요</div>
+            <div class="instruction-item">🎵 128 BPM 박자에 맞춘 바닥 펄스 효과</div>
+            <div class="instruction-item">⌨️ 테스트: Q(왼쪽), E(오른쪽), Space(협력)</div>
+        </div>
+    </div>
+    
+    <!-- 🎵 배경 음악 - 동적 로드 -->
+    <audio id="bgMusic" loop preload="auto">
+        <!-- 음악 소스는 JavaScript에서 동적으로 로드됩니다 -->
+    </audio>
+    
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    
+    <!-- QR Code Generator (폴백 처리 포함) -->
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- SessionSDK -->
+    <script src="/js/SessionSDK.js"></script>
+    
+    <!-- Main JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>

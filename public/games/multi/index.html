@@ -1,0 +1,1509 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>👥 Multiplayer Sensor Game v6.0</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --card: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border: #475569;
+            --gradient: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+        
+        /* 플레이어 색상 */
+        :root {
+            --player1-color: #3b82f6;
+            --player2-color: #ef4444;
+            --player3-color: #10b981;
+            --player4-color: #f59e0b;
+            --player5-color: #8b5cf6;
+            --player6-color: #06b6d4;
+            --player7-color: #f97316;
+            --player8-color: #84cc16;
+            --player9-color: #ec4899;
+            --player10-color: #6366f1;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        /* 게임 캔버스 */
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            cursor: none;
+        }
+        
+        /* UI 오버레이 */
+        .game-ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .ui-panel {
+            position: absolute;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            backdrop-filter: blur(12px);
+            pointer-events: all;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* 리더보드 (좌상단) */
+        .leaderboard-panel {
+            top: 1rem;
+            left: 1rem;
+            min-width: 250px;
+            max-width: 300px;
+        }
+        
+        .leaderboard-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--warning);
+            text-align: center;
+            background: linear-gradient(135deg, var(--warning), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .player-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            transition: all 0.2s ease;
+        }
+        
+        .player-item:hover {
+            background: rgba(59, 130, 246, 0.15);
+        }
+        
+        .player-item.me {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--success);
+            transform: scale(1.02);
+        }
+        
+        .player-item.winner {
+            background: rgba(245, 158, 11, 0.2);
+            border-color: var(--warning);
+        }
+        
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .player-rank {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: var(--warning);
+            min-width: 20px;
+        }
+        
+        .player-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        .player-name {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .player-score {
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: var(--success);
+        }
+        
+        /* 게임 정보 (우상단) */
+        .game-info-panel {
+            top: 1rem;
+            right: 1rem;
+            text-align: center;
+            min-width: 200px;
+        }
+        
+        .game-timer {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--warning);
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            margin-bottom: 1rem;
+        }
+        
+        .game-info-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .game-info-label {
+            color: var(--text-secondary);
+        }
+        
+        .game-info-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        /* 연결 상태 (우하단) */
+        .connection-panel {
+            bottom: 1rem;
+            right: 1rem;
+            min-width: 200px;
+        }
+        
+        .connection-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--secondary);
+        }
+        
+        .connection-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.75rem;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            background: rgba(59, 130, 246, 0.05);
+        }
+        
+        .connection-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--error);
+            transition: all 0.3s ease;
+        }
+        
+        .connection-indicator.connected {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+        
+        /* 세션 정보 패널 (중앙) */
+        .session-panel {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            max-width: 500px;
+            min-width: 400px;
+        }
+        
+        .session-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .session-code {
+            font-size: 3rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: var(--primary);
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px solid var(--primary);
+            border-radius: 0.75rem;
+            letter-spacing: 0.3em;
+        }
+        
+        .session-instructions {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .qr-container {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.75rem;
+            display: inline-block;
+        }
+        
+        .player-waiting-list {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: var(--surface);
+            border-radius: 0.75rem;
+            border: 1px solid var(--border);
+        }
+        
+        .waiting-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--primary);
+        }
+        
+        .waiting-player {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.5rem;
+            margin-bottom: 0.5rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 0.5rem;
+        }
+        
+        /* 내 정보 (좌하단) */
+        .my-info-panel {
+            bottom: 1rem;
+            left: 1rem;
+            min-width: 250px;
+        }
+        
+        .my-info-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--success);
+        }
+        
+        .my-score {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--success);
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        
+        .my-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 0.75rem;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--success);
+            font-family: 'Courier New', monospace;
+        }
+        
+        /* 컨트롤 패널 (하단 중앙) */
+        .control-panel {
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: var(--warning);
+            color: var(--background);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* 게임 결과 패널 */
+        .results-panel {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            max-width: 500px;
+            min-width: 400px;
+        }
+        
+        .results-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--warning), var(--success));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .winner-announcement {
+            font-size: 1.3rem;
+            color: var(--success);
+            margin-bottom: 2rem;
+            font-weight: 600;
+        }
+        
+        .final-rankings {
+            text-align: left;
+            margin: 2rem 0;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        /* 파티클 효과 */
+        .collect-effect {
+            position: absolute;
+            pointer-events: none;
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--success);
+            animation: collectEffect 1s ease-out forwards;
+        }
+        
+        @keyframes collectEffect {
+            0% {
+                transform: scale(0) translateY(0);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.2) translateY(-20px);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1) translateY(-60px);
+                opacity: 0;
+            }
+        }
+        
+        /* 숨김 클래스 */
+        .hidden {
+            display: none !important;
+        }
+        
+        /* 애니메이션 */
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); }
+        }
+        
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .ui-panel {
+                padding: 1rem;
+                font-size: 0.9rem;
+            }
+            
+            .leaderboard-panel,
+            .game-info-panel,
+            .connection-panel,
+            .my-info-panel {
+                min-width: 180px;
+            }
+            
+            .session-panel,
+            .results-panel {
+                max-width: 350px;
+                min-width: 300px;
+                padding: 1.5rem;
+            }
+            
+            .session-code {
+                font-size: 2.5rem;
+            }
+            
+            .my-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 게임 캔버스 -->
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- UI 오버레이 -->
+    <div class="game-ui">
+        <!-- 리더보드 -->
+        <div class="ui-panel leaderboard-panel hidden" id="leaderboardPanel">
+            <div class="leaderboard-title">🏆 실시간 리더보드</div>
+            <div id="playersList"></div>
+        </div>
+        
+        <!-- 게임 정보 -->
+        <div class="ui-panel game-info-panel hidden" id="gameInfoPanel">
+            <div class="game-timer" id="gameTimer">3:00</div>
+            <div class="game-info-item">
+                <span class="game-info-label">참가자</span>
+                <span class="game-info-value" id="playerCount">0/10</span>
+            </div>
+            <div class="game-info-item">
+                <span class="game-info-label">수집된 목표</span>
+                <span class="game-info-value" id="totalTargets">0</span>
+            </div>
+            <div class="game-info-item">
+                <span class="game-info-label">게임 상태</span>
+                <span class="game-info-value" id="gamePhase">대기중</span>
+            </div>
+        </div>
+        
+        <!-- 연결 상태 -->
+        <div class="ui-panel connection-panel">
+            <div class="connection-title">📡 연결 상태</div>
+            <div class="connection-item">
+                <span>서버 연결</span>
+                <div class="connection-indicator" id="serverStatus"></div>
+            </div>
+            <div class="connection-item">
+                <span>센서 연결</span>
+                <div class="connection-indicator" id="sensorStatus"></div>
+            </div>
+            <div style="margin-top: 0.75rem; font-size: 0.85rem; color: var(--text-secondary); text-align: center;" id="gameStatusText">
+                게임 준비 중...
+            </div>
+        </div>
+        
+        <!-- 세션 정보 패널 -->
+        <div class="ui-panel session-panel fade-in" id="sessionPanel">
+            <div class="session-title">👥 Multiplayer Arena</div>
+            <div class="session-instructions">
+                최대 8명이 참여하는 실시간 센서 경쟁 게임!<br>
+                목표를 수집하여 가장 높은 점수를 획득하세요.
+            </div>
+            
+            <div class="session-code" id="sessionCode">----</div>
+            
+            <div class="qr-container" id="qrContainer">
+                QR 코드 생성 중...
+            </div>
+            
+            <div class="player-waiting-list" id="waitingList">
+                <div class="waiting-title">🎮 참가자 대기실 (0/8)</div>
+                <div id="waitingPlayers"></div>
+            </div>
+            
+            <div class="session-instructions">
+                📱 센서 클라이언트: <strong>/sensor.html</strong><br>
+                플레이어가 2명 이상 연결되면 게임이 시작됩니다.
+            </div>
+            
+            <div style="margin-top: 1.5rem;">
+                <button class="btn btn-success pulse" onclick="game.forceStart()" id="forceStartBtn" disabled>
+                    🚀 강제 시작 (테스트용)
+                </button>
+            </div>
+        </div>
+        
+        <!-- 내 정보 -->
+        <div class="ui-panel my-info-panel hidden" id="myInfoPanel">
+            <div class="my-info-title">📊 내 기록</div>
+            <div class="my-score" id="myScore">0</div>
+            <div class="my-stats">
+                <div class="stat-item">
+                    <div class="stat-label">수집</div>
+                    <div class="stat-value" id="myTargets">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">순위</div>
+                    <div class="stat-value" id="myRank">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">콤보</div>
+                    <div class="stat-value" id="myCombo">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">정확도</div>
+                    <div class="stat-value" id="myAccuracy">100%</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 컨트롤 패널 -->
+        <div class="ui-panel control-panel">
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="game.resetGame()" id="resetBtn">🔄 재시작</button>
+                <button class="btn btn-primary" onclick="game.togglePause()" id="pauseBtn">⏸️ 일시정지</button>
+                <a href="/" class="btn btn-secondary">🏠 허브로</a>
+            </div>
+        </div>
+        
+        <!-- 게임 결과 패널 -->
+        <div class="ui-panel results-panel hidden fade-in" id="resultsPanel">
+            <div class="results-title">🎯 게임 종료</div>
+            <div class="winner-announcement" id="winnerText"></div>
+            
+            <div class="final-rankings">
+                <div style="font-weight: 600; color: var(--primary); margin-bottom: 1rem; text-align: center;">📊 최종 순위</div>
+                <div id="finalRankings"></div>
+            </div>
+            
+            <div class="btn-group">
+                <button class="btn btn-warning" onclick="game.resetGame()">🔄 다시 플레이</button>
+                <button class="btn btn-secondary" onclick="game.returnToLobby()">🏠 대기실로</button>
+                <a href="/" class="btn btn-primary">✖️ 허브로</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- SessionSDK -->
+    <script src="/js/SessionSDK.js"></script>
+    
+    <!-- Multiplayer Game Script -->
+    <script>
+        class MultiplayerSensorGame {
+            constructor() {
+                // SDK 초기화
+                this.sdk = new SessionSDK({
+                    gameId: 'multiplayer-sensor-game',
+                    gameType: 'multi',
+                    debug: true
+                });
+                
+                // 게임 요소
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // 게임 상태
+                this.state = {
+                    connected: false,
+                    sensorConnected: false,
+                    playing: false,
+                    paused: false,
+                    gamePhase: 'waiting', // 'waiting', 'playing', 'finished'
+                    sessionCode: null,
+                    myPlayerId: null
+                };
+                
+                // 플레이어 관리
+                this.players = new Map(); // playerId -> player data
+                this.myStats = {
+                    score: 0,
+                    targetsCollected: 0,
+                    rank: 0,
+                    combo: 0,
+                    accuracy: 100
+                };
+                
+                // 게임 오브젝트
+                this.targets = [];
+                this.particles = [];
+                this.collectEffects = [];
+                
+                // 게임 설정
+                this.config = {
+                    maxPlayers: 8,
+                    gameTime: 180, // 3분
+                    targetCount: 10,
+                    targetRadius: 25,
+                    targetValue: 100,
+                    comboMultiplier: 1.5,
+                    spawnRate: 2000 // 2초마다 새 목표 생성
+                };
+                
+                // 타이머
+                this.gameTimer = this.config.gameTime;
+                this.timerInterval = null;
+                this.lastTargetSpawn = 0;
+                
+                // 플레이어 색상 팔레트
+                this.playerColors = [
+                    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+                    '#06b6d4', '#f97316', '#84cc16', '#ec4899', '#6366f1'
+                ];
+                
+                // DOM 요소
+                this.elements = {
+                    sessionPanel: document.getElementById('sessionPanel'),
+                    leaderboardPanel: document.getElementById('leaderboardPanel'),
+                    gameInfoPanel: document.getElementById('gameInfoPanel'),
+                    myInfoPanel: document.getElementById('myInfoPanel'),
+                    resultsPanel: document.getElementById('resultsPanel'),
+                    sessionCode: document.getElementById('sessionCode'),
+                    qrContainer: document.getElementById('qrContainer'),
+                    waitingList: document.getElementById('waitingList'),
+                    waitingPlayers: document.getElementById('waitingPlayers'),
+                    playersList: document.getElementById('playersList'),
+                    gameTimer: document.getElementById('gameTimer'),
+                    playerCount: document.getElementById('playerCount'),
+                    totalTargets: document.getElementById('totalTargets'),
+                    gamePhase: document.getElementById('gamePhase'),
+                    serverStatus: document.getElementById('serverStatus'),
+                    sensorStatus: document.getElementById('sensorStatus'),
+                    gameStatusText: document.getElementById('gameStatusText'),
+                    myScore: document.getElementById('myScore'),
+                    myTargets: document.getElementById('myTargets'),
+                    myRank: document.getElementById('myRank'),
+                    myCombo: document.getElementById('myCombo'),
+                    myAccuracy: document.getElementById('myAccuracy'),
+                    forceStartBtn: document.getElementById('forceStartBtn'),
+                    pauseBtn: document.getElementById('pauseBtn'),
+                    winnerText: document.getElementById('winnerText'),
+                    finalRankings: document.getElementById('finalRankings')
+                };
+                
+                this.gameLoop = null;
+                
+                this.initializeGame();
+            }
+            
+            async initializeGame() {
+                console.log('👥 Multiplayer Sensor Game v6.0 초기화');
+                
+                this.setupCanvas();
+                this.setupSDKEvents();
+                this.generateInitialTargets();
+                this.startGameLoop();
+                
+                // 서버 연결을 기다린 후 세션 생성
+                // SDK 이벤트 핸들러에서 처리됨
+            }
+            
+            setupCanvas() {
+                const resize = () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                };
+                
+                window.addEventListener('resize', resize);
+                resize();
+            }
+            
+            setupSDKEvents() {
+                // 서버 연결
+                this.sdk.on('connected', async () => {
+                    this.state.connected = true;
+                    this.updateServerStatus(true);
+                    this.updateGameStatus('서버 연결됨 - 세션 생성 중...');
+                    
+                    // 서버 연결 완료 후 세션 생성
+                    await this.createGameSession();
+                });
+                
+                this.sdk.on('disconnected', () => {
+                    this.state.connected = false;
+                    this.updateServerStatus(false);
+                    this.updateGameStatus('서버 연결 끊김');
+                });
+                
+                // 세션 생성
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;
+                    this.state.sessionCode = session.sessionCode;
+                    this.displaySessionInfo(session);
+                    this.updateGameStatus('플레이어 연결 대기 중...');
+                });
+                
+                // 센서 연결 (첫 번째 센서가 내 플레이어)
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;
+                    console.log('📱 플레이어 참가:', data);
+                    
+                    if (!this.state.myPlayerId) {
+                        // 첫 번째 연결이 내 플레이어
+                        this.state.myPlayerId = data.sensorId;
+                        this.state.sensorConnected = true;
+                        this.updateSensorStatus(true);
+                    }
+                    
+                    // 플레이어 추가
+                    this.addPlayer(data.sensorId, data.connectedSensors - 1);
+                    this.updateWaitingList();
+                    this.updatePlayerCount(data.connectedSensors);
+                    
+                    // 2명 이상이면 게임 시작 가능
+                    if (data.connectedSensors >= 2) {
+                        this.elements.forceStartBtn.disabled = false;
+                        this.updateGameStatus(`플레이어 대기 중 (${data.connectedSensors}/${this.config.maxPlayers})`);
+                    }
+                });
+                
+                this.sdk.on('sensor-disconnected', (event) => {
+                    const data = event.detail || event;
+                    console.log('📱 플레이어 나감:', data);
+                    
+                    if (data.sensorId === this.state.myPlayerId) {
+                        this.state.sensorConnected = false;
+                        this.updateSensorStatus(false);
+                    }
+                    
+                    this.removePlayer(data.sensorId);
+                    this.updateWaitingList();
+                    this.updatePlayerCount(data.remainingSensors);
+                    
+                    if (data.remainingSensors < 2) {
+                        this.elements.forceStartBtn.disabled = true;
+                        this.pauseGame();
+                    }
+                });
+                
+                // 센서 데이터 (실제 센서로 플레이어 조종)
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;
+                    if (this.state.playing && !this.state.paused) {
+                        this.processSensorData(data);
+                    }
+                });
+                
+                // 게임 준비 완료
+                this.sdk.on('game-ready', (data) => {
+                    console.log('🎮 게임 준비 완료:', data);
+                    this.hideSessionPanel();
+                    // 게임 시작 버튼 활성화
+                    this.elements.forceStartBtn.disabled = false;
+                    this.updateGameStatus('게임 시작 준비 완료! 시작 버튼을 눌러주세요.');
+                });
+                
+                // 오류 처리
+                this.sdk.on('connection-error', (error) => {
+                    console.error('연결 오류:', error);
+                    this.updateGameStatus(`연결 오류: ${error.error}`);
+                });
+            }
+            
+            async createGameSession() {
+                try {
+                    await this.sdk.createSession();
+                    console.log('✅ 멀티플레이어 게임 세션 생성 완료');
+                } catch (error) {
+                    console.error('❌ 세션 생성 실패:', error);
+                    this.updateGameStatus(`세션 생성 실패: ${error.message}`);
+                }
+            }
+            
+            async displaySessionInfo(session) {
+                this.elements.sessionCode.textContent = session.sessionCode;
+                
+                // QR 코드 생성
+                const sensorUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                
+                try {
+                    const qrElement = await QRCodeGenerator.generateElement(sensorUrl, 200);
+                    this.elements.qrContainer.innerHTML = '';
+                    this.elements.qrContainer.appendChild(qrElement);
+                } catch (error) {
+                    console.error('QR 코드 생성 실패:', error);
+                    this.elements.qrContainer.innerHTML = `<p>QR 코드: ${sensorUrl}</p>`;
+                }
+            }
+            
+            addPlayer(playerId, colorIndex) {
+                if (this.players.has(playerId)) return;
+                
+                const player = {
+                    id: playerId,
+                    name: `Player ${colorIndex + 1}`,
+                    color: this.playerColors[colorIndex % this.playerColors.length],
+                    score: 0,
+                    targetsCollected: 0,
+                    combo: 0,
+                    isActive: true,
+                    position: {
+                        x: Math.random() * (this.canvas.width - 100) + 50,
+                        y: Math.random() * (this.canvas.height - 100) + 50
+                    },
+                    lastActivity: Date.now()
+                };
+                
+                this.players.set(playerId, player);
+                console.log(`👤 플레이어 추가: ${player.name} (${playerId})`);
+            }
+            
+            removePlayer(playerId) {
+                if (this.players.has(playerId)) {
+                    const player = this.players.get(playerId);
+                    console.log(`👤 플레이어 제거: ${player.name} (${playerId})`);
+                    this.players.delete(playerId);
+                }
+            }
+            
+            updateWaitingList() {
+                const waitingTitle = this.elements.waitingList.querySelector('.waiting-title');
+                waitingTitle.textContent = `🎮 참가자 대기실 (${this.players.size}/${this.config.maxPlayers})`;
+                
+                const waitingPlayers = this.elements.waitingPlayers;
+                waitingPlayers.innerHTML = '';
+                
+                Array.from(this.players.values()).forEach(player => {
+                    const playerElement = document.createElement('div');
+                    playerElement.className = 'waiting-player';
+                    playerElement.innerHTML = `
+                        <div class="player-color" style="background-color: ${player.color};"></div>
+                        <span>${player.name}</span>
+                        ${player.id === this.state.myPlayerId ? '<span style="color: var(--success); font-weight: 600;">(나)</span>' : ''}
+                    `;
+                    waitingPlayers.appendChild(playerElement);
+                });
+            }
+            
+            hideSessionPanel() {
+                this.elements.sessionPanel.classList.add('hidden');
+                this.elements.leaderboardPanel.classList.remove('hidden');
+                this.elements.gameInfoPanel.classList.remove('hidden');
+                this.elements.myInfoPanel.classList.remove('hidden');
+            }
+            
+            startGame() {
+                this.state.playing = true;
+                this.state.paused = false;
+                this.state.gamePhase = 'playing';
+                
+                this.gameTimer = this.config.gameTime;
+                this.startGameTimer();
+                
+                this.updateGameStatus('게임 진행 중!');
+                this.elements.gamePhase.textContent = '진행중';
+                
+                console.log('👥 멀티플레이어 게임 시작!');
+            }
+            
+            forceStart() {
+                if (this.players.size >= 2) {
+                    this.hideSessionPanel();
+                    this.startGame();
+                }
+            }
+            
+            startGameTimer() {
+                this.timerInterval = setInterval(() => {
+                    this.gameTimer--;
+                    this.updateTimerDisplay();
+                    
+                    if (this.gameTimer <= 0) {
+                        this.endGame();
+                    }
+                }, 1000);
+            }
+            
+            endGame() {
+                this.state.playing = false;
+                this.state.gamePhase = 'finished';
+                
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+                
+                this.showResults();
+                console.log('🏁 멀티플레이어 게임 종료!');
+            }
+            
+            showResults() {
+                // 최종 순위 계산
+                const sortedPlayers = Array.from(this.players.values())
+                    .sort((a, b) => b.score - a.score);
+                
+                // 승자 발표
+                if (sortedPlayers.length > 0) {
+                    const winner = sortedPlayers[0];
+                    const isWinner = winner.id === this.state.myPlayerId;
+                    this.elements.winnerText.textContent = isWinner 
+                        ? '🎉 축하합니다! 당신이 승리했습니다!'
+                        : `🏆 ${winner.name} 승리! (${winner.score.toLocaleString()}점)`;
+                }
+                
+                // 최종 순위 표시
+                this.updateFinalRankings(sortedPlayers);
+                
+                // 결과 패널 표시
+                this.elements.resultsPanel.classList.remove('hidden');
+                this.elements.leaderboardPanel.classList.add('hidden');
+                this.elements.gameInfoPanel.classList.add('hidden');
+                this.elements.myInfoPanel.classList.add('hidden');
+            }
+            
+            updateFinalRankings(sortedPlayers) {
+                const finalRankings = this.elements.finalRankings;
+                finalRankings.innerHTML = '';
+                
+                sortedPlayers.forEach((player, index) => {
+                    const rankElement = document.createElement('div');
+                    rankElement.className = `player-item ${player.id === this.state.myPlayerId ? 'me' : ''} ${index === 0 ? 'winner' : ''}`;
+                    rankElement.innerHTML = `
+                        <div class="player-info">
+                            <span class="player-rank">${index + 1}</span>
+                            <div class="player-color" style="background-color: ${player.color};"></div>
+                            <span class="player-name">${player.name}</span>
+                        </div>
+                        <span class="player-score">${player.score.toLocaleString()}</span>
+                    `;
+                    finalRankings.appendChild(rankElement);
+                });
+            }
+            
+            pauseGame() {
+                this.state.paused = true;
+                this.elements.pauseBtn.textContent = '▶️ 계속';
+                this.updateGameStatus('게임 일시정지');
+                
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+            }
+            
+            resumeGame() {
+                this.state.paused = false;
+                this.elements.pauseBtn.textContent = '⏸️ 일시정지';
+                this.updateGameStatus('게임 진행 중!');
+                
+                if (this.state.playing) {
+                    this.startGameTimer();
+                }
+            }
+            
+            togglePause() {
+                if (this.state.paused) {
+                    this.resumeGame();
+                } else {
+                    this.pauseGame();
+                }
+            }
+            
+            resetGame() {
+                this.state.playing = false;
+                this.state.paused = false;
+                this.state.gamePhase = 'waiting';
+                this.gameTimer = this.config.gameTime;
+                
+                if (this.timerInterval) {
+                    clearInterval(this.timerInterval);
+                    this.timerInterval = null;
+                }
+                
+                // 플레이어 점수 초기화
+                this.players.forEach(player => {
+                    player.score = 0;
+                    player.targetsCollected = 0;
+                    player.combo = 0;
+                });
+                
+                this.myStats = {
+                    score: 0,
+                    targetsCollected: 0,
+                    rank: 0,
+                    combo: 0,
+                    accuracy: 100
+                };
+                
+                this.particles = [];
+                this.collectEffects = [];
+                this.generateInitialTargets();
+                
+                this.updateTimerDisplay();
+                this.updateLeaderboard();
+                this.updateMyStats();
+                
+                // UI 상태 초기화
+                this.elements.resultsPanel.classList.add('hidden');
+                this.elements.pauseBtn.textContent = '⏸️ 일시정지';
+                
+                if (this.players.size >= 2) {
+                    this.startGame();
+                }
+            }
+            
+            returnToLobby() {
+                this.resetGame();
+                
+                this.elements.resultsPanel.classList.add('hidden');
+                this.elements.leaderboardPanel.classList.add('hidden');
+                this.elements.gameInfoPanel.classList.add('hidden');
+                this.elements.myInfoPanel.classList.add('hidden');
+                this.elements.sessionPanel.classList.remove('hidden');
+            }
+            
+            generateInitialTargets() {
+                this.targets = [];
+                
+                for (let i = 0; i < this.config.targetCount; i++) {
+                    this.spawnTarget();
+                }
+            }
+            
+            spawnTarget() {
+                const margin = 50;
+                const target = {
+                    x: Math.random() * (this.canvas.width - margin * 2) + margin,
+                    y: Math.random() * (this.canvas.height - margin * 2) + margin,
+                    radius: this.config.targetRadius,
+                    value: this.config.targetValue,
+                    hue: Math.random() * 360,
+                    pulse: 0,
+                    collected: false,
+                    spawnTime: Date.now()
+                };
+                
+                this.targets.push(target);
+            }
+            
+            simulatePlayerMovement(playerId) {
+                const player = this.players.get(playerId);
+                if (!player || !this.state.playing || this.state.paused) return;
+                
+                // 간단한 AI로 목표에 접근
+                const nearestTarget = this.findNearestTarget(player.position);
+                if (nearestTarget) {
+                    const dx = nearestTarget.x - player.position.x;
+                    const dy = nearestTarget.y - player.position.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 5) {
+                        // 목표 수집
+                        this.collectTarget(nearestTarget, player);
+                    } else {
+                        // 목표를 향해 이동
+                        const speed = 2;
+                        player.position.x += (dx / distance) * speed;
+                        player.position.y += (dy / distance) * speed;
+                    }
+                }
+                
+                player.lastActivity = Date.now();
+            }
+            
+            findNearestTarget(position) {
+                let nearest = null;
+                let minDistance = Infinity;
+                
+                this.targets.forEach(target => {
+                    if (target.collected) return;
+                    
+                    const dx = target.x - position.x;
+                    const dy = target.y - position.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearest = target;
+                    }
+                });
+                
+                return nearest;
+            }
+            
+            collectTarget(target, player) {
+                target.collected = true;
+                
+                // 점수 계산
+                player.combo++;
+                let points = target.value;
+                if (player.combo > 1) {
+                    points *= Math.pow(this.config.comboMultiplier, player.combo - 1);
+                }
+                
+                player.score += Math.floor(points);
+                player.targetsCollected++;
+                
+                // 내 플레이어인 경우 통계 업데이트
+                if (player.id === this.state.myPlayerId) {
+                    this.myStats.score = player.score;
+                    this.myStats.targetsCollected = player.targetsCollected;
+                    this.myStats.combo = player.combo;
+                    this.updateMyStats();
+                }
+                
+                // 수집 효과
+                this.createCollectEffect(target.x, target.y, player.color, Math.floor(points));
+                
+                // 새 목표 생성
+                setTimeout(() => {
+                    this.spawnTarget();
+                }, 500);
+                
+                // 리더보드 업데이트
+                this.updateLeaderboard();
+                
+                console.log(`🎯 ${player.name} 목표 수집! +${Math.floor(points)}점 (콤보 x${player.combo})`);
+            }
+            
+            createCollectEffect(x, y, color, points) {
+                // 파티클 효과
+                for (let i = 0; i < 8; i++) {
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 8,
+                        vy: (Math.random() - 0.5) * 8,
+                        life: 60,
+                        maxLife: 60,
+                        color: color
+                    });
+                }
+                
+                // 점수 표시 효과
+                this.collectEffects.push({
+                    x: x,
+                    y: y,
+                    points: points,
+                    life: 90,
+                    maxLife: 90,
+                    color: color
+                });
+            }
+            
+            startGameLoop() {
+                let lastTime = 0;
+                const targetFPS = 60;
+                const interval = 1000 / targetFPS;
+                
+                const loop = (currentTime) => {
+                    const deltaTime = currentTime - lastTime;
+                    
+                    if (deltaTime >= interval) {
+                        this.update();
+                        this.render();
+                        lastTime = currentTime - (deltaTime % interval);
+                    }
+                    
+                    this.gameLoop = requestAnimationFrame(loop);
+                };
+                
+                loop(0);
+            }
+            
+            update() {
+                if (!this.state.playing || this.state.paused) return;
+                
+                // 플레이어는 센서 데이터로만 움직임 (자동 시뮬레이션 제거)
+                
+                // 목표 애니메이션
+                this.targets.forEach(target => {
+                    if (!target.collected) {
+                        target.pulse = (target.pulse + 0.1) % (Math.PI * 2);
+                    }
+                });
+                
+                // 파티클 업데이트
+                this.updateParticles();
+                
+                // 수집 효과 업데이트
+                this.updateCollectEffects();
+                
+                // 새 목표 생성 (시간 기반)
+                if (Date.now() - this.lastTargetSpawn > this.config.spawnRate) {
+                    this.spawnTarget();
+                    this.lastTargetSpawn = Date.now();
+                }
+            }
+            
+            updateParticles() {
+                this.particles = this.particles.filter(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vx *= 0.95;
+                    particle.vy *= 0.95;
+                    particle.life--;
+                    
+                    return particle.life > 0;
+                });
+            }
+            
+            updateCollectEffects() {
+                this.collectEffects = this.collectEffects.filter(effect => {
+                    effect.y -= 2;
+                    effect.life--;
+                    
+                    return effect.life > 0;
+                });
+            }
+            
+            render() {
+                // 성능 최적화: 반투명 오버레이로 트레일 효과
+                this.ctx.fillStyle = 'rgba(15, 23, 42, 0.15)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 목표 렌더링
+                this.targets.forEach(target => {
+                    if (target.collected) return;
+                    
+                    const pulseScale = 1 + Math.sin(target.pulse) * 0.1;
+                    const radius = target.radius * pulseScale;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(target.x, target.y, radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = `hsla(${target.hue}, 100%, 60%, 0.3)`;
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = `hsl(${target.hue}, 100%, 60%)`;
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                    
+                    // 목표 값 표시
+                    this.ctx.fillStyle = `hsl(${target.hue}, 100%, 60%)`;
+                    this.ctx.font = 'bold 14px monospace';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(target.value, target.x, target.y + 5);
+                });
+                
+                // 플레이어 렌더링
+                this.players.forEach(player => {
+                    if (!player.isActive) return;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(player.position.x, player.position.y, 15, 0, Math.PI * 2);
+                    this.ctx.fillStyle = player.color;
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = '#ffffff';
+                    this.ctx.lineWidth = 2;
+                    this.ctx.stroke();
+                    
+                    // 플레이어 이름
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.font = 'bold 12px monospace';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(player.name, player.position.x, player.position.y - 25);
+                });
+                
+                // 파티클 렌더링
+                this.particles.forEach(particle => {
+                    const alpha = particle.life / particle.maxLife;
+                    this.ctx.globalAlpha = alpha;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, 3, 0, Math.PI * 2);
+                    this.ctx.fillStyle = particle.color;
+                    this.ctx.fill();
+                });
+                
+                // 수집 효과 렌더링
+                this.collectEffects.forEach(effect => {
+                    const alpha = effect.life / effect.maxLife;
+                    this.ctx.globalAlpha = alpha;
+                    
+                    this.ctx.fillStyle = effect.color;
+                    this.ctx.font = 'bold 20px monospace';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText(`+${effect.points}`, effect.x, effect.y);
+                });
+                
+                this.ctx.globalAlpha = 1;
+            }
+            
+            updateLeaderboard() {
+                const sortedPlayers = Array.from(this.players.values())
+                    .sort((a, b) => b.score - a.score);
+                
+                const playersList = this.elements.playersList;
+                playersList.innerHTML = '';
+                
+                sortedPlayers.forEach((player, index) => {
+                    const playerElement = document.createElement('div');
+                    playerElement.className = `player-item ${player.id === this.state.myPlayerId ? 'me' : ''}`;
+                    playerElement.innerHTML = `
+                        <div class="player-info">
+                            <span class="player-rank">${index + 1}</span>
+                            <div class="player-color" style="background-color: ${player.color};"></div>
+                            <span class="player-name">${player.name}</span>
+                        </div>
+                        <span class="player-score">${player.score.toLocaleString()}</span>
+                    `;
+                    playersList.appendChild(playerElement);
+                });
+                
+                // 내 순위 업데이트
+                const myPlayerIndex = sortedPlayers.findIndex(p => p.id === this.state.myPlayerId);
+                if (myPlayerIndex !== -1) {
+                    this.myStats.rank = myPlayerIndex + 1;
+                    this.updateMyStats();
+                }
+            }
+            
+            updateMyStats() {
+                this.elements.myScore.textContent = this.myStats.score.toLocaleString();
+                this.elements.myTargets.textContent = this.myStats.targetsCollected;
+                this.elements.myRank.textContent = this.myStats.rank || '-';
+                this.elements.myCombo.textContent = this.myStats.combo;
+                this.elements.myAccuracy.textContent = `${this.myStats.accuracy}%`;
+            }
+            
+            updateTimerDisplay() {
+                const minutes = Math.floor(this.gameTimer / 60);
+                const seconds = this.gameTimer % 60;
+                this.elements.gameTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            updatePlayerCount(count) {
+                this.elements.playerCount.textContent = `${count}/${this.config.maxPlayers}`;
+            }
+            
+            updateServerStatus(connected) {
+                this.elements.serverStatus.classList.toggle('connected', connected);
+            }
+            
+            processSensorData(data) {
+                const sensorData = data.data;
+                const sensorId = data.sensorId;
+                
+                if (!sensorData || !sensorId) return;
+                
+                // 해당 플레이어 찾기
+                const player = this.players.get(sensorId);
+                if (!player || !player.isActive) return;
+                
+                // 스로틀링: 너무 빠른 업데이트 방지 (16ms = 60fps)
+                const now = Date.now();
+                if (!player.lastSensorUpdate) player.lastSensorUpdate = 0;
+                if (now - player.lastSensorUpdate < 16) return;
+                player.lastSensorUpdate = now;
+                
+                // 센서 데이터에서 움직임 추출
+                let deltaX = 0;
+                let deltaY = 0;
+                
+                if (sensorData.orientation) {
+                    // 기울기로 움직임 제어 (감도 조정)
+                    const sensitivity = 1.5; // 민감도 낮춤 (3 → 1.5)
+                    deltaX = (sensorData.orientation.gamma || 0) * sensitivity;
+                    deltaY = (sensorData.orientation.beta || 0) * sensitivity;
+                }
+                
+                // 플레이어 위치 업데이트
+                player.position.x += deltaX;
+                player.position.y += deltaY;
+                
+                // 화면 경계 확인
+                player.position.x = Math.max(15, Math.min(this.canvas.width - 15, player.position.x));
+                player.position.y = Math.max(15, Math.min(this.canvas.height - 15, player.position.y));
+                
+                // 콤보 초기화 타이머 리셋
+                clearTimeout(player.comboTimer);
+                player.comboTimer = setTimeout(() => {
+                    player.combo = 0;
+                }, 2000);
+            }
+            
+            updateSensorStatus(connected) {
+                this.elements.sensorStatus.classList.toggle('connected', connected);
+            }
+            
+            updateGameStatus(status) {
+                this.elements.gameStatusText.textContent = status;
+            }
+        }
+        
+        // 게임 시작
+        let game;
+        document.addEventListener('DOMContentLoaded', () => {
+            game = new MultiplayerSensorGame();
+            window.game = game; // 전역 접근을 위해
+        });
+    </script>
+</body>
+</html>

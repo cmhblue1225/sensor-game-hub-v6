@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Solo Sensor Game v6.0</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --card: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #94a3b8;
+            --border: #475569;
+            --gradient: linear-gradient(135deg, var(--primary), var(--secondary));
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        /* 게임 캔버스 */
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            cursor: none;
+        }
+        
+        /* UI 오버레이 */
+        .game-ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .ui-panel {
+            position: absolute;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            backdrop-filter: blur(12px);
+            pointer-events: all;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* 점수 패널 (좌상단) */
+        .score-panel {
+            top: 1rem;
+            left: 1rem;
+            min-width: 200px;
+        }
+        
+        .score-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--primary);
+        }
+        
+        .score-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--success);
+            font-family: 'Courier New', monospace;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .score-details {
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+        
+        /* 상태 패널 (우상단) */
+        .status-panel {
+            top: 1rem;
+            right: 1rem;
+            text-align: right;
+            min-width: 200px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--error);
+            transition: all 0.3s ease;
+        }
+        
+        .status-indicator.connected {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+        
+        .status-text {
+            font-weight: 500;
+        }
+        
+        /* 세션 정보 패널 (중앙) */
+        .session-panel {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            max-width: 500px;
+            min-width: 400px;
+        }
+        
+        .session-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .session-code {
+            font-size: 3rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: var(--primary);
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px solid var(--primary);
+            border-radius: 0.75rem;
+            letter-spacing: 0.3em;
+        }
+        
+        .session-instructions {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+        
+        .qr-container {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.75rem;
+            display: inline-block;
+        }
+        
+        /* 센서 활동 패널 (좌하단) */
+        .sensor-activity-panel {
+            bottom: 1rem;
+            left: 1rem;
+            min-width: 250px;
+        }
+        
+        .activity-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--secondary);
+        }
+        
+        .activity-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        .activity-item {
+            text-align: center;
+            padding: 0.75rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 0.5rem;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        
+        .activity-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .activity-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--primary);
+            font-family: 'Courier New', monospace;
+        }
+        
+        /* 컨트롤 패널 (하단 중앙) */
+        .control-panel {
+            bottom: 1rem;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.75rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.25rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        /* 게임 오브젝트 */
+        .target {
+            position: absolute;
+            border-radius: 50%;
+            border: 3px solid var(--success);
+            background: rgba(16, 185, 129, 0.2);
+            pointer-events: none;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.7; }
+        }
+        
+        /* 파티클 효과 */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: particle-float 2s ease-out forwards;
+        }
+        
+        @keyframes particle-float {
+            0% {
+                transform: scale(1) translateY(0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0) translateY(-100px);
+                opacity: 0;
+            }
+        }
+        
+        /* 숨김 클래스 */
+        .hidden {
+            display: none !important;
+        }
+        
+        /* 애니메이션 */
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .ui-panel {
+                padding: 1rem;
+                font-size: 0.9rem;
+            }
+            
+            .score-panel,
+            .status-panel,
+            .sensor-activity-panel {
+                min-width: 160px;
+            }
+            
+            .session-panel {
+                max-width: 350px;
+                min-width: 300px;
+                padding: 1.5rem;
+            }
+            
+            .session-code {
+                font-size: 2.5rem;
+            }
+            
+            .activity-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 게임 캔버스 -->
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- UI 오버레이 -->
+    <div class="game-ui">
+        <!-- 점수 패널 -->
+        <div class="ui-panel score-panel">
+            <div class="score-title">🎯 점수</div>
+            <div class="score-value" id="scoreValue">0</div>
+            <div class="score-details">
+                <div>목표 수집: <span id="targetsCollected">0</span></div>
+                <div>연속 콤보: <span id="comboCount">0</span></div>
+            </div>
+        </div>
+        
+        <!-- 상태 패널 -->
+        <div class="ui-panel status-panel">
+            <div class="status-item">
+                <span class="status-text">서버 연결</span>
+                <div class="status-indicator" id="serverStatus"></div>
+            </div>
+            <div class="status-item">
+                <span class="status-text">센서 연결</span>
+                <div class="status-indicator" id="sensorStatus"></div>
+            </div>
+            <div class="status-item">
+                <span class="status-text" id="gameStatusText">게임 준비 중</span>
+            </div>
+        </div>
+        
+        <!-- 세션 정보 패널 -->
+        <div class="ui-panel session-panel fade-in" id="sessionPanel">
+            <div class="session-title">🎯 Solo Sensor Game</div>
+            <div class="session-instructions">
+                모바일 센서로 공을 조종하여 목표를 수집하세요!<br>
+                아래 코드를 모바일에서 입력하거나 QR 코드를 스캔하세요.
+            </div>
+            
+            <div class="session-code" id="sessionCode">----</div>
+            
+            <div class="qr-container" id="qrContainer">
+                QR 코드 생성 중...
+            </div>
+            
+            <div class="session-instructions">
+                📱 센서 클라이언트: <br>
+                <strong>/sensor.html</strong>
+            </div>
+        </div>
+        
+        <!-- 센서 활동 패널 -->
+        <div class="ui-panel sensor-activity-panel hidden" id="sensorActivityPanel">
+            <div class="activity-title">📊 센서 활동</div>
+            <div class="activity-grid">
+                <div class="activity-item">
+                    <div class="activity-label">기울기 X</div>
+                    <div class="activity-value" id="tiltX">0.0</div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-label">기울기 Y</div>
+                    <div class="activity-value" id="tiltY">0.0</div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-label">가속도</div>
+                    <div class="activity-value" id="acceleration">0.0</div>
+                </div>
+                <div class="activity-item">
+                    <div class="activity-label">회전</div>
+                    <div class="activity-value" id="rotation">0.0</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 컨트롤 패널 -->
+        <div class="ui-panel control-panel">
+            <div class="btn-group">
+                <button class="btn btn-secondary" onclick="game.resetGame()" id="resetBtn">🔄 재시작</button>
+                <button class="btn btn-primary" onclick="game.togglePause()" id="pauseBtn">⏸️ 일시정지</button>
+                <a href="/" class="btn btn-secondary">🏠 허브로</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- SessionSDK -->
+    <script src="/js/SessionSDK.js"></script>
+    
+    <!-- Solo Game Script -->
+    <script>
+        class SoloSensorGame {
+            constructor() {
+                // SDK 초기화
+                this.sdk = new SessionSDK({
+                    gameId: 'solo-sensor-game',
+                    gameType: 'solo',
+                    debug: true
+                });
+                
+                // 게임 요소
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // 게임 상태
+                this.state = {
+                    connected: false,
+                    sensorConnected: false,
+                    playing: false,
+                    paused: false,
+                    score: 0,
+                    targetsCollected: 0,
+                    comboCount: 0,
+                    sessionCode: null
+                };
+                
+                // 게임 오브젝트
+                this.ball = {
+                    x: 0,
+                    y: 0,
+                    vx: 0,
+                    vy: 0,
+                    radius: 25,
+                    color: '#3b82f6',
+                    trail: []
+                };
+                
+                this.targets = [];
+                this.particles = [];
+                
+                // 센서 데이터
+                this.sensorData = {
+                    tilt: { x: 0, y: 0 },
+                    acceleration: { x: 0, y: 0, z: 0 },
+                    rotation: 0
+                };
+                
+                // 게임 설정
+                this.config = {
+                    ballSpeed: 8,
+                    friction: 0.95,
+                    bounceStrength: 0.7,
+                    targetCount: 5,
+                    targetRadius: 30,
+                    targetValue: 100,
+                    comboMultiplier: 1.5,
+                    trailLength: 15
+                };
+                
+                // DOM 요소
+                this.elements = {
+                    scoreValue: document.getElementById('scoreValue'),
+                    targetsCollected: document.getElementById('targetsCollected'),
+                    comboCount: document.getElementById('comboCount'),
+                    serverStatus: document.getElementById('serverStatus'),
+                    sensorStatus: document.getElementById('sensorStatus'),
+                    gameStatusText: document.getElementById('gameStatusText'),
+                    sessionPanel: document.getElementById('sessionPanel'),
+                    sessionCode: document.getElementById('sessionCode'),
+                    qrContainer: document.getElementById('qrContainer'),
+                    sensorActivityPanel: document.getElementById('sensorActivityPanel'),
+                    tiltX: document.getElementById('tiltX'),
+                    tiltY: document.getElementById('tiltY'),
+                    acceleration: document.getElementById('acceleration'),
+                    rotation: document.getElementById('rotation'),
+                    pauseBtn: document.getElementById('pauseBtn')
+                };
+                
+                this.gameLoop = null;
+                
+                this.initializeGame();
+            }
+            
+            async initializeGame() {
+                console.log('🎯 Solo Sensor Game v6.0 초기화');
+                
+                this.setupCanvas();
+                this.setupSDKEvents();
+                this.generateTargets();
+                this.startGameLoop();
+                
+                // 서버 연결을 기다린 후 세션 생성
+                // SDK 이벤트 핸들러에서 처리됨
+            }
+            
+            setupCanvas() {
+                const resize = () => {
+                    this.canvas.width = window.innerWidth;
+                    this.canvas.height = window.innerHeight;
+                    
+                    // 공 초기 위치
+                    this.ball.x = this.canvas.width / 2;
+                    this.ball.y = this.canvas.height / 2;
+                };
+                
+                window.addEventListener('resize', resize);
+                resize();
+            }
+            
+            setupSDKEvents() {
+                // 서버 연결
+                this.sdk.on('connected', async () => {
+                    this.state.connected = true;
+                    this.updateServerStatus(true);
+                    this.updateGameStatus('서버 연결됨 - 세션 생성 중...');
+                    
+                    // 서버 연결 완료 후 세션 생성
+                    await this.createGameSession();
+                });
+                
+                this.sdk.on('disconnected', () => {
+                    this.state.connected = false;
+                    this.updateServerStatus(false);
+                    this.updateGameStatus('서버 연결 끊김');
+                });
+                
+                // 세션 생성
+                this.sdk.on('session-created', (event) => {
+                    console.log('🔍 session-created 이벤트 원본:', event);
+                    const session = event.detail || event;
+                    console.log('🔍 추출한 세션 객체:', session);
+                    this.state.sessionCode = session.sessionCode;
+                    this.displaySessionInfo(session);
+                    this.updateGameStatus('센서 연결 대기 중...');
+                });
+                
+                // 센서 연결
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;
+                    this.state.sensorConnected = true;
+                    this.updateSensorStatus(true);
+                    this.updateGameStatus('센서 연결됨 - 게임 준비 완료');
+                    
+                    // 세션 패널 숨기고 게임 시작
+                    this.hideSessionPanel();
+                    this.startGame();
+                });
+                
+                this.sdk.on('sensor-disconnected', () => {
+                    this.state.sensorConnected = false;
+                    this.updateSensorStatus(false);
+                    this.updateGameStatus('센서 연결 끊김');
+                    this.pauseGame();
+                });
+                
+                // 센서 데이터
+                this.sdk.on('sensor-data', (event) => {
+                    console.log('🔍 sensor-data 이벤트 원본:', event);
+                    const data = event.detail || event;
+                    console.log('🔍 추출한 센서 데이터:', data);
+                    this.processSensorData(data);
+                });
+                
+                // 오류 처리
+                this.sdk.on('connection-error', (error) => {
+                    console.error('연결 오류:', error);
+                    this.updateGameStatus(`연결 오류: ${error.error}`);
+                });
+            }
+            
+            async createGameSession() {
+                try {
+                    await this.sdk.createSession();
+                    console.log('✅ 게임 세션 생성 완료');
+                } catch (error) {
+                    console.error('❌ 세션 생성 실패:', error);
+                    this.updateGameStatus(`세션 생성 실패: ${error.message}`);
+                }
+            }
+            
+            async displaySessionInfo(session) {
+                console.log('🔍 displaySessionInfo 호출됨 - 세션 객체:', session);
+                console.log('🔍 session.sessionCode 값:', session.sessionCode);
+                console.log('🔍 session.sessionCode 타입:', typeof session.sessionCode);
+                console.log('🔍 전체 세션 객체 JSON:', JSON.stringify(session, null, 2));
+                
+                this.elements.sessionCode.textContent = session.sessionCode || '----';
+                
+                // QR 코드 생성
+                const sensorUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                console.log('🔍 생성할 QR URL:', sensorUrl);
+                
+                try {
+                    const qrElement = await QRCodeGenerator.generateElement(sensorUrl, 200);
+                    this.elements.qrContainer.innerHTML = '';
+                    this.elements.qrContainer.appendChild(qrElement);
+                } catch (error) {
+                    console.error('QR 코드 생성 실패:', error);
+                    this.elements.qrContainer.innerHTML = `<p>QR 코드: ${sensorUrl}</p>`;
+                }
+            }
+            
+            hideSessionPanel() {
+                this.elements.sessionPanel.classList.add('hidden');
+                this.elements.sensorActivityPanel.classList.remove('hidden');
+            }
+            
+            processSensorData(data) {
+                console.log('🔍 PC에서 센서 데이터 수신:', data);
+                const sensorData = data.data;
+                console.log('🔍 추출된 센서 데이터:', sensorData);
+                
+                // 기울기 데이터 (orientation)
+                if (sensorData.orientation) {
+                    this.sensorData.tilt.x = sensorData.orientation.beta || 0;
+                    this.sensorData.tilt.y = sensorData.orientation.gamma || 0;
+                    this.sensorData.rotation = sensorData.orientation.alpha || 0;
+                    console.log('🔍 기울기 데이터 업데이트:', this.sensorData.tilt, this.sensorData.rotation);
+                }
+                
+                // 가속도 데이터
+                if (sensorData.acceleration) {
+                    this.sensorData.acceleration = sensorData.acceleration;
+                    console.log('🔍 가속도 데이터 업데이트:', this.sensorData.acceleration);
+                }
+                
+                // UI 업데이트
+                this.updateSensorDisplay();
+                
+                // 게임 로직 적용
+                if (this.state.playing && !this.state.paused) {
+                    this.applyMotion();
+                }
+            }
+            
+            updateSensorDisplay() {
+                this.elements.tiltX.textContent = this.sensorData.tilt.x.toFixed(1);
+                this.elements.tiltY.textContent = this.sensorData.tilt.y.toFixed(1);
+                this.elements.rotation.textContent = this.sensorData.rotation.toFixed(1);
+                
+                const accelMagnitude = Math.sqrt(
+                    Math.pow(this.sensorData.acceleration.x || 0, 2) +
+                    Math.pow(this.sensorData.acceleration.y || 0, 2) +
+                    Math.pow(this.sensorData.acceleration.z || 0, 2)
+                );
+                this.elements.acceleration.textContent = accelMagnitude.toFixed(2);
+            }
+            
+            applyMotion() {
+                // 기울기로 공 움직임 제어
+                const sensitivity = 0.3;
+                const maxTilt = 45; // 최대 기울기 각도
+                
+                // 기울기 정규화 (-1 ~ 1)
+                const normalizedTiltX = Math.max(-1, Math.min(1, this.sensorData.tilt.y / maxTilt));
+                const normalizedTiltY = Math.max(-1, Math.min(1, this.sensorData.tilt.x / maxTilt));
+                
+                // 속도 적용
+                this.ball.vx += normalizedTiltX * this.config.ballSpeed * sensitivity;
+                this.ball.vy += normalizedTiltY * this.config.ballSpeed * sensitivity;
+                
+                // 최대 속도 제한
+                const maxSpeed = this.config.ballSpeed * 2;
+                this.ball.vx = Math.max(-maxSpeed, Math.min(maxSpeed, this.ball.vx));
+                this.ball.vy = Math.max(-maxSpeed, Math.min(maxSpeed, this.ball.vy));
+            }
+            
+            startGame() {
+                this.state.playing = true;
+                this.state.paused = false;
+                this.updateGameStatus('게임 진행 중...');
+                console.log('🎯 솔로 게임 시작!');
+            }
+            
+            pauseGame() {
+                this.state.paused = true;
+                this.elements.pauseBtn.textContent = '▶️ 계속';
+                this.updateGameStatus('게임 일시정지');
+            }
+            
+            resumeGame() {
+                this.state.paused = false;
+                this.elements.pauseBtn.textContent = '⏸️ 일시정지';
+                this.updateGameStatus('게임 진행 중...');
+            }
+            
+            togglePause() {
+                if (this.state.paused) {
+                    this.resumeGame();
+                } else {
+                    this.pauseGame();
+                }
+            }
+            
+            resetGame() {
+                this.state.score = 0;
+                this.state.targetsCollected = 0;
+                this.state.comboCount = 0;
+                
+                this.ball.x = this.canvas.width / 2;
+                this.ball.y = this.canvas.height / 2;
+                this.ball.vx = 0;
+                this.ball.vy = 0;
+                this.ball.trail = [];
+                
+                this.particles = [];
+                this.generateTargets();
+                this.updateScore();
+                
+                if (this.state.sensorConnected) {
+                    this.startGame();
+                }
+            }
+            
+            generateTargets() {
+                this.targets = [];
+                
+                for (let i = 0; i < this.config.targetCount; i++) {
+                    this.targets.push({
+                        x: Math.random() * (this.canvas.width - 100) + 50,
+                        y: Math.random() * (this.canvas.height - 100) + 50,
+                        radius: this.config.targetRadius,
+                        collected: false,
+                        hue: Math.random() * 360
+                    });
+                }
+            }
+            
+            startGameLoop() {
+                const loop = () => {
+                    this.update();
+                    this.render();
+                    this.gameLoop = requestAnimationFrame(loop);
+                };
+                
+                loop();
+            }
+            
+            update() {
+                if (!this.state.playing || this.state.paused) return;
+                
+                // 공 위치 업데이트
+                this.ball.x += this.ball.vx;
+                this.ball.y += this.ball.vy;
+                
+                // 마찰 적용
+                this.ball.vx *= this.config.friction;
+                this.ball.vy *= this.config.friction;
+                
+                // 벽 충돌
+                if (this.ball.x - this.ball.radius < 0 || this.ball.x + this.ball.radius > this.canvas.width) {
+                    this.ball.vx *= -this.config.bounceStrength;
+                    this.ball.x = Math.max(this.ball.radius, Math.min(this.canvas.width - this.ball.radius, this.ball.x));
+                }
+                
+                if (this.ball.y - this.ball.radius < 0 || this.ball.y + this.ball.radius > this.canvas.height) {
+                    this.ball.vy *= -this.config.bounceStrength;
+                    this.ball.y = Math.max(this.ball.radius, Math.min(this.canvas.height - this.ball.radius, this.ball.y));
+                }
+                
+                // 궤적 업데이트
+                this.ball.trail.push({ x: this.ball.x, y: this.ball.y });
+                if (this.ball.trail.length > this.config.trailLength) {
+                    this.ball.trail.shift();
+                }
+                
+                // 목표 충돌 검사
+                this.checkTargetCollisions();
+                
+                // 파티클 업데이트
+                this.updateParticles();
+            }
+            
+            checkTargetCollisions() {
+                this.targets.forEach((target, index) => {
+                    if (target.collected) return;
+                    
+                    const dx = this.ball.x - target.x;
+                    const dy = this.ball.y - target.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < this.ball.radius + target.radius) {
+                        target.collected = true;
+                        this.collectTarget(target, index);
+                    }
+                });
+            }
+            
+            collectTarget(target, index) {
+                this.state.targetsCollected++;
+                this.state.comboCount++;
+                
+                // 점수 계산
+                let points = this.config.targetValue;
+                if (this.state.comboCount > 1) {
+                    points *= Math.pow(this.config.comboMultiplier, this.state.comboCount - 1);
+                }
+                
+                this.state.score += Math.floor(points);
+                this.updateScore();
+                
+                // 파티클 효과
+                this.createCollectionEffect(target.x, target.y);
+                
+                // 새 목표 생성
+                this.targets[index] = {
+                    x: Math.random() * (this.canvas.width - 100) + 50,
+                    y: Math.random() * (this.canvas.height - 100) + 50,
+                    radius: this.config.targetRadius,
+                    collected: false,
+                    hue: Math.random() * 360
+                };
+                
+                console.log(`🎯 목표 수집! 점수: +${Math.floor(points)} (콤보 x${this.state.comboCount})`);
+            }
+            
+            createCollectionEffect(x, y) {
+                for (let i = 0; i < 10; i++) {
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        vx: (Math.random() - 0.5) * 10,
+                        vy: (Math.random() - 0.5) * 10,
+                        life: 60,
+                        maxLife: 60,
+                        color: `hsl(${Math.random() * 360}, 100%, 60%)`
+                    });
+                }
+            }
+            
+            updateParticles() {
+                this.particles = this.particles.filter(particle => {
+                    particle.x += particle.vx;
+                    particle.y += particle.vy;
+                    particle.vx *= 0.95;
+                    particle.vy *= 0.95;
+                    particle.life--;
+                    
+                    return particle.life > 0;
+                });
+            }
+            
+            render() {
+                // 배경 클리어
+                this.ctx.fillStyle = 'rgba(15, 23, 42, 0.1)';
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 목표 렌더링
+                this.targets.forEach(target => {
+                    if (target.collected) return;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(target.x, target.y, target.radius, 0, Math.PI * 2);
+                    this.ctx.fillStyle = `hsla(${target.hue}, 100%, 60%, 0.3)`;
+                    this.ctx.fill();
+                    this.ctx.strokeStyle = `hsl(${target.hue}, 100%, 60%)`;
+                    this.ctx.lineWidth = 3;
+                    this.ctx.stroke();
+                });
+                
+                // 공 궤적 렌더링
+                this.ctx.strokeStyle = 'rgba(59, 130, 246, 0.5)';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ball.trail.forEach((point, index) => {
+                    if (index === 0) {
+                        this.ctx.moveTo(point.x, point.y);
+                    } else {
+                        this.ctx.lineTo(point.x, point.y);
+                    }
+                });
+                this.ctx.stroke();
+                
+                // 공 렌더링
+                this.ctx.beginPath();
+                this.ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
+                this.ctx.fillStyle = '#3b82f6';
+                this.ctx.fill();
+                this.ctx.strokeStyle = '#ffffff';
+                this.ctx.lineWidth = 3;
+                this.ctx.stroke();
+                
+                // 공 중심점
+                this.ctx.beginPath();
+                this.ctx.arc(this.ball.x, this.ball.y, 5, 0, Math.PI * 2);
+                this.ctx.fillStyle = '#ffffff';
+                this.ctx.fill();
+                
+                // 파티클 렌더링
+                this.particles.forEach(particle => {
+                    const alpha = particle.life / particle.maxLife;
+                    this.ctx.globalAlpha = alpha;
+                    
+                    this.ctx.beginPath();
+                    this.ctx.arc(particle.x, particle.y, 3, 0, Math.PI * 2);
+                    this.ctx.fillStyle = particle.color;
+                    this.ctx.fill();
+                });
+                
+                this.ctx.globalAlpha = 1;
+            }
+            
+            updateScore() {
+                this.elements.scoreValue.textContent = this.state.score.toLocaleString();
+                this.elements.targetsCollected.textContent = this.state.targetsCollected;
+                this.elements.comboCount.textContent = this.state.comboCount;
+            }
+            
+            updateServerStatus(connected) {
+                this.elements.serverStatus.classList.toggle('connected', connected);
+            }
+            
+            updateSensorStatus(connected) {
+                this.elements.sensorStatus.classList.toggle('connected', connected);
+            }
+            
+            updateGameStatus(status) {
+                this.elements.gameStatusText.textContent = status;
+            }
+        }
+        
+        // 게임 시작
+        let game;
+        document.addEventListener('DOMContentLoaded', () => {
+            game = new SoloSensorGame();
+            window.game = game; // 전역 접근을 위해
+        });
+    </script>
+</body>
+</html>
