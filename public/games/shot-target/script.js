@@ -52,7 +52,12 @@ class ShotTargetGame {
             y: 0,
             targetX: 0,
             targetY: 0,
-            smoothing: 0.2  // ✅ 대규모 경쟁 모드에서 더 부드러운 움직임을 위해 증가
+            smoothing: 0.2  // 기본값 (다른 모드용)
+        };
+        
+        // 대규모 경쟁 모드 전용 조준점 설정
+        this.massCompetitiveCrosshair = {
+            smoothing: 0.12  // ✅ 대규모 경쟁 모드 전용: 더 반응적인 움직임
         };
         
         // dual 모드용 두 번째 조준점
@@ -534,10 +539,10 @@ class ShotTargetGame {
                 // ✅ 대규모 경쟁 모드: 각 플레이어의 센서 데이터 처리
                 const player = this.massPlayers.get(sensorId);
                 if (player) {
-                    // ✅ 성능 최적화: 센서 데이터 throttling (AI_ASSISTANT_PROMPTS.md 지침에 따라)
+                    // ✅ 대규모 경쟁 모드 전용 센서 throttling 최적화 (부드러운 움직임을 위해)
                     const now = Date.now();
                     if (!player.lastSensorUpdate) player.lastSensorUpdate = 0;
-                    if (now - player.lastSensorUpdate < 33) return;  // 30fps = 33ms 간격
+                    if (now - player.lastSensorUpdate < 16) return;  // 60fps = 16ms 간격으로 개선
                     player.lastSensorUpdate = now;
                     
                     // 플레이어 조준점 위치 업데이트
@@ -878,10 +883,11 @@ class ShotTargetGame {
                         const dy = this.crosshair.y - target.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         
-                        // ✅ 다른 모드들과 동일한 hitRadius 사용
+                        // ✅ 대규모 경쟁 모드 전용 hitRadius 설정 (표적 파괴 문제 해결)
+                        const hitRadius = 15;  // 다른 모드들과 동일한 값으로 명시적 설정
                         
                         // 내 조준점이 표적의 히트존 내에 있으면 자동 발사
-                        if (distance <= this.config.hitRadius) {
+                        if (distance <= hitRadius) {
                             // ✅ 다른 모드들과 동일하게 shootTarget 함수 사용
                             this.shootTarget(target, i, 1);
                             return;
@@ -1085,11 +1091,18 @@ class ShotTargetGame {
         
         const now = Date.now();
         
-        // 조준점 부드러운 이동
-        this.crosshair.x += (this.crosshair.targetX - this.crosshair.x) * this.crosshair.smoothing;
-        this.crosshair.y += (this.crosshair.targetY - this.crosshair.y) * this.crosshair.smoothing;
+        // 조준점 부드러운 이동 (모드별 최적화)
+        if (this.gameMode === 'mass-competitive') {
+            // ✅ 대규모 경쟁 모드: 더 반응적인 smoothing 적용
+            this.crosshair.x += (this.crosshair.targetX - this.crosshair.x) * this.massCompetitiveCrosshair.smoothing;
+            this.crosshair.y += (this.crosshair.targetY - this.crosshair.y) * this.massCompetitiveCrosshair.smoothing;
+        } else {
+            // 다른 모드들: 기본 smoothing
+            this.crosshair.x += (this.crosshair.targetX - this.crosshair.x) * this.crosshair.smoothing;
+            this.crosshair.y += (this.crosshair.targetY - this.crosshair.y) * this.crosshair.smoothing;
+        }
         
-        // 조준점 위치를 DOM 요소에 반영
+        // 조준점 위치를 DOM 요소에 반영 (모든 모드 동일)
         this.elements.crosshair.style.left = this.crosshair.x + 'px';
         this.elements.crosshair.style.top = this.crosshair.y + 'px';
         
