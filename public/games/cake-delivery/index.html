@@ -718,7 +718,8 @@
                     return 0;
                 }
                 
-                const playerPositions = Object.values(this.players).map(p => p.mesh.position);
+                const sortedPlayerIds = Object.keys(this.players).sort();
+                const playerPositions = sortedPlayerIds.map(id => this.players[id].mesh.position);
                 const centerPos = new THREE.Vector3(
                     playerPositions.reduce((sum, pos) => sum + pos.x, 0) / 4,
                     0,
@@ -935,13 +936,39 @@
                 }
             }
             
-            
+            // 센서ID에서 플레이어 번호 추출 (고정 순서를 위해)
+            getPlayerNumberFromSensorId(sensorId) {
+                // 센서ID를 정렬하여 일관된 순서 보장
+                const allSensorIds = Object.keys(this.players).concat([sensorId]).sort();
+                const playerIndex = allSensorIds.indexOf(sensorId);
+                return playerIndex + 1; // 1P, 2P, 3P, 4P
+            }
 
             addPlayer(sensorId) {
-                const isPlayer1 = !this.players['sensor1'];
-                const playerColor = isPlayer1 ? 0x3b82f6 : 0x8b5cf6;
-                const startX = isPlayer1 ? -3 : 3; // 더 떨어뜨려서 배치
-                const playerLabel = isPlayer1 ? '1P' : '2P';
+                // 센서ID 기반으로 고정된 플레이어 번호 결정
+                const playerNumber = this.getPlayerNumberFromSensorId(sensorId);
+                const playerLabel = `${playerNumber}P`;
+                
+                // 플레이어별 색상 설정 (번호 기반)
+                const playerColors = [0x3b82f6, 0x8b5cf6, 0x10b981, 0xf59e0b]; // 파랑, 보라, 초록, 주황
+                const playerColor = playerColors[playerNumber - 1] || 0x6b7280;
+                
+                // 현재 연결된 플레이어 수
+                const currentPlayerCount = Object.keys(this.players).length;
+                
+                // 2인 모드와 4인 모드에 따른 시작 위치 (플레이어 번호 기반)
+                let startX;
+                if (this.gameMode === 'coop4') {
+                    // 4인 모드: 플레이어 번호에 따른 고정 위치
+                    const tempPositions = [-3, 3, -3, 3]; // 1P, 2P, 3P, 4P 순서
+                    startX = tempPositions[playerNumber - 1] || 0;
+                } else {
+                    // 2인 모드: 플레이어 번호에 따른 좌우 배치
+                    startX = playerNumber === 1 ? -3 : 3;
+                }
+                
+                console.log(`👤 플레이어 ${playerLabel} 생성 (${currentPlayerCount + 1}/${this.gameMode === 'coop4' ? 4 : 2})`);
+                console.log(`🎨 색상: ${playerColor.toString(16)}, 시작위치: ${startX}`);
 
                 // 사람 모습 캐릭터 생성
                 console.log(`👤 사람 모습 모델로 플레이어 ${playerLabel} 생성`);
@@ -950,7 +977,7 @@
                 const characterGroup = new THREE.Group();
                 let playerMesh;
                 
-                // 재질 정의
+                // 재질 정의 (플레이어별 색상 적용)
                 const bodyMaterial = new THREE.MeshStandardMaterial({ 
                     color: playerColor,
                     roughness: 0.3,
@@ -1022,7 +1049,20 @@
                 
                 playerMesh.position.set(startX, 0, 0);
 
-                const labelSprite = this.makeTextSprite(playerLabel, { fontsize: 96, fontface: 'Arial', borderColor: { r:255, g:0, b:0, a:1.0 } });
+                // 플레이어 색상에 맞는 라벨 색상 계산
+                const labelColor = {
+                    r: ((playerColor >> 16) & 255) / 255,
+                    g: ((playerColor >> 8) & 255) / 255, 
+                    b: (playerColor & 255) / 255,
+                    a: 1.0
+                };
+                
+                const labelSprite = this.makeTextSprite(playerLabel, { 
+                    fontsize: 96, 
+                    fontface: 'Arial Black', 
+                    borderColor: labelColor,
+                    backgroundColor: { r: 0, g: 0, b: 0, a: 0.7 } // 반투명 검은 배경
+                });
                 
                 // 캐릭터 높이 위에 라벨 배치
                 const box = new THREE.Box3().setFromObject(playerMesh);
@@ -1802,7 +1842,8 @@
             
             // 2명 모드 케이크 위치 업데이트
             updateDualCakePosition() {
-                const playerPositions = Object.values(this.players).map(p => p.mesh.position);
+                const sortedPlayerIds = Object.keys(this.players).sort();
+                const playerPositions = sortedPlayerIds.map(id => this.players[id].mesh.position);
                 const p1 = playerPositions[0];
                 const p2 = playerPositions[1];
 
@@ -1828,7 +1869,8 @@
             
             // 4명 모드 케이크 위치 업데이트
             updateCoop4CakePosition() {
-                const playerPositions = Object.values(this.players).map(p => p.mesh.position);
+                const sortedPlayerIds = Object.keys(this.players).sort();
+                const playerPositions = sortedPlayerIds.map(id => this.players[id].mesh.position);
                 
                 // 4명의 중심점 계산
                 const centerX = playerPositions.reduce((sum, pos) => sum + pos.x, 0) / 4;
@@ -1878,32 +1920,34 @@
             // 플레이어 초기 위치 설정 (모드별)
             resetPlayerPositions() {
                 const playerIds = Object.keys(this.players);
+                // 센서ID를 정렬하여 일관된 순서 보장 (1P, 2P, 3P, 4P 순서)
+                const sortedPlayerIds = playerIds.sort();
                 
-                if (this.gameMode === 'coop4' && playerIds.length === 4) {
-                    // 4인 협동 모드: 사각형 배치
+                if (this.gameMode === 'coop4' && sortedPlayerIds.length === 4) {
+                    // 4인 협동 모드: 사각형 배치 (1P, 2P, 3P, 4P 순서)
                     const positions = [
-                        { x: -3, z: -1 }, // 좌상
-                        { x: 3, z: -1 },  // 우상  
-                        { x: -3, z: 1 },  // 좌하
-                        { x: 3, z: 1 }    // 우하
+                        { x: -3, z: -1 }, // 1P: 좌상
+                        { x: 3, z: -1 },  // 2P: 우상  
+                        { x: -3, z: 1 },  // 3P: 좌하
+                        { x: 3, z: 1 }    // 4P: 우하
                     ];
                     
-                    playerIds.forEach((playerId, index) => {
+                    sortedPlayerIds.forEach((playerId, index) => {
                         if (this.players[playerId] && positions[index]) {
                             this.players[playerId].mesh.position.set(
                                 positions[index].x, 
                                 0, 
                                 positions[index].z
                             );
-                            console.log(`👥 4인 플레이어 배치: ${playerId} → (${positions[index].x}, 0, ${positions[index].z})`);
+                            console.log(`👥 ${index + 1}P 플레이어 배치: ${playerId} → (${positions[index].x}, 0, ${positions[index].z})`);
                         }
                     });
                 } else {
-                    // 2인 모드: 좌우 배치
-                    if (playerIds.length >= 2) {
-                        this.players[playerIds[0]].mesh.position.set(-2, 0, 0);
-                        this.players[playerIds[1]].mesh.position.set(2, 0, 0);
-                        console.log(`👥 2인 플레이어 배치: ${playerIds[0]} → (-2, 0, 0), ${playerIds[1]} → (2, 0, 0)`);
+                    // 2인 모드: 좌우 배치 (1P, 2P 순서)
+                    if (sortedPlayerIds.length >= 2) {
+                        this.players[sortedPlayerIds[0]].mesh.position.set(-2, 0, 0); // 1P
+                        this.players[sortedPlayerIds[1]].mesh.position.set(2, 0, 0);  // 2P
+                        console.log(`👥 2인 플레이어 배치: 1P(${sortedPlayerIds[0]}) → (-2, 0, 0), 2P(${sortedPlayerIds[1]}) → (2, 0, 0)`);
                     }
                 }
             }
@@ -2332,7 +2376,8 @@
             updateBigCakePhysics() {
                 // 4명의 위치를 고려한 케이크 위치 계산
                 if (this.cake.mesh && Object.keys(this.players).length === 4) {
-                    const playerPositions = Object.values(this.players).map(p => p.mesh.position);
+                    const sortedPlayerIds = Object.keys(this.players).sort();
+                const playerPositions = sortedPlayerIds.map(id => this.players[id].mesh.position);
                     const centerX = playerPositions.reduce((sum, pos) => sum + pos.x, 0) / 4;
                     const centerZ = playerPositions.reduce((sum, pos) => sum + pos.z, 0) / 4;
                     
