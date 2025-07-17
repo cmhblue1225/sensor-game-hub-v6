@@ -57,7 +57,7 @@ class ShotTargetGame {
         
         // 대규모 경쟁 모드 전용 조준점 설정
         this.massCompetitiveCrosshair = {
-            smoothing: 0.12  // ✅ 대규모 경쟁 모드 전용: 더 반응적인 움직임
+            smoothing: 0.25  // ✅ 대규모 경쟁 모드 전용: 더 반응적인 움직임
         };
         
         // dual 모드용 두 번째 조준점
