@@ -863,14 +863,14 @@ class ShotTargetGame {
     
     tryShoot() {
         if (this.gameMode === 'mass-competitive') {
-            // ✅ 디버깅: 대규모 경쟁 모드에서 tryShoot 실행 상태 확인
-            if (Date.now() % 3000 < 50) { // 3초마다 로그
-                console.log(`🎯 [대규모 경쟁] tryShoot 실행 - 게임상태: playing=${this.state.playing}, paused=${this.state.paused}, myPlayerId=${this.state.myPlayerId}`);
-            }
+            // 🔍 긴급 디버깅: tryShoot 호출 상태 확인
+            console.log(`🎯 [DEBUG] tryShoot 실행 - 게임상태: playing=${this.state.playing}, paused=${this.state.paused}, myPlayerId=${this.state.myPlayerId}, 표적수: ${this.targets.length}`);
             
             // ✅ 대규모 경쟁 모드: 내 플레이어 조준점만 체크 (성능 최적화)
+            console.log(`🎯 [DEBUG] myPlayerId: ${this.state.myPlayerId}, massPlayers.has: ${this.state.myPlayerId ? this.massPlayers.has(this.state.myPlayerId) : 'false'}`);
             if (this.state.myPlayerId && this.massPlayers.has(this.state.myPlayerId)) {
                 const myPlayer = this.massPlayers.get(this.state.myPlayerId);
+                console.log(`🎯 [DEBUG] myPlayer: ${myPlayer ? 'exists' : 'null'}, isActive: ${myPlayer ? myPlayer.isActive : 'N/A'}`);
                 if (myPlayer && myPlayer.isActive) {
                     // ✅ 디버깅: 조준점과 표적 상태 확인
                     if (Date.now() % 2000 < 50) { // 2초마다 로그
@@ -886,8 +886,12 @@ class ShotTargetGame {
                         // ✅ 대규모 경쟁 모드 전용 hitRadius 설정 (표적 파괴 문제 해결)
                         const hitRadius = 15;  // 다른 모드들과 동일한 값으로 명시적 설정
                         
+                        // 🔍 긴급 디버깅: 거리 및 히트 판정 상세 로그
+                        console.log(`🎯 [DEBUG] 표적 ${i}: 위치(${target.x.toFixed(1)}, ${target.y.toFixed(1)}), 조준점(${this.crosshair.x.toFixed(1)}, ${this.crosshair.y.toFixed(1)}), 거리: ${distance.toFixed(2)}, hitRadius: ${hitRadius}`);
+                        
                         // 내 조준점이 표적의 히트존 내에 있으면 자동 발사
                         if (distance <= hitRadius) {
+                            console.log(`🎯 [HIT!] 표적 ${i} 명중! shootTarget 호출`);
                             // ✅ 다른 모드들과 동일하게 shootTarget 함수 사용
                             this.shootTarget(target, i, 1);
                             return;
