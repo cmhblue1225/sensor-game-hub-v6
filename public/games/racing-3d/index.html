@@ -1185,8 +1185,8 @@
                     renderTime: 0
                 };
                 
-                // 자동 테스트 시작
-                this.startAutomaticTests();
+                // 자동 테스트 시작 (프로덕션에서 비활성화)
+                // this.startAutomaticTests();
             }
             
             // 자동 테스트 실행 (작업 17)
@@ -1333,7 +1333,7 @@
                     
                     // 게임 시작 테스트
                     if (this.connectedSensors.size >= 2) {
-                        this.startGameCountdown();
+                        this.startGamePreparation();
                         
                         // 카운트다운 후 게임 상태 확인
                         setTimeout(() => {
@@ -1890,7 +1890,8 @@
             
             // 재연결 성공 메시지 (작업 14)
             showReconnectionSuccess(sensorId) {
-                const playerName = sensorId === 'sensor1' ? '플레이어 1' : '플레이어 2';
+                const sensorIndex = Array.from(this.connectedSensors).indexOf(sensorId) + 1;
+                const playerName = `플레이어 ${sensorIndex}`;
                 
                 // 성공 메시지 패널 생성
                 const successPanel = document.createElement('div');
