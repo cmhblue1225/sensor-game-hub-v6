@@ -868,17 +868,10 @@ class ShotTargetGame {
                         const dy = this.crosshair.y - target.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         
-                        // ✅ 대규모 경쟁 모드에서는 더 큰 히트 반경 사용 (표적 반지름의 80%)
-                        const hitRadius = target.radius * 0.8;
-                        
-                        // ✅ 디버깅: 조준점과 표적 거리 로깅
-                        if (distance <= target.radius) { // 표적 근처에 있을 때만 로그
-                            console.log(`🎯 조준점-표적 거리: ${distance.toFixed(1)}px, 히트반경: ${hitRadius.toFixed(1)}px, 표적반지름: ${target.radius}px`);
-                        }
+                        // ✅ 모든 모드와 동일한 hitRadius 사용 (15px)
                         
                         // 내 조준점이 표적의 히트존 내에 있으면 자동 발사
-                        if (distance <= hitRadius) {
-                            console.log(`🎯 표적 명중! 거리: ${distance.toFixed(1)}px`);
+                        if (distance <= this.config.hitRadius) {
                             this.handleMassTargetHit(target, i, this.state.myPlayerId);
                             return;
                         }
