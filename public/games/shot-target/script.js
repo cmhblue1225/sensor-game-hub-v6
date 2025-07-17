@@ -52,7 +52,7 @@ class ShotTargetGame {
             y: 0,
             targetX: 0,
             targetY: 0,
-            smoothing: 0.2  // ✅ 대규모 경쟁 모드에서 더 부드러운 움직임을 위해 증가
+            smoothing: 0.1  // 부드러운 움직임을 위한 보간
         };
         
         // dual 모드용 두 번째 조준점
@@ -142,9 +142,7 @@ class ShotTargetGame {
             massQrContainer: document.getElementById('massQrContainer'),
             massWaitingList: document.getElementById('massWaitingList'),
             massWaitingPlayers: document.getElementById('massWaitingPlayers'),
-            massStartBtn: document.getElementById('massStartBtn'),
-            // 컨트롤 패널 요소 추가
-            controlPanel: document.querySelector('.control-panel')
+            massStartBtn: document.getElementById('massStartBtn')
         };
         
         this.gameLoop = null;
@@ -251,9 +249,6 @@ class ShotTargetGame {
                 '조준점을 표적 중앙에 맞추면 자동으로 발사됩니다.<br>' +
                 '아래 코드를 모바일에서 입력하거나 QR 코드를 스캔하세요.';
             
-            // ✅ 컨트롤 패널을 기본 위치로 복원
-            this.elements.controlPanel.classList.remove('mass-competitive-mode');
-            
             // solo 모드 센서 상태 표시
             this.elements.soloSensorStatus.classList.remove('hidden');
             this.elements.dualSensorStatus.classList.add('hidden');
@@ -270,9 +265,6 @@ class ShotTargetGame {
                 '2명이 협력하는 표적 맞추기 게임!<br>' +
                 '각자 화면 절반에서 조준하여 함께 점수를 얻어보세요.<br>' +
                 '아래 코드를 두 개의 모바일에서 입력하거나 QR 코드를 스캔하세요.';
-            
-            // ✅ 컨트롤 패널을 기본 위치로 복원
-            this.elements.controlPanel.classList.remove('mass-competitive-mode');
             
             // dual 모드 센서 상태 표시
             this.elements.soloSensorStatus.classList.add('hidden');
@@ -291,9 +283,6 @@ class ShotTargetGame {
                 '각자 모바일로 조준하여 더 높은 점수를 얻어보세요.<br>' +
                 '아래 코드를 두 개의 모바일에서 입력하거나 QR 코드를 스캔하세요.';
             
-            // ✅ 컨트롤 패널을 기본 위치로 복원
-            this.elements.controlPanel.classList.remove('mass-competitive-mode');
-            
             // dual 모드 센서 상태 표시
             this.elements.soloSensorStatus.classList.add('hidden');
             this.elements.dualSensorStatus.classList.remove('hidden');
@@ -306,9 +295,6 @@ class ShotTargetGame {
         } else if (mode === 'mass-competitive') {
             // 대규모 경쟁 모드 UI
             // 대기실 패널은 이미 표시되므로 추가 설정 없음
-            
-            // ✅ 컨트롤 패널을 오른쪽 아래 세로 배치로 변경
-            this.elements.controlPanel.classList.add('mass-competitive-mode');
             
             // 다른 패널들 숨기기
             this.elements.soloSensorStatus.classList.add('hidden');
@@ -534,10 +520,10 @@ class ShotTargetGame {
                 // ✅ 대규모 경쟁 모드: 각 플레이어의 센서 데이터 처리
                 const player = this.massPlayers.get(sensorId);
                 if (player) {
-                    // ✅ 성능 최적화: 센서 데이터 throttling 완화 (더 부드러운 움직임을 위해)
+                    // ✅ 성능 최적화: 센서 데이터 throttling (AI_ASSISTANT_PROMPTS.md 지침)
                     const now = Date.now();
                     if (!player.lastSensorUpdate) player.lastSensorUpdate = 0;
-                    if (now - player.lastSensorUpdate < 16) return;  // 60fps = 16ms 간격 (더 부드럽게)
+                    if (now - player.lastSensorUpdate < 33) return;  // 30fps = 33ms 간격
                     player.lastSensorUpdate = now;
                     
                     // 플레이어 조준점 위치 업데이트
@@ -552,8 +538,8 @@ class ShotTargetGame {
                         this.sensorData.sensor1.tilt.y = player.tilt.y;
                         
                         // ✅ 로그 추가로 센서 데이터 수신 확인
-                        if (this.state.playing && Date.now() % 500 < 50) { // 0.5초에 한 번만 로그
-                            console.log(`🎯 [대규모 경쟁] 센서 데이터 수신: tilt=(${player.tilt.x.toFixed(2)}, ${player.tilt.y.toFixed(2)}), sensorId=${sensorId}`);
+                        if (this.state.playing && Date.now() % 1000 < 50) { // 1초에 한 번만 로그
+                            console.log(`🎯 센서 데이터 수신: ${player.tilt.x.toFixed(2)}, ${player.tilt.y.toFixed(2)}`);
                         }
                     }
                     
@@ -858,38 +844,18 @@ class ShotTargetGame {
     
     tryShoot() {
         if (this.gameMode === 'mass-competitive') {
-            // ✅ 디버깅: 대규모 경쟁 모드에서 tryShoot 실행 상태 확인
-            if (Date.now() % 3000 < 50) { // 3초마다 로그
-                console.log(`🎯 [대규모 경쟁] tryShoot 실행 - 게임상태: playing=${this.state.playing}, paused=${this.state.paused}, myPlayerId=${this.state.myPlayerId}`);
-            }
-            
             // ✅ 대규모 경쟁 모드: 내 플레이어 조준점만 체크 (성능 최적화)
             if (this.state.myPlayerId && this.massPlayers.has(this.state.myPlayerId)) {
                 const myPlayer = this.massPlayers.get(this.state.myPlayerId);
                 if (myPlayer && myPlayer.isActive) {
-                    // ✅ 디버깅: 조준점과 표적 상태 확인
-                    if (Date.now() % 2000 < 50) { // 2초마다 로그
-                        console.log(`🎯 [대규모 경쟁] 조준점 위치: (${this.crosshair.x.toFixed(1)}, ${this.crosshair.y.toFixed(1)}), 표적 수: ${this.targets.length}`);
-                    }
-                    
                     for (let i = 0; i < this.targets.length; i++) {
                         const target = this.targets[i];
                         const dx = this.crosshair.x - target.x;
                         const dy = this.crosshair.y - target.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         
-                        // ✅ 대규모 경쟁 모드에서는 더 관대한 히트 반경 사용
-                        const hitRadius = target.radius * 1.2; // 표적 반지름의 120%로 더 크게 설정
-                        
-                        // ✅ 디버깅: 모든 표적에 대해 거리 로깅
-                        if (distance <= target.radius * 2) { // 표적 주변 넓은 범위에서 로그
-                            console.log(`🎯 [대규모 경쟁] 표적 ${i}: 조준점(${this.crosshair.x.toFixed(1)},${this.crosshair.y.toFixed(1)}) 거리=${distance.toFixed(1)}px, 히트반경=${hitRadius.toFixed(1)}px, 표적위치=(${target.x.toFixed(1)}, ${target.y.toFixed(1)})`);
-                        }
-                        
                         // 내 조준점이 표적의 히트존 내에 있으면 자동 발사
-                        if (distance <= hitRadius) {
-                            console.log(`🎯 [대규모 경쟁] ✅ 표적 명중! 거리: ${distance.toFixed(1)}px, 히트반지름: ${hitRadius.toFixed(1)}px`);
-                            console.log(`🎯 [대규모 경쟁] 표적 제거 시도: targetIndex=${i}, playerId=${this.state.myPlayerId}`);
+                        if (distance <= this.config.hitRadius) {
                             this.handleMassTargetHit(target, i, this.state.myPlayerId);
                             return;
                         }
@@ -1464,8 +1430,7 @@ class ShotTargetGame {
         this.elements.massWaitingPanel.classList.add('hidden');
         this.elements.massCompetitivePanel.classList.remove('hidden');
         this.elements.myMassInfoPanel.classList.remove('hidden');
-        // ✅ 대규모 경쟁 모드에서는 표적 정보 패널 숨기기
-        this.elements.gameInfoPanel.classList.add('hidden');
+        this.elements.gameInfoPanel.classList.remove('hidden');
         this.elements.crosshair.classList.remove('hidden');
     }
     
@@ -1509,15 +1474,8 @@ class ShotTargetGame {
     
     // 대규모 경쟁 모드에서 표적 명중 처리
     handleMassTargetHit(target, targetIndex, playerId) {
-        console.log(`🎯 [대규모 경쟁] handleMassTargetHit 호출: targetIndex=${targetIndex}, playerId=${playerId}`);
-        
         const player = this.massPlayers.get(playerId);
-        if (!player) {
-            console.log(`🎯 [대규모 경쟁] ❌ 플레이어를 찾을 수 없음: ${playerId}`);
-            return;
-        }
-        
-        console.log(`🎯 [대규모 경쟁] ✅ 플레이어 찾음: ${player.name}, 표적 제거 시작`);
+        if (!player) return;
         
         // 점수 계산
         let points = target.points;
@@ -1536,26 +1494,22 @@ class ShotTargetGame {
         player.accuracy = Math.round((player.hits / (player.hits + 1)) * 100); // +1은 빗나감 추정
         
         // 표적 제거
-        console.log(`🎯 [대규모 경쟁] 표적 제거 전: 총 표적 수 = ${this.targets.length}`);
         this.targets.splice(targetIndex, 1);
-        console.log(`🎯 [대규모 경쟁] 표적 제거 후: 총 표적 수 = ${this.targets.length}`);
         
         // 타격 효과
         this.createHitEffect(target.x, target.y, points, player.color);
-        console.log(`🎯 [대규모 경쟁] 타격 효과 생성 완료`);
         
         // 새 표적 생성
         setTimeout(() => {
             this.spawnTarget();
             this.state.totalTargetsCreated++;
             this.elements.totalTargetsCreated.textContent = this.state.totalTargetsCreated;
-            console.log(`🎯 [대규모 경쟁] 새 표적 생성됨`);
         }, 500);
         
         // 리더보드 업데이트
         this.updateMassLeaderboard();
         
-        console.log(`🎯 [대규모 경쟁] ${player.name} 표적 명중! +${Math.floor(points)}pt (콤보 x${player.combo})`);
+        console.log(`🎯 ${player.name} 표적 명중! +${Math.floor(points)}pt (콤보 x${player.combo})`);
     }
 }
 
