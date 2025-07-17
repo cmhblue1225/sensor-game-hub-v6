@@ -171,9 +171,8 @@
             <div class="session-title">🎂 케이크 배달단</div>
             <div id="sessionCode" class="session-code">----</div>
             <div id="qrContainer" class="qr-container"></div>
-            <div class="connection-status">
-                <div id="player1Status" class="player-status disconnected">P1</div>
-                <div id="player2Status" class="player-status disconnected">P2</div>
+            <div id="connectionStatus" class="connection-status">
+                <!-- 센서 상태는 JavaScript에서 동적으로 생성됩니다 -->
             </div>
         </div>
         <!-- 게임 설정 패널 (왼쪽 하단) -->
@@ -478,6 +477,9 @@
                 this.speedrunModeBtn.onclick = () => this.selectGameMode('speedrun');
                 this.coop4ModeBtn.onclick = () => this.selectGameMode('coop4');
                 
+                // 기본 모드(일반 모드)로 센서 HUD 초기화
+                this.createSensorStatusHUD(2);
+                
                 this.updateScoreDisplay();
             }
 
@@ -522,10 +524,14 @@
                         this.level = 1;
                 }
                 
+                // 모드에 따른 센서 HUD 생성
+                const requiredPlayers = this.modeConfig[mode].players;
+                this.createSensorStatusHUD(requiredPlayers);
+                
                 this.updateModeButtons();
                 this.updateUI();
                 
-                console.log(`🎮 게임 모드 변경: ${this.modeConfig[mode].description} (게임타입: ${requiredGameType})`);
+                console.log(`🎮 게임 모드 변경: ${this.modeConfig[mode].description} (게임타입: ${requiredGameType}, 플레이어: ${requiredPlayers}명)`);
             }
             
             getRequiredGameType(mode) {
@@ -1090,6 +1096,26 @@
                 };
             }
             
+            // 모드별 센서 HUD 동적 생성
+            createSensorStatusHUD(playerCount) {
+                const connectionStatus = document.getElementById('connectionStatus');
+                if (!connectionStatus) return;
+                
+                // 기존 상태 제거
+                connectionStatus.innerHTML = '';
+                
+                // 플레이어 수에 따라 센서 상태 HUD 생성
+                for (let i = 1; i <= playerCount; i++) {
+                    const playerStatusDiv = document.createElement('div');
+                    playerStatusDiv.id = `player${i}Status`;
+                    playerStatusDiv.className = 'player-status disconnected';
+                    playerStatusDiv.textContent = `P${i}`;
+                    connectionStatus.appendChild(playerStatusDiv);
+                }
+                
+                console.log(`🎮 센서 HUD 생성: ${playerCount}명 모드`);
+            }
+            
             // 센서ID에서 플레이어 번호 추출 (고정 순서를 위해)
             getPlayerNumberFromSensorId(sensorId) {
                 // 센서ID를 정렬하여 일관된 순서 보장
@@ -1283,15 +1309,24 @@
             }
 
             updatePlayerStatus() {
-                if (this.gameMode === 'coop4') {
-                    // 4인 협동 모드는 별도 UI 처리
-                    this.updateCoop4PlayerStatus();
-                } else {
-                    // 일반 2인 모드
-                    const playerIds = Object.keys(this.players);
-                    document.getElementById('player1Status').className = `player-status ${playerIds.length > 0 ? 'connected' : 'disconnected'}`;
-                    document.getElementById('player2Status').className = `player-status ${playerIds.length > 1 ? 'connected' : 'disconnected'}`;
+                const currentPlayerCount = Object.keys(this.players).length;
+                const requiredPlayerCount = this.modeConfig[this.gameMode].players;
+                
+                // 모든 플레이어 상태 업데이트 (동적으로 생성된 센서 HUD)
+                for (let i = 1; i <= requiredPlayerCount; i++) {
+                    const statusElement = document.getElementById(`player${i}Status`);
+                    if (statusElement) {
+                        const isConnected = i <= currentPlayerCount;
+                        statusElement.className = `player-status ${isConnected ? 'connected' : 'disconnected'}`;
+                    }
                 }
+                
+                // 4인 협동 모드일 때 추가 상태 메시지 표시
+                if (this.gameMode === 'coop4') {
+                    this.updateCoop4PlayerStatus();
+                }
+                
+                console.log(`👥 센서 상태 업데이트: ${currentPlayerCount}/${requiredPlayerCount}명 연결됨`);
             }
 
             // 4인 협동 모드 플레이어 상태 업데이트
