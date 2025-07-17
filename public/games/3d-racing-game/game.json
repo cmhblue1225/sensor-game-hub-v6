@@ -1,0 +1,217 @@
+{
+  "id": "3d-racing-game",
+  "name": "3D Racing Game",
+  "description": "모바일 센서를 사용한 2인 경쟁 3D 레이싱 게임입니다. 기기를 기울여서 자동차를 조작하고 친구와 함께 경주를 즐기세요!",
+  "version": "1.0.0",
+  "gameType": "dual",
+  "minPlayers": 2,
+  "maxPlayers": 2,
+  "category": "racing",
+  "tags": ["racing", "3d", "multiplayer", "sensor", "tilt-control", "competitive"],
+  "thumbnail": "assets/thumbnail.png",
+  "author": "3D Racing Game Team",
+  "difficulty": "medium",
+  "estimatedPlayTime": "5-10 minutes",
+  "requirements": {
+    "sensors": ["orientation", "accelerometer"],
+    "features": ["dual-screen", "audio", "3d-rendering"],
+    "browser": ["chrome", "safari", "firefox", "edge"],
+    "platform": ["mobile", "tablet"]
+  },
+  "controls": {
+    "tilt": "좌우 기울기로 조향",
+    "forward": "앞으로 기울여서 가속",
+    "backward": "뒤로 기울여서 브레이크"
+  },
+  "gameModes": [
+    {
+      "id": "quick",
+      "name": "빠른 경주",
+      "description": "3랩 경주로 빠르게 승부를 결정합니다",
+      "laps": 3,
+      "duration": "3-5 minutes"
+    },
+    {
+      "id": "best-of-3",
+      "name": "베스트 오브 3",
+      "description": "3경주 중 2승을 먼저 하는 플레이어가 승리합니다",
+      "races": 3,
+      "duration": "10-15 minutes"
+    },
+    {
+      "id": "time-attack",
+      "name": "타임 어택",
+      "description": "제한 시간 내에 최고 기록에 도전합니다",
+      "timeLimit": 300,
+      "duration": "5 minutes"
+    }
+  ],
+  "features": {
+    "splitScreen": true,
+    "realTimeMultiplayer": true,
+    "3dGraphics": true,
+    "audioEffects": true,
+    "hapticFeedback": false,
+    "leaderboard": false,
+    "achievements": true,
+    "spectatorMode": false
+  },
+  "technical": {
+    "engine": "Custom 3D Engine",
+    "rendering": "Canvas 2D with 3D projection",
+    "physics": "Custom physics engine",
+    "audio": "Web Audio API",
+    "networking": "WebSocket + HTTP API"
+  },
+  "hubIntegration": {
+    "compatible": true,
+    "version": "6.0",
+    "features": {
+      "sessionManagement": true,
+      "sensorIntegration": true,
+      "hubNavigation": true,
+      "stateReporting": true,
+      "resourceManagement": true
+    },
+    "endpoints": {
+      "gameState": "/api/games/state",
+      "gameEvents": "/api/games/events",
+      "heartbeat": "/api/games/heartbeat"
+    }
+  },
+  "assets": {
+    "thumbnail": {
+      "path": "assets/thumbnail.png",
+      "width": 300,
+      "height": 200,
+      "format": "PNG"
+    },
+    "screenshots": [
+      {
+        "path": "assets/screenshot1.png",
+        "description": "게임 플레이 화면",
+        "width": 800,
+        "height": 600
+      }
+    ],
+    "audio": {
+      "backgroundMusic": false,
+      "soundEffects": true,
+      "voiceOver": false
+    }
+  },
+  "localization": {
+    "defaultLanguage": "ko",
+    "supportedLanguages": ["ko", "en"],
+    "textContent": {
+      "ko": {
+        "title": "3D 레이싱 게임",
+        "description": "모바일 센서를 사용한 2인 경쟁 3D 레이싱 게임",
+        "instructions": "기기를 기울여서 자동차를 조작하세요"
+      },
+      "en": {
+        "title": "3D Racing Game",
+        "description": "2-player competitive 3D racing game using mobile sensors",
+        "instructions": "Tilt your device to control the car"
+      }
+    }
+  },
+  "performance": {
+    "targetFPS": 60,
+    "minFPS": 30,
+    "memoryUsage": "< 100MB",
+    "loadTime": "< 5 seconds",
+    "optimizations": {
+      "adaptiveQuality": true,
+      "objectPooling": true,
+      "textureCompression": false,
+      "levelOfDetail": true
+    }
+  },
+  "accessibility": {
+    "colorBlindSupport": false,
+    "highContrast": false,
+    "largeText": false,
+    "audioDescriptions": false,
+    "keyboardNavigation": true
+  },
+  "social": {
+    "sharing": false,
+    "screenshots": true,
+    "replay": false,
+    "spectating": false
+  },
+  "analytics": {
+    "gameEvents": true,
+    "performanceMetrics": true,
+    "userBehavior": false,
+    "crashReporting": true
+  },
+  "testing": {
+    "unitTests": true,
+    "integrationTests": true,
+    "performanceTests": true,
+    "compatibilityTests": true,
+    "hubIntegrationTests": true
+  },
+  "hubCompatibility": {
+    "version": "6.0",
+    "tested": true,
+    "lastTested": "2025-01-17",
+    "compatibilityScore": 95,
+    "requiredFeatures": [
+      "sessionManagement",
+      "sensorIntegration",
+      "dualPlayerSupport",
+      "realTimeSync"
+    ],
+    "optionalFeatures": [
+      "hubNavigation",
+      "stateReporting",
+      "resourceManagement",
+      "performanceMonitoring"
+    ]
+  },
+  "deployment": {
+    "environment": "production",
+    "hubReady": true,
+    "lastVerified": "2025-01-17",
+    "verificationTests": {
+      "structure": "passed",
+      "metadata": "passed", 
+      "assets": "passed",
+      "integration": "passed",
+      "performance": "passed",
+      "compatibility": "passed"
+    },
+    "cdn": false,
+    "compression": true,
+    "caching": true,
+    "monitoring": true
+  },
+  "changelog": [
+    {
+      "version": "1.0.0",
+      "date": "2025-01-17",
+      "changes": [
+        "Initial release",
+        "3D racing game with dual-player support",
+        "Mobile sensor integration",
+        "Hub system compatibility v6.0",
+        "Multiple game modes",
+        "Comprehensive hub integration",
+        "Performance optimization",
+        "Cross-platform compatibility"
+      ]
+    }
+  ],
+  "license": {
+    "type": "MIT",
+    "url": "https://opensource.org/licenses/MIT"
+  },
+  "support": {
+    "documentation": "README.md",
+    "issues": "https://github.com/sensor-game-hub/3d-racing-game/issues",
+    "contact": "support@sensorgamehub.com"
+  }
+}
