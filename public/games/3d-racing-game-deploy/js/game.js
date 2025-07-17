@@ -6035,11 +6035,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.racingGame = new RacingGame();
 });
 
-/**
- * CarPhysicsEngine Class - Handles car physics simulation
- * Implements realistic car physics including acceleration, steering, friction, and collision detection
- */
-class CarPhysicsEngine {
+// Duplicate CarPhysicsEngine class removed to fix syntax error
+// Original CarPhysicsEngine class is defined earlier in the file
     constructor(options = {}) {
         // Position and orientation
         this.position = {
