@@ -91,11 +91,21 @@ class ShotTargetGame {
                 small: { radius: 25, points: 500, color: '#10b981', spawnChance: 0.2 }
             },
             targetLifetime: 5000,  // 5초 후 자동 소멸
-            targetSpawnInterval: 2000,  // 2초마다 새 표적 생성
+            targetSpawnInterval: 2000,  // 2초마다 새 표적 생성 (기본값)
             hitRadius: 15,  // 조준점이 표적 중심에서 이 거리 내에 있으면 발사
             comboMultiplier: 1.5,
             bulletSpeed: 8,
-            maxTargets: 3  // 최대 동시 표적 수
+            maxTargets: 3,  // 최대 동시 표적 수 (기본값)
+
+            // ✅ 대규모 경쟁 모드 전용 설정
+            massCompetitive: {
+                baseTargets: 2,           // 기본 표적 수 (3명 기준)
+                targetsPerPlayer: 1,      // 플레이어 1명당 추가 표적 수
+                maxTargetsLimit: 12,      // 절대 최대 표적 수 (8명 * 1.5)
+                baseSpawnInterval: 1500,  // 기본 생성 간격 (더 빠름)
+                minSpawnInterval: 800,    // 최소 생성 간격 (너무 빨라지지 않게)
+                spawnIntervalReduction: 100  // 플레이어 1명당 간격 단축
+            }
         };
 
         // DOM 요소
@@ -404,6 +414,9 @@ class ShotTargetGame {
                 this.addMassPlayer(playerId, totalConnected - 1);
                 this.updateMassWaitingList();
                 this.updateMassPlayerCount(totalConnected);
+
+                // ✅ 플레이어 수 변경시 표적 설정 자동 업데이트
+                this.calculateMassCompetitiveTargetSettings();
 
                 // 3명 이상이면 게임 시작 가능
                 if (totalConnected >= 3) {
@@ -842,8 +855,40 @@ class ShotTargetGame {
         }
     }
 
+    // ✅ 대규모 경쟁 모드용 동적 표적 설정 계산
+    calculateMassCompetitiveTargetSettings() {
+        if (this.gameMode !== 'mass-competitive') return;
+
+        const playerCount = this.massPlayers.size;
+        const massConfig = this.config.massCompetitive;
+
+        // 플레이어 수에 비례한 최대 표적 수 계산
+        // 3명: 5개, 4명: 6개, 5명: 7개, 6명: 8개, 7명: 9개, 8명: 10개
+        const dynamicMaxTargets = Math.min(
+            massConfig.baseTargets + (playerCount * massConfig.targetsPerPlayer),
+            massConfig.maxTargetsLimit
+        );
+
+        // 플레이어 수에 비례한 생성 간격 계산 (더 많은 플레이어 = 더 빠른 생성)
+        const dynamicSpawnInterval = Math.max(
+            massConfig.baseSpawnInterval - (playerCount * massConfig.spawnIntervalReduction),
+            massConfig.minSpawnInterval
+        );
+
+        // 동적 설정 적용
+        this.config.maxTargets = dynamicMaxTargets;
+        this.config.targetSpawnInterval = dynamicSpawnInterval;
+
+        console.log(`🎯 [대규모 경쟁] 표적 설정 업데이트: 플레이어 ${playerCount}명, 최대 표적 ${dynamicMaxTargets}개, 생성 간격 ${dynamicSpawnInterval}ms`);
+    }
+
     spawnTarget() {
-        if (this.targets.length >= this.config.maxTargets) return;
+        // ✅ 대규모 경쟁 모드에서는 동적 최대 표적 수 적용
+        const maxTargets = this.gameMode === 'mass-competitive' ?
+            this.config.maxTargets :
+            this.config.maxTargets;
+
+        if (this.targets.length >= maxTargets) return;
 
         // 표적 타입 랜덤 선택
         const rand = Math.random();
@@ -872,7 +917,15 @@ class ShotTargetGame {
             alpha: 1
         });
 
-        console.log(`🎯 새 표적 생성: ${targetType} (${typeConfig.points}pt)`);
+        // ✅ 대규모 경쟁 모드에서는 표적 생성 통계 업데이트
+        if (this.gameMode === 'mass-competitive') {
+            this.state.totalTargetsCreated++;
+            if (this.elements.totalTargetsCreated) {
+                this.elements.totalTargetsCreated.textContent = this.state.totalTargetsCreated;
+            }
+        }
+
+        console.log(`🎯 새 표적 생성: ${targetType} (${typeConfig.points}pt) - 현재 ${this.targets.length}/${maxTargets}개`);
     }
 
     tryShoot() {
@@ -1528,6 +1581,8 @@ class ShotTargetGame {
 
     startMassCompetitive() {
         if (this.massPlayers.size >= 3) {
+            // ✅ 게임 시작 전 최종 표적 설정 계산
+            this.calculateMassCompetitiveTargetSettings();
             this.hideMassWaitingPanel();
             this.startGame();
         }
