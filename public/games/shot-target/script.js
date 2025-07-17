@@ -142,7 +142,9 @@ class ShotTargetGame {
             massQrContainer: document.getElementById('massQrContainer'),
             massWaitingList: document.getElementById('massWaitingList'),
             massWaitingPlayers: document.getElementById('massWaitingPlayers'),
-            massStartBtn: document.getElementById('massStartBtn')
+            massStartBtn: document.getElementById('massStartBtn'),
+            // 컨트롤 패널 요소 추가
+            controlPanel: document.querySelector('.control-panel')
         };
         
         this.gameLoop = null;
@@ -249,6 +251,9 @@ class ShotTargetGame {
                 '조준점을 표적 중앙에 맞추면 자동으로 발사됩니다.<br>' +
                 '아래 코드를 모바일에서 입력하거나 QR 코드를 스캔하세요.';
             
+            // ✅ 컨트롤 패널을 기본 위치로 복원
+            this.elements.controlPanel.classList.remove('mass-competitive-mode');
+            
             // solo 모드 센서 상태 표시
             this.elements.soloSensorStatus.classList.remove('hidden');
             this.elements.dualSensorStatus.classList.add('hidden');
@@ -265,6 +270,9 @@ class ShotTargetGame {
                 '2명이 협력하는 표적 맞추기 게임!<br>' +
                 '각자 화면 절반에서 조준하여 함께 점수를 얻어보세요.<br>' +
                 '아래 코드를 두 개의 모바일에서 입력하거나 QR 코드를 스캔하세요.';
+            
+            // ✅ 컨트롤 패널을 기본 위치로 복원
+            this.elements.controlPanel.classList.remove('mass-competitive-mode');
             
             // dual 모드 센서 상태 표시
             this.elements.soloSensorStatus.classList.add('hidden');
@@ -283,6 +291,9 @@ class ShotTargetGame {
                 '각자 모바일로 조준하여 더 높은 점수를 얻어보세요.<br>' +
                 '아래 코드를 두 개의 모바일에서 입력하거나 QR 코드를 스캔하세요.';
             
+            // ✅ 컨트롤 패널을 기본 위치로 복원
+            this.elements.controlPanel.classList.remove('mass-competitive-mode');
+            
             // dual 모드 센서 상태 표시
             this.elements.soloSensorStatus.classList.add('hidden');
             this.elements.dualSensorStatus.classList.remove('hidden');
@@ -295,6 +306,9 @@ class ShotTargetGame {
         } else if (mode === 'mass-competitive') {
             // 대규모 경쟁 모드 UI
             // 대기실 패널은 이미 표시되므로 추가 설정 없음
+            
+            // ✅ 컨트롤 패널을 오른쪽 아래 세로 배치로 변경
+            this.elements.controlPanel.classList.add('mass-competitive-mode');
             
             // 다른 패널들 숨기기
             this.elements.soloSensorStatus.classList.add('hidden');
@@ -854,8 +868,17 @@ class ShotTargetGame {
                         const dy = this.crosshair.y - target.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         
+                        // ✅ 대규모 경쟁 모드에서는 더 큰 히트 반경 사용 (표적 반지름의 80%)
+                        const hitRadius = target.radius * 0.8;
+                        
+                        // ✅ 디버깅: 조준점과 표적 거리 로깅
+                        if (distance <= target.radius) { // 표적 근처에 있을 때만 로그
+                            console.log(`🎯 조준점-표적 거리: ${distance.toFixed(1)}px, 히트반경: ${hitRadius.toFixed(1)}px, 표적반지름: ${target.radius}px`);
+                        }
+                        
                         // 내 조준점이 표적의 히트존 내에 있으면 자동 발사
-                        if (distance <= this.config.hitRadius) {
+                        if (distance <= hitRadius) {
+                            console.log(`🎯 표적 명중! 거리: ${distance.toFixed(1)}px`);
                             this.handleMassTargetHit(target, i, this.state.myPlayerId);
                             return;
                         }
@@ -1430,7 +1453,8 @@ class ShotTargetGame {
         this.elements.massWaitingPanel.classList.add('hidden');
         this.elements.massCompetitivePanel.classList.remove('hidden');
         this.elements.myMassInfoPanel.classList.remove('hidden');
-        this.elements.gameInfoPanel.classList.remove('hidden');
+        // ✅ 대규모 경쟁 모드에서는 표적 정보 패널 숨기기
+        this.elements.gameInfoPanel.classList.add('hidden');
         this.elements.crosshair.classList.remove('hidden');
     }
     
