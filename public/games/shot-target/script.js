@@ -418,11 +418,38 @@ class ShotTargetGame {
             }
         });
         
-        this.sdk.on('sensor-disconnected', () => {
-            this.state.sensorConnected = false;
-            this.updateSensorStatus(false);
-            this.updateGameStatus('센서 연결 끊김');
-            this.pauseGame();
+        this.sdk.on('sensor-disconnected', (event) => {
+            const data = event.detail || event;  // ✅ CustomEvent 처리
+            
+            if (this.gameMode === 'mass-competitive') {
+                // ✅ 대규모 경쟁 모드: 특정 플레이어 연결 해제 처리
+                const disconnectedSensorId = data.sensorId;
+                if (disconnectedSensorId && this.massPlayers.has(disconnectedSensorId)) {
+                    const player = this.massPlayers.get(disconnectedSensorId);
+                    console.log(`🎯 [대규모 경쟁] 플레이어 연결 해제: ${player.name}`);
+                    
+                    // 플레이어를 비활성화 (완전 제거하지 않고 점수는 유지)
+                    player.isActive = false;
+                    
+                    // 내 플레이어가 연결 해제된 경우
+                    if (disconnectedSensorId === this.state.myPlayerId) {
+                        this.state.sensorConnected = false;
+                        this.updateSensorStatus(false);
+                        this.updateGameStatus('센서 연결 끊김');
+                        this.pauseGame();
+                    }
+                    
+                    // 대기실 및 리더보드 업데이트
+                    this.updateMassWaitingList();
+                    this.updateMassLeaderboard();
+                }
+            } else {
+                // 기존 모드들의 연결 해제 처리
+                this.state.sensorConnected = false;
+                this.updateSensorStatus(false);
+                this.updateGameStatus('센서 연결 끊김');
+                this.pauseGame();
+            }
         });
         
         // ✅ 필수 패턴: 센서 데이터 처리 (AI_ASSISTANT_PROMPTS.md 지침에 따라)
@@ -863,39 +890,41 @@ class ShotTargetGame {
     
     tryShoot() {
         if (this.gameMode === 'mass-competitive') {
-            // 🔍 긴급 디버깅: tryShoot 호출 상태 확인
-            console.log(`🎯 [DEBUG] tryShoot 실행 - 게임상태: playing=${this.state.playing}, paused=${this.state.paused}, myPlayerId=${this.state.myPlayerId}, 표적수: ${this.targets.length}`);
+            // ✅ 대규모 경쟁 모드: 모든 플레이어의 표적 타격 처리
+            const hitRadius = 15;  // 표적 명중 판정 반경
             
-            // ✅ 대규모 경쟁 모드: 내 플레이어 조준점만 체크 (성능 최적화)
-            console.log(`🎯 [DEBUG] myPlayerId: ${this.state.myPlayerId}, massPlayers.has: ${this.state.myPlayerId ? this.massPlayers.has(this.state.myPlayerId) : 'false'}`);
-            if (this.state.myPlayerId && this.massPlayers.has(this.state.myPlayerId)) {
-                const myPlayer = this.massPlayers.get(this.state.myPlayerId);
-                console.log(`🎯 [DEBUG] myPlayer: ${myPlayer ? 'exists' : 'null'}, isActive: ${myPlayer ? myPlayer.isActive : 'N/A'}`);
-                if (myPlayer && myPlayer.isActive) {
-                    // ✅ 디버깅: 조준점과 표적 상태 확인
-                    if (Date.now() % 2000 < 50) { // 2초마다 로그
-                        console.log(`🎯 [대규모 경쟁] 조준점 위치: (${this.crosshair.x.toFixed(1)}, ${this.crosshair.y.toFixed(1)}), 표적 수: ${this.targets.length}`);
-                    }
+            // 모든 표적에 대해 검사
+            for (let i = 0; i < this.targets.length; i++) {
+                const target = this.targets[i];
+                let targetHit = false;
+                let hitPlayer = null;
+                
+                // 모든 활성 플레이어의 조준점 검사
+                for (const [playerId, player] of this.massPlayers.entries()) {
+                    if (!player.isActive || !player.tilt) continue;
                     
-                    for (let i = 0; i < this.targets.length; i++) {
-                        const target = this.targets[i];
-                        const dx = this.crosshair.x - target.x;
-                        const dy = this.crosshair.y - target.y;
-                        const distance = Math.sqrt(dx * dx + dy * dy);
+                    // 플레이어의 조준점 위치 계산
+                    const crosshairX = this.calculatePlayerCrosshairX(player);
+                    const crosshairY = this.calculatePlayerCrosshairY(player);
+                    
+                    // 표적과의 거리 계산
+                    const dx = crosshairX - target.x;
+                    const dy = crosshairY - target.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    // 표적 명중 체크
+                    if (distance <= hitRadius) {
+                        targetHit = true;
+                        hitPlayer = player;
                         
-                        // ✅ 대규모 경쟁 모드 전용 hitRadius 설정 (표적 파괴 문제 해결)
-                        const hitRadius = 15;  // 다른 모드들과 동일한 값으로 명시적 설정
+                        // 디버그 로그
+                        console.log(`🎯 [대규모 경쟁] ${player.name} 표적 명중! 거리: ${distance.toFixed(2)}`);
                         
-                        // 🔍 긴급 디버깅: 거리 및 히트 판정 상세 로그
-                        console.log(`🎯 [DEBUG] 표적 ${i}: 위치(${target.x.toFixed(1)}, ${target.y.toFixed(1)}), 조준점(${this.crosshair.x.toFixed(1)}, ${this.crosshair.y.toFixed(1)}), 거리: ${distance.toFixed(2)}, hitRadius: ${hitRadius}`);
+                        // 표적 명중 처리
+                        this.handleMassTargetHit(target, i, playerId);
                         
-                        // 내 조준점이 표적의 히트존 내에 있으면 자동 발사
-                        if (distance <= hitRadius) {
-                            console.log(`🎯 [HIT!] 표적 ${i} 명중! shootTarget 호출`);
-                            // ✅ 다른 모드들과 동일하게 shootTarget 함수 사용
-                            this.shootTarget(target, i, 1);
-                            return;
-                        }
+                        // 하나의 표적은 한 명만 맞출 수 있음
+                        return;
                     }
                 }
             }
@@ -1001,23 +1030,27 @@ class ShotTargetGame {
             }
             
         } else if (this.gameMode === 'mass-competitive') {
-            // ✅ 대규모 경쟁 모드: 내 플레이어 점수 처리
-            const player = this.massPlayers.get(this.state.myPlayerId);
-            if (player) {
-                player.combo++;
-                player.hits++;
-                
-                if (player.combo > 1) {
-                    const comboBonus = Math.min(player.combo - 1, 2);
-                    points *= Math.pow(this.config.comboMultiplier, comboBonus);
+            // ✅ 대규모 경쟁 모드: 플레이어별 점수 처리 (playerId를 통해 구분)
+            // 주의: playerId는 실제로는 숫자 1이지만, 실제 플레이어 ID를 찾아야 함
+            // 이 함수는 handleMassTargetHit에서 직접 처리하므로 여기서는 내 플레이어만 처리
+            if (playerId === 1 && this.state.myPlayerId) {
+                const player = this.massPlayers.get(this.state.myPlayerId);
+                if (player) {
+                    player.combo++;
+                    player.hits++;
+                    
+                    if (player.combo > 1) {
+                        const comboBonus = Math.min(player.combo - 1, 2);
+                        points *= Math.pow(this.config.comboMultiplier, comboBonus);
+                    }
+                    
+                    player.score += Math.floor(points);
+                    player.lastHitTime = Date.now();
+                    player.accuracy = Math.round((player.hits / (player.hits + 1)) * 100);
+                    
+                    // 리더보드 업데이트
+                    this.updateMassLeaderboard();
                 }
-                
-                player.score += Math.floor(points);
-                player.lastHitTime = Date.now();
-                player.accuracy = Math.round((player.hits / (player.hits + 1)) * 100);
-                
-                // 리더보드 업데이트
-                this.updateMassLeaderboard();
             }
             
         } else {
@@ -1181,7 +1214,7 @@ class ShotTargetGame {
         // 자동 발사 체크
         this.tryShoot();
 
-        // 경쟁 모드 콤보 타임아웃 체크
+        // 콤보 타임아웃 체크
         if (this.gameMode === 'competitive') {
             const now = Date.now();
             if (this.state.player1Combo > 0 && now - this.state.player1LastHitTime > 3500) {
@@ -1193,6 +1226,25 @@ class ShotTargetGame {
                 this.state.player2Combo = 0;
                 this.updateScore();
                 console.log('🎯 플레이어 2 콤보 리셋');
+            }
+        } else if (this.gameMode === 'mass-competitive') {
+            // ✅ 대규모 경쟁 모드 콤보 타임아웃 체크
+            const now = Date.now();
+            const comboTimeout = 3500; // 3.5초 콤보 타임아웃
+            
+            let leaderboardNeedsUpdate = false;
+            
+            for (const [playerId, player] of this.massPlayers.entries()) {
+                if (player.combo > 0 && now - player.lastHitTime > comboTimeout) {
+                    console.log(`🎯 [대규모 경쟁] ${player.name} 콤보 리셋 (${player.combo} -> 0)`);
+                    player.combo = 0;
+                    leaderboardNeedsUpdate = true;
+                }
+            }
+            
+            // 콤보가 리셋된 플레이어가 있으면 리더보드 업데이트
+            if (leaderboardNeedsUpdate) {
+                this.updateMassLeaderboard();
             }
         }
     }
@@ -1236,7 +1288,9 @@ class ShotTargetGame {
             this.ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI * 2);
             this.ctx.fillStyle = '#ffffff';
             this.ctx.fill();
-            this.ctx.strokeStyle = '#3b82f6';
+            // 대규모 경쟁 모드에서는 플레이어 색상, 다른 모드에서는 기본 색상
+            const strokeColor = (this.gameMode === 'mass-competitive' && bullet.color) ? bullet.color : '#3b82f6';
+            this.ctx.strokeStyle = strokeColor;
             this.ctx.lineWidth = 2;
             this.ctx.stroke();
         });
@@ -1539,19 +1593,16 @@ class ShotTargetGame {
     
     // 대규모 경쟁 모드에서 표적 명중 처리
     handleMassTargetHit(target, targetIndex, playerId) {
-        console.log(`🎯 [대규모 경쟁] handleMassTargetHit 호출: targetIndex=${targetIndex}, playerId=${playerId}`);
-        
         const player = this.massPlayers.get(playerId);
         if (!player) {
-            console.log(`🎯 [대규모 경쟁] ❌ 플레이어를 찾을 수 없음: ${playerId}`);
+            console.warn(`🎯 [대규모 경쟁] ❌ 플레이어를 찾을 수 없음: ${playerId}`);
             return;
         }
-        
-        console.log(`🎯 [대규모 경쟁] ✅ 플레이어 찾음: ${player.name}, 표적 제거 시작`);
         
         // 점수 계산
         let points = target.points;
         player.combo++;
+        player.hits++;
         
         if (player.combo > 1) {
             const comboBonus = Math.min(player.combo - 1, 2); // 최대 3배까지
@@ -1559,28 +1610,39 @@ class ShotTargetGame {
         }
         
         player.score += Math.floor(points);
-        player.hits++;
         player.lastHitTime = Date.now();
         
-        // 정확도 계산 (간단히 hits 기준)
-        player.accuracy = Math.round((player.hits / (player.hits + 1)) * 100); // +1은 빗나감 추정
+        // 정확도 계산 (hits / (hits + misses))
+        // 간단한 추정: 매 10번의 센서 업데이트마다 1번의 miss로 가정
+        const estimatedMisses = Math.max(1, Math.floor(player.hits * 0.1));
+        player.accuracy = Math.round((player.hits / (player.hits + estimatedMisses)) * 100);
+        
+        // 총알 생성 (시각적 효과용)
+        const crosshairX = this.calculatePlayerCrosshairX(player);
+        const crosshairY = this.calculatePlayerCrosshairY(player);
+        
+        this.bullets.push({
+            x: crosshairX,
+            y: crosshairY,
+            targetX: target.x,
+            targetY: target.y,
+            speed: this.config.bulletSpeed,
+            target: target,
+            playerId: playerId,
+            color: player.color  // 플레이어별 총알 색상
+        });
         
         // 표적 제거
-        console.log(`🎯 [대규모 경쟁] 표적 제거 전: 총 표적 수 = ${this.targets.length}`);
         this.targets.splice(targetIndex, 1);
-        console.log(`🎯 [대규모 경쟁] 표적 제거 후: 총 표적 수 = ${this.targets.length}`);
         
-        // 타격 효과
+        // 타격 효과 (플레이어 색상으로)
         this.createHitEffect(target.x, target.y, points, player.color);
-        console.log(`🎯 [대규모 경쟁] 타격 효과 생성 완료`);
         
-        // 새 표적 생성
-        setTimeout(() => {
-            this.spawnTarget();
-            this.state.totalTargetsCreated++;
+        // 표적 생성 통계 업데이트
+        this.state.totalTargetsCreated++;
+        if (this.elements.totalTargetsCreated) {
             this.elements.totalTargetsCreated.textContent = this.state.totalTargetsCreated;
-            console.log(`🎯 [대규모 경쟁] 새 표적 생성됨`);
-        }, 500);
+        }
         
         // 리더보드 업데이트
         this.updateMassLeaderboard();
