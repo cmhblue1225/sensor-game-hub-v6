@@ -173,25 +173,55 @@
     </div>
 
     <!-- SessionSDK Integration -->
-    <script src="https://cdn.jsdelivr.net/npm/@sensor-game-hub/session-sdk@latest/dist/session-sdk.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/SessionSDK.js"></script>
     
-    <!-- Session State Management -->
-    <script src="session-state-manager.js"></script>
-    
-    <!-- Audio System -->
-    <script src="audio-manager.js"></script>
-    <script src="audio-integration.js"></script>
-    
-    <!-- Visual Effects System -->
-    <script src="visual-effects-system.js"></script>
-    
-    <!-- Hub Integration System -->
-    <script src="hub-compatibility-checker.js"></script>
-    <script src="hub-communication-interface.js"></script>
-    <script src="hub-session-integration.js"></script>
-    
-    <!-- Game Scripts -->
-    <script src="game-modes.js"></script>
-    <script src="js/game.js"></script>
+    <!-- Core Game Systems -->
+    <script>
+        // 안전한 모듈 로딩 시스템
+        function loadModuleSafely(src, callback) {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = () => {
+                console.log(`✅ ${src} 로드 완료`);
+                if (callback) callback();
+            };
+            script.onerror = () => {
+                console.warn(`⚠️ ${src} 로드 실패 - 계속 진행`);
+                if (callback) callback();
+            };
+            document.head.appendChild(script);
+        }
+        
+        // 필수 모듈들을 순차적으로 로드
+        const modules = [
+            'session-state-manager.js',
+            'audio-manager.js', 
+            'audio-integration.js',
+            'visual-effects-system.js',
+            'hub-compatibility-checker.js',
+            'hub-communication-interface.js',
+            'hub-session-integration.js',
+            'game-modes.js'
+        ];
+        
+        let moduleIndex = 0;
+        function loadNextModule() {
+            if (moduleIndex < modules.length) {
+                loadModuleSafely(modules[moduleIndex], () => {
+                    moduleIndex++;
+                    loadNextModule();
+                });
+            } else {
+                // 모든 모듈 로드 완료 후 메인 게임 로드
+                loadModuleSafely('js/game.js', () => {
+                    console.log('🎮 모든 게임 모듈 로드 완료');
+                });
+            }
+        }
+        
+        // 페이지 로드 완료 후 모듈 로딩 시작
+        document.addEventListener('DOMContentLoaded', loadNextModule);
+    </script>
 </body>
 </html>

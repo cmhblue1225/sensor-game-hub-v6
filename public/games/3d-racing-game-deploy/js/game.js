@@ -3075,7 +3075,13 @@ class CarPhysicsEngine {
         this.velocity = { x: 0, y: 0, z: 0 };
         this.speed = 0;
     }
-}tiveCurve * 1000, // Convert curve to world units
+    
+    /**
+     * Get world position for track segment
+     */
+    getWorldPosition(segment, segmentZ) {
+        return {
+            x: segment.curve * 1000, // Convert curve to world units
             y: segment.hill,
             z: segmentZ
         };
