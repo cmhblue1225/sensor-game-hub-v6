@@ -39,11 +39,23 @@
 4. **파일 재구성**: 정리된 코드로 파일 재생성
 5. **구문 검증**: Node.js로 JavaScript 구문 오류 확인
 
+## 추가 수정 사항 (2차 수정)
+
+### 6. 중복된 GameModeManager 클래스 선언
+- **위치**: game.js와 game-modes.js 파일 간 중복
+- **문제**: `GameModeManager` 클래스가 두 파일에서 중복 선언됨
+- **해결**: game.js 파일에서 중복 클래스 제거, game-modes.js의 것만 유지
+
+### 7. 중복된 AudioIntegration 클래스 선언
+- **위치**: game.js 파일 내 2번 중복 선언
+- **문제**: 동일한 클래스가 파일 내에서 중복 선언됨
+- **해결**: 두 번째 중복 클래스 제거
+
 ## 검증 결과
 
 ```bash
 $ node -c 3d-racing-game-deploy/js/game.js
-# 오류 없음 - 구문 검사 통과
+# 오류 없음 - 구문 검사 통과 ✅
 ```
 
 ## 배포 상태

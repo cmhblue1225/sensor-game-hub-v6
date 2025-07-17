@@ -6036,83 +6036,73 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /**
- * GameModeManager Class - 게임 모드 관리 및 승부 시스템
- * 다양한 게임 모드와 승부 조건을 관리합니다
+ * VictorySystem Class - 승리 조건 확인 및 결과 처리  
+ * 다양한 승리 조건을 확인하고 결과를 처리합니다
  */
-class GameModeManager {
+class VictorySystem {
     constructor() {
-        this.currentMode = null;
-        this.modeConfig = null;
-        this.tournamentState = null;
-        
-        // 게임 모드 정의
-        this.gameModes = {
-            quick: {
-                name: '빠른 경주',
-                description: '3랩 단일 경주',
-                laps: 3,
-                races: 1,
-                winCondition: 'first_to_finish',
-                timeLimit: null,
-                pointSystem: null
-            },
-            'best-of-3': {
-                name: '베스트 오브 3',
-                description: '3경주 중 2승 먼저 달성',
-                laps: 3,
-                races: 3,
-                winCondition: 'best_of_series',
-                timeLimit: null,
-                pointSystem: { win: 1, lose: 0 }
-            },
-            'time-attack': {
-                name: '타임 어택',
-                description: '제한 시간 내 최고 기록 도전',
-                laps: 999,
-                races: 1,
-                winCondition: 'best_time',
-                timeLimit: 300, // 5분
-                pointSystem: null
-            }
-        };
-        
-        console.log('GameModeManager initialized');
+        this.victoryConditions = new Map();
+        this.setupDefaultConditions();
+        console.log('VictorySystem initialized');
     }
     
     /**
-     * 게임 모드 선택
-     * @param {string} modeId - 게임 모드 ID
-     * @returns {boolean} 성공 여부
+     * 기본 승리 조건 설정
      */
-    selectGameMode(modeId) {
-        if (!this.gameModes[modeId]) {
-            console.error('Unknown game mode:', modeId);
-            return false;
+    setupDefaultConditions() {
+        // 첫 번째 완주자 승리
+        this.victoryConditions.set('first_to_finish', (players) => {
+            const finishedPlayers = players.filter(p => p.stats.isFinished);
+            if (finishedPlayers.length > 0) {
+                return finishedPlayers.sort((a, b) => a.stats.finishTime - b.stats.finishTime)[0];
+            }
+            return null;
+        });
+        
+        // 베스트 오브 시리즈
+        this.victoryConditions.set('best_of_series', (players, tournamentState) => {
+            const requiredWins = Math.ceil(tournamentState.totalRaces / 2);
+            const player1Wins = tournamentState.player1Wins;
+            const player2Wins = tournamentState.player2Wins;
+            
+            if (player1Wins >= requiredWins) return players[0];
+            if (player2Wins >= requiredWins) return players[1];
+            return null;
+        });
+        
+        // 최고 기록
+        this.victoryConditions.set('best_time', (players) => {
+            const playersWithTimes = players.filter(p => p.stats.bestLap !== null);
+            if (playersWithTimes.length === 0) return null;
+            
+            return playersWithTimes.sort((a, b) => a.stats.bestLap - b.stats.bestLap)[0];
+        });
+    }
+    
+    /**
+     * 승리 조건 확인
+     * @param {string} condition - 승리 조건 타입
+     * @param {Array} players - 플레이어 배열
+     * @param {Object} gameState - 게임 상태
+     * @returns {Object|null} 승리한 플레이어 또는 null
+     */
+    checkVictoryCondition(condition, players, gameState = {}) {
+        const victoryCheck = this.victoryConditions.get(condition);
+        if (!victoryCheck) {
+            console.warn('Unknown victory condition:', condition);
+            return null;
         }
         
-        this.currentMode = modeId;
-        this.modeConfig = { ...this.gameModes[modeId] };
-        this.initializeTournamentState();
-        
-        console.log('Game mode selected:', this.modeConfig.name);
-        return true;
+        return victoryCheck(players, gameState);
     }
     
     /**
-     * 토너먼트 상태 초기화
+     * 시스템 리셋
      */
-    initializeTournamentState() {
-        this.tournamentState = {
-            currentRace: 1,
-            totalRaces: this.modeConfig.races,
-            player1Wins: 0,
-            player2Wins: 0,
-            raceResults: [],
-            startTime: null,
-            endTime: null,
-            isComplete: false,
-            winner: null
-        };
+    reset() {
+        this.victoryConditions.clear();
+        this.setupDefaultConditions();
+        console.log('VictorySystem reset');
     }
     
     /**
@@ -6515,28 +6505,32 @@ class GameModeManager {
 }
 
 /**
- * VictorySystem Class - 승리 조건 확인 및 결과 처리
- * 다양한 승리 조건을 확인하고 결과를 처리합니다
+ * AudioIntegration Class - 게임과 AudioManager 통합
+ * 게임 이벤트에 따른 오디오 재생 관리
  */
-class VictorySystem {
-    constructor() {
-        this.victoryConditions = new Map();
-        this.setupDefaultConditions();
-        console.log('VictorySystem initialized');
+class AudioIntegration {
+    constructor(gameManager) {
+        this.gameManager = gameManager;
+        this.audioManager = null;
+        this.isEnabled = true;
+        this.lastEngineUpdate = { player1: 0, player2: 0 };
+        
+        this.initializeAudio();
+        this.setupGameEventListeners();
     }
     
-    /**
-     * 순위에 따른 포인트 계산
-     * @param {number} rank - 순위
-     * @returns {number} 포인트
-     */
-    calculatePoints(rank) {
-        if (!this.modeConfig.pointSystem) return 0;
-        
-        switch (rank) {
-            case 1: return this.modeConfig.pointSystem.win || 1;
-            case 2: return this.modeConfig.pointSystem.lose || 0;
-            default: return 0;
+    async initializeAudio() {
+        try {
+            // AudioManager 초기화
+            if (window.AudioManager) {
+                this.audioManager = new AudioManager();
+                await this.audioManager.initialize();
+                console.log('🎵 AudioIntegration 초기화 완료');
+            } else {
+                console.warn('⚠️ AudioManager 클래스를 찾을 수 없음');
+            }
+        } catch (error) {
+            console.error('❌ AudioIntegration 초기화 실패:', error);
         }
     }
     
@@ -6631,309 +6625,6 @@ class VictorySystem {
         console.log('GameModeManager reset');
     }
 }
-
-/**
- * AudioIntegration Class - 게임과 AudioManager 통합
- * 게임 이벤트에 따른 오디오 재생 관리
- */
-class AudioIntegration {
-    constructor(gameManager) {
-        this.gameManager = gameManager;
-        this.audioManager = null;
-        this.isEnabled = true;
-        this.lastEngineUpdate = { player1: 0, player2: 0 };
-        
-        this.initializeAudio();
-        this.setupGameEventListeners();
-    }
-    
-    async initializeAudio() {
-        try {
-            // AudioManager 초기화
-            if (typeof AudioManager !== 'undefined') {
-                this.audioManager = new AudioManager();
-                console.log('✅ AudioIntegration 초기화 완료');
-            } else {
-                console.warn('⚠️ AudioManager 클래스를 찾을 수 없습니다');
-                this.isEnabled = false;
-            }
-        } catch (error) {
-            console.error('❌ AudioIntegration 초기화 실패:', error);
-            this.isEnabled = false;
-        }
-    }
-    
-    setupGameEventListeners() {
-        if (!this.gameManager) return;
-        
-        // 게임 상태 변화 감지
-        this.gameManager.on('raceStart', () => this.onRaceStart());
-        this.gameManager.on('raceEnd', (data) => this.onRaceEnd(data));
-        this.gameManager.on('lapComplete', (data) => this.onLapComplete(data));
-        this.gameManager.on('collision', (data) => this.onCollision(data));
-        this.gameManager.on('offTrack', (data) => this.onOffTrack(data));
-        this.gameManager.on('countdown', (data) => this.onCountdown(data));
-    }
-    
-    // 게임 업데이트마다 호출되는 오디오 업데이트
-    updateAudio() {
-        if (!this.isEnabled || !this.audioManager || !this.gameManager.players) return;
-        
-        // 각 플레이어의 엔진 사운드 업데이트
-        Object.keys(this.gameManager.players).forEach(playerId => {
-            this.updatePlayerAudio(playerId);
-        });
-    }
-    
-    updatePlayerAudio(playerId) {
-        const player = this.gameManager.players[playerId];
-        if (!player || !player.car) return;
-        
-        const car = player.car;
-        const currentTime = Date.now();
-        
-        // 엔진 사운드 업데이트 (60fps에서 너무 자주 호출되지 않도록 제한)
-        if (currentTime - this.lastEngineUpdate[playerId] > 50) { // 20Hz 업데이트
-            this.updateEngineSound(playerId, car);
-            this.lastEngineUpdate[playerId] = currentTime;
-        }
-        
-        // 스키드 사운드 체크
-        this.checkSkidSound(playerId, car);
-    }
-    
-    updateEngineSound(playerId, car) {
-        if (!car.velocity === undefined) return;
-        
-        // 속도를 RPM으로 변환 (대략적인 계산)
-        const speed = Math.abs(car.velocity || 0);
-        const baseRPM = 800; // 아이들 RPM
-        const maxRPM = 3000;
-        const maxSpeed = 200; // 최대 속도 (km/h)
-        
-        // 속도에 따른 RPM 계산
-        const speedRatio = Math.min(speed / maxSpeed, 1.0);
-        const rpm = baseRPM + (maxRPM - baseRPM) * speedRatio;
-        
-        // 스로틀 입력에 따른 볼륨 조정
-        const throttleInput = this.getPlayerThrottleInput(playerId);
-        const volume = Math.max(0.3, Math.min(1.0, 0.5 + throttleInput * 0.5));
-        
-        // 엔진 사운드 업데이트
-        this.audioManager.updateEngineRPM(playerId, rpm, volume);
-    }
-    
-    checkSkidSound(playerId, car) {
-        if (!car.isSkidding) {
-            // 스키드 중이 아니면 스키드 사운드 중지
-            this.audioManager.stopSound(playerId, 'skid');
-            return;
-        }
-        
-        // 스키드 강도에 따른 볼륨 계산
-        const skidIntensity = Math.min(car.skidIntensity || 0.5, 1.0);
-        
-        // 스키드 사운드 재생 (이미 재생 중이면 볼륨만 조정)
-        this.audioManager.playSkidSound(playerId, skidIntensity);
-    }
-    
-    getPlayerThrottleInput(playerId) {
-        // 센서 입력에서 스로틀 값 가져오기
-        const sensorData = this.gameManager.getLastSensorData(playerId);
-        if (!sensorData || !sensorData.data || !sensorData.data.orientation) return 0;
-        
-        const beta = sensorData.data.orientation.beta || 0;
-        const throttle = Math.max(-1, Math.min(1, -beta / 30)); // -30도에서 30도 범위
-        
-        return Math.max(0, throttle); // 양수 스로틀만 반환
-    }
-    
-    // 게임 이벤트 핸들러들
-    onRaceStart() {
-        if (!this.isEnabled || !this.audioManager) return;
-        
-        console.log('🏁 레이스 시작 - 엔진 사운드 시작');
-        
-        // 각 플레이어의 엔진 사운드 시작
-        Object.keys(this.gameManager.players).forEach(playerId => {
-            this.audioManager.playEngineSound(playerId, 1000, 0.8);
-        });
-    }
-    
-    onRaceEnd(data) {
-        if (!this.isEnabled || !this.audioManager) return;
-        
-        console.log('🏆 레이스 종료 - 승리 사운드 재생');
-        
-        // 승리 사운드 재생
-        if (data.winner) {
-            this.audioManager.playVictorySound(data.winner);
-        }
-        
-        // 모든 엔진 사운드 서서히 중지
-        setTimeout(() => {
-            Object.keys(this.gameManager.players).forEach(playerId => {
-                this.audioManager.stopSound(playerId, 'engine');
-                this.audioManager.stopSound(playerId, 'skid');
-            });
-        }, 2000); // 승리 사운드 재생 후 2초 뒤
-    }
-    
-    onLapComplete(data) {
-        if (!this.isEnabled || !this.audioManager) return;
-        
-        console.log(`🏁 ${data.playerId} 랩 완주`);
-        
-        // 랩 완주 시 짧은 효과음 (카운트다운 사운드 재사용)
-        this.audioManager.playCountdownSound();
-    }
-    
-    onCollision(data) {
-        if (!this.isEnabled || !this.audioManager) return;
-        
-        console.log(`💥 ${data.playerId} 충돌 발생`);
-        
-        // 충돌 강도에 따른 사운드 재생
-        const intensity = Math.min(data.intensity || 1.0, 1.0);
-        this.audioManager.playCrashSound(data.playerId, intensity);
-    }
-    
-    onOffTrack(data) {
-        if (!this.isEnabled || !this.audioManager) return;
-        
-        console.log(`🌿 ${data.playerId} 트랙 이탈`);
-        
-        // 트랙 이탈 시 스키드 사운드 재생
-        this.audioManager.playSkidSound(data.playerId, 0.6);
-    }
-    
-    onCountdown(data) {
-        if (!this.isEnabled || !this.audioManager) return;
-        
-        console.log(`⏰ 카운트다운: ${data.count}`);
-        
-        // 카운트다운 사운드 재생
-        this.audioManager.playCountdownSound();
-    }
-    
-    // 오디오 설정 메서드들
-    setMasterVolume(volume) {
-        if (this.audioManager) {
-            this.audioManager.setMasterVolume(volume);
-        }
-    }
-    
-    setEngineVolume(volume) {
-        if (this.audioManager) {
-            this.audioManager.setEngineVolume(volume);
-        }
-    }
-    
-    setEffectVolume(volume) {
-        if (this.audioManager) {
-            this.audioManager.setEffectVolume(volume);
-        }
-    }
-    
-    // 오디오 시스템 활성화/비활성화
-    enable() {
-        this.isEnabled = true;
-        console.log('🔊 오디오 시스템 활성화');
-    }
-    
-    disable() {
-        this.isEnabled = false;
-        if (this.audioManager) {
-            // 모든 사운드 중지
-            Object.keys(this.gameManager.players).forEach(playerId => {
-                this.audioManager.stopAllSounds(playerId);
-            });
-        }
-        console.log('🔇 오디오 시스템 비활성화');
-    }
-    
-    // 리소스 정리
-    cleanup() {
-        if (this.audioManager) {
-            this.audioManager.cleanup();
-        }
-        console.log('🧹 AudioIntegration 정리 완료');
-    }
-    
-    // 디버그 정보
-    getDebugInfo() {
-        return {
-            isEnabled: this.isEnabled,
-            audioManagerInitialized: !!this.audioManager,
-            audioManagerDebug: this.audioManager ? this.audioManager.getDebugInfo() : null
-        };
-    }
-}
-
-// 기존 RacingGameController에 오디오 통합 추가
-if (typeof RacingGameController !== 'undefined') {
-    // RacingGameController 프로토타입에 오디오 관련 메서드 추가
-    RacingGameController.prototype.initializeAudio = function() {
-        this.audioIntegration = new AudioIntegration(this);
-    };
-    
-    RacingGameController.prototype.updateAudio = function() {
-        if (this.audioIntegration) {
-            this.audioIntegration.updateAudio();
-        }
-    };
-    
-    RacingGameController.prototype.setAudioVolume = function(type, volume) {
-        if (!this.audioIntegration) return;
-        
-        switch (type) {
-            case 'master':
-                this.audioIntegration.setMasterVolume(volume);
-                break;
-            case 'engine':
-                this.audioIntegration.setEngineVolume(volume);
-                break;
-            case 'effect':
-                this.audioIntegration.setEffectVolume(volume);
-                break;
-        }
-    };
-    
-    RacingGameController.prototype.enableAudio = function() {
-        if (this.audioIntegration) {
-            this.audioIntegration.enable();
-        }
-    };
-    
-    RacingGameController.prototype.disableAudio = function() {
-        if (this.audioIntegration) {
-            this.audioIntegration.disable();
-        }
-    };
-    
-    // 기존 cleanup 메서드에 오디오 정리 추가
-    const originalCleanup = RacingGameController.prototype.cleanup;
-    RacingGameController.prototype.cleanup = function() {
-        if (this.audioIntegration) {
-            this.audioIntegration.cleanup();
-        }
-        if (originalCleanup) {
-            originalCleanup.call(this);
-        }
-    };
-    
-    // 기존 update 메서드에 오디오 업데이트 추가
-    const originalUpdate = RacingGameController.prototype.update;
-    RacingGameController.prototype.update = function(deltaTime) {
-        if (originalUpdate) {
-            originalUpdate.call(this, deltaTime);
-        }
-        this.updateAudio();
-    };
-}
-
-// 전역 AudioIntegration 클래스 노출
-window.AudioIntegration = AudioIntegration;
 
 /**
  * VisualEffectsIntegration Class - Integrates visual effects system with the main game
