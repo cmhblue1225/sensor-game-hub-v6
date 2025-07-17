@@ -386,20 +386,11 @@
     <!-- QR Code Generator (폴백 처리 포함) -->
     <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
     
-    <!-- Three.js (기존 방식 유지 - 경고 무시) -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+    <!-- Three.js (로컬 라이브러리) -->
+    <script src="libs/three.min.js"></script>
     
-    <!-- Cannon.js 물리 엔진 (안정적인 버전) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.20.0/cannon.min.js"></script>
-    <script>
-        // CANNON.js 로드 확인
-        if (typeof CANNON === 'undefined') {
-            console.warn('⚠️ CANNON.js 메인 CDN 로드 실패, 폴백 CDN 시도...');
-            const fallbackScript = document.createElement('script');
-            fallbackScript.src = 'https://unpkg.com/cannon@0.20.0/build/cannon.min.js';
-            document.head.appendChild(fallbackScript);
-        }
-    </script>
+    <!-- Cannon.js 물리 엔진 (로컬 라이브러리) -->
+    <script src="libs/cannon.min.js"></script>
     
     <!-- SessionSDK -->
     <script src="/js/SessionSDK.js"></script>
@@ -3411,55 +3402,24 @@
             }
         }
         
-        // 게임 초기화 상태 추적
-        let gameInitialized = false;
-        let retryCount = 0;
-        const maxRetries = 5;
-        
-        // 게임 시작 (라이브러리 로드 체크 포함)
+        // 게임 초기화 (로컬 라이브러리 사용으로 단순화)
         function initializeGame() {
-            if (gameInitialized) {
-                console.log('🎮 게임이 이미 초기화되었습니다.');
-                return;
-            }
-            
-            if (retryCount >= maxRetries) {
-                console.error('❌ 최대 재시도 횟수 초과. 게임 초기화를 중단합니다.');
-                alert('게임 로드에 실패했습니다. 페이지를 새로고침해주세요.');
-                return;
-            }
-            
             try {
-                console.log(`🎮 게임 초기화 시작 (시도 ${retryCount + 1}/${maxRetries})`);
-                
-                // 라이브러리 로드 확인
-                if (typeof THREE === 'undefined') {
-                    throw new Error('THREE.js 라이브러리가 로드되지 않았습니다.');
-                }
-                if (typeof CANNON === 'undefined') {
-                    throw new Error('CANNON.js 라이브러리가 로드되지 않았습니다.');
-                }
+                console.log('🎮 게임 초기화 시작');
+                console.log('📦 Three.js 로드 상태:', typeof THREE !== 'undefined' ? '✅' : '❌');
+                console.log('📦 CANNON.js 로드 상태:', typeof CANNON !== 'undefined' ? '✅' : '❌');
                 
                 const game = new RacingGame();
-                gameInitialized = true;
                 console.log('✅ 게임 초기화 성공');
                 
             } catch (error) {
                 console.error('❌ 게임 초기화 실패:', error);
-                retryCount++;
-                
-                if (retryCount < maxRetries) {
-                    console.log(`⏳ ${2000}ms 후 재시도...`);
-                    setTimeout(initializeGame, 2000);
-                }
+                alert('게임 로드에 실패했습니다. 페이지를 새로고침해주세요.');
             }
         }
         
         // 페이지 로드 완료 후 게임 시작
-        window.addEventListener('load', function() {
-            // 라이브러리 로드를 위한 추가 대기
-            setTimeout(initializeGame, 1000);
-        });
+        window.addEventListener('load', initializeGame);
     </script>
 </body>
 </html>
