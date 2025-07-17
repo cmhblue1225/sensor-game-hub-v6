@@ -244,7 +244,7 @@ body {
 }
 
 /* 대규모 경쟁 모드에서는 오른쪽 아래에 세로 배치 */
-.control-panel {
+.control-panel.mass-competitive-mode {
     bottom: 1rem;
     right: 1rem;
     left: auto;
@@ -257,7 +257,7 @@ body {
 }
 
 /* 대규모 경쟁 모드에서는 세로 배치 */
-.control-panel .btn-group {
+.control-panel.mass-competitive-mode .btn-group {
     flex-direction: column;
     gap: 0.5rem;
 }
