@@ -386,7 +386,7 @@
     <!-- QR Code Generator (폴백 처리 포함) -->
     <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
     
-    <!-- Three.js (더 안정적인 CDN) -->
+    <!-- Three.js (기존 방식 유지 - 경고 무시) -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     
     <!-- Cannon.js 물리 엔진 -->
@@ -3402,23 +3402,20 @@
             }
         }
         
-        // 라이브러리 로드 대기 후 게임 시작
-        function waitForLibraries() {
-            if (typeof THREE !== 'undefined' && typeof CANNON !== 'undefined') {
-                console.log('✅ 모든 라이브러리 로드 완료');
+        // 게임 시작 (라이브러리 로드 체크 포함)
+        function initializeGame() {
+            try {
+                console.log('🎮 게임 초기화 시작');
                 const game = new RacingGame();
-            } else {
-                console.log('📦 라이브러리 로드 대기 중...');
-                setTimeout(waitForLibraries, 100);
+            } catch (error) {
+                console.error('❌ 게임 초기화 실패:', error);
+                // 잠깐 기다린 후 재시도
+                setTimeout(initializeGame, 500);
             }
         }
         
-        // 페이지 로드 후 게임 시작
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', waitForLibraries);
-        } else {
-            waitForLibraries();
-        }
+        // 페이지 로드 완료 후 게임 시작
+        window.addEventListener('load', initializeGame);
     </script>
 </body>
 </html>
