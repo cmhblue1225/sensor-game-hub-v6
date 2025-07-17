@@ -451,7 +451,7 @@
                 
                 // 케이크 선택 버튼들
                 this.selectedCakeType = 'random'; // 기본값은 랜덤
-                const cakeButtons = document.querySelectorAll('.cake-selection button');
+                const cakeButtons = document.querySelectorAll('.cake-btn');
                 cakeButtons.forEach(button => {
                     button.onclick = () => this.selectCakeType(button.dataset.cake);
                 });
@@ -573,7 +573,7 @@
                     this.selectedCakeType = cakeType;
                     
                     // 케이크 버튼 활성화 상태 업데이트
-                    const cakeButtons = document.querySelectorAll('.cake-selection button');
+                    const cakeButtons = document.querySelectorAll('.cake-btn');
                     cakeButtons.forEach(button => {
                         button.classList.remove('active');
                     });
