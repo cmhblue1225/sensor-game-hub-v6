@@ -233,6 +233,16 @@
                 this.players = {};
                 this.cake = {};
                 this.cakeType = 'basic'; // basic, strawberry, chocolate, wedding, ice, bomb
+                
+                // 타이머 관리를 위한 배열
+                this.activeTimeouts = [];
+                this.activeIntervals = [];
+                
+                // 이벤트 리스너 정리를 위한 참조 저장
+                this.boundEventListeners = {
+                    resize: () => this.onWindowResize(),
+                    beforeunload: () => this.cleanup()
+                };
                 // 밸런스 조정된 케이크 설정
                 this.cakeConfig = {
                     basic: { 
@@ -585,7 +595,7 @@
                         
                         // 버튼 클릭 피드백
                         selectedButton.style.transform = 'scale(0.95)';
-                        setTimeout(() => {
+                        this.safeSetTimeout(() => {
                             selectedButton.style.transform = '';
                         }, 100);
                     }
@@ -623,16 +633,29 @@
             
             showStatusMessage(message, duration = 3000) {
                 const messageElement = document.getElementById('messageBox');
-                if (!messageElement) return;
+                if (!messageElement) {
+                    console.warn('⚠️ messageBox 요소를 찾을 수 없음');
+                    return;
+                }
                 
+                // 안전한 메시지 설정 (XSS 방지)
+                if (typeof message !== 'string') {
+                    message = String(message);
+                }
                 messageElement.textContent = message;
                 messageElement.style.display = 'flex';
                 messageElement.style.opacity = '0.8';
                 
-                setTimeout(() => {
+                // 이전 타이머가 있다면 정리
+                if (this.statusMessageTimer) {
+                    clearTimeout(this.statusMessageTimer);
+                }
+                
+                this.statusMessageTimer = this.safeSetTimeout(() => {
                     messageElement.style.opacity = '0';
-                    setTimeout(() => {
+                    this.safeSetTimeout(() => {
                         messageElement.style.display = 'none';
+                        this.statusMessageTimer = null;
                     }, 300);
                 }, duration);
             }
@@ -898,7 +921,7 @@
                 this.sdk.on('game-ready', () => {
                     this.gameState = 'ready';
                     this.messageBox.textContent = '3초 후 시작!';
-                    setTimeout(() => {
+                    this.safeSetTimeout(() => {
                         this.sdk.startGame();
                         this.gameState = 'playing';
                         this.messageBox.style.display = 'none';
@@ -912,7 +935,9 @@
                     }
                 });
 
-                window.addEventListener('resize', () => this.onWindowResize(), false);
+                // 이벤트 리스너 등록 (메모리 누수 방지를 위해 참조 저장)
+                window.addEventListener('resize', this.boundEventListeners.resize, false);
+                window.addEventListener('beforeunload', this.boundEventListeners.beforeunload, false);
             }
 
             displaySessionInfo(session) {
@@ -934,6 +959,62 @@
                     img.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(qrUrl)}`;
                     qrContainer.appendChild(img);
                 }
+            }
+            
+            // 안전한 타이머 관리 함수들
+            safeSetTimeout(callback, delay) {
+                const timeoutId = setTimeout(() => {
+                    callback();
+                    // 완료된 타이머는 배열에서 제거
+                    this.activeTimeouts = this.activeTimeouts.filter(id => id !== timeoutId);
+                }, delay);
+                this.activeTimeouts.push(timeoutId);
+                return timeoutId;
+            }
+            
+            safeSetInterval(callback, delay) {
+                const intervalId = setInterval(callback, delay);
+                this.activeIntervals.push(intervalId);
+                return intervalId;
+            }
+            
+            clearAllTimers() {
+                // 모든 활성 타이머 정리
+                this.activeTimeouts.forEach(id => clearTimeout(id));
+                this.activeIntervals.forEach(id => clearInterval(id));
+                this.activeTimeouts = [];
+                this.activeIntervals = [];
+                console.log('🧹 모든 타이머 정리 완료');
+            }
+            
+            // 메모리 정리 함수
+            cleanup() {
+                console.log('🧹 게임 리소스 정리 시작');
+                
+                // 타이머 정리
+                this.clearAllTimers();
+                
+                // 이벤트 리스너 정리
+                if (this.boundEventListeners) {
+                    window.removeEventListener('resize', this.boundEventListeners.resize, false);
+                    window.removeEventListener('beforeunload', this.boundEventListeners.beforeunload, false);
+                }
+                
+                // 3D 리소스 정리
+                if (this.scene) {
+                    this.scene.clear();
+                }
+                
+                if (this.renderer) {
+                    this.renderer.dispose();
+                }
+                
+                // 객체 참조 정리
+                this.players = {};
+                this.cake = {};
+                this.obstacles = [];
+                
+                console.log('🧹 게임 리소스 정리 완료');
             }
             
             // 센서ID에서 플레이어 번호 추출 (고정 순서를 위해)
@@ -1140,7 +1221,7 @@
                     this.messageBox.textContent = `👥 4인 협동 모드 - ${statusText}`;
                 } else if (playerCount === 4 && this.gameState === 'waiting' && this.cake.mesh) {
                     this.setGameState('ready', '4명 모두 연결됨! 게임 시작!');
-                    setTimeout(() => {
+                    this.safeSetTimeout(() => {
                         this.setGameState('playing', '');
                     }, 3000);
                 }
@@ -1323,6 +1404,9 @@
             updateCakeInfo() {
                 const cakeInfoDiv = document.getElementById('cakeInfo');
                 if (!cakeInfoDiv || !this.currentCakeType || !this.cakePhysics) return;
+                
+                // 성능 최적화: 게임이 플레이 중일 때만 업데이트
+                if (this.gameState !== 'playing') return;
                 
                 const config = this.cakeConfig[this.currentCakeType];
                 const cakeNames = {
@@ -1763,12 +1847,31 @@
                     return;
                 }
 
+                // 센서 데이터 검증 강화
+                if (!orientation || typeof orientation !== 'object') {
+                    console.warn(`⚠️ 잘못된 센서 데이터: ${sensorId}`, orientation);
+                    return;
+                }
+
                 const config = this.levelConfig[this.level];
-                const sensitivity = 0.02; // 민감도 증가
+                const sensitivity = 0.02;
                 const maxSpeed = 0.2;
 
-                let moveX = (orientation.gamma || 0) * sensitivity;
-                let moveZ = (orientation.beta || 0) * sensitivity;
+                // NaN 및 무한값 필터링
+                const gamma = (orientation.gamma || 0);
+                const beta = (orientation.beta || 0);
+                
+                if (!isFinite(gamma) || !isFinite(beta)) {
+                    console.warn(`⚠️ 유효하지 않은 센서 값: gamma=${gamma}, beta=${beta}`);
+                    return;
+                }
+
+                // 극값 제한 (-180 ~ 180도)
+                const clampedGamma = THREE.MathUtils.clamp(gamma, -180, 180);
+                const clampedBeta = THREE.MathUtils.clamp(beta, -180, 180);
+
+                let moveX = clampedGamma * sensitivity;
+                let moveZ = clampedBeta * sensitivity;
 
                 moveX = THREE.MathUtils.clamp(moveX, -maxSpeed, maxSpeed);
                 moveZ = THREE.MathUtils.clamp(moveZ, -maxSpeed, maxSpeed);
@@ -1985,7 +2088,7 @@
                         if (this.level < this.maxLevel) {
                             this.setGameState('level_clear', `레벨 ${this.level} 클리어! ⭐${this.stars}/3`);
                             this.level++;
-                            setTimeout(() => this.resetGame(true), 2000);
+                            this.safeSetTimeout(() => this.resetGame(true), 2000);
                         } else {
                             this.setGameState('success', `최종 배달 성공! ⭐${this.stars}/3`);
                         }
@@ -1996,7 +2099,7 @@
                         this.infiniteLevel++;
                         this.currentScore += this.infiniteLevel * 100; // 레벨당 보너스 증가
                         this.setGameState('level_clear', `무한 배달 ${this.consecutiveDeliveries}회 성공!`);
-                        setTimeout(() => this.resetGame(true), 2000);
+                        this.safeSetTimeout(() => this.resetGame(true), 2000);
                         console.log(`♾️ 무한 모드: ${this.consecutiveDeliveries}회 연속 배달`);
                         break;
                         
@@ -2160,6 +2263,9 @@
             }
 
             resetGame(isLevelUp = false) {
+                // 모든 활성 타이머 정리
+                this.clearAllTimers();
+                
                 if (!isLevelUp && Object.keys(this.players).length < 2) {
                     window.location.reload();
                     return;
@@ -2191,7 +2297,7 @@
                 this.messageBox.textContent = isLevelUp ? `레벨 ${this.level} 시작!` : '3초 후 다시 시작!';
                 this.messageBox.style.display = 'flex';
 
-                setTimeout(() => {
+                this.safeSetTimeout(() => {
                     this.setGameState('playing', '');
                     this.messageBox.style.display = 'none';
                 }, 3000);
@@ -2389,7 +2495,24 @@
             updateCakePhysics(deltaTime) {
                 if (!this.cake.mesh || !this.currentCakeType || !this.cakePhysics) return;
                 
+                // deltaTime 검증 및 제한 (프레임 안정성)
+                if (!isFinite(deltaTime) || deltaTime > 0.1) {
+                    console.warn(`⚠️ 비정상적인 deltaTime: ${deltaTime}, 건너뜀`);
+                    return;
+                }
+                
                 const config = this.cakeConfig[this.currentCakeType];
+                if (!config) {
+                    console.warn(`⚠️ 알 수 없는 케이크 타입: ${this.currentCakeType}`);
+                    return;
+                }
+                
+                // 케이크 물리 상태 검증
+                if (!this.validateCakePhysics()) {
+                    console.warn('⚠️ 케이크 물리 상태 비정상, 초기화');
+                    this.initializeCakePhysics(config);
+                    return;
+                }
                 
                 // 케이크 타입별 특수 효과
                 this.applyCakeSpecialEffects(deltaTime, config);
@@ -2402,6 +2525,34 @@
                     this.updateCakeInfo();
                     this.lastUIUpdate = Date.now();
                 }
+            }
+            
+            // 케이크 물리 상태 검증
+            validateCakePhysics() {
+                if (!this.cakePhysics) return false;
+                
+                // 필수 속성 존재 확인
+                const requiredProps = ['instability', 'temperature', 'velocity', 'angularVelocity', 'elasticity', 'viscosity'];
+                for (const prop of requiredProps) {
+                    if (this.cakePhysics[prop] === undefined || this.cakePhysics[prop] === null) {
+                        return false;
+                    }
+                }
+                
+                // 수치 값 검증
+                const numericProps = ['instability', 'temperature', 'elasticity', 'viscosity'];
+                for (const prop of numericProps) {
+                    if (!isFinite(this.cakePhysics[prop])) {
+                        return false;
+                    }
+                }
+                
+                // Vector3 검증
+                if (!this.cakePhysics.velocity.isVector3 || !this.cakePhysics.angularVelocity.isVector3) {
+                    return false;
+                }
+                
+                return true;
             }
             
             applyCakeSpecialEffects(deltaTime, config) {
