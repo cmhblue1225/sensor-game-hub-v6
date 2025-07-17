@@ -41,22 +41,82 @@
             font-size: 3em; font-weight: bold; color: white; backdrop-filter: blur(10px);
             border: 2px solid var(--primary);
         }
-        .controls {
-            position: absolute; bottom: 20px; right: 20px; display: flex; gap: 10px; pointer-events: auto;
+        /* 게임 설정 패널 - 왼쪽 하단으로 이동 */
+        .game-settings-panel {
+            position: absolute; bottom: 20px; left: 20px; 
+            background: rgba(30, 41, 59, 0.9); 
+            padding: 15px; border-radius: 12px; backdrop-filter: blur(10px);
+            display: flex; flex-direction: column; gap: 12px; pointer-events: auto;
+            max-width: 280px; border: 1px solid rgba(59, 130, 246, 0.3);
         }
-        .controls button, .controls a {
-            padding: 12px 20px; background-color: var(--primary); color: white; border: none;
-            border-radius: 8px; font-size: 16px; font-weight: bold; text-decoration: none; cursor: pointer;
-            transition: background-color 0.2s;
+        
+        .settings-section {
+            display: flex; flex-direction: column; gap: 8px;
         }
-        .controls button:hover, .controls a:hover { background-color: #2563eb; }
+        
+        .settings-title {
+            font-size: 14px; font-weight: bold; color: var(--primary);
+            border-bottom: 1px solid rgba(59, 130, 246, 0.3);
+            padding-bottom: 4px; margin-bottom: 4px;
+        }
+
+        /* 게임 모드 버튼들을 2열로 배치 */
+        .mode-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+        }
+        
+        /* 케이크 버튼들을 3열로 배치 */
+        .cake-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+        }
+
+        /* 우측 하단 컨트롤 (재시작, 허브) */
+        .main-controls {
+            position: absolute; bottom: 20px; right: 20px; 
+            display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
+        }
+        
+        .main-controls button, .main-controls a {
+            padding: 10px 16px; background-color: var(--primary); color: white; border: none;
+            border-radius: 8px; font-size: 14px; font-weight: bold; text-decoration: none; cursor: pointer;
+            transition: all 0.2s; text-align: center; min-width: 100px;
+        }
+        .main-controls button:hover, .main-controls a:hover { 
+            background-color: #2563eb; transform: translateY(-1px); 
+        }
+
+        /* 모드 버튼 스타일 개선 */
         .mode-btn {
-            padding: 8px 16px; background-color: var(--surface); color: var(--text-secondary); border: 1px solid var(--primary);
-            border-radius: 6px; font-size: 14px; cursor: pointer; transition: all 0.2s;
-            position: relative; overflow: hidden;
+            padding: 8px 12px; background-color: var(--surface); color: var(--text-secondary); 
+            border: 1px solid rgba(59, 130, 246, 0.3); border-radius: 6px; 
+            font-size: 12px; cursor: pointer; transition: all 0.2s;
+            position: relative; overflow: hidden; text-align: center;
+            white-space: nowrap; min-height: 36px; display: flex; align-items: center; justify-content: center;
         }
-        .mode-btn:hover { background-color: var(--primary); color: white; transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
-        .mode-btn.active { background-color: var(--primary); color: white; font-weight: bold; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+        .mode-btn:hover { 
+            background-color: var(--primary); color: white; 
+            transform: translateY(-1px); box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4); 
+        }
+        .mode-btn.active { 
+            background-color: var(--primary); color: white; font-weight: bold; 
+            box-shadow: 0 0 10px rgba(59, 130, 246, 0.6); border-color: var(--primary);
+        }
+
+        /* 케이크 버튼 스타일 */
+        .cake-btn {
+            padding: 6px 8px; background-color: var(--surface); color: var(--text-secondary); 
+            border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 5px; 
+            font-size: 11px; cursor: pointer; transition: all 0.2s;
+            text-align: center; min-height: 32px; display: flex; align-items: center; justify-content: center;
+        }
+        .cake-btn:hover { 
+            background-color: var(--secondary); color: white; 
+            transform: translateY(-1px); box-shadow: 0 2px 6px rgba(139, 92, 246, 0.4); 
+        }
+        .cake-btn.active { 
+            background-color: var(--secondary); color: white; font-weight: bold; 
+            box-shadow: 0 0 8px rgba(139, 92, 246, 0.6); border-color: var(--secondary);
+        }
         .mode-btn:active { transform: translateY(0); }
         .mode-btn::before {
             content: '';
@@ -116,29 +176,38 @@
                 <div id="player2Status" class="player-status disconnected">P2</div>
             </div>
         </div>
-        <div class="controls">
-            <button id="resetButton" style="display: none;">🔄 재시작</button>
-            <div class="mode-selector" style="display: flex; flex-direction: column; gap: 5px; margin-bottom: 10px;">
-                <button id="normalMode" class="mode-btn active">🎯 일반 모드</button>
-                <button id="infiniteMode" class="mode-btn">♾️ 무한 모드</button>
-                <button id="timeAttackMode" class="mode-btn">⏱️ 타임 어택</button>
-                <button id="challengeMode" class="mode-btn">🔥 챌린지</button>
-                <button id="relayMode" class="mode-btn">🏃 릴레이</button>
-                <button id="speedrunMode" class="mode-btn">⚡ 스피드런</button>
-                <button id="coop4Mode" class="mode-btn">👥 4인 협동 (센서4개)</button>
-            </div>
-            <div class="cake-selection" style="margin-bottom: 10px;">
-                <div style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 5px;">🎂 케이크 종류:</div>
-                <div style="display: flex; gap: 4px; flex-wrap: wrap;">
-                    <button id="basicCake" class="mode-btn" style="font-size: 0.8em; padding: 4px 8px;" data-cake="basic">🎂 기본</button>
-                    <button id="strawberryCake" class="mode-btn" style="font-size: 0.8em; padding: 4px 8px;" data-cake="strawberry">🍓 딸기</button>
-                    <button id="chocolateCake" class="mode-btn" style="font-size: 0.8em; padding: 4px 8px;" data-cake="chocolate">🍫 초콜릿</button>
-                    <button id="weddingCake" class="mode-btn" style="font-size: 0.8em; padding: 4px 8px;" data-cake="wedding">👰 웨딩</button>
-                    <button id="iceCake" class="mode-btn" style="font-size: 0.8em; padding: 4px 8px;" data-cake="ice">🍨 아이스</button>
-                    <button id="bombCake" class="mode-btn" style="font-size: 0.8em; padding: 4px 8px;" data-cake="bomb">💣 폭탄</button>
-                    <button id="randomCake" class="mode-btn active" style="font-size: 0.8em; padding: 4px 8px;" data-cake="random">🎲 랜덤</button>
+        <!-- 게임 설정 패널 (왼쪽 하단) -->
+        <div class="game-settings-panel">
+            <div class="settings-section">
+                <div class="settings-title">🎮 게임 모드</div>
+                <div class="mode-grid">
+                    <button id="normalMode" class="mode-btn active">🎯 일반</button>
+                    <button id="infiniteMode" class="mode-btn">♾️ 무한</button>
+                    <button id="timeAttackMode" class="mode-btn">⏱️ 타임어택</button>
+                    <button id="challengeMode" class="mode-btn">🔥 챌린지</button>
+                    <button id="relayMode" class="mode-btn">🏃 릴레이</button>
+                    <button id="speedrunMode" class="mode-btn">⚡ 스피드런</button>
                 </div>
+                <button id="coop4Mode" class="mode-btn" style="grid-column: 1 / -1;">👥 4인 협동 (센서4개)</button>
             </div>
+            
+            <div class="settings-section">
+                <div class="settings-title">🎂 케이크 종류</div>
+                <div class="cake-grid">
+                    <button id="basicCake" class="cake-btn" data-cake="basic">🎂 기본</button>
+                    <button id="strawberryCake" class="cake-btn" data-cake="strawberry">🍓 딸기</button>
+                    <button id="chocolateCake" class="cake-btn" data-cake="chocolate">🍫 초콜릿</button>
+                    <button id="weddingCake" class="cake-btn" data-cake="wedding">👰 웨딩</button>
+                    <button id="iceCake" class="cake-btn" data-cake="ice">🍨 아이스</button>
+                    <button id="bombCake" class="cake-btn" data-cake="bomb">💣 폭탄</button>
+                </div>
+                <button id="randomCake" class="cake-btn active" data-cake="random" style="grid-column: 1 / -1; margin-top: 4px;">🎲 랜덤 선택</button>
+            </div>
+        </div>
+
+        <!-- 메인 컨트롤 (오른쪽 하단) -->
+        <div class="main-controls">
+            <button id="resetButton" style="display: none;">🔄 재시작</button>
             <a href="/">🏠 허브로</a>
         </div>
     </div>
