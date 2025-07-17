@@ -57,6 +57,10 @@ class ShotTargetGame {
         
         // 대규모 경쟁 모드 전용 조준점 설정
         this.massCompetitiveCrosshair = {
+            x: 0,
+            y: 0,
+            targetX: 0,
+            targetY: 0,
             smoothing: 0.25  // ✅ 대규모 경쟁 모드 전용: 더 반응적인 움직임
         };
         
