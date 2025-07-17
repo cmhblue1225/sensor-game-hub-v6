@@ -52,7 +52,7 @@ class ShotTargetGame {
             y: 0,
             targetX: 0,
             targetY: 0,
-            smoothing: 0.1  // 부드러운 움직임을 위한 보간
+            smoothing: 0.2  // ✅ 대규모 경쟁 모드에서 더 부드러운 움직임을 위해 증가
         };
         
         // dual 모드용 두 번째 조준점
@@ -858,27 +858,37 @@ class ShotTargetGame {
     
     tryShoot() {
         if (this.gameMode === 'mass-competitive') {
+            // ✅ 디버깅: 대규모 경쟁 모드에서 tryShoot 실행 상태 확인
+            if (Date.now() % 3000 < 50) { // 3초마다 로그
+                console.log(`🎯 [대규모 경쟁] tryShoot 실행 - 게임상태: playing=${this.state.playing}, paused=${this.state.paused}, myPlayerId=${this.state.myPlayerId}`);
+            }
+            
             // ✅ 대규모 경쟁 모드: 내 플레이어 조준점만 체크 (성능 최적화)
             if (this.state.myPlayerId && this.massPlayers.has(this.state.myPlayerId)) {
                 const myPlayer = this.massPlayers.get(this.state.myPlayerId);
                 if (myPlayer && myPlayer.isActive) {
+                    // ✅ 디버깅: 조준점과 표적 상태 확인
+                    if (Date.now() % 2000 < 50) { // 2초마다 로그
+                        console.log(`🎯 [대규모 경쟁] 조준점 위치: (${this.crosshair.x.toFixed(1)}, ${this.crosshair.y.toFixed(1)}), 표적 수: ${this.targets.length}`);
+                    }
+                    
                     for (let i = 0; i < this.targets.length; i++) {
                         const target = this.targets[i];
                         const dx = this.crosshair.x - target.x;
                         const dy = this.crosshair.y - target.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         
-                        // ✅ 대규모 경쟁 모드에서는 더 큰 히트 반경 사용 (표적 반지름의 80%)
-                        const hitRadius = target.radius * 0.8;
+                        // ✅ 대규모 경쟁 모드에서는 더 큰 히트 반경 사용 (표적 반지름과 동일)
+                        const hitRadius = target.radius; // 표적 전체 반지름을 히트 반경으로 사용
                         
-                        // ✅ 디버깅: 조준점과 표적 거리 로깅
-                        if (distance <= target.radius) { // 표적 근처에 있을 때만 로그
-                            console.log(`🎯 조준점-표적 거리: ${distance.toFixed(1)}px, 히트반경: ${hitRadius.toFixed(1)}px, 표적반지름: ${target.radius}px`);
+                        // ✅ 디버깅: 모든 표적에 대해 거리 로깅 (가장 가까운 것 확인)
+                        if (distance <= target.radius * 1.5) { // 표적 근처에 있을 때 로그
+                            console.log(`🎯 [대규모 경쟁] 표적 ${i}: 거리=${distance.toFixed(1)}px, 히트반경=${hitRadius.toFixed(1)}px, 표적위치=(${target.x.toFixed(1)}, ${target.y.toFixed(1)})`);
                         }
                         
                         // 내 조준점이 표적의 히트존 내에 있으면 자동 발사
                         if (distance <= hitRadius) {
-                            console.log(`🎯 표적 명중! 거리: ${distance.toFixed(1)}px`);
+                            console.log(`🎯 [대규모 경쟁] 표적 명중! 거리: ${distance.toFixed(1)}px, 히트반경: ${hitRadius.toFixed(1)}px`);
                             this.handleMassTargetHit(target, i, this.state.myPlayerId);
                             return;
                         }
