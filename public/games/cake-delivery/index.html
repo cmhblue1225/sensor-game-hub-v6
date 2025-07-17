@@ -589,7 +589,7 @@
                         }, 100);
                     }
                     
-                    console.log(`케이크 타입 선택: ${cakeType}`);
+                    console.log(`🎂 케이크 타입 선택: ${cakeType} (재시작 시 반영됩니다)`);
                     
                     // 케이크 정보 미리보기 표시
                     this.showCakePreview(cakeType);
@@ -1865,10 +1865,13 @@
                 if (this.players['sensor1']) this.players['sensor1'].mesh.position.set(-2, 0, 0);
                 if (this.players['sensor2']) this.players['sensor2'].mesh.position.set(2, 0, 0);
 
+                // 기존 케이크 제거하고 선택된 타입으로 새로 생성
                 if (this.cake.mesh) {
-                    this.cake.mesh.position.set(0, 0, 0);
-                    this.cake.mesh.rotation.set(0, 0, 0);
+                    this.scene.remove(this.cake.mesh);
+                    this.cake.mesh = null;
                 }
+                this.createCake(); // 선택된 케이크 타입으로 새로 생성
+                console.log(`🎂 케이크 재생성: ${this.currentCakeType}`);
 
                 this.resetButton.style.display = 'none';
                 this.gameState = 'ready';
