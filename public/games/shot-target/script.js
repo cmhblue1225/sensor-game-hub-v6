@@ -534,10 +534,10 @@ class ShotTargetGame {
                 // ✅ 대규모 경쟁 모드: 각 플레이어의 센서 데이터 처리
                 const player = this.massPlayers.get(sensorId);
                 if (player) {
-                    // ✅ 성능 최적화: 센서 데이터 throttling (AI_ASSISTANT_PROMPTS.md 지침)
+                    // ✅ 성능 최적화: 센서 데이터 throttling 완화 (더 부드러운 움직임을 위해)
                     const now = Date.now();
                     if (!player.lastSensorUpdate) player.lastSensorUpdate = 0;
-                    if (now - player.lastSensorUpdate < 33) return;  // 30fps = 33ms 간격
+                    if (now - player.lastSensorUpdate < 16) return;  // 60fps = 16ms 간격 (더 부드럽게)
                     player.lastSensorUpdate = now;
                     
                     // 플레이어 조준점 위치 업데이트
@@ -552,8 +552,8 @@ class ShotTargetGame {
                         this.sensorData.sensor1.tilt.y = player.tilt.y;
                         
                         // ✅ 로그 추가로 센서 데이터 수신 확인
-                        if (this.state.playing && Date.now() % 1000 < 50) { // 1초에 한 번만 로그
-                            console.log(`🎯 센서 데이터 수신: ${player.tilt.x.toFixed(2)}, ${player.tilt.y.toFixed(2)}`);
+                        if (this.state.playing && Date.now() % 500 < 50) { // 0.5초에 한 번만 로그
+                            console.log(`🎯 [대규모 경쟁] 센서 데이터 수신: tilt=(${player.tilt.x.toFixed(2)}, ${player.tilt.y.toFixed(2)}), sensorId=${sensorId}`);
                         }
                     }
                     
@@ -878,17 +878,18 @@ class ShotTargetGame {
                         const dy = this.crosshair.y - target.y;
                         const distance = Math.sqrt(dx * dx + dy * dy);
                         
-                        // ✅ 대규모 경쟁 모드에서는 더 큰 히트 반경 사용 (표적 반지름과 동일)
-                        const hitRadius = target.radius; // 표적 전체 반지름을 히트 반경으로 사용
+                        // ✅ 대규모 경쟁 모드에서는 더 관대한 히트 반경 사용
+                        const hitRadius = target.radius * 1.2; // 표적 반지름의 120%로 더 크게 설정
                         
-                        // ✅ 디버깅: 모든 표적에 대해 거리 로깅 (가장 가까운 것 확인)
-                        if (distance <= target.radius * 1.5) { // 표적 근처에 있을 때 로그
-                            console.log(`🎯 [대규모 경쟁] 표적 ${i}: 거리=${distance.toFixed(1)}px, 히트반경=${hitRadius.toFixed(1)}px, 표적위치=(${target.x.toFixed(1)}, ${target.y.toFixed(1)})`);
+                        // ✅ 디버깅: 모든 표적에 대해 거리 로깅
+                        if (distance <= target.radius * 2) { // 표적 주변 넓은 범위에서 로그
+                            console.log(`🎯 [대규모 경쟁] 표적 ${i}: 조준점(${this.crosshair.x.toFixed(1)},${this.crosshair.y.toFixed(1)}) 거리=${distance.toFixed(1)}px, 히트반경=${hitRadius.toFixed(1)}px, 표적위치=(${target.x.toFixed(1)}, ${target.y.toFixed(1)})`);
                         }
                         
                         // 내 조준점이 표적의 히트존 내에 있으면 자동 발사
                         if (distance <= hitRadius) {
-                            console.log(`🎯 [대규모 경쟁] 표적 명중! 거리: ${distance.toFixed(1)}px, 히트반경: ${hitRadius.toFixed(1)}px`);
+                            console.log(`🎯 [대규모 경쟁] ✅ 표적 명중! 거리: ${distance.toFixed(1)}px, 히트반지름: ${hitRadius.toFixed(1)}px`);
+                            console.log(`🎯 [대규모 경쟁] 표적 제거 시도: targetIndex=${i}, playerId=${this.state.myPlayerId}`);
                             this.handleMassTargetHit(target, i, this.state.myPlayerId);
                             return;
                         }
@@ -1508,8 +1509,15 @@ class ShotTargetGame {
     
     // 대규모 경쟁 모드에서 표적 명중 처리
     handleMassTargetHit(target, targetIndex, playerId) {
+        console.log(`🎯 [대규모 경쟁] handleMassTargetHit 호출: targetIndex=${targetIndex}, playerId=${playerId}`);
+        
         const player = this.massPlayers.get(playerId);
-        if (!player) return;
+        if (!player) {
+            console.log(`🎯 [대규모 경쟁] ❌ 플레이어를 찾을 수 없음: ${playerId}`);
+            return;
+        }
+        
+        console.log(`🎯 [대규모 경쟁] ✅ 플레이어 찾음: ${player.name}, 표적 제거 시작`);
         
         // 점수 계산
         let points = target.points;
@@ -1528,22 +1536,26 @@ class ShotTargetGame {
         player.accuracy = Math.round((player.hits / (player.hits + 1)) * 100); // +1은 빗나감 추정
         
         // 표적 제거
+        console.log(`🎯 [대규모 경쟁] 표적 제거 전: 총 표적 수 = ${this.targets.length}`);
         this.targets.splice(targetIndex, 1);
+        console.log(`🎯 [대규모 경쟁] 표적 제거 후: 총 표적 수 = ${this.targets.length}`);
         
         // 타격 효과
         this.createHitEffect(target.x, target.y, points, player.color);
+        console.log(`🎯 [대규모 경쟁] 타격 효과 생성 완료`);
         
         // 새 표적 생성
         setTimeout(() => {
             this.spawnTarget();
             this.state.totalTargetsCreated++;
             this.elements.totalTargetsCreated.textContent = this.state.totalTargetsCreated;
+            console.log(`🎯 [대규모 경쟁] 새 표적 생성됨`);
         }, 500);
         
         // 리더보드 업데이트
         this.updateMassLeaderboard();
         
-        console.log(`🎯 ${player.name} 표적 명중! +${Math.floor(points)}pt (콤보 x${player.combo})`);
+        console.log(`🎯 [대규모 경쟁] ${player.name} 표적 명중! +${Math.floor(points)}pt (콤보 x${player.combo})`);
     }
 }
 
