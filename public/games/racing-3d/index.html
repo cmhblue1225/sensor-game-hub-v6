@@ -386,11 +386,11 @@
     <!-- QR Code Generator (폴백 처리 포함) -->
     <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
     
-    <!-- Three.js (최신 안정 버전) -->
-    <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+    <!-- Three.js (더 안정적인 CDN) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
     
-    <!-- Cannon.js 물리 엔진 (다른 CDN 시도) -->
-    <script src="https://unpkg.com/cannon@0.20.0/build/cannon.min.js"></script>
+    <!-- Cannon.js 물리 엔진 -->
+    <script src="https://cdn.jsdelivr.net/npm/cannon@0.20.0/build/cannon.min.js"></script>
     
     <!-- SessionSDK -->
     <script src="/js/SessionSDK.js"></script>
@@ -837,6 +837,12 @@
             }
             
             setupPhysicsEngine() {
+                // Cannon.js 라이브러리 로드 확인
+                if (typeof CANNON === 'undefined') {
+                    console.error('❌ CANNON.js 라이브러리가 로드되지 않았습니다.');
+                    throw new Error('CANNON.js 라이브러리가 필요합니다.');
+                }
+                
                 // Cannon.js 물리 엔진 설정
                 this.world = new CANNON.World();
                 this.world.gravity.set(0, -9.82, 0); // 중력 설정
@@ -3396,8 +3402,23 @@
             }
         }
         
-        // 게임 시작
-        const game = new RacingGame();
+        // 라이브러리 로드 대기 후 게임 시작
+        function waitForLibraries() {
+            if (typeof THREE !== 'undefined' && typeof CANNON !== 'undefined') {
+                console.log('✅ 모든 라이브러리 로드 완료');
+                const game = new RacingGame();
+            } else {
+                console.log('📦 라이브러리 로드 대기 중...');
+                setTimeout(waitForLibraries, 100);
+            }
+        }
+        
+        // 페이지 로드 후 게임 시작
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', waitForLibraries);
+        } else {
+            waitForLibraries();
+        }
     </script>
 </body>
 </html>
