@@ -243,6 +243,14 @@
                     resize: () => this.onWindowResize(),
                     beforeunload: () => this.cleanup()
                 };
+                
+                // 센서 데이터 스무딩을 위한 시스템
+                this.sensorSmoothing = {
+                    historySize: 3, // 최근 3개 값의 평균 사용 (반응성 개선)
+                    deadZone: 1.5,  // 1.5도 이하의 미세한 움직임 무시
+                    smoothingFactor: 0.25, // 부드러운 보간 계수 (반응성과 부드러움 균형)
+                    playerHistory: {} // 각 플레이어별 센서 히스토리
+                };
                 // 밸런스 조정된 케이크 설정
                 this.cakeConfig = {
                     basic: { 
@@ -1014,7 +1022,72 @@
                 this.cake = {};
                 this.obstacles = [];
                 
+                // 센서 히스토리 정리
+                if (this.sensorSmoothing) {
+                    this.sensorSmoothing.playerHistory = {};
+                }
+                
                 console.log('🧹 게임 리소스 정리 완료');
+            }
+            
+            // 센서 데이터 스무딩 시스템
+            initPlayerSensorHistory(sensorId) {
+                if (!this.sensorSmoothing.playerHistory[sensorId]) {
+                    this.sensorSmoothing.playerHistory[sensorId] = {
+                        gammaHistory: [],
+                        betaHistory: [],
+                        smoothedGamma: 0,
+                        smoothedBeta: 0,
+                        lastSignificantGamma: 0,
+                        lastSignificantBeta: 0
+                    };
+                }
+            }
+            
+            smoothSensorData(sensorId, gamma, beta) {
+                const history = this.sensorSmoothing.playerHistory[sensorId];
+                if (!history) {
+                    this.initPlayerSensorHistory(sensorId);
+                    return { gamma: 0, beta: 0 };
+                }
+                
+                // 데드존 적용 - 미세한 변화 무시
+                const gammaChange = Math.abs(gamma - history.lastSignificantGamma);
+                const betaChange = Math.abs(beta - history.lastSignificantBeta);
+                
+                const finalGamma = gammaChange > this.sensorSmoothing.deadZone ? gamma : history.lastSignificantGamma;
+                const finalBeta = betaChange > this.sensorSmoothing.deadZone ? beta : history.lastSignificantBeta;
+                
+                // 유의미한 변화가 있을 때만 기준값 업데이트
+                if (gammaChange > this.sensorSmoothing.deadZone) {
+                    history.lastSignificantGamma = gamma;
+                }
+                if (betaChange > this.sensorSmoothing.deadZone) {
+                    history.lastSignificantBeta = beta;
+                }
+                
+                // 히스토리에 추가
+                history.gammaHistory.push(finalGamma);
+                history.betaHistory.push(finalBeta);
+                
+                // 히스토리 크기 제한
+                if (history.gammaHistory.length > this.sensorSmoothing.historySize) {
+                    history.gammaHistory.shift();
+                    history.betaHistory.shift();
+                }
+                
+                // 이동 평균 계산
+                const avgGamma = history.gammaHistory.reduce((sum, val) => sum + val, 0) / history.gammaHistory.length;
+                const avgBeta = history.betaHistory.reduce((sum, val) => sum + val, 0) / history.betaHistory.length;
+                
+                // 부드러운 보간 적용
+                history.smoothedGamma += (avgGamma - history.smoothedGamma) * this.sensorSmoothing.smoothingFactor;
+                history.smoothedBeta += (avgBeta - history.smoothedBeta) * this.sensorSmoothing.smoothingFactor;
+                
+                return {
+                    gamma: history.smoothedGamma,
+                    beta: history.smoothedBeta
+                };
             }
             
             // 센서ID에서 플레이어 번호 추출 (고정 순서를 위해)
@@ -1026,6 +1099,9 @@
             }
 
             addPlayer(sensorId) {
+                // 센서 데이터 스무딩 히스토리 초기화
+                this.initPlayerSensorHistory(sensorId);
+                
                 // 센서ID 기반으로 고정된 플레이어 번호 결정
                 const playerNumber = this.getPlayerNumberFromSensorId(sensorId);
                 const playerLabel = `${playerNumber}P`;
@@ -1195,6 +1271,13 @@
                 if (this.players[sensorId]) {
                     this.scene.remove(this.players[sensorId].mesh);
                     delete this.players[sensorId];
+                    
+                    // 센서 히스토리도 정리
+                    if (this.sensorSmoothing.playerHistory[sensorId]) {
+                        delete this.sensorSmoothing.playerHistory[sensorId];
+                        console.log(`🧹 ${sensorId} 센서 히스토리 정리 완료`);
+                    }
+                    
                     this.setGameState('fail', '플레이어 연결 끊김!');
                 }
             }
@@ -1870,8 +1953,11 @@
                 const clampedGamma = THREE.MathUtils.clamp(gamma, -180, 180);
                 const clampedBeta = THREE.MathUtils.clamp(beta, -180, 180);
 
-                let moveX = clampedGamma * sensitivity;
-                let moveZ = clampedBeta * sensitivity;
+                // 센서 데이터 스무딩 적용
+                const smoothedData = this.smoothSensorData(sensorId, clampedGamma, clampedBeta);
+
+                let moveX = smoothedData.gamma * sensitivity;
+                let moveZ = smoothedData.beta * sensitivity;
 
                 moveX = THREE.MathUtils.clamp(moveX, -maxSpeed, maxSpeed);
                 moveZ = THREE.MathUtils.clamp(moveZ, -maxSpeed, maxSpeed);
@@ -1881,10 +1967,14 @@
                 // 이전 위치 저장
                 const oldPosition = player.mesh.position.clone();
                 
-                player.velocity.lerp(targetVelocity, 0.05);
+                // 더 부드러운 속도 보간 (0.05 → 0.08)
+                player.velocity.lerp(targetVelocity, 0.08);
                 
-                // 기본 모델 위치 업데이트 (단순화)
-                player.mesh.position.add(player.velocity);
+                // 새로운 목표 위치 계산
+                const targetPosition = oldPosition.clone().add(player.velocity);
+                
+                // 위치를 부드럽게 보간 (떨림 방지)
+                player.mesh.position.lerp(targetPosition, 0.7);
 
                 // 도로 이탈 방지
                 const roadLimit = this.roadWidth / 2 - 0.5;
