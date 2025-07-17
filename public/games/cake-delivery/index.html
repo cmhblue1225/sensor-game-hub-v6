@@ -70,10 +70,34 @@
             display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
         }
 
-        /* 우측 하단 컨트롤 (재시작, 허브) */
+        /* 우측 하단 컨트롤 (재시작, 허브, 도움말) */
         .main-controls {
             position: absolute; bottom: 20px; right: 20px; 
             display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
+        }
+        
+        /* 도움말 패널 */
+        .help-panel {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(15px);
+            border-radius: 15px; padding: 25px; max-width: 600px; max-height: 80vh;
+            border: 2px solid var(--primary); box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            color: white; font-size: 14px; line-height: 1.6; overflow-y: auto;
+            display: none; z-index: 1000; pointer-events: auto;
+        }
+        
+        .help-panel h3 {
+            color: var(--primary); margin-top: 20px; margin-bottom: 10px;
+        }
+        
+        .help-panel h3:first-child {
+            margin-top: 0;
+        }
+        
+        .help-close {
+            position: absolute; top: 10px; right: 15px;
+            background: none; border: none; color: var(--primary);
+            font-size: 24px; cursor: pointer; padding: 5px;
         }
         
         .main-controls button, .main-controls a {
@@ -207,7 +231,61 @@
         <!-- 메인 컨트롤 (오른쪽 하단) -->
         <div class="main-controls">
             <button id="resetButton" style="display: none;">🔄 재시작</button>
+            <button id="helpButton">❓ 도움말</button>
             <a href="/">🏠 허브로</a>
+        </div>
+        
+        <!-- 도움말 패널 -->
+        <div class="help-panel" id="helpPanel">
+            <button class="help-close" onclick="hideHelp()">×</button>
+            <h3>🎮 게임 방법</h3>
+            <p><strong>목표:</strong> 센서를 이용해 케이크를 안전하게 목적지까지 배달하세요!</p>
+            <ul>
+                <li>🎯 <strong>일반 모드:</strong> 기본 2인 협동 배달</li>
+                <li>♾️ <strong>무한 모드:</strong> 끝없는 배달 도전</li>
+                <li>⏱️ <strong>타임 어택:</strong> 시간 제한 배달</li>
+                <li>🔥 <strong>챌린지:</strong> 극한 난이도 배달</li>
+                <li>🏃 <strong>릴레이:</strong> 3구간 연속 배달</li>
+                <li>⚡ <strong>스피드런:</strong> 체크포인트 빠른 클리어</li>
+                <li>👥 <strong>4인 협동:</strong> 대형 케이크 팀 배달</li>
+            </ul>
+            
+            <h3>🎂 케이크 종류</h3>
+            <ul>
+                <li>🟢 <strong>기본 케이크 (쉬움):</strong> 가장 안정적이고 다루기 쉬움</li>
+                <li>🟢 <strong>딸기 케이크 (쉬움):</strong> 가볍고 약간 더 안정적</li>
+                <li>🟡 <strong>초콜릿 케이크 (보통):</strong> 무거우며 온도에 민감</li>
+                <li>🟡 <strong>아이스크림 케이크 (보통):</strong> 시간이 지나면 녹음</li>
+                <li>🔴 <strong>웨딩 케이크 (어려움):</strong> 매우 불안정하지만 고득점</li>
+                <li>🔴 <strong>폭탄 케이크 (어려움):</strong> 30초 타이머, 빠른 배달 필요</li>
+            </ul>
+            
+            <h3>🌍 환경 효과</h3>
+            <ul>
+                <li>🌞 <strong>일반 도로:</strong> 기본 환경</li>
+                <li>🌲 <strong>숲 속 길:</strong> 나무 장애물</li>
+                <li>🏜️ <strong>사막 도로:</strong> 높은 온도, 강한 바람</li>
+                <li>🏖️ <strong>해변 길:</strong> 모래바람</li>
+                <li>❄️ <strong>눈 덮인 길:</strong> 낮은 온도, 미끄러짐</li>
+                <li>🌙 <strong>야간 도로:</strong> 제한된 시야</li>
+            </ul>
+            
+            <h3>📱 조작 방법</h3>
+            <ul>
+                <li>📲 모바일 센서 클라이언트에서 QR코드 스캔 또는 4자리 코드 입력</li>
+                <li>📐 <strong>기울이기:</strong> 케이크 이동 방향 조절</li>
+                <li>🤝 <strong>협동:</strong> 플레이어 간 거리 유지 (7미터 이내)</li>
+                <li>⚖️ <strong>균형:</strong> 케이크가 떨어지지 않도록 조심</li>
+                <li>🛣️ <strong>도로 유지:</strong> 도로 밖으로 이탈 금지</li>
+            </ul>
+            
+            <h3>💡 팁</h3>
+            <ul>
+                <li>🎯 쉬운 케이크부터 시작해서 점차 어려운 케이크에 도전하세요</li>
+                <li>👥 팀원과 소통하며 움직임을 조율하세요</li>
+                <li>🌡️ 환경 온도가 케이크에 영향을 줍니다</li>
+                <li>⭐ 별점은 시간, 안정성, 케이크 종류에 따라 결정됩니다</li>
+            </ul>
         </div>
     </div>
 
@@ -249,6 +327,12 @@
                     deadZone: 1.5,  // 1.5도 이하의 미세한 움직임 무시
                     smoothingFactor: 0.25, // 부드러운 보간 계수 (반응성과 부드러움 균형)
                     playerHistory: {} // 각 플레이어별 센서 히스토리
+                };
+                
+                // 게임 모드별 도로 폭 설정
+                this.roadWidthConfig = {
+                    normal: 15,      // 일반 모드들
+                    coop4: 25        // 4인 협동 모드 (대형 케이크용)
                 };
                 // 밸런스 조정된 케이크 설정
                 this.cakeConfig = {
@@ -528,6 +612,9 @@
                 const requiredPlayers = this.modeConfig[mode].players;
                 this.createSensorStatusHUD(requiredPlayers);
                 
+                // 모드에 따른 도로 폭 업데이트
+                this.updateRoadWidth(mode);
+                
                 this.updateModeButtons();
                 this.updateUI();
                 
@@ -614,10 +701,15 @@
                         }, 100);
                     }
                     
-                    console.log(`🎂 케이크 타입 선택: ${cakeType} (재시작 시 반영됩니다)`);
+                    console.log(`🎂 케이크 타입 선택: ${cakeType}`);
                     
                     // 케이크 정보 미리보기 표시
                     this.showCakePreview(cakeType);
+                    
+                    // 게임 중이 아닐 때는 즉시 케이크 업데이트
+                    if (this.gameState === 'waiting' || this.gameState === 'ready') {
+                        this.updateCakeInGame(cakeType);
+                    }
                     
                 } catch (error) {
                     console.error('케이크 선택 오류:', error);
@@ -641,8 +733,32 @@
                 };
                 
                 const difficultyColor = this.getDifficultyColor(config.difficulty);
-                const previewText = `${cakeNames[cakeType]} - 난이도: ${config.difficulty} | ${config.description}`;
+                const previewText = `🎂 ${cakeNames[cakeType]} - 난이도: ${config.difficulty} | ${config.description}`;
                 this.showStatusMessage(previewText, 3000);
+            }
+            
+            updateCakeInGame(cakeType) {
+                try {
+                    if (cakeType === 'random') {
+                        // 랜덤 케이크 선택
+                        const cakeTypes = Object.keys(this.cakeConfig);
+                        cakeType = cakeTypes[Math.floor(Math.random() * cakeTypes.length)];
+                    }
+                    
+                    this.cakeType = cakeType;
+                    
+                    // 게임이 시작되지 않았다면 케이크 다시 생성
+                    if (this.cake.mesh && this.scene) {
+                        this.scene.remove(this.cake.mesh);
+                        this.cake.mesh = null;
+                        this.createCake();
+                        console.log(`🎂 케이크가 ${cakeType}(으)로 즉시 변경되었습니다.`);
+                    }
+                    
+                } catch (error) {
+                    console.error('케이크 업데이트 오류:', error);
+                    this.showErrorMessage('케이크 업데이트 중 오류가 발생했습니다.');
+                }
             }
             
             showStatusMessage(message, duration = 3000) {
@@ -901,7 +1017,8 @@
                 this.starField = new THREE.Points(starsGeometry, starsMaterial);
                 this.scene.add(this.starField);
 
-                this.roadWidth = 15; // 도로 폭 감소
+                // 초기 도로 폭은 일반 모드 기준 (나중에 모드에 따라 변경됨)
+                this.roadWidth = this.roadWidthConfig.normal;
                 const floorGeometry = new THREE.PlaneGeometry(this.roadWidth, 100);
                 const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x4a5568 });
                 const floor = new THREE.Mesh(floorGeometry, floorMaterial);
@@ -909,6 +1026,7 @@
                 floor.position.y = -0.5;
                 floor.position.z = -50; // 도로 시작 위치 조정
                 floor.receiveShadow = true;
+                floor.name = 'gameFloor'; // 나중에 찾기 위한 이름
                 this.scene.add(floor);
             }
 
@@ -1094,6 +1212,48 @@
                     gamma: history.smoothedGamma,
                     beta: history.smoothedBeta
                 };
+            }
+            
+            // 게임 모드에 따른 도로 폭 설정
+            updateRoadWidth(gameMode) {
+                const roadWidth = gameMode === 'coop4' ? this.roadWidthConfig.coop4 : this.roadWidthConfig.normal;
+                
+                if (this.roadWidth !== roadWidth) {
+                    this.roadWidth = roadWidth;
+                    console.log(`🛣️ 도로 폭 변경: ${gameMode} 모드 → ${roadWidth}`);
+                    
+                    // 레벨을 다시 생성하여 새로운 도로 폭 적용
+                    if (this.gameState !== 'waiting') {
+                        this.recreateLevel();
+                    }
+                }
+            }
+            
+            // 레벨 재생성 (도로 폭 변경 시)
+            recreateLevel() {
+                // 기존 바닥 제거
+                const existingFloor = this.scene.getObjectByName('gameFloor');
+                if (existingFloor) {
+                    this.scene.remove(existingFloor);
+                }
+                
+                // 기존 목적지 제거
+                if (this.destination) {
+                    this.scene.remove(this.destination);
+                    this.destination = null;
+                }
+                
+                // 새로운 바닥 생성
+                const floorGeometry = new THREE.PlaneGeometry(this.roadWidth, 100);
+                const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x4a5568 });
+                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+                floor.rotation.x = -Math.PI / 2;
+                floor.position.y = -0.5;
+                floor.receiveShadow = true;
+                floor.name = 'gameFloor';
+                this.scene.add(floor);
+                
+                console.log(`🔄 레벨 재생성: 도로 폭 ${this.roadWidth}`);
             }
             
             // 모드별 센서 HUD 동적 생성
@@ -2083,15 +2243,15 @@
                 this.cake.mesh.rotation.z = (p2.x - p1.x) * 0.1;
 
                 const distance = p1.distanceTo(p2);
-                if (distance > 7) this.setGameState('fail', '너무 멀어요!');
+                if (distance > 7) this.setGameState('fail', '💔 플레이어들이 너무 멀어요! (거리: 7미터 이내 유지)');
                 if (Math.abs(this.cake.mesh.rotation.x) > 0.8 || Math.abs(this.cake.mesh.rotation.z) > 0.8) {
-                    this.setGameState('fail', '케이크가 떨어졌어요!');
+                    this.setGameState('fail', '🎂 케이크가 떨어졌어요! (기울임 조심히 해주세요)');
                 }
 
                 // 도로 이탈 판정
                 const roadLimit = this.roadWidth / 2 - 1.5; // 케이크 반지름 고려
                 if (Math.abs(this.cake.mesh.position.x) > roadLimit) {
-                    this.setGameState('fail', '도로 밖으로 이탈!');
+                    this.setGameState('fail', '🛣️ 도로 밖으로 이탈! (도로 중앙 유지하세요)');
                 }
             }
             
@@ -2114,7 +2274,7 @@
                 
                 // 4인 협동 실패 조건
                 if (maxDistance > 8) {
-                    this.setGameState('fail', '팀이 너무 흩어졌어요!');
+                    this.setGameState('fail', '👥 팀이 너무 흩어졌어요! (최대 거리: 8미터 이내 유지)');
                     return;
                 }
                 
@@ -2133,13 +2293,13 @@
                 
                 // 케이크 떨어뜨림 판정 (4인 모드는 더 관대)
                 if (Math.abs(this.cake.mesh.rotation.x) > 1.2 || Math.abs(this.cake.mesh.rotation.z) > 1.2) {
-                    this.setGameState('fail', '대형 케이크가 떨어졌어요!');
+                    this.setGameState('fail', '🎂 대형 케이크가 떨어졌어요! (팀워크로 균형 유지하세요)');
                 }
                 
                 // 도로 이탈 판정 (대형 케이크 고려)
                 const roadLimit = this.roadWidth / 2 - 2.5; // 대형 케이크 반지름 고려
                 if (Math.abs(this.cake.mesh.position.x) > roadLimit) {
-                    this.setGameState('fail', '대형 케이크가 도로 밖으로 이탈!');
+                    this.setGameState('fail', '🛣️ 대형 케이크가 도로 밖으로 이탈! (넓은 도로, 팀으로 중앙 유지)');
                 }
                 
                 console.log(`👥 4인 협동 케이크 업데이트: 중심(${centerX.toFixed(2)}, ${centerZ.toFixed(2)}), 최대거리: ${maxDistance.toFixed(2)}`);
@@ -2187,7 +2347,7 @@
                 for (const obstacle of this.obstacles) {
                     const obstacleBox = new THREE.Box3().setFromObject(obstacle);
                     if (cakeBox.intersectsBox(obstacleBox)) {
-                        this.setGameState('fail', '장애물과 충돌!');
+                        this.setGameState('fail', '⚠️ 장애물과 충돌! (장애물을 피해서 이동하세요)');
                         return;
                     }
                 }
@@ -2215,7 +2375,7 @@
                             this.level++;
                             this.safeSetTimeout(() => this.resetGame(true), 2000);
                         } else {
-                            this.setGameState('success', `최종 배달 성공! ⭐${this.stars}/3`);
+                            this.setGameState('success', `🎉 최종 배달 성공! ⭐${this.stars}/3\n점수: ${this.currentScore.toLocaleString()}`);
                         }
                         break;
                         
@@ -2719,7 +2879,7 @@
                     this.cakePhysics.viscosity = Math.min(0.8, 0.1 + (1 - meltFactor) * 0.7);
                     
                     if (this.cakePhysics.meltingTimer <= 0) {
-                        this.setGameState('fail', '케이크가 다 녹았습니다!');
+                        this.setGameState('fail', '🍨 아이스크림 케이크가 다 녹았습니다! (빠르게 배달하세요)');
                         return;
                     }
                 }
@@ -2742,7 +2902,7 @@
                     this.updateBombVisualEffects(timerRatio);
                     
                     if (this.cakePhysics.bombTimer <= 0) {
-                        this.setGameState('fail', '폭탄 케이크가 폭발했습니다!');
+                        this.setGameState('fail', '💣 폭탄 케이크가 폭발했습니다! (30초 안에 배달하세요)');
                         return;
                     }
                 }
@@ -3041,7 +3201,28 @@
             }
         }
 
-        window.onload = () => new CakeDeliveryGame();
+        // 도움말 시스템 함수들
+        function showHelp() {
+            document.getElementById('helpPanel').style.display = 'block';
+        }
+        
+        function hideHelp() {
+            document.getElementById('helpPanel').style.display = 'none';
+        }
+
+        window.onload = () => {
+            new CakeDeliveryGame();
+            
+            // 도움말 버튼 이벤트 리스너
+            document.getElementById('helpButton').addEventListener('click', showHelp);
+            
+            // ESC 키로 도움말 닫기
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    hideHelp();
+                }
+            });
+        };
     </script>
 </body>
 </html>
