@@ -536,6 +536,11 @@ class ShotTargetGame {
                     if (sensorId === this.state.myPlayerId) {
                         this.sensorData.sensor1.tilt.x = player.tilt.x;
                         this.sensorData.sensor1.tilt.y = player.tilt.y;
+                        
+                        // ✅ 로그 추가로 센서 데이터 수신 확인
+                        if (this.state.playing && Date.now() % 1000 < 50) { // 1초에 한 번만 로그
+                            console.log(`🎯 센서 데이터 수신: ${player.tilt.x.toFixed(2)}, ${player.tilt.y.toFixed(2)}`);
+                        }
                     }
                     
                     player.lastActivity = now;
@@ -616,6 +621,19 @@ class ShotTargetGame {
             // 화면 경계 제한 (전체 화면)
             this.crosshair2.targetX = Math.max(0, Math.min(this.canvas.width, this.crosshair2.targetX));
             this.crosshair2.targetY = Math.max(0, Math.min(this.canvas.height, this.crosshair2.targetY));
+            
+        } else if (this.gameMode === 'mass-competitive') {
+            // ✅ 대규모 경쟁 모드: 내 플레이어의 센서 데이터로 메인 조준점 움직임
+            const normalizedTiltX = Math.max(-1, Math.min(1, this.sensorData.sensor1.tilt.y / maxTilt));
+            const normalizedTiltY = Math.max(-1, Math.min(1, this.sensorData.sensor1.tilt.x / maxTilt));
+            
+            // 조준점 목표 위치 계산 (전체 화면 범위)
+            this.crosshair.targetX = this.canvas.width / 2 + (normalizedTiltX * this.canvas.width / 2);
+            this.crosshair.targetY = this.canvas.height / 2 + (normalizedTiltY * this.canvas.height / 2);
+            
+            // 화면 경계 제한
+            this.crosshair.targetX = Math.max(0, Math.min(this.canvas.width, this.crosshair.targetX));
+            this.crosshair.targetY = Math.max(0, Math.min(this.canvas.height, this.crosshair.targetY));
         }
     }
     
@@ -826,27 +844,24 @@ class ShotTargetGame {
     
     tryShoot() {
         if (this.gameMode === 'mass-competitive') {
-            // ✅ 대규모 경쟁 모드: 모든 플레이어의 조준점 확인
-            this.massPlayers.forEach((player, playerId) => {
-                if (!player.isActive) return;
-                
-                // 각 플레이어의 조준점 위치 계산
-                const playerCrosshairX = this.calculatePlayerCrosshairX(player);
-                const playerCrosshairY = this.calculatePlayerCrosshairY(player);
-                
-                for (let i = 0; i < this.targets.length; i++) {
-                    const target = this.targets[i];
-                    const dx = playerCrosshairX - target.x;
-                    const dy = playerCrosshairY - target.y;
-                    const distance = Math.sqrt(dx * dx + dy * dy);
-                    
-                    // 조준점이 표적의 히트존 내에 있으면 자동 발사
-                    if (distance <= this.config.hitRadius) {
-                        this.handleMassTargetHit(target, i, playerId);
-                        return;
+            // ✅ 대규모 경쟁 모드: 내 플레이어 조준점만 체크 (성능 최적화)
+            if (this.state.myPlayerId && this.massPlayers.has(this.state.myPlayerId)) {
+                const myPlayer = this.massPlayers.get(this.state.myPlayerId);
+                if (myPlayer && myPlayer.isActive) {
+                    for (let i = 0; i < this.targets.length; i++) {
+                        const target = this.targets[i];
+                        const dx = this.crosshair.x - target.x;
+                        const dy = this.crosshair.y - target.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        // 내 조준점이 표적의 히트존 내에 있으면 자동 발사
+                        if (distance <= this.config.hitRadius) {
+                            this.handleMassTargetHit(target, i, this.state.myPlayerId);
+                            return;
+                        }
                     }
                 }
-            });
+            }
             
         } else {
             // 기존 모드들 (solo, coop, competitive)
@@ -1031,11 +1046,13 @@ class ShotTargetGame {
         this.elements.crosshair.style.left = this.crosshair.x + 'px';
         this.elements.crosshair.style.top = this.crosshair.y + 'px';
         
-        // 협동/경쟁 모드에서 두 번째 조준점 처리
+        // 협동/경쟁/대규모 경쟁 모드에서 두 번째 조준점 처리
         if (this.gameMode === 'coop' || this.gameMode === 'competitive') {
             this.crosshair2.x += (this.crosshair2.targetX - this.crosshair2.x) * this.crosshair2.smoothing;
             this.crosshair2.y += (this.crosshair2.targetY - this.crosshair2.y) * this.crosshair2.smoothing;
         }
+        
+        // 대규모 경쟁 모드에서는 메인 조준점만 업데이트 (이미 위에서 처리됨)
         
         // 새 표적 생성
         if (now - this.lastTargetSpawn > this.config.targetSpawnInterval) {
@@ -1195,6 +1212,11 @@ class ShotTargetGame {
         if (this.gameMode === 'coop' || this.gameMode === 'competitive') {
             this.renderSecondCrosshair();
         }
+        
+        // 대규모 경쟁 모드에서 다른 플레이어들의 조준점 렌더링
+        if (this.gameMode === 'mass-competitive') {
+            this.renderMassCompetitiveCrosshairs();
+        }
     }
     
     renderCenterDivider() {
@@ -1230,6 +1252,35 @@ class ShotTargetGame {
         this.ctx.moveTo(this.crosshair2.x, this.crosshair2.y - 10);
         this.ctx.lineTo(this.crosshair2.x, this.crosshair2.y + 10);
         this.ctx.stroke();
+    }
+    
+    renderMassCompetitiveCrosshairs() {
+        // 대규모 경쟁 모드에서 다른 플레이어들의 조준점 렌더링
+        this.massPlayers.forEach((player, playerId) => {
+            if (!player.isActive || playerId === this.state.myPlayerId) return;
+            
+            // 플레이어의 조준점 위치 계산
+            const crosshairX = this.calculatePlayerCrosshairX(player);
+            const crosshairY = this.calculatePlayerCrosshairY(player);
+            
+            // 다른 플레이어의 조준점 렌더링 (색상으로 구분)
+            this.ctx.globalAlpha = 0.7;
+            this.ctx.beginPath();
+            this.ctx.arc(crosshairX, crosshairY, 12, 0, Math.PI * 2);
+            this.ctx.strokeStyle = player.color;
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+            
+            // 작은 십자 표시
+            this.ctx.beginPath();
+            this.ctx.moveTo(crosshairX - 8, crosshairY);
+            this.ctx.lineTo(crosshairX + 8, crosshairY);
+            this.ctx.moveTo(crosshairX, crosshairY - 8);
+            this.ctx.lineTo(crosshairX, crosshairY + 8);
+            this.ctx.stroke();
+            
+            this.ctx.globalAlpha = 1;
+        });
     }
     
     updateScore() {
