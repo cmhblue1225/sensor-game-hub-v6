@@ -711,6 +711,39 @@
                 
                 return Math.max(0, Math.floor(stars));
             }
+            
+            // 4인 협동 팀워크 보너스 계산
+            calculateTeamworkBonus() {
+                if (this.gameMode !== 'coop4' || Object.keys(this.players).length !== 4) {
+                    return 0;
+                }
+                
+                const playerPositions = Object.values(this.players).map(p => p.mesh.position);
+                const centerPos = new THREE.Vector3(
+                    playerPositions.reduce((sum, pos) => sum + pos.x, 0) / 4,
+                    0,
+                    playerPositions.reduce((sum, pos) => sum + pos.z, 0) / 4
+                );
+                
+                // 팀 결속도 측정 (플레이어들이 얼마나 뭉쳐있는지)
+                const distances = playerPositions.map(pos => pos.distanceTo(centerPos));
+                const avgDistance = distances.reduce((sum, dist) => sum + dist, 0) / 4;
+                const maxDistance = Math.max(...distances);
+                
+                // 팀워크 점수 계산 (거리가 가까울수록 높은 점수)
+                let teamworkScore = 1000; // 기본 팀워크 보너스
+                
+                // 평균 거리 기준 보너스
+                if (avgDistance < 2.0) teamworkScore += 500; // 완벽한 팀워크
+                else if (avgDistance < 4.0) teamworkScore += 300; // 좋은 팀워크
+                else if (avgDistance < 6.0) teamworkScore += 100; // 보통 팀워크
+                
+                // 최대 거리 페널티
+                if (maxDistance > 8.0) teamworkScore -= 300; // 누군가 너무 멀리
+                
+                console.log(`👥 팀워크 보너스: 평균거리 ${avgDistance.toFixed(2)}, 최대거리 ${maxDistance.toFixed(2)}, 보너스 ${teamworkScore}`);
+                return Math.max(0, teamworkScore);
+            }
 
             // UI 업데이트
             updateUI() {
@@ -1086,15 +1119,21 @@
                 
                 const config = this.cakeConfig[this.currentCakeType];
                 
+                // 4인 협동 모드에서는 케이크 크기 2배 증가
+                const sizeMultiplier = this.gameMode === 'coop4' ? 2.0 : 1.0;
+                const adjustedSize = config.size * sizeMultiplier;
+                
+                console.log(`🎂 케이크 생성: ${this.currentCakeType}, 크기배율: ${sizeMultiplier}x, 최종크기: ${adjustedSize}`);
+                
                 // 케이크 그룹 생성
                 const cakeGroup = new THREE.Group();
                 
                 // 케이크 층 생성
-                const layerHeight = 0.4;
+                const layerHeight = 0.4 * sizeMultiplier; // 4인 모드에서는 층도 두꺼워짐
                 const colors = [config.color, config.color * 0.9, config.color * 0.8];
                 
                 for (let i = 0; i < config.layers; i++) {
-                    const layerRadius = config.size * (1 - i * 0.1);
+                    const layerRadius = adjustedSize * (1 - i * 0.1);
                     const layerGeometry = new THREE.CylinderGeometry(layerRadius, layerRadius, layerHeight, 32);
                     const layerMaterial = new THREE.MeshStandardMaterial({ 
                         color: colors[i] || config.color,
@@ -1747,10 +1786,25 @@
             }
 
             updateCakePosition() {
-                if (!this.cake.mesh || Object.keys(this.players).length < 2) return;
-
-                const p1 = this.players['sensor1'].mesh.position;
-                const p2 = this.players['sensor2'].mesh.position;
+                const playerCount = Object.keys(this.players).length;
+                
+                // 4인 협동 모드
+                if (this.gameMode === 'coop4') {
+                    if (!this.cake.mesh || playerCount < 4) return;
+                    this.updateCoop4CakePosition();
+                    return;
+                }
+                
+                // 일반 2명 모드
+                if (!this.cake.mesh || playerCount < 2) return;
+                this.updateDualCakePosition();
+            }
+            
+            // 2명 모드 케이크 위치 업데이트
+            updateDualCakePosition() {
+                const playerPositions = Object.values(this.players).map(p => p.mesh.position);
+                const p1 = playerPositions[0];
+                const p2 = playerPositions[1];
 
                 this.cake.mesh.position.lerp(new THREE.Vector3((p1.x + p2.x) / 2, 0, (p1.z + p2.z) / 2), 0.1);
 
@@ -1769,6 +1823,88 @@
                 const roadLimit = this.roadWidth / 2 - 1.5; // 케이크 반지름 고려
                 if (Math.abs(this.cake.mesh.position.x) > roadLimit) {
                     this.setGameState('fail', '도로 밖으로 이탈!');
+                }
+            }
+            
+            // 4명 모드 케이크 위치 업데이트
+            updateCoop4CakePosition() {
+                const playerPositions = Object.values(this.players).map(p => p.mesh.position);
+                
+                // 4명의 중심점 계산
+                const centerX = playerPositions.reduce((sum, pos) => sum + pos.x, 0) / 4;
+                const centerZ = playerPositions.reduce((sum, pos) => sum + pos.z, 0) / 4;
+                
+                const targetPosition = new THREE.Vector3(centerX, 0, centerZ);
+                this.cake.mesh.position.lerp(targetPosition, 0.08); // 4인 모드는 더 부드럽게
+                
+                // 4명의 분산도 계산 (너무 흩어졌는지 체크)
+                const maxDistance = Math.max(...playerPositions.map(pos => 
+                    pos.distanceTo(targetPosition)
+                ));
+                
+                // 4인 협동 실패 조건
+                if (maxDistance > 8) {
+                    this.setGameState('fail', '팀이 너무 흩어졌어요!');
+                    return;
+                }
+                
+                // 케이크 기울기 계산 (4명의 평균 기울기)
+                const avgTiltX = playerPositions.reduce((sum, pos, i, arr) => {
+                    return sum + (i < arr.length - 1 ? pos.z - arr[i + 1].z : 0);
+                }, 0) / 4;
+                
+                const avgTiltZ = playerPositions.reduce((sum, pos, i, arr) => {
+                    return sum + (i < arr.length - 1 ? arr[i + 1].x - pos.x : 0);
+                }, 0) / 4;
+                
+                this.cake.mesh.rotation.x = avgTiltX * 0.05; // 4인 모드는 더 안정적
+                this.cake.mesh.rotation.z = avgTiltZ * 0.05;
+                this.cake.mesh.rotation.y = 0;
+                
+                // 케이크 떨어뜨림 판정 (4인 모드는 더 관대)
+                if (Math.abs(this.cake.mesh.rotation.x) > 1.2 || Math.abs(this.cake.mesh.rotation.z) > 1.2) {
+                    this.setGameState('fail', '대형 케이크가 떨어졌어요!');
+                }
+                
+                // 도로 이탈 판정 (대형 케이크 고려)
+                const roadLimit = this.roadWidth / 2 - 2.5; // 대형 케이크 반지름 고려
+                if (Math.abs(this.cake.mesh.position.x) > roadLimit) {
+                    this.setGameState('fail', '대형 케이크가 도로 밖으로 이탈!');
+                }
+                
+                console.log(`👥 4인 협동 케이크 업데이트: 중심(${centerX.toFixed(2)}, ${centerZ.toFixed(2)}), 최대거리: ${maxDistance.toFixed(2)}`);
+            }
+            
+            // 플레이어 초기 위치 설정 (모드별)
+            resetPlayerPositions() {
+                const playerIds = Object.keys(this.players);
+                
+                if (this.gameMode === 'coop4' && playerIds.length === 4) {
+                    // 4인 협동 모드: 사각형 배치
+                    const positions = [
+                        { x: -3, z: -1 }, // 좌상
+                        { x: 3, z: -1 },  // 우상  
+                        { x: -3, z: 1 },  // 좌하
+                        { x: 3, z: 1 }    // 우하
+                    ];
+                    
+                    playerIds.forEach((playerId, index) => {
+                        if (this.players[playerId] && positions[index]) {
+                            this.players[playerId].mesh.position.set(
+                                positions[index].x, 
+                                0, 
+                                positions[index].z
+                            );
+                            console.log(`👥 4인 플레이어 배치: ${playerId} → (${positions[index].x}, 0, ${positions[index].z})`);
+                        }
+                    });
+                } else {
+                    // 2인 모드: 좌우 배치
+                    if (playerIds.length >= 2) {
+                        this.players[playerIds[0]].mesh.position.set(-2, 0, 0);
+                        this.players[playerIds[1]].mesh.position.set(2, 0, 0);
+                        console.log(`👥 2인 플레이어 배치: ${playerIds[0]} → (-2, 0, 0), ${playerIds[1]} → (2, 0, 0)`);
+                    }
                 }
             }
 
@@ -1840,8 +1976,21 @@
                         break;
                         
                     case 'coop4':
-                        // 4인 협동 완료
-                        this.setGameState('success', '👥 4인 협동 배달 성공!');
+                        // 4인 협동 완료 - 별점 계산 및 점수 시스템
+                        const coop4DeliveryTime = Date.now() / 1000 - this.gameStartTime || 30;
+                        const coop4Instability = this.cakePhysics ? this.cakePhysics.instability : 0;
+                        this.stars = this.calculateStars(coop4DeliveryTime, coop4Instability);
+                        
+                        // 4인 협동 보너스 점수 계산
+                        const baseScore = this.calculateFinalScore(coop4DeliveryTime, this.currentCakeType, this.modeConfig.coop4.scoreMult);
+                        const teamworkBonus = this.calculateTeamworkBonus(); // 팀워크 보너스
+                        const finalScore = baseScore + teamworkBonus;
+                        
+                        this.currentScore += finalScore;
+                        this.updateHighScore();
+                        
+                        console.log(`👥 4인 협동 배달 성공! 시간: ${coop4DeliveryTime.toFixed(1)}초, 별점: ${this.stars}/3, 점수: ${finalScore}`);
+                        this.setGameState('success', `👥 4인 협동 배달 성공!\n⭐${this.stars}/3 점수: ${finalScore.toLocaleString()}`);
                         break;
                 }
             }
@@ -1982,8 +2131,8 @@
 
                 this.createLevel();
 
-                if (this.players['sensor1']) this.players['sensor1'].mesh.position.set(-2, 0, 0);
-                if (this.players['sensor2']) this.players['sensor2'].mesh.position.set(2, 0, 0);
+                // 플레이어 초기 위치 설정 (모드별로 다르게)
+                this.resetPlayerPositions();
 
                 // 기존 케이크 제거하고 선택된 타입으로 새로 생성
                 if (this.cake.mesh) {
