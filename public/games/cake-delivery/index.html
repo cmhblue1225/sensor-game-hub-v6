@@ -483,6 +483,7 @@
                         break;
                     case 'timeAttack':
                         this.remainingTime = this.timeLimit;
+                        this.isTimerActive = false; // 게임 시작 전까지 비활성화
                         break;
                     case 'challenge':
                         this.level = 5; // 챌린지는 중간 레벨부터 시작
@@ -1001,9 +1002,16 @@
                     hasLabel: playerMesh.children.some(child => child.userData && child.userData.isLabel)
                 });
 
-                if (Object.keys(this.players).length === 2 && !this.cake.mesh) {
+                // 모드에 따른 필요 플레이어 수 확인
+                const requiredPlayers = this.modeConfig[this.gameMode].players;
+                if (Object.keys(this.players).length === requiredPlayers && !this.cake.mesh) {
                     this.createCake();
                     this.createLevel();
+                }
+                
+                // 4인 협동 모드에서 플레이어 상태 업데이트
+                if (this.gameMode === 'coop4') {
+                    this.updateCoop4PlayerStatus();
                 }
             }
 
@@ -1016,8 +1024,33 @@
             }
 
             updatePlayerStatus() {
-                document.getElementById('player1Status').className = `player-status ${this.players['sensor1'] ? 'connected' : 'disconnected'}`;
-                document.getElementById('player2Status').className = `player-status ${this.players['sensor2'] ? 'connected' : 'disconnected'}`;
+                if (this.gameMode === 'coop4') {
+                    // 4인 협동 모드는 별도 UI 처리
+                    this.updateCoop4PlayerStatus();
+                } else {
+                    // 일반 2인 모드
+                    const playerIds = Object.keys(this.players);
+                    document.getElementById('player1Status').className = `player-status ${playerIds.length > 0 ? 'connected' : 'disconnected'}`;
+                    document.getElementById('player2Status').className = `player-status ${playerIds.length > 1 ? 'connected' : 'disconnected'}`;
+                }
+            }
+
+            // 4인 협동 모드 플레이어 상태 업데이트
+            updateCoop4PlayerStatus() {
+                const playerCount = Object.keys(this.players).length;
+                const statusText = `${playerCount}/4명 연결됨`;
+                
+                // 메시지 박스에 연결 상태 표시
+                if (playerCount < 4 && this.gameState === 'waiting') {
+                    this.messageBox.textContent = `👥 4인 협동 모드 - ${statusText}`;
+                } else if (playerCount === 4 && this.gameState === 'waiting' && this.cake.mesh) {
+                    this.setGameState('ready', '4명 모두 연결됨! 게임 시작!');
+                    setTimeout(() => {
+                        this.setGameState('playing', '');
+                    }, 3000);
+                }
+                
+                console.log(`👥 4인 협동 모드: ${statusText}`);
             }
 
             createCake() {
@@ -1731,13 +1764,57 @@
 
                 const destBox = new THREE.Box3().setFromObject(this.destination);
                 if (cakeBox.intersectsBox(destBox)) {
-                    if (this.level < this.maxLevel) {
-                        this.setGameState('level_clear', `레벨 ${this.level} 클리어!`);
-                        this.level++;
+                    this.handleDestinationReached();
+                }
+            }
+
+            // 목적지 도달 처리 (모드별)
+            handleDestinationReached() {
+                switch(this.gameMode) {
+                    case 'normal':
+                    case 'challenge':
+                    case 'timeAttack':
+                        if (this.level < this.maxLevel) {
+                            this.setGameState('level_clear', `레벨 ${this.level} 클리어!`);
+                            this.level++;
+                            setTimeout(() => this.resetGame(true), 2000);
+                        } else {
+                            this.setGameState('success', '최종 배달 성공!');
+                        }
+                        break;
+                        
+                    case 'infinite':
+                        this.consecutiveDeliveries++;
+                        this.infiniteLevel++;
+                        this.currentScore += this.infiniteLevel * 100; // 레벨당 보너스 증가
+                        this.setGameState('level_clear', `무한 배달 ${this.consecutiveDeliveries}회 성공!`);
                         setTimeout(() => this.resetGame(true), 2000);
-                    } else {
-                        this.setGameState('success', '최종 배달 성공!');
-                    }
+                        console.log(`♾️ 무한 모드: ${this.consecutiveDeliveries}회 연속 배달`);
+                        break;
+                        
+                    case 'speedrun':
+                        // 최종 목적지 도달
+                        const finalTime = this.speedrunTime;
+                        if (finalTime < this.speedrunBestTime) {
+                            this.speedrunBestTime = finalTime;
+                            localStorage.setItem('speedrunBest', finalTime.toString());
+                            this.setGameState('success', `🎉 신기록! ${finalTime.toFixed(1)}초`);
+                        } else {
+                            this.setGameState('success', `⚡ 완주! ${finalTime.toFixed(1)}초 (최고: ${this.speedrunBestTime.toFixed(1)}초)`);
+                        }
+                        break;
+                        
+                    case 'relay':
+                        // 릴레이 모드는 updateRelayMode에서 처리됨
+                        if (this.currentSegment > this.relaySegments) {
+                            this.setGameState('success', '🏃 릴레이 배달 완주!');
+                        }
+                        break;
+                        
+                    case 'coop4':
+                        // 4인 협동 완료
+                        this.setGameState('success', '👥 4인 협동 배달 성공!');
+                        break;
                 }
             }
 
@@ -1780,6 +1857,15 @@
                     this.updateScoreDisplay();
                 } else if (state === 'playing') {
                     this.bgm.play().catch(e => console.log("BGM play failed:", e));
+                    // 타임 어택 모드에서 게임 시작 시 타이머 활성화
+                    if (this.gameMode === 'timeAttack') {
+                        this.isTimerActive = true;
+                        this.remainingTime = this.timeLimit;
+                    }
+                    // 스피드런 모드에서 게임 시작 시 타이머 초기화
+                    if (this.gameMode === 'speedrun') {
+                        this.speedrunTime = 0;
+                    }
                 } else if (state === 'level_clear') {
                     this.currentScore += (this.level * 100); // 레벨 클리어 점수
                     this.updateScoreDisplay();
@@ -1919,6 +2005,7 @@
                 if (this.gameState === 'playing') {
                     this.updateCakePosition();
                     this.updateCakePhysics(deltaTime);
+                    this.updateGameModeLogic(deltaTime); // 모드별 로직 추가
                     this.checkCollisions();
                     this.updateDynamicObstacles();
                 }
@@ -1930,6 +2017,143 @@
                 this.renderer.render(this.scene, this.camera);
             }
             
+            // 모드별 게임 로직 업데이트
+            updateGameModeLogic(deltaTime) {
+                switch(this.gameMode) {
+                    case 'timeAttack':
+                        this.updateTimeAttackMode(deltaTime);
+                        break;
+                    case 'speedrun':
+                        this.updateSpeedrunMode(deltaTime);
+                        break;
+                    case 'relay':
+                        this.updateRelayMode();
+                        break;
+                    case 'infinite':
+                        this.updateInfiniteMode();
+                        break;
+                    case 'challenge':
+                        this.updateChallengeMode();
+                        break;
+                    case 'coop4':
+                        this.updateCoop4Mode();
+                        break;
+                }
+            }
+
+            // 타임 어택 모드 업데이트
+            updateTimeAttackMode(deltaTime) {
+                if (this.isTimerActive && this.remainingTime > 0) {
+                    this.remainingTime -= deltaTime;
+                    if (this.remainingTime <= 0) {
+                        this.remainingTime = 0;
+                        this.setGameState('fail', '⏰ 시간 초과!');
+                        return;
+                    }
+                    // UI 업데이트
+                    if (this.remainingTimeDisplay) {
+                        this.remainingTimeDisplay.textContent = Math.ceil(this.remainingTime);
+                        // 시간이 얼마 남지 않았을 때 경고 색상
+                        if (this.remainingTime <= 10) {
+                            this.remainingTimeDisplay.style.color = '#ef4444'; // 빨간색
+                        } else if (this.remainingTime <= 30) {
+                            this.remainingTimeDisplay.style.color = '#f59e0b'; // 주황색
+                        }
+                    }
+                }
+            }
+
+            // 스피드런 모드 업데이트
+            updateSpeedrunMode(deltaTime) {
+                this.speedrunTime += deltaTime;
+                if (this.remainingTimeDisplay) {
+                    this.remainingTimeDisplay.textContent = this.speedrunTime.toFixed(1);
+                }
+                
+                // 체크포인트 통과 체크
+                if (this.cake.mesh) {
+                    for (let i = 0; i < this.speedrunCheckpoints.length; i++) {
+                        const checkpoint = this.speedrunCheckpoints[i];
+                        if (!checkpoint.reached) {
+                            const distance = this.cake.mesh.position.distanceTo(checkpoint.position);
+                            if (distance < 3) {
+                                checkpoint.reached = true;
+                                const timeBonus = Math.max(0, checkpoint.targetTime - this.speedrunTime);
+                                this.currentScore += Math.floor(timeBonus * 100);
+                                this.showStatusMessage(`⚡ 체크포인트 ${i+1} 통과! (+${Math.floor(timeBonus * 100)}점)`, 2000);
+                                console.log(`⚡ 체크포인트 ${i+1} 통과: ${this.speedrunTime.toFixed(1)}초`);
+                            }
+                            break; // 순서대로 통과해야 함
+                        }
+                    }
+                }
+            }
+
+            // 릴레이 모드 업데이트
+            updateRelayMode() {
+                if (this.cake.mesh && this.segmentTargets.length > 0) {
+                    const currentTarget = this.segmentTargets[this.currentSegment - 1];
+                    if (currentTarget && !currentTarget.reached) {
+                        const distance = this.cake.mesh.position.distanceTo(currentTarget.position);
+                        if (distance < 3) {
+                            currentTarget.reached = true;
+                            this.currentSegment++;
+                            
+                            if (this.currentSegment <= this.relaySegments) {
+                                this.showStatusMessage(`🏃 구간 ${this.currentSegment-1} 완료! 다음 구간으로!`, 3000);
+                                console.log(`🏃 릴레이 구간 ${this.currentSegment-1} 완료`);
+                                // 다음 구간 목적지로 변경
+                                this.updateDestination(this.segmentTargets[this.currentSegment - 1].position);
+                            } else {
+                                // 모든 구간 완료
+                                this.setGameState('success', '🏃 릴레이 배달 완주!');
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 무한 모드 업데이트  
+            updateInfiniteMode() {
+                // 무한 모드는 checkCollisions에서 목적지 도달 시 다음 레벨로 자동 진행
+                // 별도 업데이트 로직 불필요 (이미 구현됨)
+            }
+
+            // 챌린지 모드 업데이트
+            updateChallengeMode() {
+                // 챌린지 모드는 높은 난이도 설정으로 충분
+                // 추가적인 특수 효과나 제약 조건 추가 가능
+            }
+
+            // 4인 협동 모드 업데이트
+            updateCoop4Mode() {
+                // 4명 플레이어 상태 체크 및 대형 케이크 관리
+                if (Object.keys(this.players).length === 4) {
+                    // 4명이 모두 연결된 상태에서만 특별한 로직 실행
+                    this.updateBigCakePhysics();
+                }
+            }
+
+            // 목적지 업데이트 (릴레이 모드용)
+            updateDestination(newPosition) {
+                if (this.destination) {
+                    this.destination.position.copy(newPosition);
+                }
+            }
+
+            // 대형 케이크 물리 (4인 협동용)
+            updateBigCakePhysics() {
+                // 4명의 위치를 고려한 케이크 위치 계산
+                if (this.cake.mesh && Object.keys(this.players).length === 4) {
+                    const playerPositions = Object.values(this.players).map(p => p.mesh.position);
+                    const centerX = playerPositions.reduce((sum, pos) => sum + pos.x, 0) / 4;
+                    const centerZ = playerPositions.reduce((sum, pos) => sum + pos.z, 0) / 4;
+                    
+                    const targetPos = new THREE.Vector3(centerX, 1, centerZ);
+                    this.cake.mesh.position.lerp(targetPos, 0.05); // 더 느린 반응
+                }
+            }
+
             updateCakePhysics(deltaTime) {
                 if (!this.cake.mesh || !this.currentCakeType || !this.cakePhysics) return;
                 
