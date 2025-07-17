@@ -592,27 +592,7 @@ body {
     color: var(--success);
 }
 
-/* 대규모 경쟁 내 정보 패널 */
-.my-mass-info-panel {
-    bottom: 1rem;
-    left: 1rem;
-    min-width: 250px;
-}
 
-.my-mass-score {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--success);
-    font-family: 'Courier New', monospace;
-    text-align: center;
-    margin-bottom: 1rem;
-}
-
-.my-mass-stats {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-}
 
 /* 대규모 경쟁 대기실 */
 .mass-waiting-panel {

@@ -57,11 +57,10 @@ class ShotTargetGame {
 
         // 대규모 경쟁 모드 전용 조준점 설정
         this.massCompetitiveCrosshair = {
-            smoothing: 0.15,  // ✅ 대규모 경쟁 모드 전용: 더 빠른 반응 (0.25 → 0.15)
-            adaptiveSmoothing: true,  // 동적 스무딩 활성화
-            velocityThreshold: 50,    // 빠른 움직임 감지 임계값
-            fastSmoothing: 0.3,       // 빠른 움직임시 스무딩
-            slowSmoothing: 0.1        // 느린 움직임시 스무딩
+            smoothing: 0.18,  // ✅ 고정 스무딩으로 일관된 반응 (끊김 방지)
+            adaptiveSmoothing: false,  // 동적 스무딩 비활성화 (끊김 원인 제거)
+            lastSmoothingValue: 0.18,  // 이전 스무딩 값 저장
+            smoothingTransition: 0.05  // 스무딩 값 변화 속도
         };
 
         // dual 모드용 두 번째 조준점
@@ -140,12 +139,6 @@ class ShotTargetGame {
             massPlayerCount: document.getElementById('massPlayerCount'),
             totalTargetsCreated: document.getElementById('totalTargetsCreated'),
             massLeaderboard: document.getElementById('massLeaderboard'),
-            myMassInfoPanel: document.getElementById('myMassInfoPanel'),
-            myMassScore: document.getElementById('myMassScore'),
-            myMassRank: document.getElementById('myMassRank'),
-            myMassHits: document.getElementById('myMassHits'),
-            myMassCombo: document.getElementById('myMassCombo'),
-            myMassAccuracy: document.getElementById('myMassAccuracy'),
             massWaitingPanel: document.getElementById('massWaitingPanel'),
             massSessionCode: document.getElementById('massSessionCode'),
             massQrContainer: document.getElementById('massQrContainer'),
@@ -1124,22 +1117,8 @@ class ShotTargetGame {
 
         // 조준점 부드러운 이동 (모드별 최적화)
         if (this.gameMode === 'mass-competitive') {
-            // ✅ 대규모 경쟁 모드: 동적 스무딩 적용
-            let smoothingValue = this.massCompetitiveCrosshair.smoothing;
-
-            if (this.massCompetitiveCrosshair.adaptiveSmoothing) {
-                // 조준점 이동 속도 계산
-                const deltaX = this.crosshair.targetX - this.crosshair.x;
-                const deltaY = this.crosshair.targetY - this.crosshair.y;
-                const velocity = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-
-                // 속도에 따른 동적 스무딩
-                if (velocity > this.massCompetitiveCrosshair.velocityThreshold) {
-                    smoothingValue = this.massCompetitiveCrosshair.fastSmoothing;  // 빠른 움직임
-                } else {
-                    smoothingValue = this.massCompetitiveCrosshair.slowSmoothing;  // 정밀한 움직임
-                }
-            }
+            // ✅ 대규모 경쟁 모드: 고정 스무딩으로 일관된 반응 (끊김 완전 제거)
+            const smoothingValue = this.massCompetitiveCrosshair.smoothing;
 
             this.crosshair.x += (this.crosshair.targetX - this.crosshair.x) * smoothingValue;
             this.crosshair.y += (this.crosshair.targetY - this.crosshair.y) * smoothingValue;
@@ -1557,7 +1536,6 @@ class ShotTargetGame {
     hideMassWaitingPanel() {
         this.elements.massWaitingPanel.classList.add('hidden');
         this.elements.massCompetitivePanel.classList.remove('hidden');
-        this.elements.myMassInfoPanel.classList.remove('hidden');
         // ✅ 대규모 경쟁 모드에서는 표적 정보 패널 숨기기
         this.elements.gameInfoPanel.classList.add('hidden');
         this.elements.crosshair.classList.remove('hidden');
@@ -1585,21 +1563,10 @@ class ShotTargetGame {
         });
 
         // 내 순위 업데이트
-        const myPlayerIndex = sortedPlayers.findIndex(p => p.id === this.state.myPlayerId);
-        if (myPlayerIndex !== -1) {
-            this.updateMyMassStats(sortedPlayers[myPlayerIndex], myPlayerIndex + 1);
-        }
+        // 내 정보 패널 제거됨 - 리더보드에서 확인 가능
     }
 
-    updateMyMassStats(myPlayer, rank) {
-        if (!myPlayer) return;
 
-        this.elements.myMassScore.textContent = myPlayer.score.toLocaleString();
-        this.elements.myMassRank.textContent = rank;
-        this.elements.myMassHits.textContent = myPlayer.hits;
-        this.elements.myMassCombo.textContent = myPlayer.combo;
-        this.elements.myMassAccuracy.textContent = `${myPlayer.accuracy}%`;
-    }
 
     // 대규모 경쟁 모드에서 표적 명중 처리
     handleMassTargetHit(target, targetIndex, playerId) {
