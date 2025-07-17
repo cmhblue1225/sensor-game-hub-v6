@@ -359,6 +359,7 @@ body {
         transform: scale(0.5);
         opacity: 1;
     }
+
     100% {
         transform: scale(2);
         opacity: 0;
@@ -382,10 +383,12 @@ body {
         transform: translateY(0) scale(0.5);
         opacity: 1;
     }
+
     50% {
         transform: translateY(-30px) scale(1.2);
         opacity: 1;
     }
+
     100% {
         transform: translateY(-60px) scale(1);
         opacity: 0;
@@ -628,14 +631,37 @@ body {
 }
 
 /* 플레이어 색상 팔레트 */
-.player-color-1 { background-color: #3b82f6 !important; }
-.player-color-2 { background-color: #ef4444 !important; }
-.player-color-3 { background-color: #10b981 !important; }
-.player-color-4 { background-color: #f59e0b !important; }
-.player-color-5 { background-color: #8b5cf6 !important; }
-.player-color-6 { background-color: #06b6d4 !important; }
-.player-color-7 { background-color: #f97316 !important; }
-.player-color-8 { background-color: #84cc16 !important; }
+.player-color-1 {
+    background-color: #3b82f6 !important;
+}
+
+.player-color-2 {
+    background-color: #ef4444 !important;
+}
+
+.player-color-3 {
+    background-color: #10b981 !important;
+}
+
+.player-color-4 {
+    background-color: #f59e0b !important;
+}
+
+.player-color-5 {
+    background-color: #8b5cf6 !important;
+}
+
+.player-color-6 {
+    background-color: #06b6d4 !important;
+}
+
+.player-color-7 {
+    background-color: #f97316 !important;
+}
+
+.player-color-8 {
+    background-color: #84cc16 !important;
+}
 
 /* 협동 모드 중앙 경계선 */
 .center-divider {
@@ -659,6 +685,102 @@ body {
     display: none;
 }
 
+/* 대규모 경쟁 모드 결과 모달 */
+.mass-competitive-result-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.mass-competitive-result-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--surface);
+    border: 2px solid var(--primary);
+    border-radius: 1rem;
+    padding: 2rem;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+}
+
+.modal-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+}
+
+.modal-body {
+    margin-bottom: 2rem;
+}
+
+.result-text {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: var(--text-primary);
+    background: var(--background);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.modal-footer .btn {
+    min-width: 120px;
+    padding: 0.75rem 1.5rem;
+}
+
+/* 순위별 색상 강조 */
+.result-text {
+    /* 1위 강조 */
+    background: linear-gradient(135deg, var(--background), rgba(255, 215, 0, 0.05));
+}
+
 /* 숨김 클래스 */
 .hidden {
     display: none !important;
@@ -670,8 +792,15 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 /* 반응형 */
@@ -680,23 +809,23 @@ body {
         padding: 1rem;
         font-size: 0.9rem;
     }
-    
+
     .score-panel,
     .status-panel,
     .game-info-panel {
         min-width: 200px;
     }
-    
+
     .session-panel {
         max-width: 350px;
         min-width: 300px;
         padding: 1.5rem;
     }
-    
+
     .session-code {
         font-size: 2.5rem;
     }
-    
+
     .info-grid {
         grid-template-columns: 1fr;
         gap: 0.5rem;

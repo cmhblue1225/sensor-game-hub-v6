@@ -23,7 +23,7 @@ class ShotTargetGame {
             comboCount: 0,
             maxCombo: 0,
             sessionCode: null,
-            timeLeft: 180,  // 3분 = 180초
+            timeLeft: 180,  // 3분 = 180초 (기본값, 모드별로 동적 설정)
             gameStartTime: null,
             // 경쟁 모드용 개별 점수
             player1Score: 0,
@@ -686,7 +686,14 @@ class ShotTargetGame {
     startGame() {
         this.state.playing = true;
         this.state.paused = false;
-        this.state.timeLeft = 180;  // 3분 = 180초
+        
+        // ✅ 대규모 경쟁 모드는 2분, 다른 모드는 3분
+        if (this.gameMode === 'mass-competitive') {
+            this.state.timeLeft = 120;  // 2분 = 120초
+        } else {
+            this.state.timeLeft = 180;  // 3분 = 180초
+        }
+        
         this.state.gameStartTime = Date.now();
         this.updateGameStatus('게임 진행 중...');
         this.lastTargetSpawn = Date.now();
@@ -763,6 +770,19 @@ class ShotTargetGame {
             resultMessage += `플레이어 1: ${player1Score.toLocaleString()}점\n`;
             resultMessage += `플레이어 2: ${player2Score.toLocaleString()}점`;
 
+        } else if (this.gameMode === 'mass-competitive') {
+            // ✅ 대규모 경쟁 모드: 최종 순위 표시
+            resultMessage = this.generateMassCompetitiveResults();
+            
+            // ✅ 대규모 경쟁 모드에서는 순위 결과를 더 오래 표시
+            setTimeout(() => {
+                this.showMassCompetitiveResultsModal(resultMessage);
+            }, 1000);
+            
+            // alert 대신 모달로 표시하므로 return
+            console.log('🎯 대규모 경쟁 게임 종료:', resultMessage);
+            return;
+
         } else {
             // 싱글/협동 모드: 기존 결과 표시
             resultMessage = `🎯 게임 종료!\n최종 점수: ${this.state.score.toLocaleString()}점\n`;
@@ -776,6 +796,94 @@ class ShotTargetGame {
         }, 1000);
 
         console.log('🎯 게임 종료:', resultMessage);
+    }
+
+    // ✅ 대규모 경쟁 모드 최종 결과 생성
+    generateMassCompetitiveResults() {
+        // 플레이어들을 점수 순으로 정렬
+        const sortedPlayers = Array.from(this.massPlayers.values())
+            .filter(player => player.isActive)
+            .sort((a, b) => b.score - a.score);
+
+        let resultMessage = `🏆 대규모 경쟁 게임 종료! (2분)\n`;
+        resultMessage += `참가자: ${sortedPlayers.length}명\n\n`;
+
+        // 상위 3명 특별 표시
+        const medals = ['🥇', '🥈', '🥉'];
+        
+        sortedPlayers.forEach((player, index) => {
+            const rank = index + 1;
+            const medal = index < 3 ? medals[index] : `${rank}위`;
+            const isMe = player.id === this.state.myPlayerId ? ' (나)' : '';
+            
+            resultMessage += `${medal} ${player.name}${isMe}\n`;
+            resultMessage += `   점수: ${player.score.toLocaleString()}점\n`;
+            resultMessage += `   적중: ${player.hits}발 (${player.accuracy}%)\n`;
+            resultMessage += `   최대 콤보: ${player.maxCombo}\n\n`;
+        });
+
+        // 게임 통계
+        const totalTargets = this.state.totalTargetsCreated;
+        const totalHits = sortedPlayers.reduce((sum, p) => sum + p.hits, 0);
+        const avgAccuracy = sortedPlayers.reduce((sum, p) => sum + p.accuracy, 0) / sortedPlayers.length;
+
+        resultMessage += `📊 게임 통계\n`;
+        resultMessage += `생성된 표적: ${totalTargets}개\n`;
+        resultMessage += `총 명중: ${totalHits}발\n`;
+        resultMessage += `평균 정확도: ${avgAccuracy.toFixed(1)}%`;
+
+        return resultMessage;
+    }
+
+    // ✅ 대규모 경쟁 모드 결과 모달 표시
+    showMassCompetitiveResultsModal(resultMessage) {
+        // 기존 모달이 있으면 제거
+        const existingModal = document.getElementById('massCompetitiveResultModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        // 결과 모달 생성
+        const modal = document.createElement('div');
+        modal.id = 'massCompetitiveResultModal';
+        modal.className = 'mass-competitive-result-modal';
+        modal.innerHTML = `
+            <div class="modal-backdrop"></div>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>🏆 최종 순위</h2>
+                </div>
+                <div class="modal-body">
+                    <pre class="result-text">${resultMessage}</pre>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" onclick="game.closeMassCompetitiveResultModal()">
+                        🔄 다시 플레이
+                    </button>
+                    <a href="/" class="btn btn-secondary">🏠 허브로</a>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // 모달 표시 애니메이션
+        setTimeout(() => {
+            modal.classList.add('show');
+        }, 100);
+    }
+
+    // ✅ 대규모 경쟁 모드 결과 모달 닫기
+    closeMassCompetitiveResultModal() {
+        const modal = document.getElementById('massCompetitiveResultModal');
+        if (modal) {
+            modal.classList.remove('show');
+            setTimeout(() => {
+                modal.remove();
+                // 게임 리셋
+                this.resetGame();
+            }, 300);
+        }
     }
 
     getAccuracy() {
@@ -809,7 +917,12 @@ class ShotTargetGame {
         this.state.misses = 0;
         this.state.comboCount = 0;
         this.state.maxCombo = 0;
-        this.state.timeLeft = 180;  // 3분으로 리셋
+        // ✅ 대규모 경쟁 모드는 2분, 다른 모드는 3분으로 리셋
+        if (this.gameMode === 'mass-competitive') {
+            this.state.timeLeft = 120;  // 2분으로 리셋
+        } else {
+            this.state.timeLeft = 180;  // 3분으로 리셋
+        }
 
         // 경쟁 모드 점수 초기화
         this.state.player1Score = 0;
