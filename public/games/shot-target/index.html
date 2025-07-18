@@ -275,19 +275,7 @@
     <!-- SessionSDK -->
     <script src="/js/SessionSDK.js"></script>
     
-    <!-- Shot Target Game Script (New FSD Structure) -->
-    <script type="module">
-        import { ShotTargetGame } from './app/shot-target-game.js';
-        
-        // 전역 게임 인스턴스 생성
-        window.game = new ShotTargetGame();
-        
-        // 페이지 언로드 시 정리
-        window.addEventListener('beforeunload', () => {
-            if (window.game) {
-                window.game.cleanup();
-            }
-        });
-    </script>
+    <!-- Shot Target Game Script -->
+    <script src="script.js"></script>
 </body>
 </html>

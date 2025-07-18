@@ -244,14 +244,6 @@ body {
     transform: none;
 }
 
-/* 대규모 경쟁 모드에서 컨트롤 패널 세로 배치 */
-.control-panel.mass-competitive-mode {
-    bottom: 1rem;
-    right: 1rem;
-    width: auto;
-    min-width: 120px;
-}
-
 .btn-group {
     flex-direction: column;
     gap: 0.5rem;
@@ -613,108 +605,6 @@ body {
     text-align: center;
     max-width: 500px;
     min-width: 400px;
-}
-
-/* 대기실 위젯 (요청사항: 왼쪽 상단 독립 배치) */
-.waiting-room-widget {
-    position: fixed !important;
-    top: 20px !important;
-    left: 20px !important;
-    width: 280px !important;
-    max-height: 400px !important;
-    background: rgba(30, 41, 59, 0.95) !important;
-    border: 2px solid var(--primary) !important;
-    border-radius: 12px !important;
-    padding: 16px !important;
-    backdrop-filter: blur(12px) !important;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
-    z-index: 1000 !important;
-    font-family: 'Segoe UI', sans-serif !important;
-    color: var(--text-primary) !important;
-}
-
-.waiting-room-header {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 12px;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--primary);
-}
-
-.waiting-player-list {
-    max-height: 280px;
-    overflow-y: auto;
-    margin-bottom: 12px;
-}
-
-.waiting-player-list::-webkit-scrollbar {
-    width: 4px;
-}
-
-.waiting-player-list::-webkit-scrollbar-track {
-    background: rgba(148, 163, 184, 0.1);
-    border-radius: 2px;
-}
-
-.waiting-player-list::-webkit-scrollbar-thumb {
-    background: rgba(59, 130, 246, 0.5);
-    border-radius: 2px;
-}
-
-.waiting-player-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(59, 130, 246, 0.7);
-}
-
-.waiting-player-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px;
-    margin-bottom: 6px;
-    background: rgba(59, 130, 246, 0.1);
-    border: 1px solid rgba(59, 130, 246, 0.2);
-    border-radius: 6px;
-    transition: all 0.2s ease;
-}
-
-.waiting-player-item:hover {
-    background: rgba(59, 130, 246, 0.15);
-    transform: translateX(2px);
-}
-
-.waiting-empty-slot {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px;
-    margin-bottom: 6px;
-    background: rgba(148, 163, 184, 0.1);
-    border: 1px dashed rgba(148, 163, 184, 0.3);
-    border-radius: 6px;
-    opacity: 0.6;
-}
-
-.waiting-status-message {
-    font-size: 0.85rem;
-    color: var(--text-secondary);
-    text-align: center;
-    padding: 8px;
-    background: rgba(59, 130, 246, 0.1);
-    border-radius: 6px;
-    border: 1px solid rgba(59, 130, 246, 0.2);
-}
-
-@keyframes fadeInLeft {
-    from {
-        opacity: 0;
-        transform: translateX(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
 }
 
 .mass-waiting-list {
