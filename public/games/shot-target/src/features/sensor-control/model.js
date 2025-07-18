@@ -35,7 +35,7 @@ export class SensorController {
     }
 
     // 센서 데이터 처리
-    processSensorData(data, gameMode, playerManager = null, canvasWidth = window.innerWidth, canvasHeight = window.innerHeight) {
+    processSensorData(data, gameMode, playerManager = null) {
         const sensorData = data.data;
         const sensorId = data.sensorId || 'sensor';
 
@@ -57,11 +57,7 @@ export class SensorController {
                     sensorData.orientation.gamma || 0
                 );
                 
-                // ✅ 모든 플레이어의 조준점 위치 즉시 계산 및 업데이트
-                // 센서 데이터가 들어올 때마다 해당 플레이어의 조준점 위치 계산
-                this.calculatePlayerCrosshairPosition(player, canvasWidth, canvasHeight);
-                
-                console.log(`🎯 [${player.name}] 센서 데이터 처리 완료: 조준점 (${player.crosshairX?.toFixed(1)}, ${player.crosshairY?.toFixed(1)})`);
+                // 내 플레이어인 경우 메인 센서 데이터 업데이트는 게임에서 처리
             }
         }
     }
@@ -166,38 +162,6 @@ export class SensorController {
         if (gameMode === 'coop' || gameMode === 'competitive') {
             this.crosshair2.x += (this.crosshair2.targetX - this.crosshair2.x) * this.crosshair2.smoothing;
             this.crosshair2.y += (this.crosshair2.targetY - this.crosshair2.y) * this.crosshair2.smoothing;
-        }
-    }
-
-    // ✅ 개별 플레이어 조준점 위치 계산 (대규모 경쟁 모드용)
-    calculatePlayerCrosshairPosition(player, canvasWidth = window.innerWidth, canvasHeight = window.innerHeight) {
-        const sensitivity = 15;
-        const maxTilt = 25;
-        
-        // 센서 데이터를 화면 좌표로 변환
-        const normalizedTiltX = clamp(player.tilt.y / maxTilt, -1, 1);
-        const normalizedTiltY = clamp(player.tilt.x / maxTilt, -1, 1);
-        
-        // 조준점 목표 위치 계산 (전체 화면 범위)
-        const targetX = canvasWidth / 2 + (normalizedTiltX * canvasWidth / 2);
-        const targetY = canvasHeight / 2 + (normalizedTiltY * canvasHeight / 2);
-        
-        // 화면 경계 제한
-        const clampedX = clamp(targetX, 0, canvasWidth);
-        const clampedY = clamp(targetY, 0, canvasHeight);
-        
-        // 플레이어 조준점 위치 업데이트 (부드러운 이동 적용)
-        const smoothing = 0.18; // 대규모 경쟁 모드 전용 스무딩
-        
-        if (!player.crosshairX) player.crosshairX = canvasWidth / 2;
-        if (!player.crosshairY) player.crosshairY = canvasHeight / 2;
-        
-        player.crosshairX += (clampedX - player.crosshairX) * smoothing;
-        player.crosshairY += (clampedY - player.crosshairY) * smoothing;
-        
-        // 디버그 로그 (가끔씩만)
-        if (Math.random() < 0.01) { // 1% 확률로만 로그
-            console.log(`🎯 [${player.name}] 조준점 위치: (${player.crosshairX.toFixed(1)}, ${player.crosshairY.toFixed(1)})`);
         }
     }
 

@@ -33,10 +33,10 @@ export class Player {
         this.score += points;
     }
 
-    // 적중 처리 (최대 3콤보 제한 적용)
+    // 적중 처리
     hit() {
         this.hits++;
-        this.combo = Math.min(this.combo + 1, 3); // ✅ 최대 3콤보
+        this.combo++;
         this.maxCombo = Math.max(this.maxCombo, this.combo);
         this.lastHitTime = Date.now();
         this.lastActivity = Date.now();
@@ -82,20 +82,6 @@ export class Player {
     activate() {
         this.isActive = true;
         this.lastActivity = Date.now();
-    }
-
-    // ✅ 콤보 타이머 체크 (4.5초 후 콤보 리셋)
-    checkComboTimeout() {
-        const now = Date.now();
-        const COMBO_TIMEOUT = 4500; // 4.5초
-        
-        if (this.combo > 0 && now - this.lastHitTime > COMBO_TIMEOUT) {
-            console.log(`🎯 [${this.name}] 콤보 타임아웃: ${this.combo} → 0`);
-            this.combo = 0;
-            return true; // 콤보가 리셋됨
-        }
-        
-        return false; // 콤보 유지됨
     }
 
     // JSON 직렬화용

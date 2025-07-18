@@ -142,13 +142,10 @@ export class ShotTargetGame {
 
         // 센서 데이터
         this.sessionManager.on('sensor-data', (data) => {
-            // ✅ 캔버스 크기를 센서 컨트롤러에 전달하여 모든 플레이어 조준점 계산
             this.sensorController.processSensorData(
                 data,
                 this.gameModeManager.currentMode,
-                this.playerManager,
-                this.canvas.width,
-                this.canvas.height
+                this.playerManager
             );
 
             // 대규모 경쟁 모드에서 내 플레이어 센서 데이터 메인으로 복사
@@ -354,9 +351,6 @@ export class ShotTargetGame {
 
             // 자동 사격 시도
             this.tryAutoShoot();
-
-            // ✅ 콤보 타이머 체크 (4.5초 후 콤보 리셋)
-            this.checkComboTimeouts();
 
             // UI 업데이트
             this.updateUI();
@@ -605,32 +599,6 @@ export class ShotTargetGame {
         this.gameState.paused = true;
         this.gameUI.updatePauseButton(true);
         this.gameUI.updateGameStatus('게임 일시정지');
-    }
-
-    // ✅ 콤보 타이머 체크 (4.5초 후 콤보 리셋)
-    checkComboTimeouts() {
-        const mode = this.gameModeManager.currentMode;
-
-        if (mode === 'mass-competitive') {
-            // 대규모 경쟁 모드: 모든 플레이어의 콤보 체크
-            let anyComboReset = false;
-            for (const player of this.playerManager.getActivePlayers()) {
-                if (player.checkComboTimeout()) {
-                    anyComboReset = true;
-                }
-            }
-
-            // 콤보가 리셋된 플레이어가 있으면 리더보드 업데이트
-            if (anyComboReset) {
-                this.leaderboard.updatePlayers(
-                    this.playerManager.getPlayersByScore(),
-                    this.gameState.myPlayerId
-                );
-            }
-        } else {
-            // 솔로/협동/경쟁 모드: 게임 상태의 콤보 체크
-            this.gameState.checkComboTimeout();
-        }
     }
 
     // 게임 리셋
