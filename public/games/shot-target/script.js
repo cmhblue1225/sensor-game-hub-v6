@@ -686,14 +686,14 @@ class ShotTargetGame {
     startGame() {
         this.state.playing = true;
         this.state.paused = false;
-        
+
         // ✅ 대규모 경쟁 모드는 2분, 다른 모드는 3분
         if (this.gameMode === 'mass-competitive') {
             this.state.timeLeft = 120;  // 2분 = 120초
         } else {
             this.state.timeLeft = 180;  // 3분 = 180초
         }
-        
+
         this.state.gameStartTime = Date.now();
         this.updateGameStatus('게임 진행 중...');
         this.lastTargetSpawn = Date.now();
@@ -773,12 +773,12 @@ class ShotTargetGame {
         } else if (this.gameMode === 'mass-competitive') {
             // ✅ 대규모 경쟁 모드: 최종 순위 표시
             resultMessage = this.generateMassCompetitiveResults();
-            
+
             // ✅ 대규모 경쟁 모드에서는 순위 결과를 더 오래 표시
             setTimeout(() => {
                 this.showMassCompetitiveResultsModal(resultMessage);
             }, 1000);
-            
+
             // alert 대신 모달로 표시하므로 return
             console.log('🎯 대규모 경쟁 게임 종료:', resultMessage);
             return;
@@ -810,12 +810,12 @@ class ShotTargetGame {
 
         // 상위 3명 특별 표시
         const medals = ['🥇', '🥈', '🥉'];
-        
+
         sortedPlayers.forEach((player, index) => {
             const rank = index + 1;
             const medal = index < 3 ? medals[index] : `${rank}위`;
             const isMe = player.id === this.state.myPlayerId ? ' (나)' : '';
-            
+
             resultMessage += `${medal} ${player.name}${isMe}\n`;
             resultMessage += `   점수: ${player.score.toLocaleString()}점\n`;
             resultMessage += `   적중: ${player.hits}발 (${player.accuracy}%)\n`;
