@@ -6,22 +6,28 @@
     "icon": "🏎️",
     "version": "1.0.0",
     "author": "Racing Game Team",
-    "created": "2025-01-17T00:00:00Z",
     "sensors": ["orientation", "motion"],
     "maxPlayers": 2,
     "difficulty": "medium",
     "status": "active",
     "featured": true,
-    "tags": ["3D", "racing", "competition", "physics"],
+    "tags": ["3D", "racing", "competition", "physics", "css"],
     "instructions": [
         "두 명의 플레이어가 각각 모바일 기기를 연결합니다",
         "휴대폰을 좌우로 기울여 핸들을 조작하세요",
         "앞으로 기울이면 가속, 뒤로 기울이면 브레이크입니다",
-        "3랩을 먼저 완주하는 플레이어가 승리합니다!"
+        "3랩을 먼저 완주하는 플레이어가 승리합니다!",
+        "개발 테스트: F2 키를 눌러 키보드 모드로 전환 가능"
     ],
     "controls": {
         "tilt-left-right": "핸들 조작",
         "tilt-forward": "가속",
         "tilt-backward": "브레이크"
+    },
+    "technical": {
+        "engine": "CSS 3D Transforms",
+        "physics": "JavaScript",
+        "rendering": "Pure CSS",
+        "performance": "60fps optimized"
     }
 }
