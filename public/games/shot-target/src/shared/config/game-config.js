@@ -11,6 +11,13 @@ export const GAME_CONFIG = {
     hitRadius: 15,  // 조준점이 표적 중심에서 이 거리 내에 있으면 발사
     comboMultiplier: 1.5,
     bulletSpeed: 8,
+    
+    // ✅ 콤보 시스템 설정
+    combo: {
+        timeout: 4500,      // 4.5초 콤보 유지시간
+        maxCombo: 3,        // 최대 3콤보까지
+        multiplier: 1.5     // 콤보당 1.5배 점수
+    },
     maxTargets: 3,  // 최대 동시 표적 수 (기본값)
     
     // 대규모 경쟁 모드 전용 설정

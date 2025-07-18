@@ -159,9 +159,11 @@ export class ShootingSystem {
         return null;
     }
 
-    // 일반 명중 처리
+    // 일반 명중 처리 (개선된 콤보 시스템 적용)
     _processHit(target, targetManager, gameState) {
-        const points = Math.floor(target.points * (1 + gameState.comboCount * (GAME_CONFIG.comboMultiplier - 1)));
+        // ✅ 개선된 콤보 설정 사용 (최대 3콤보, 1.5배 점수)
+        const comboMultiplier = GAME_CONFIG.combo ? GAME_CONFIG.combo.multiplier : GAME_CONFIG.comboMultiplier;
+        const points = Math.floor(target.points * (1 + gameState.comboCount * (comboMultiplier - 1)));
         
         gameState.updateScore(points);
         gameState.updateHits();
@@ -171,12 +173,16 @@ export class ShootingSystem {
         
         // 명중 효과 생성
         this._createHitEffect(target.x, target.y, points);
+        
+        console.log(`🎯 표적 명중! +${points}pt (콤보 x${gameState.comboCount})`);
     }
 
-    // 경쟁 모드 명중 처리
+    // 경쟁 모드 명중 처리 (개선된 콤보 시스템 적용)
     _processCompetitiveHit(target, targetManager, gameState, playerId) {
         const baseCombo = playerId === 1 ? gameState.player1Combo : gameState.player2Combo;
-        const points = Math.floor(target.points * (1 + baseCombo * (GAME_CONFIG.comboMultiplier - 1)));
+        // ✅ 개선된 콤보 설정 사용 (최대 3콤보, 1.5배 점수)
+        const comboMultiplier = GAME_CONFIG.combo ? GAME_CONFIG.combo.multiplier : GAME_CONFIG.comboMultiplier;
+        const points = Math.floor(target.points * (1 + baseCombo * (comboMultiplier - 1)));
         
         gameState.updateScore(points, playerId);
         gameState.updateHits(playerId);
@@ -190,11 +196,15 @@ export class ShootingSystem {
         
         targetManager.removeTarget(target);
         this._createHitEffect(target.x, target.y, points);
+        
+        console.log(`🎯 [경쟁] 플레이어 ${playerId} 표적 명중! +${points}pt (콤보 x${baseCombo})`);
     }
 
-    // 대규모 경쟁 모드 명중 처리
+    // 대규모 경쟁 모드 명중 처리 (개선된 콤보 시스템 적용)
     _processMassCompetitiveHit(target, targetManager, player, gameState) {
-        const points = Math.floor(target.points * (1 + player.combo * (GAME_CONFIG.comboMultiplier - 1)));
+        // ✅ 개선된 콤보 설정 사용 (최대 3콤보, 1.5배 점수)
+        const comboMultiplier = GAME_CONFIG.combo ? GAME_CONFIG.combo.multiplier : GAME_CONFIG.comboMultiplier;
+        const points = Math.floor(target.points * (1 + player.combo * (comboMultiplier - 1)));
         
         player.addScore(points);
         player.hit();
