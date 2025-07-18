@@ -1212,13 +1212,34 @@
                     renderTime: 0
                 };
                 
-                // 자동 테스트 시작
-                this.startAutomaticTests();
+                // 테스트 시스템은 수동으로만 실행 (F1 키로 디버그 모드 활성화 시)
+                // 기본적으로는 테스트를 실행하지 않음
+                console.log('🧪 테스트 시스템 준비 완료 (F1 키로 디버그 모드 활성화 가능)');
             }
             
-            // 자동 테스트 실행 (작업 17)
+            // 기본 테스트 실행 (센서 연결 시뮬레이션 제외)
+            startBasicTests() {
+                console.log('🧪 기본 게임 테스트 시작...');
+                
+                // 1. 렌더링 엔진 테스트
+                this.testRenderingEngine();
+                
+                // 2. 물리 엔진 테스트
+                this.testPhysicsEngine();
+                
+                // 3. 센서 데이터 처리 테스트 (가상 데이터만)
+                setTimeout(() => this.testSensorDataProcessing(), 2000);
+                
+                // 4. 성능 모니터링 시작
+                this.startPerformanceMonitoring();
+                
+                // 5. 크로스 브라우저 호환성 체크
+                this.checkBrowserCompatibility();
+            }
+            
+            // 자동 테스트 실행 (디버그 모드용 - 센서 연결 시뮬레이션 포함)
             startAutomaticTests() {
-                console.log('🧪 게임 테스트 시작...');
+                console.log('🧪 전체 게임 테스트 시작 (디버그 모드)...');
                 
                 // 1. 렌더링 엔진 테스트
                 this.testRenderingEngine();
@@ -1305,7 +1326,46 @@
                 }
             }
             
-            // 센서 연결 시뮬레이션 테스트 (작업 17)
+            // 센서 데이터 처리 테스트 (가상 데이터만, 연결 시뮬레이션 없음)
+            testSensorDataProcessing() {
+                try {
+                    // SessionSDK 확인
+                    if (!this.sdk) {
+                        throw new Error('SessionSDK가 초기화되지 않았습니다');
+                    }
+                    
+                    // 가상 센서 데이터 생성 (연결 시뮬레이션 없이)
+                    const mockOrientation = {
+                        alpha: 0,
+                        beta: -20, // 앞으로 기울기 (가속)
+                        gamma: 15  // 우측 기울기 (우회전)
+                    };
+                    
+                    const mockAcceleration = {
+                        x: 0,
+                        y: 0,
+                        z: 2
+                    };
+                    
+                    // 센서 데이터 처리 테스트
+                    const processedData = this.processSensorData(mockOrientation, mockAcceleration);
+                    
+                    if (processedData && processedData.steering !== undefined && processedData.speed !== undefined) {
+                        this.testResults.sensorConnection = true;
+                        this.logTest('✅ 센서 데이터 처리 테스트 통과');
+                        this.logTest(`   - 조향: ${processedData.steering.toFixed(2)}, 속도: ${processedData.speed.toFixed(2)}`);
+                    } else {
+                        throw new Error('센서 데이터 처리 결과가 올바르지 않습니다');
+                    }
+                    
+                } catch (error) {
+                    this.testResults.sensorConnection = false;
+                    this.logTest('❌ 센서 데이터 처리 테스트 실패: ' + error.message);
+                    console.error('센서 테스트 오류:', error);
+                }
+            }
+            
+            // 센서 연결 시뮬레이션 테스트 (디버그 모드 전용)
             testSensorConnection() {
                 try {
                     // SessionSDK 확인
@@ -1348,7 +1408,7 @@
                 }
             }
             
-            // 게임 플로우 테스트 (작업 17)
+            // 게임 플로우 테스트 (디버그 모드 전용)
             testGameFlow() {
                 try {
                     // 게임 상태 전환 테스트
@@ -1360,7 +1420,7 @@
                     
                     // 게임 시작 테스트
                     if (this.connectedSensors.size >= 2) {
-                        this.startGameCountdown();
+                        this.startCountdown(); // 올바른 메서드명 사용
                         
                         // 카운트다운 후 게임 상태 확인
                         setTimeout(() => {
@@ -2192,8 +2252,34 @@
                 
                 console.log(`🐛 디버그 모드: ${this.debugMode ? '활성화' : '비활성화'}`);
                 
+                if (this.debugMode) {
+                    // 디버그 모드 활성화 시 전체 테스트 시작
+                    console.log('🧪 디버그 모드 활성화 - 전체 테스트 시작');
+                    this.startAutomaticTests();
+                } else {
+                    // 디버그 모드 비활성화 시 테스트 정리
+                    this.cleanupDebugMode();
+                }
+                
                 // 디버그 정보 UI 표시/숨김
                 this.showDebugUI();
+            }
+            
+            // 디버그 모드 정리
+            cleanupDebugMode() {
+                // 디버그 업데이트 인터벌 정리
+                if (this.debugUpdateInterval) {
+                    clearInterval(this.debugUpdateInterval);
+                    this.debugUpdateInterval = null;
+                }
+                
+                // 테스트 결과 패널 제거
+                const testResultsPanel = document.getElementById('testResultsPanel');
+                if (testResultsPanel) {
+                    testResultsPanel.remove();
+                }
+                
+                console.log('🧹 디버그 모드 정리 완료');
             }
             
             // 디버그 UI 표시 (작업 15)
