@@ -486,15 +486,15 @@
                 원하는 경주 모드를 선택하세요
             </p>
             <div class="mode-buttons">
-                <button class="mode-btn" onclick="game.selectMode('quick')">
+                <button class="mode-btn" data-mode="quick">
                     🏁 빠른 경주<br>
                     <small>3랩 경주</small>
                 </button>
-                <button class="mode-btn" onclick="game.selectMode('best-of-3')">
+                <button class="mode-btn" data-mode="best-of-3">
                     🏆 베스트 오브 3<br>
                     <small>3전 2승</small>
                 </button>
-                <button class="mode-btn" onclick="game.selectMode('time-attack')">
+                <button class="mode-btn" data-mode="time-attack">
                     ⏱️ 타임 어택<br>
                     <small>제한시간 경주</small>
                 </button>
@@ -1267,6 +1267,35 @@
         }
 
         const game = new Racing3DGame();
+
+        // 전역 객체로 등록
+        window.game = game;
+
+        // 모드 선택 버튼 이벤트 리스너 추가
+        document.addEventListener('click', (e) => {
+            // 모드 선택 버튼 클릭 처리
+            if (e.target.classList.contains('mode-btn')) {
+                const mode = e.target.getAttribute('data-mode');
+                console.log(`모드 버튼 클릭됨: ${mode}`);
+                game.selectMode(mode);
+                return;
+            }
+
+            // 트랙 선택 버튼 클릭 처리
+            if (e.target.closest('.track-btn')) {
+                const trackBtn = e.target.closest('.track-btn');
+                const onclick = trackBtn.getAttribute('onclick');
+                if (onclick) {
+                    const trackMatch = onclick.match(/'([^']+)'/);
+                    if (trackMatch) {
+                        const trackId = trackMatch[1];
+                        console.log(`트랙 버튼 클릭됨: ${trackId}`);
+                        game.selectTrack(trackId);
+                    }
+                }
+                return;
+            }
+        });
     </script>
 </body>
 
