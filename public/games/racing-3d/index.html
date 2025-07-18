@@ -1271,31 +1271,61 @@
         // 전역 객체로 등록
         window.game = game;
 
-        // 모드 선택 버튼 이벤트 리스너 추가
-        document.addEventListener('click', (e) => {
-            // 모드 선택 버튼 클릭 처리
-            if (e.target.classList.contains('mode-btn')) {
-                const mode = e.target.getAttribute('data-mode');
-                console.log(`모드 버튼 클릭됨: ${mode}`);
-                game.selectMode(mode);
-                return;
-            }
+        // 이벤트 리스너를 더 안전하게 설정
+        setTimeout(() => {
+            console.log('🔧 이벤트 리스너 설정 중...');
 
-            // 트랙 선택 버튼 클릭 처리
-            if (e.target.closest('.track-btn')) {
-                const trackBtn = e.target.closest('.track-btn');
-                const onclick = trackBtn.getAttribute('onclick');
+            // 모드 선택 버튼들에 직접 이벤트 리스너 추가
+            const modeButtons = document.querySelectorAll('.mode-btn');
+            console.log(`찾은 모드 버튼 수: ${modeButtons.length}`);
+
+            modeButtons.forEach((btn, index) => {
+                const mode = btn.getAttribute('data-mode');
+                console.log(`버튼 ${index}: ${mode}`);
+
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log(`🎯 모드 버튼 클릭됨: ${mode}`);
+                    game.selectMode(mode);
+                });
+            });
+
+            // 트랙 선택 버튼들에 직접 이벤트 리스너 추가
+            const trackButtons = document.querySelectorAll('.track-btn');
+            console.log(`찾은 트랙 버튼 수: ${trackButtons.length}`);
+
+            trackButtons.forEach((btn, index) => {
+                const onclick = btn.getAttribute('onclick');
                 if (onclick) {
                     const trackMatch = onclick.match(/'([^']+)'/);
                     if (trackMatch) {
                         const trackId = trackMatch[1];
-                        console.log(`트랙 버튼 클릭됨: ${trackId}`);
-                        game.selectTrack(trackId);
+                        console.log(`트랙 버튼 ${index}: ${trackId}`);
+
+                        btn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log(`🏁 트랙 버튼 클릭됨: ${trackId}`);
+                            game.selectTrack(trackId);
+                        });
                     }
                 }
-                return;
+            });
+
+            // 경주 시작 버튼
+            const startRaceBtn = document.querySelector('button[onclick="game.startRaceWithTrack()"]');
+            if (startRaceBtn) {
+                startRaceBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🚀 경주 시작 버튼 클릭됨');
+                    game.startRaceWithTrack();
+                });
             }
-        });
+
+            console.log('✅ 이벤트 리스너 설정 완료');
+        }, 1000);
     </script>
 </body>
 
