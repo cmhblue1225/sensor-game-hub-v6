@@ -597,27 +597,80 @@
             applyPhysicsForces() {
                 if (!this.physicsBody) return;
                 
-                // 전진/후진 힘 적용
-                if (Math.abs(this.acceleration) > 0.1) {
-                    const forwardForce = new CANNON.Vec3(0, 0, -this.acceleration * this.enginePower);
-                    const worldForce = new CANNON.Vec3();
-                    this.physicsBody.quaternion.vmult(forwardForce, worldForce);
-                    this.physicsBody.applyForce(worldForce, this.physicsBody.position);
+                try {
+                    // 전진/후진 힘 적용
+                    if (Math.abs(this.acceleration) > 0.1) {
+                        const forwardForce = new CANNON.Vec3(0, 0, -this.acceleration * this.enginePower);
+                        const worldForce = new CANNON.Vec3();
+                        this.physicsBody.quaternion.vmult(forwardForce, worldForce);
+                        this.physicsBody.applyForce(worldForce, this.physicsBody.position);
+                    }
+                    
+                    // 조향 처리 - 토크 대신 직접 회전 적용
+                    if (Math.abs(this.steering) > 0.1) {
+                        // applyTorque 메서드가 없는 경우 대안 방법 사용
+                        if (typeof this.physicsBody.applyTorque === 'function') {
+                            const torque = new CANNON.Vec3(0, this.steering * 800, 0);
+                            this.physicsBody.applyTorque(torque);
+                        } else {
+                            // 대안: 각속도 직접 조작
+                            const steeringForce = this.steering * 0.1;
+                            this.physicsBody.angularVelocity.y += steeringForce;
+                            
+                            // 각속도 제한
+                            const maxAngularVelocity = 2;
+                            if (Math.abs(this.physicsBody.angularVelocity.y) > maxAngularVelocity) {
+                                this.physicsBody.angularVelocity.y = Math.sign(this.physicsBody.angularVelocity.y) * maxAngularVelocity;
+                            }
+                        }
+                    }
+                    
+                    // 속도 제한
+                    if (this.physicsBody.velocity.length() > this.maxSpeed) {
+                        this.physicsBody.velocity.scale(this.maxSpeed / this.physicsBody.velocity.length(), this.physicsBody.velocity);
+                    }
+                    
+                    // 바퀴 회전 애니메이션
+                    this.animateWheels();
+                    
+                } catch (error) {
+                    console.error('물리 힘 적용 오류:', error);
+                    // 오류 발생 시 기본적인 위치 기반 조작으로 대체
+                    this.applyBasicMovement();
                 }
+            }
+            
+            // 기본적인 움직임 적용 (물리 엔진 오류 시 대안)
+            applyBasicMovement() {
+                if (!this.physicsBody) return;
                 
-                // 조향 토크 적용
-                if (Math.abs(this.steering) > 0.1) {
-                    const torque = new CANNON.Vec3(0, this.steering * 800, 0);
-                    this.physicsBody.applyTorque(torque);
+                try {
+                    // 기본적인 위치 기반 이동
+                    const moveSpeed = this.acceleration * 0.5;
+                    const rotateSpeed = this.steering * 0.05;
+                    
+                    // 현재 방향 벡터 계산
+                    const forward = new CANNON.Vec3(0, 0, -1);
+                    this.physicsBody.quaternion.vmult(forward, forward);
+                    
+                    // 이동 적용
+                    if (Math.abs(moveSpeed) > 0.01) {
+                        this.physicsBody.velocity.x += forward.x * moveSpeed;
+                        this.physicsBody.velocity.z += forward.z * moveSpeed;
+                    }
+                    
+                    // 회전 적용
+                    if (Math.abs(rotateSpeed) > 0.01) {
+                        this.physicsBody.angularVelocity.y = rotateSpeed;
+                    }
+                    
+                    // 마찰 적용 (속도 감소)
+                    this.physicsBody.velocity.scale(0.95, this.physicsBody.velocity);
+                    this.physicsBody.angularVelocity.scale(0.9, this.physicsBody.angularVelocity);
+                    
+                } catch (error) {
+                    console.error('기본 움직임 적용 오류:', error);
                 }
-                
-                // 속도 제한
-                if (this.physicsBody.velocity.length() > this.maxSpeed) {
-                    this.physicsBody.velocity.scale(this.maxSpeed / this.physicsBody.velocity.length(), this.physicsBody.velocity);
-                }
-                
-                // 바퀴 회전 애니메이션
-                this.animateWheels();
             }
             
             animateWheels() {
