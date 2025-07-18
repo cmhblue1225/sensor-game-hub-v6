@@ -32,13 +32,97 @@
             height: 100vh;
         }
         
-        #gameCanvas {
-            display: block;
+        /* CSS 3D 게임 컨테이너 */
+        .game-world {
             width: 100vw;
             height: 100vh;
-            background: linear-gradient(135deg, #0f172a, #1e293b);
+            perspective: 1000px;
+            perspective-origin: center center;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 100%);
+            position: relative;
+            overflow: hidden;
         }
         
+        /* 3D 씬 컨테이너 */
+        .scene-3d {
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            position: relative;
+        }
+        
+        /* 화면 분할 */
+        .split-screen {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .player-viewport {
+            flex: 1;
+            position: relative;
+            border-right: 2px solid var(--border);
+            overflow: hidden;
+        }
+        
+        .player-viewport:last-child {
+            border-right: none;
+        }      
+  
+        /* 3D 트랙 */
+        .track-3d {
+            width: 800px;
+            height: 400px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotateX(60deg);
+            transform-style: preserve-3d;
+            background: #333;
+            border: 4px solid #fff;
+            border-radius: 20px;
+        }
+        
+        /* 자동차 */
+        .car {
+            width: 40px;
+            height: 80px;
+            position: absolute;
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out;
+        }
+        
+        .car-body {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #ff4444, #cc0000);
+            border-radius: 8px 8px 4px 4px;
+            position: relative;
+            transform: translateZ(10px);
+            box-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+        }
+        
+        .car.player2 .car-body {
+            background: linear-gradient(45deg, #4444ff, #0000cc);
+            box-shadow: 0 0 20px rgba(68, 68, 255, 0.5);
+        }
+        
+        /* 자동차 바퀴 */
+        .wheel {
+            width: 12px;
+            height: 20px;
+            background: #222;
+            border-radius: 2px;
+            position: absolute;
+            border: 1px solid #444;
+        }
+        
+        .wheel.front-left { top: 10px; left: -6px; }
+        .wheel.front-right { top: 10px; right: -6px; }
+        .wheel.rear-left { bottom: 10px; left: -6px; }
+        .wheel.rear-right { bottom: 10px; right: -6px; }
+        
+        /* 게임 UI */
         .game-ui {
             position: fixed;
             top: 0;
@@ -57,8 +141,8 @@
             padding: 1.25rem;
             backdrop-filter: blur(12px);
             pointer-events: all;
-        }
-        
+        }        
+
         .session-panel {
             top: 50%;
             left: 50%;
@@ -135,153 +219,48 @@
         .hidden {
             display: none !important;
         }
-
-        /* 화면 분할 스타일 */
-        .split-screen {
-            display: flex;
-            width: 100%;
-            height: 100%;
-        }
-        
-        .player-viewport {
-            flex: 1;
-            position: relative;
-            border-right: 2px solid var(--border);
-            overflow: hidden;
-        }
-        
-        .player-viewport:last-child {
-            border-right: none;
-        }
-        
-        .player-hud {
-            position: absolute;
-            top: 1rem;
-            left: 1rem;
-            background: rgba(30, 41, 59, 0.95);
-            padding: 1rem;
-            border-radius: 0.75rem;
-            backdrop-filter: blur(12px);
-            min-width: 220px;
-            border: 1px solid var(--border);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-        
-        .player-title {
-            font-size: 1.2rem;
-            font-weight: 700;
-            margin-bottom: 0.75rem;
-            color: var(--primary);
-            text-align: center;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 0.5rem;
-        }
-        
-        .hud-stat {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 0.5rem;
-            font-size: 0.95rem;
-        }
-        
-        .hud-stat:last-child {
-            margin-bottom: 0;
-        }
-        
-        .hud-label {
-            color: var(--text-secondary);
-            font-weight: 500;
-        }
-        
-        .hud-value {
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            color: var(--text-primary);
-            background: rgba(59, 130, 246, 0.1);
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.25rem;
-            min-width: 80px;
-            text-align: center;
-        }
-        
-        /* 연결 상태 표시 */
-        .connection-status {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            background: rgba(30, 41, 59, 0.95);
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            backdrop-filter: blur(8px);
-            border: 1px solid var(--border);
-        }
-        
-        .connection-indicator {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.85rem;
-            margin-bottom: 0.25rem;
-        }
-        
-        .connection-indicator:last-child {
-            margin-bottom: 0;
-        }
-        
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--error);
-            transition: all 0.3s ease;
-        }
-        
-        .status-dot.connected {
-            background: var(--success);
-            box-shadow: 0 0 6px var(--success);
-        }
-        
-        /* 게임 상태 표시 */
-        .game-status {
-            position: absolute;
-            bottom: 1rem;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(30, 41, 59, 0.95);
-            padding: 0.75rem 1.5rem;
-            border-radius: 2rem;
-            backdrop-filter: blur(8px);
-            border: 1px solid var(--border);
-            font-size: 0.9rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-        }
-        
-        /* 카운트다운 스타일 */
-        .countdown {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 8rem;
-            font-weight: 900;
-            color: var(--primary);
-            text-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-            z-index: 200;
-            animation: countdownPulse 1s ease-in-out;
-        }
-        
-        @keyframes countdownPulse {
-            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-            100% { transform: translate(-50%, -50%) scale(1); opacity: 0.8; }
-        }
     </style>
-</head>
-<body>
-    <canvas id="gameCanvas"></canvas>
+</head><body>
+
+    <!-- 3D 게임 월드 -->
+    <div class="game-world">
+        <div class="scene-3d">
+            <!-- 화면 분할 -->
+            <div class="split-screen hidden" id="gameScreen">
+                <div class="player-viewport" id="player1Viewport">
+                    <!-- 플레이어 1 트랙 -->
+                    <div class="track-3d" id="track1">
+                        <!-- 플레이어 1 자동차 -->
+                        <div class="car player1" id="car1">
+                            <div class="car-body">
+                                <div class="wheel front-left"></div>
+                                <div class="wheel front-right"></div>
+                                <div class="wheel rear-left"></div>
+                                <div class="wheel rear-right"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="player-viewport" id="player2Viewport">
+                    <!-- 플레이어 2 트랙 -->
+                    <div class="track-3d" id="track2">
+                        <!-- 플레이어 2 자동차 -->
+                        <div class="car player2" id="car2">
+                            <div class="car-body">
+                                <div class="wheel front-left"></div>
+                                <div class="wheel front-right"></div>
+                                <div class="wheel rear-left"></div>
+                                <div class="wheel rear-right"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     
+    <!-- 게임 UI 오버레이 -->
     <div class="game-ui">
         <!-- 세션 대기 패널 -->
         <div class="ui-panel session-panel" id="sessionPanel">
@@ -307,433 +286,25 @@
             </div>
         </div>
         
-        <!-- 게임 HUD -->
-        <div class="split-screen hidden" id="gameHUD">
-            <div class="player-viewport">
-                <div class="player-hud">
-                    <div class="player-title">🏎️ 플레이어 1</div>
-                    <div class="hud-stat">
-                        <span class="hud-label">속도:</span>
-                        <span class="hud-value" id="player1Speed">0 km/h</span>
-                    </div>
-                    <div class="hud-stat">
-                        <span class="hud-label">랩:</span>
-                        <span class="hud-value" id="player1Lap">0/3</span>
-                    </div>
-                    <div class="hud-stat">
-                        <span class="hud-label">시간:</span>
-                        <span class="hud-value" id="player1Time">0.00s</span>
-                    </div>
-                </div>
-                
-                <!-- 연결 상태 표시 -->
-                <div class="connection-status">
-                    <div class="connection-indicator">
-                        <div class="status-dot" id="server1Status"></div>
-                        <span>서버</span>
-                    </div>
-                    <div class="connection-indicator">
-                        <div class="status-dot" id="sensor1Status"></div>
-                        <span>센서 1</span>
-                    </div>
-                </div>
-            </div>
-            <div class="player-viewport">
-                <div class="player-hud">
-                    <div class="player-title">🏎️ 플레이어 2</div>
-                    <div class="hud-stat">
-                        <span class="hud-label">속도:</span>
-                        <span class="hud-value" id="player2Speed">0 km/h</span>
-                    </div>
-                    <div class="hud-stat">
-                        <span class="hud-label">랩:</span>
-                        <span class="hud-value" id="player2Lap">0/3</span>
-                    </div>
-                    <div class="hud-stat">
-                        <span class="hud-label">시간:</span>
-                        <span class="hud-value" id="player2Time">0.00s</span>
-                    </div>
-                </div>
-                
-                <!-- 연결 상태 표시 -->
-                <div class="connection-status">
-                    <div class="connection-indicator">
-                        <div class="status-dot" id="server2Status"></div>
-                        <span>서버</span>
-                    </div>
-                    <div class="connection-indicator">
-                        <div class="status-dot" id="sensor2Status"></div>
-                        <span>센서 2</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        
-        <!-- 게임 상태 표시 -->
-        <div class="game-status hidden" id="gameStatus">게임 준비 중...</div>
-        
         <!-- 컨트롤 패널 -->
         <div class="ui-panel control-panel hidden" id="controlPanel">
-            <button class="btn btn-secondary" id="pauseResumeBtn" onclick="game.togglePauseResume()">⏸️ 일시정지</button>
             <button class="btn btn-secondary" onclick="game.resetGame()">🔄 재시작</button>
-            <button class="btn btn-secondary" onclick="game.returnToHub()">🏠 허브로</button>
+            <a href="/" class="btn btn-secondary">🏠 허브로</a>
         </div>
-    </div>
-    
+    </div>   
+ 
     <!-- Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
     
     <!-- QR Code Generator (폴백 처리 포함) -->
     <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
     
-    <!-- Three.js (로컬 라이브러리) -->
-    <script src="libs/three.min.js"></script>
-    
-    <!-- Cannon.js 물리 엔진 (로컬 라이브러리) -->
-    <script src="libs/cannon.min.js"></script>
-    
     <!-- SessionSDK -->
     <script src="/js/SessionSDK.js"></script>
     
     <script>
-        // Car 클래스 구현
-        class Car {
-            constructor(scene, world, color, x, y, z, carMaterial) {
-                this.scene = scene;
-                this.world = world;
-                this.color = color;
-                this.carMaterial = carMaterial;
-                
-                // 3D 메시 그룹 생성
-                this.mesh = new THREE.Group();
-                
-                // 물리 바디 생성
-                this.physicsBody = this.createPhysicsBody(x, y, z);
-                
-                // 3D 모델 생성
-                this.create3DModel();
-                
-                // 초기 위치 설정
-                this.mesh.position.set(x, y, z);
-                
-                // 씬에 추가
-                this.scene.add(this.mesh);
-                
-                // 자동차 속성
-                this.maxSpeed = 30; // m/s
-                this.acceleration = 0;
-                this.steering = 0;
-                this.enginePower = 1500; // N
-                this.brakePower = 3000; // N
-            }
-            
-            create3DModel() {
-                // 자동차 본체 (더 상세한 모델)
-                this.createCarBody();
-                
-                // 바퀴들
-                this.createWheels();
-                
-                // 자동차 세부사항
-                this.createCarDetails();
-            }
-            
-            createCarBody() {
-                // 메인 바디
-                const bodyGeometry = new THREE.BoxGeometry(1.8, 0.6, 4);
-                const bodyMaterial = new THREE.MeshLambertMaterial({ 
-                    color: this.color,
-                    transparent: true,
-                    opacity: 0.9
-                });
-                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-                body.position.y = 0.3;
-                body.castShadow = true;
-                body.receiveShadow = true;
-                this.mesh.add(body);
-                
-                // 자동차 지붕 (캐빈)
-                const roofGeometry = new THREE.BoxGeometry(1.6, 0.8, 2);
-                const roofMaterial = new THREE.MeshLambertMaterial({ 
-                    color: this.color === 0xff0000 ? 0xcc0000 : 0x0000cc // 약간 어두운 색상
-                });
-                const roof = new THREE.Mesh(roofGeometry, roofMaterial);
-                roof.position.set(0, 0.7, -0.5);
-                roof.castShadow = true;
-                this.mesh.add(roof);
-                
-                // 앞 범퍼
-                const frontBumperGeometry = new THREE.BoxGeometry(1.9, 0.3, 0.3);
-                const bumperMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
-                const frontBumper = new THREE.Mesh(frontBumperGeometry, bumperMaterial);
-                frontBumper.position.set(0, 0.15, 2.1);
-                frontBumper.castShadow = true;
-                this.mesh.add(frontBumper);
-                
-                // 뒤 범퍼
-                const rearBumper = new THREE.Mesh(frontBumperGeometry, bumperMaterial);
-                rearBumper.position.set(0, 0.15, -2.1);
-                rearBumper.castShadow = true;
-                this.mesh.add(rearBumper);
-            }
-            
-            createWheels() {
-                const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 12);
-                const wheelMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
-                
-                // 휠 림 (은색)
-                const rimGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.32, 12);
-                const rimMaterial = new THREE.MeshLambertMaterial({ color: 0xcccccc });
-                
-                const wheelPositions = [
-                    { pos: [-1.1, 0.4, 1.4], name: 'frontLeft' },   // 앞왼쪽
-                    { pos: [1.1, 0.4, 1.4], name: 'frontRight' },   // 앞오른쪽
-                    { pos: [-1.1, 0.4, -1.4], name: 'rearLeft' },   // 뒤왼쪽
-                    { pos: [1.1, 0.4, -1.4], name: 'rearRight' }    // 뒤오른쪽
-                ];
-                
-                this.wheels = {};
-                
-                wheelPositions.forEach(wheelData => {
-                    const wheelGroup = new THREE.Group();
-                    
-                    // 타이어
-                    const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
-                    wheel.rotation.z = Math.PI / 2;
-                    wheel.castShadow = true;
-                    wheelGroup.add(wheel);
-                    
-                    // 휠 림
-                    const rim = new THREE.Mesh(rimGeometry, rimMaterial);
-                    rim.rotation.z = Math.PI / 2;
-                    rim.castShadow = true;
-                    wheelGroup.add(rim);
-                    
-                    wheelGroup.position.set(wheelData.pos[0], wheelData.pos[1], wheelData.pos[2]);
-                    this.wheels[wheelData.name] = wheelGroup;
-                    this.mesh.add(wheelGroup);
-                });
-            }
-            
-            createCarDetails() {
-                // 헤드라이트
-                const headlightGeometry = new THREE.SphereGeometry(0.15, 8, 8);
-                const headlightMaterial = new THREE.MeshLambertMaterial({ 
-                    color: 0xffffaa,
-                    emissive: 0x444400
-                });
-                
-                const leftHeadlight = new THREE.Mesh(headlightGeometry, headlightMaterial);
-                leftHeadlight.position.set(-0.6, 0.4, 1.9);
-                this.mesh.add(leftHeadlight);
-                
-                const rightHeadlight = new THREE.Mesh(headlightGeometry, headlightMaterial);
-                rightHeadlight.position.set(0.6, 0.4, 1.9);
-                this.mesh.add(rightHeadlight);
-                
-                // 테일라이트
-                const taillightMaterial = new THREE.MeshLambertMaterial({ 
-                    color: 0xff4444,
-                    emissive: 0x440000
-                });
-                
-                const leftTaillight = new THREE.Mesh(headlightGeometry, taillightMaterial);
-                leftTaillight.position.set(-0.6, 0.4, -1.9);
-                this.mesh.add(leftTaillight);
-                
-                const rightTaillight = new THREE.Mesh(headlightGeometry, taillightMaterial);
-                rightTaillight.position.set(0.6, 0.4, -1.9);
-                this.mesh.add(rightTaillight);
-                
-                // 윈드실드 (앞유리)
-                const windshieldGeometry = new THREE.PlaneGeometry(1.4, 0.6);
-                const windshieldMaterial = new THREE.MeshLambertMaterial({ 
-                    color: 0x87ceeb,
-                    transparent: true,
-                    opacity: 0.3
-                });
-                const windshield = new THREE.Mesh(windshieldGeometry, windshieldMaterial);
-                windshield.position.set(0, 0.8, 0.8);
-                windshield.rotation.x = -0.3;
-                this.mesh.add(windshield);
-            }
-            
-            createPhysicsBody(x, y, z) {
-                // CANNON.js가 로드되지 않은 경우 물리 바디 없이 실행
-                if (typeof CANNON === 'undefined' || !this.world) {
-                    console.warn('물리 엔진 없이 자동차 생성');
-                    return null;
-                }
-                
-                try {
-                    // 자동차 물리 바디 생성 (더 정확한 크기)
-                    const carShape = new CANNON.Box(new CANNON.Vec3(0.9, 0.4, 2)); // 크기의 절반
-                    const carBody = new CANNON.Body({ 
-                        mass: 150, // 자동차 질량 (kg)
-                        material: this.carMaterial 
-                    });
-                    carBody.addShape(carShape);
-                    carBody.position.set(x, y, z);
-                    
-                    // 물리 세계에 추가
-                    this.world.add(carBody);
-                    
-                    return carBody;
-                } catch (error) {
-                    console.error('물리 바디 생성 오류:', error);
-                    return null;
-                }
-            }
-            
-            // 센서 데이터를 자동차에 적용
-            applySensorInput(speed, steering) {
-                this.acceleration = speed;
-                this.steering = steering;
-                
-                // 물리 바디에 힘 적용
-                this.applyPhysicsForces();
-            }
-            
-            applyPhysicsForces() {
-                if (!this.physicsBody) return;
-                
-                try {
-                    // 전진/후진 힘 적용
-                    if (Math.abs(this.acceleration) > 0.1) {
-                        const forwardForce = new CANNON.Vec3(0, 0, -this.acceleration * this.enginePower);
-                        const worldForce = new CANNON.Vec3();
-                        this.physicsBody.quaternion.vmult(forwardForce, worldForce);
-                        this.physicsBody.applyForce(worldForce, this.physicsBody.position);
-                    }
-                    
-                    // 조향 처리 - 토크 대신 직접 회전 적용
-                    if (Math.abs(this.steering) > 0.1) {
-                        // applyTorque 메서드가 없는 경우 대안 방법 사용
-                        if (typeof this.physicsBody.applyTorque === 'function') {
-                            const torque = new CANNON.Vec3(0, this.steering * 800, 0);
-                            this.physicsBody.applyTorque(torque);
-                        } else {
-                            // 대안: 각속도 직접 조작
-                            const steeringForce = this.steering * 0.1;
-                            this.physicsBody.angularVelocity.y += steeringForce;
-                            
-                            // 각속도 제한
-                            const maxAngularVelocity = 2;
-                            if (Math.abs(this.physicsBody.angularVelocity.y) > maxAngularVelocity) {
-                                this.physicsBody.angularVelocity.y = Math.sign(this.physicsBody.angularVelocity.y) * maxAngularVelocity;
-                            }
-                        }
-                    }
-                    
-                    // 속도 제한
-                    if (this.physicsBody.velocity.length() > this.maxSpeed) {
-                        this.physicsBody.velocity.scale(this.maxSpeed / this.physicsBody.velocity.length(), this.physicsBody.velocity);
-                    }
-                    
-                    // 바퀴 회전 애니메이션
-                    this.animateWheels();
-                    
-                } catch (error) {
-                    console.error('물리 힘 적용 오류:', error);
-                    // 오류 발생 시 기본적인 위치 기반 조작으로 대체
-                    this.applyBasicMovement();
-                }
-            }
-            
-            // 기본적인 움직임 적용 (물리 엔진 오류 시 대안)
-            applyBasicMovement() {
-                if (!this.physicsBody) return;
-                
-                try {
-                    // 기본적인 위치 기반 이동
-                    const moveSpeed = this.acceleration * 0.5;
-                    const rotateSpeed = this.steering * 0.05;
-                    
-                    // 현재 방향 벡터 계산
-                    const forward = new CANNON.Vec3(0, 0, -1);
-                    this.physicsBody.quaternion.vmult(forward, forward);
-                    
-                    // 이동 적용
-                    if (Math.abs(moveSpeed) > 0.01) {
-                        this.physicsBody.velocity.x += forward.x * moveSpeed;
-                        this.physicsBody.velocity.z += forward.z * moveSpeed;
-                    }
-                    
-                    // 회전 적용
-                    if (Math.abs(rotateSpeed) > 0.01) {
-                        this.physicsBody.angularVelocity.y = rotateSpeed;
-                    }
-                    
-                    // 마찰 적용 (속도 감소)
-                    this.physicsBody.velocity.scale(0.95, this.physicsBody.velocity);
-                    this.physicsBody.angularVelocity.scale(0.9, this.physicsBody.angularVelocity);
-                    
-                } catch (error) {
-                    console.error('기본 움직임 적용 오류:', error);
-                }
-            }
-            
-            animateWheels() {
-                if (!this.wheels || !this.physicsBody) return;
-                
-                const speed = this.physicsBody.velocity.length();
-                const rotationSpeed = speed * 0.1;
-                
-                // 모든 바퀴 회전
-                Object.values(this.wheels).forEach(wheel => {
-                    wheel.rotation.x += rotationSpeed;
-                });
-                
-                // 앞바퀴 조향 (스티어링 휠 효과)
-                if (this.wheels.frontLeft && this.wheels.frontRight) {
-                    const steerAngle = this.steering * 0.3;
-                    this.wheels.frontLeft.rotation.y = steerAngle;
-                    this.wheels.frontRight.rotation.y = steerAngle;
-                }
-            }
-            
-            // 물리 바디와 3D 메시 동기화
-            update() {
-                if (this.physicsBody && this.mesh) {
-                    // 위치 동기화
-                    this.mesh.position.copy(this.physicsBody.position);
-                    this.mesh.quaternion.copy(this.physicsBody.quaternion);
-                    
-                    // 바퀴 애니메이션 업데이트
-                    this.animateWheels();
-                }
-            }
-            
-            // 자동차 위치 가져오기
-            getPosition() {
-                return this.physicsBody ? this.physicsBody.position : new CANNON.Vec3(0, 0, 0);
-            }
-            
-            // 자동차 속도 가져오기 (km/h)
-            getSpeed() {
-                return this.physicsBody ? this.physicsBody.velocity.length() * 3.6 : 0;
-            }
-            
-            // 자동차 리셋
-            reset(x, y, z) {
-                if (this.physicsBody) {
-                    this.physicsBody.position.set(x, y, z);
-                    this.physicsBody.velocity.set(0, 0, 0);
-                    this.physicsBody.angularVelocity.set(0, 0, 0);
-                    this.physicsBody.quaternion.set(0, 0, 0, 1);
-                }
-            }
-        }      
-  
-        // RacingGame 클래스 구현
-        class RacingGame {
+        class CSS3DRacingGame {
             constructor() {
-                this.canvas = document.getElementById('gameCanvas');
-                
-                // 캔버스 크기 설정
-                this.resizeCanvas();
-                window.addEventListener('resize', () => this.resizeCanvas());
-                
                 // SessionSDK 초기화 - 듀얼 게임 설정
                 this.sdk = new SessionSDK({
                     gameId: 'racing-3d',
@@ -741,1040 +312,57 @@
                     debug: true
                 });
                 
-                // 게임 상태 관리 시스템 (작업 9)
-                this.gameState = 'waiting'; // waiting, preparing, racing, paused, finished
-                this.sessionCode = null;
+                // 게임 상태
+                this.gameState = 'waiting'; // waiting, racing, finished
                 this.connectedSensors = new Set();
-                this.gameStartTime = null;
-                this.raceStartTime = null;
-                this.countdownTimer = null;
-                this.gameTimer = null;
-                this.isPaused = false;
-                
-                // 랩 카운트 및 순위 시스템 (작업 10)
-                this.checkpoints = [];
-                this.lapDistance = 50; // 한 랩의 거리 (미터)
-                this.totalLaps = 3; // 총 랩 수
-                this.raceFinished = false;
-                
-                // 랩 추적 시스템 초기화
-                this.lapTracking = {
-                    sensor1: {
-                        currentLap: 0,
-                        lastCheckpoint: -1,
-                        lapStartTime: null,
-                        lapTimes: [],
-                        bestLapTime: Infinity,
-                        rank: 1
-                    },
-                    sensor2: {
-                        currentLap: 0,
-                        lastCheckpoint: -1,
-                        lapStartTime: null,
-                        lapTimes: [],
-                        bestLapTime: Infinity,
-                        rank: 2
-                    }
-                };
                 
                 // 플레이어 데이터
                 this.players = {
                     sensor1: {
                         connected: false,
-                        speed: 0,
-                        lapCount: 0,
-                        lapTime: 0,
-                        totalTime: 0,
+                        car: document.getElementById('car1'),
                         position: { x: 0, y: 0, z: 0 },
-                        sensorData: { tiltX: 0, tiltY: 0, acceleration: 0 },
+                        rotation: { x: 0, y: 0, z: 0 },
+                        speed: 0,
                         steering: 0
                     },
                     sensor2: {
                         connected: false,
-                        speed: 0,
-                        lapCount: 0,
-                        lapTime: 0,
-                        totalTime: 0,
+                        car: document.getElementById('car2'),
                         position: { x: 0, y: 0, z: 0 },
-                        sensorData: { tiltX: 0, tiltY: 0, acceleration: 0 },
+                        rotation: { x: 0, y: 0, z: 0 },
+                        speed: 0,
                         steering: 0
                     }
-                };
-                
-                // 연결 상태 추적
-                this.connectionStatus = {
-                    server: false,
-                    sensor1: false,
-                    sensor2: false
                 };
                 
                 // DOM 요소 참조
                 this.elements = {
                     sessionPanel: document.getElementById('sessionPanel'),
-                    gameHUD: document.getElementById('gameHUD'),
+                    gameScreen: document.getElementById('gameScreen'),
                     controlPanel: document.getElementById('controlPanel'),
                     sessionCode: document.getElementById('sessionCode'),
                     qrContainer: document.getElementById('qrContainer')
                 };
                 
-                // 키보드 테스트 모드 초기화 (작업 15)
-                this.keyboardTestMode = false;
-                this.debugMode = false;
-                this.keyStates = {};
-                this.debugUpdateInterval = null;
-                this.lastFrameTime = Date.now();
-                
                 this.setupEventListeners();
-                this.updateConnectionUI();
-                this.setup3DEngine();
+                this.startGameLoop();
                 
-                // 게임 테스트 시스템 초기화 (작업 17)
-                this.initializeTestSystem();
-                
-                console.log('🏎️ Racing Game 초기화 완료');
-            }         
-   
-            setup3DEngine() {
-                // Three.js 렌더러 설정
-                this.renderer = new THREE.WebGLRenderer({ 
-                    canvas: this.canvas,
-                    antialias: true,
-                    alpha: false
-                });
-                this.renderer.setSize(window.innerWidth, window.innerHeight);
-                this.renderer.setPixelRatio(window.devicePixelRatio);
-                this.renderer.shadowMap.enabled = true;
-                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-                this.renderer.setClearColor(0x87CEEB, 1); // 하늘색 배경
-                
-                // 화면 분할을 위한 듀얼 카메라 시스템
-                this.cameras = {
-                    player1: new THREE.PerspectiveCamera(75, (window.innerWidth / 2) / window.innerHeight, 0.1, 1000),
-                    player2: new THREE.PerspectiveCamera(75, (window.innerWidth / 2) / window.innerHeight, 0.1, 1000)
-                };
-                
-                // 카메라 초기 위치 설정
-                this.cameras.player1.position.set(-10, 5, 10);
-                this.cameras.player1.lookAt(0, 0, 0);
-                
-                this.cameras.player2.position.set(10, 5, 10);
-                this.cameras.player2.lookAt(0, 0, 0);
-                
-                // 3D 씬 생성
-                this.scene = new THREE.Scene();
-                this.scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
-                
-                // 조명 설정
-                this.setupLighting();
-                
-                // 물리 엔진 설정
-                this.setupPhysicsEngine();
-                
-                // 기본 환경 생성
-                this.createBasicEnvironment();
-                
-                console.log('✅ 3D 렌더링 엔진 초기화 완료');
-            }       
-     
-            setupLighting() {
-                // 주변광 (전체적인 밝기)
-                const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
-                this.scene.add(ambientLight);
-                
-                // 태양광 (그림자 생성)
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-                directionalLight.position.set(50, 50, 25);
-                directionalLight.castShadow = true;
-                directionalLight.shadow.mapSize.width = 2048;
-                directionalLight.shadow.mapSize.height = 2048;
-                directionalLight.shadow.camera.near = 0.5;
-                directionalLight.shadow.camera.far = 200;
-                directionalLight.shadow.camera.left = -50;
-                directionalLight.shadow.camera.right = 50;
-                directionalLight.shadow.camera.top = 50;
-                directionalLight.shadow.camera.bottom = -50;
-                this.scene.add(directionalLight);
-                
-                // 보조 조명 (부드러운 그림자)
-                const hemisphereLight = new THREE.HemisphereLight(0x87CEEB, 0x362d1d, 0.3);
-                this.scene.add(hemisphereLight);
+                console.log('🏎️ CSS 3D Racing Game 초기화 완료');
             }
             
-            setupPhysicsEngine() {
-                // CANNON.js 로딩 확인 및 에러 처리
-                if (typeof CANNON === 'undefined') {
-                    console.error('❌ CANNON.js가 로드되지 않았습니다. 물리 엔진 없이 실행합니다.');
-                    this.world = null;
-                    this.physicsEnabled = false;
-                    return;
-                }
-                
-                try {
-                    // Cannon.js 물리 엔진 설정
-                    this.world = new CANNON.World();
-                    this.physicsEnabled = true;
-                    this.world.gravity.set(0, -9.82, 0); // 중력 설정
-                    this.world.broadphase = new CANNON.NaiveBroadphase();
-                    this.world.solver.iterations = 10;
-                    
-                    // 물리 재질 설정
-                    this.physicsMaterials = {
-                        ground: new CANNON.Material('ground'),
-                        car: new CANNON.Material('car'),
-                        wall: new CANNON.Material('wall')
-                    };
-                    
-                    // 재질 간 접촉 설정
-                    const groundCarContact = new CANNON.ContactMaterial(
-                        this.physicsMaterials.ground,
-                        this.physicsMaterials.car,
-                        {
-                            friction: 0.4,
-                            restitution: 0.3
-                        }
-                    );
-                    this.world.addContactMaterial(groundCarContact);
-                    
-                    const carWallContact = new CANNON.ContactMaterial(
-                        this.physicsMaterials.car,
-                        this.physicsMaterials.wall,
-                        {
-                            friction: 0.1,
-                            restitution: 0.8
-                        }
-                    );
-                    this.world.addContactMaterial(carWallContact);
-                    
-                    // 자동차 간 충돌 설정 (작업 11)
-                    const carCarContact = new CANNON.ContactMaterial(
-                        this.physicsMaterials.car,
-                        this.physicsMaterials.car,
-                        {
-                            friction: 0.3,
-                            restitution: 0.6
-                        }
-                    );
-                    this.world.addContactMaterial(carCarContact);
-                    
-                    // 충돌 이벤트 리스너 설정 (작업 11)
-                    this.setupCollisionDetection();
-                    
-                    console.log('✅ 물리 엔진 초기화 완료');
-                    
-                } catch (error) {
-                    console.error('물리 엔진 초기화 오류:', error);
-                    this.world = null;
-                    this.physicsEnabled = false;
-                }
-            }
-            
-            // 충돌 감지 시스템 설정 (작업 11)
-            setupCollisionDetection() {
-                // 충돌 이벤트 리스너
-                this.world.addEventListener('collide', (event) => {
-                    this.handleCollision(event);
-                });
-                
-                console.log('✅ 충돌 감지 시스템 설정 완료');
-            }
-            
-            // 충돌 처리 메서드 (작업 11)
-            handleCollision(event) {
-                const { bodyA, bodyB } = event;
-                
-                // 자동차 간 충돌 감지
-                if (this.isCarCollision(bodyA, bodyB)) {
-                    this.handleCarCollision(bodyA, bodyB);
-                }
-                
-                // 자동차와 벽 충돌 감지
-                if (this.isCarWallCollision(bodyA, bodyB)) {
-                    this.handleCarWallCollision(bodyA, bodyB);
-                }
-            }
-            
-            // 자동차 간 충돌 확인 (작업 11)
-            isCarCollision(bodyA, bodyB) {
-                const carBodies = [
-                    this.cars?.player1?.physicsBody,
-                    this.cars?.player2?.physicsBody
-                ].filter(body => body);
-                
-                return carBodies.includes(bodyA) && carBodies.includes(bodyB);
-            }
-            
-            // 자동차와 벽 충돌 확인 (작업 11)
-            isCarWallCollision(bodyA, bodyB) {
-                const carBodies = [
-                    this.cars?.player1?.physicsBody,
-                    this.cars?.player2?.physicsBody
-                ].filter(body => body);
-                
-                const carBody = carBodies.find(body => body === bodyA || body === bodyB);
-                const otherBody = carBody === bodyA ? bodyB : bodyA;
-                
-                return carBody && otherBody.material === this.physicsMaterials.wall;
-            }
-            
-            // 자동차 간 충돌 처리 (작업 11)
-            handleCarCollision(bodyA, bodyB) {
-                console.log('💥 자동차 간 충돌 발생!');
-                
-                // 충돌 시 속도 감소
-                const impactForce = 0.7; // 충돌 시 속도 유지 비율
-                
-                bodyA.velocity.scale(impactForce, bodyA.velocity);
-                bodyB.velocity.scale(impactForce, bodyB.velocity);
-                
-                // 충돌 시 각속도도 감소
-                bodyA.angularVelocity.scale(0.5, bodyA.angularVelocity);
-                bodyB.angularVelocity.scale(0.5, bodyB.angularVelocity);
-                
-                // 충돌 효과음이나 시각 효과를 여기에 추가할 수 있음
-                this.showCollisionEffect(bodyA.position, bodyB.position);
-            }
-            
-            // 자동차와 벽 충돌 처리 (작업 11)
-            handleCarWallCollision(bodyA, bodyB) {
-                const carBody = [bodyA, bodyB].find(body => 
-                    body === this.cars?.player1?.physicsBody || 
-                    body === this.cars?.player2?.physicsBody
-                );
-                
-                if (carBody) {
-                    console.log('🧱 벽 충돌 발생!');
-                    
-                    // 벽 충돌 시 속도 크게 감소
-                    const wallImpactForce = 0.3;
-                    carBody.velocity.scale(wallImpactForce, carBody.velocity);
-                    carBody.angularVelocity.scale(0.2, carBody.angularVelocity);
-                    
-                    // 충돌 효과 표시
-                    this.showWallCollisionEffect(carBody.position);
-                }
-            }
-            
-            // 충돌 시각 효과 (작업 11)
-            showCollisionEffect(posA, posB) {
-                // 충돌 지점 계산
-                const collisionPoint = new THREE.Vector3(
-                    (posA.x + posB.x) / 2,
-                    (posA.y + posB.y) / 2 + 1,
-                    (posA.z + posB.z) / 2
-                );
-                
-                // 충돌 파티클 효과 생성
-                const particleGeometry = new THREE.SphereGeometry(0.1, 8, 8);
-                const particleMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0xff4444,
-                    transparent: true,
-                    opacity: 0.8
-                });
-                
-                for (let i = 0; i < 10; i++) {
-                    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
-                    particle.position.copy(collisionPoint);
-                    particle.position.add(new THREE.Vector3(
-                        (Math.random() - 0.5) * 2,
-                        Math.random() * 2,
-                        (Math.random() - 0.5) * 2
-                    ));
-                    
-                    this.scene.add(particle);
-                    
-                    // 파티클 애니메이션 및 제거
-                    setTimeout(() => {
-                        this.scene.remove(particle);
-                    }, 1000);
-                }
-            }
-            
-            // 벽 충돌 시각 효과 (작업 11)
-            showWallCollisionEffect(position) {
-                // 벽 충돌 스파크 효과
-                const sparkGeometry = new THREE.SphereGeometry(0.05, 6, 6);
-                const sparkMaterial = new THREE.MeshBasicMaterial({ 
-                    color: 0xffaa00,
-                    transparent: true,
-                    opacity: 1.0
-                });
-                
-                for (let i = 0; i < 15; i++) {
-                    const spark = new THREE.Mesh(sparkGeometry, sparkMaterial);
-                    spark.position.set(
-                        position.x + (Math.random() - 0.5) * 1,
-                        position.y + Math.random() * 1,
-                        position.z + (Math.random() - 0.5) * 1
-                    );
-                    
-                    this.scene.add(spark);
-                    
-                    // 스파크 애니메이션
-                    const animateSpark = () => {
-                        spark.position.y += 0.1;
-                        spark.material.opacity -= 0.02;
-                        
-                        if (spark.material.opacity > 0) {
-                            requestAnimationFrame(animateSpark);
-                        } else {
-                            this.scene.remove(spark);
-                        }
-                    };
-                    
-                    animateSpark();
-                }
-            }   
-         
-            createBasicEnvironment() {
-                // 트랙 생성
-                const trackGeometry = new THREE.PlaneGeometry(100, 20);
-                const trackMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
-                const track = new THREE.Mesh(trackGeometry, trackMaterial);
-                track.rotation.x = -Math.PI / 2;
-                track.receiveShadow = true;
-                this.scene.add(track);
-                
-                // 트랙 물리 바디 (물리 엔진이 활성화된 경우에만)
-                if (this.physicsEnabled && this.world && typeof CANNON !== 'undefined') {
-                    const trackShape = new CANNON.Plane();
-                    const trackBody = new CANNON.Body({ 
-                        mass: 0,
-                        material: this.physicsMaterials.ground
-                    });
-                    trackBody.addShape(trackShape);
-                    trackBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-                    this.world.add(trackBody);
-                }
-                
-                // 트랙 경계 벽 생성
-                this.createTrackWalls();
-                
-                // 체크포인트 시스템 생성 (작업 10)
-                this.createCheckpoints();
-                
-                // 자동차 생성
-                this.cars = {
-                    player1: new Car(this.scene, this.world, 0xff0000, -5, 0.5, -2, this.physicsMaterials.car), // 빨간색
-                    player2: new Car(this.scene, this.world, 0x0000ff, -5, 0.5, 2, this.physicsMaterials.car)   // 파란색
-                };
-                
-                // 플레이어별 랩 추적 데이터 초기화
-                this.initializeLapTracking();
-                
-                // 렌더링 루프 시작
-                this.startRenderLoop();
-            }
-            
-            createTrackWalls() {
-                // 트랙 양쪽 벽 생성
-                const wallHeight = 2;
-                const wallGeometry = new THREE.BoxGeometry(100, wallHeight, 0.5);
-                const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x666666 });
-                
-                // 왼쪽 벽
-                const leftWall = new THREE.Mesh(wallGeometry, wallMaterial);
-                leftWall.position.set(0, wallHeight/2, -10.25);
-                leftWall.castShadow = true;
-                this.scene.add(leftWall);
-                
-                // 오른쪽 벽
-                const rightWall = new THREE.Mesh(wallGeometry, wallMaterial);
-                rightWall.position.set(0, wallHeight/2, 10.25);
-                rightWall.castShadow = true;
-                this.scene.add(rightWall);
-                
-                // 벽 물리 바디 (물리 엔진이 활성화된 경우에만)
-                if (this.physicsEnabled && this.world && typeof CANNON !== 'undefined') {
-                    const wallShape = new CANNON.Box(new CANNON.Vec3(50, wallHeight/2, 0.25));
-                    
-                    const leftWallBody = new CANNON.Body({ 
-                        mass: 0,
-                        material: this.physicsMaterials.wall
-                    });
-                    leftWallBody.addShape(wallShape);
-                    leftWallBody.position.set(0, wallHeight/2, -10.25);
-                    this.world.add(leftWallBody);
-                    
-                    const rightWallBody = new CANNON.Body({ 
-                        mass: 0,
-                        material: this.physicsMaterials.wall
-                    });
-                    rightWallBody.addShape(wallShape);
-                    rightWallBody.position.set(0, wallHeight/2, 10.25);
-                    this.world.add(rightWallBody);
-                }
-            }
-            
-            // 체크포인트 시스템 생성 (작업 10)
-            createCheckpoints() {
-                this.checkpoints = [];
-                
-                // 시작/결승선 (체크포인트 0)
-                this.createCheckpoint(-45, 0, 0, 0xff00ff, '시작/결승선');
-                
-                // 중간 체크포인트들
-                this.createCheckpoint(-25, 0, 0, 0x00ff00, '체크포인트 1');
-                this.createCheckpoint(0, 0, 0, 0x00ff00, '체크포인트 2');
-                this.createCheckpoint(25, 0, 0, 0x00ff00, '체크포인트 3');
-                this.createCheckpoint(45, 0, 0, 0x00ff00, '체크포인트 4');
-                
-                console.log(`✅ ${this.checkpoints.length}개의 체크포인트 생성 완료`);
-            }
-            
-            // 개별 체크포인트 생성
-            createCheckpoint(x, y, z, color, name) {
-                // 시각적 체크포인트 생성
-                const checkpointGeometry = new THREE.PlaneGeometry(20, 3);
-                const checkpointMaterial = new THREE.MeshLambertMaterial({ 
-                    color: color,
-                    transparent: true,
-                    opacity: 0.6,
-                    side: THREE.DoubleSide
-                });
-                
-                const checkpoint = new THREE.Mesh(checkpointGeometry, checkpointMaterial);
-                checkpoint.position.set(x, y + 1.5, z);
-                checkpoint.rotation.y = Math.PI / 2; // 트랙을 가로지르도록 회전
-                this.scene.add(checkpoint);
-                
-                // 체크포인트 데이터 저장
-                this.checkpoints.push({
-                    position: { x, y, z },
-                    mesh: checkpoint,
-                    name: name,
-                    width: 20,
-                    height: 3
-                });
-            }         
-   
-            // 게임 테스트 및 검증 시스템 (작업 17)
-            initializeTestSystem() {
-                this.testResults = {
-                    sensorConnection: false,
-                    physicsEngine: false,
-                    gameFlow: false,
-                    rendering: false,
-                    crossBrowser: false
-                };
-                
-                this.testLog = [];
-                this.performanceMetrics = {
-                    frameRate: 0,
-                    memoryUsage: 0,
-                    physicsSteps: 0,
-                    renderTime: 0
-                };
-                
-                // 테스트 시스템은 수동으로만 실행 (F1 키로 디버그 모드 활성화 시)
-                // 기본적으로는 테스트를 실행하지 않음
-                console.log('🧪 테스트 시스템 준비 완료 (F1 키로 디버그 모드 활성화 가능)');
-            }
-            
-            // 기본 테스트 실행 (센서 연결 시뮬레이션 제외)
-            startBasicTests() {
-                console.log('🧪 기본 게임 테스트 시작...');
-                
-                // 1. 렌더링 엔진 테스트
-                this.testRenderingEngine();
-                
-                // 2. 물리 엔진 테스트
-                this.testPhysicsEngine();
-                
-                // 3. 센서 데이터 처리 테스트 (가상 데이터만)
-                setTimeout(() => this.testSensorDataProcessing(), 2000);
-                
-                // 4. 성능 모니터링 시작
-                this.startPerformanceMonitoring();
-                
-                // 5. 크로스 브라우저 호환성 체크
-                this.checkBrowserCompatibility();
-            }
-            
-            // 자동 테스트 실행 (디버그 모드용 - 센서 연결 시뮬레이션 포함)
-            startAutomaticTests() {
-                console.log('🧪 전체 게임 테스트 시작 (디버그 모드)...');
-                
-                // 1. 렌더링 엔진 테스트
-                this.testRenderingEngine();
-                
-                // 2. 물리 엔진 테스트
-                this.testPhysicsEngine();
-                
-                // 3. 센서 연결 시뮬레이션 테스트
-                setTimeout(() => this.testSensorConnection(), 2000);
-                
-                // 4. 게임 플로우 테스트
-                setTimeout(() => this.testGameFlow(), 4000);
-                
-                // 5. 성능 모니터링 시작
-                this.startPerformanceMonitoring();
-                
-                // 6. 크로스 브라우저 호환성 체크
-                this.checkBrowserCompatibility();
-            }
-            
-            // 렌더링 엔진 테스트 (작업 17)
-            testRenderingEngine() {
-                try {
-                    // WebGL 지원 확인
-                    const canvas = document.createElement('canvas');
-                    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-                    
-                    if (!gl) {
-                        throw new Error('WebGL이 지원되지 않습니다');
-                    }
-                    
-                    // Three.js 렌더러 테스트
-                    if (!this.renderer || !this.scene || !this.cameras) {
-                        throw new Error('3D 렌더링 컴포넌트 초기화 실패');
-                    }
-                    
-                    // 렌더링 테스트
-                    this.renderer.render(this.scene, this.cameras.player1);
-                    
-                    this.testResults.rendering = true;
-                    this.logTest('✅ 렌더링 엔진 테스트 통과');
-                    
-                } catch (error) {
-                    this.testResults.rendering = false;
-                    this.logTest('❌ 렌더링 엔진 테스트 실패: ' + error.message);
-                    console.error('렌더링 테스트 오류:', error);
-                }
-            }
-            
-            // 물리 엔진 테스트 (작업 17)
-            testPhysicsEngine() {
-                try {
-                    // Cannon.js 물리 엔진 확인
-                    if (!this.world || !CANNON) {
-                        throw new Error('물리 엔진이 초기화되지 않았습니다');
-                    }
-                    
-                    // 테스트 물체 생성
-                    const testShape = new CANNON.Sphere(1);
-                    const testBody = new CANNON.Body({ mass: 1 });
-                    testBody.addShape(testShape);
-                    testBody.position.set(0, 10, 0);
-                    
-                    this.world.add(testBody);
-                    
-                    // 물리 시뮬레이션 테스트
-                    this.world.step(1/60);
-                    
-                    // 중력 작용 확인
-                    if (testBody.position.y < 10) {
-                        this.testResults.physicsEngine = true;
-                        this.logTest('✅ 물리 엔진 테스트 통과');
-                    } else {
-                        throw new Error('중력 시뮬레이션이 작동하지 않습니다');
-                    }
-                    
-                    // 테스트 물체 제거
-                    this.world.remove(testBody);
-                    
-                } catch (error) {
-                    this.testResults.physicsEngine = false;
-                    this.logTest('❌ 물리 엔진 테스트 실패: ' + error.message);
-                    console.error('물리 엔진 테스트 오류:', error);
-                }
-            }
-            
-            // 센서 데이터 처리 테스트 (가상 데이터만, 연결 시뮬레이션 없음)
-            testSensorDataProcessing() {
-                try {
-                    // SessionSDK 확인
-                    if (!this.sdk) {
-                        throw new Error('SessionSDK가 초기화되지 않았습니다');
-                    }
-                    
-                    // 가상 센서 데이터 생성 (연결 시뮬레이션 없이)
-                    const mockOrientation = {
-                        alpha: 0,
-                        beta: -20, // 앞으로 기울기 (가속)
-                        gamma: 15  // 우측 기울기 (우회전)
-                    };
-                    
-                    const mockAcceleration = {
-                        x: 0,
-                        y: 0,
-                        z: 2
-                    };
-                    
-                    // 센서 데이터 처리 테스트
-                    const processedData = this.processSensorData(mockOrientation, mockAcceleration);
-                    
-                    if (processedData && processedData.steering !== undefined && processedData.speed !== undefined) {
-                        this.testResults.sensorConnection = true;
-                        this.logTest('✅ 센서 데이터 처리 테스트 통과');
-                        this.logTest(`   - 조향: ${processedData.steering.toFixed(2)}, 속도: ${processedData.speed.toFixed(2)}`);
-                    } else {
-                        throw new Error('센서 데이터 처리 결과가 올바르지 않습니다');
-                    }
-                    
-                } catch (error) {
-                    this.testResults.sensorConnection = false;
-                    this.logTest('❌ 센서 데이터 처리 테스트 실패: ' + error.message);
-                    console.error('센서 테스트 오류:', error);
-                }
-            }
-            
-            // 센서 연결 시뮬레이션 테스트 (디버그 모드 전용)
-            testSensorConnection() {
-                try {
-                    // SessionSDK 확인
-                    if (!this.sdk) {
-                        throw new Error('SessionSDK가 초기화되지 않았습니다');
-                    }
-                    
-                    // 가상 센서 데이터 생성
-                    const mockSensorData = {
-                        sensorId: 'test-sensor',
-                        data: {
-                            orientation: {
-                                alpha: 0,
-                                beta: -20, // 앞으로 기울기 (가속)
-                                gamma: 15  // 우측 기울기 (우회전)
-                            },
-                            acceleration: {
-                                x: 0,
-                                y: 0,
-                                z: 2
-                            }
-                        }
-                    };
-                    
-                    // 센서 데이터 처리 테스트
-                    const processedData = this.processSensorData(mockSensorData.data.orientation, mockSensorData.data.acceleration);
-                    
-                    if (processedData && processedData.steering !== undefined && processedData.speed !== undefined) {
-                        this.testResults.sensorConnection = true;
-                        this.logTest('✅ 센서 데이터 처리 테스트 통과');
-                        this.logTest(`   - 조향: ${processedData.steering.toFixed(2)}, 속도: ${processedData.speed.toFixed(2)}`);
-                    } else {
-                        throw new Error('센서 데이터 처리 결과가 올바르지 않습니다');
-                    }
-                    
-                } catch (error) {
-                    this.testResults.sensorConnection = false;
-                    this.logTest('❌ 센서 연결 테스트 실패: ' + error.message);
-                    console.error('센서 테스트 오류:', error);
-                }
-            }
-            
-            // 게임 플로우 테스트 (디버그 모드 전용)
-            testGameFlow() {
-                try {
-                    // 게임 상태 전환 테스트
-                    const initialState = this.gameState;
-                    
-                    // 가상 센서 연결 시뮬레이션 (실제 센서 ID 사용)
-                    this.handleSensorConnected('sensor1');
-                    this.handleSensorConnected('sensor2');
-                    
-                    // 게임 시작 테스트
-                    if (this.connectedSensors.size >= 2) {
-                        this.startCountdown(); // 올바른 메서드명 사용
-                        
-                        // 카운트다운 후 게임 상태 확인
-                        setTimeout(() => {
-                            if (this.gameState === 'racing' || this.gameState === 'preparing') {
-                                this.testResults.gameFlow = true;
-                                this.logTest('✅ 게임 플로우 테스트 통과');
-                            } else {
-                                throw new Error('게임 상태 전환이 올바르지 않습니다');
-                            }
-                        }, 1000);
-                    } else {
-                        throw new Error('센서 연결 시뮬레이션 실패');
-                    }
-                    
-                } catch (error) {
-                    this.testResults.gameFlow = false;
-                    this.logTest('❌ 게임 플로우 테스트 실패: ' + error.message);
-                    console.error('게임 플로우 테스트 오류:', error);
-                }
-            }
-            
-            // 크로스 브라우저 호환성 체크 (작업 17)
-            checkBrowserCompatibility() {
-                try {
-                    const compatibility = {
-                        webgl: !!window.WebGLRenderingContext,
-                        deviceOrientation: 'DeviceOrientationEvent' in window,
-                        requestAnimationFrame: !!window.requestAnimationFrame,
-                        localStorage: !!window.localStorage,
-                        websocket: !!window.WebSocket,
-                        canvas: !!document.createElement('canvas').getContext
-                    };
-                    
-                    const unsupported = Object.entries(compatibility)
-                        .filter(([key, value]) => !value)
-                        .map(([key]) => key);
-                    
-                    if (unsupported.length === 0) {
-                        this.testResults.crossBrowser = true;
-                        this.logTest('✅ 브라우저 호환성 테스트 통과');
-                    } else {
-                        this.testResults.crossBrowser = false;
-                        this.logTest('⚠️ 브라우저 호환성 경고: ' + unsupported.join(', ') + ' 미지원');
-                    }
-                    
-                    // 브라우저 정보 로깅
-                    this.logTest(`📱 브라우저: ${navigator.userAgent.split(' ').pop()}`);
-                    this.logTest(`🖥️ 화면: ${window.innerWidth}x${window.innerHeight}`);
-                    this.logTest(`📊 픽셀 비율: ${window.devicePixelRatio}`);
-                    
-                } catch (error) {
-                    this.testResults.crossBrowser = false;
-                    this.logTest('❌ 브라우저 호환성 체크 실패: ' + error.message);
-                    console.error('브라우저 호환성 체크 오류:', error);
-                }
-            }
-            
-            // 성능 모니터링 (작업 17)
-            startPerformanceMonitoring() {
-                let frameCount = 0;
-                let lastTime = performance.now();
-                
-                const monitorPerformance = () => {
-                    const currentTime = performance.now();
-                    frameCount++;
-                    
-                    // 1초마다 성능 측정
-                    if (currentTime - lastTime >= 1000) {
-                        this.performanceMetrics.frameRate = Math.round(frameCount * 1000 / (currentTime - lastTime));
-                        
-                        // 메모리 사용량 (Chrome에서만 지원)
-                        if (performance.memory) {
-                            this.performanceMetrics.memoryUsage = Math.round(performance.memory.usedJSHeapSize / 1048576); // MB
-                        }
-                        
-                        // 성능 경고 체크
-                        if (this.performanceMetrics.frameRate < 30) {
-                            this.logTest(`⚠️ 낮은 프레임 레이트: ${this.performanceMetrics.frameRate} FPS`);
-                        }
-                        
-                        if (this.performanceMetrics.memoryUsage > 100) {
-                            this.logTest(`⚠️ 높은 메모리 사용량: ${this.performanceMetrics.memoryUsage} MB`);
-                        }
-                        
-                        frameCount = 0;
-                        lastTime = currentTime;
-                    }
-                    
-                    requestAnimationFrame(monitorPerformance);
-                };
-                
-                requestAnimationFrame(monitorPerformance);
-                this.logTest('📊 성능 모니터링 시작');
-            }
-            
-            // 테스트 로그 기록 (작업 17)
-            logTest(message) {
-                const timestamp = new Date().toLocaleTimeString();
-                const logEntry = `[${timestamp}] ${message}`;
-                this.testLog.push(logEntry);
-                console.log(logEntry);
-                
-                // 테스트 결과를 화면에 표시 (디버그 모드일 때)
-                if (this.debugMode) {
-                    this.displayTestResults();
-                }
-            }
-            
-            // 테스트 결과 표시 (작업 17)
-            displayTestResults() {
-                // 기존 테스트 결과 패널 제거
-                const existingPanel = document.getElementById('testResultsPanel');
-                if (existingPanel) {
-                    existingPanel.remove();
-                }
-                
-                // 테스트 결과 패널 생성
-                const panel = document.createElement('div');
-                panel.id = 'testResultsPanel';
-                panel.style.cssText = `
-                    position: fixed;
-                    top: 10px;
-                    right: 10px;
-                    width: 350px;
-                    max-height: 400px;
-                    background: rgba(30, 41, 59, 0.95);
-                    border: 1px solid var(--border);
-                    border-radius: 0.75rem;
-                    padding: 1rem;
-                    backdrop-filter: blur(12px);
-                    z-index: 1000;
-                    font-family: 'Courier New', monospace;
-                    font-size: 0.8rem;
-                    overflow-y: auto;
-                    color: var(--text-primary);
-                `;
-                
-                // 테스트 결과 요약
-                const summary = Object.entries(this.testResults)
-                    .map(([test, passed]) => `${passed ? '✅' : '❌'} ${test}`)
-                    .join('<br>');
-                
-                // 성능 메트릭스
-                const metrics = `
-                    📊 FPS: ${this.performanceMetrics.frameRate}<br>
-                    💾 메모리: ${this.performanceMetrics.memoryUsage} MB
-                `;
-                
-                // 최근 로그 (최대 10개)
-                const recentLogs = this.testLog.slice(-10).join('<br>');
-                
-                panel.innerHTML = `
-                    <h3 style="margin-bottom: 0.5rem; color: var(--primary);">🧪 테스트 결과</h3>
-                    <div style="margin-bottom: 0.5rem;">${summary}</div>
-                    <div style="margin-bottom: 0.5rem; border-top: 1px solid var(--border); padding-top: 0.5rem;">${metrics}</div>
-                    <div style="border-top: 1px solid var(--border); padding-top: 0.5rem; font-size: 0.7rem;">${recentLogs}</div>
-                `;
-                
-                document.body.appendChild(panel);
-            }
-            
-            // 에러 처리 개선 (작업 17)
-            handleGameError(error, context = '') {
-                const errorMessage = `게임 오류 ${context}: ${error.message}`;
-                console.error(errorMessage, error);
-                this.logTest(`❌ ${errorMessage}`);
-                
-                // 사용자에게 에러 알림
-                this.showErrorNotification(errorMessage);
-                
-                // 게임 상태를 안전한 상태로 복구
-                this.recoverFromError();
-            }
-            
-            // 에러 알림 표시 (작업 17)
-            showErrorNotification(message) {
-                // 기존 에러 알림 제거
-                const existingError = document.getElementById('errorNotification');
-                if (existingError) {
-                    existingError.remove();
-                }
-                
-                // 에러 알림 생성
-                const notification = document.createElement('div');
-                notification.id = 'errorNotification';
-                notification.style.cssText = `
-                    position: fixed;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: rgba(239, 68, 68, 0.95);
-                    color: white;
-                    padding: 1rem 2rem;
-                    border-radius: 0.5rem;
-                    z-index: 2000;
-                    font-weight: 600;
-                    text-align: center;
-                    max-width: 400px;
-                    border: 2px solid var(--error);
-                `;
-                
-                notification.innerHTML = `
-                    <div style="font-size: 1.2rem; margin-bottom: 0.5rem;">⚠️ 오류 발생</div>
-                    <div style="margin-bottom: 1rem;">${message}</div>
-                    <button onclick="this.parentElement.remove()" style="
-                        background: white;
-                        color: var(--error);
-                        border: none;
-                        padding: 0.5rem 1rem;
-                        border-radius: 0.25rem;
-                        cursor: pointer;
-                        font-weight: 600;
-                    ">확인</button>
-                `;
-                
-                document.body.appendChild(notification);
-                
-                // 5초 후 자동 제거
-                setTimeout(() => {
-                    if (notification.parentElement) {
-                        notification.remove();
-                    }
-                }, 5000);
-            }
-            
-            // 에러 복구 (작업 17)
-            recoverFromError() {
-                try {
-                    // 게임을 대기 상태로 복구
-                    this.gameState = 'waiting';
-                    
-                    // 타이머 정리
-                    this.clearAllTimers();
-                    
-                    // UI 상태 복구
-                    this.elements.sessionPanel.classList.remove('hidden');
-                    this.elements.gameHUD.classList.add('hidden');
-                    this.elements.controlPanel.classList.add('hidden');
-                    
-                    // 연결 상태 업데이트
-                    this.updateConnectionUI();
-                    
-                    this.logTest('🔄 에러 복구 완료 - 대기 상태로 복구');
-                    
-                } catch (recoveryError) {
-                    console.error('에러 복구 실패:', recoveryError);
-                    this.logTest('❌ 에러 복구 실패');
-                }
-            }          
-  
-            // 플레이어별 랩 추적 데이터 초기화 (작업 10)
-            initializeLapTracking() {
-                this.lapTracking = {
-                    sensor1: {
-                        currentLap: 0,
-                        lastCheckpoint: -1,
-                        lapStartTime: null,
-                        lapTimes: [],
-                        bestLapTime: Infinity,
-                        rank: 1
-                    },
-                    sensor2: {
-                        currentLap: 0,
-                        lastCheckpoint: -1,
-                        lapStartTime: null,
-                        lapTimes: [],
-                        bestLapTime: Infinity,
-                        rank: 2
-                    }
-                };
-                
-                // 경주 완료 상태 초기화
-                this.raceFinished = false;
-                
-                console.log('✅ 랩 추적 시스템 초기화 완료');
-            }
-        
             setupEventListeners() {
                 // SessionSDK 이벤트 리스너
                 this.sdk.on('connected', (event) => {
-                    const data = event.detail || event;
                     console.log('✅ 서버 연결 완료, 세션 생성 중...');
-                    this.connectionStatus.server = true;
-                    this.updateConnectionUI();
-                    
                     this.createSession();
                 });
                 
-                this.sdk.on('disconnected', (event) => {
-                    const data = event.detail || event;
-                    console.log('❌ 서버 연결 끊김');
-                    this.connectionStatus.server = false;
-                    this.updateConnectionUI();
-                });
-                
                 this.sdk.on('session-created', (event) => {
-                    const data = event.detail || event;
-                    console.log('✅ 세션 생성 완료:', data.sessionCode);
-                    this.sessionCode = data.sessionCode;
-                    this.elements.sessionCode.textContent = data.sessionCode;
-                    this.generateQRCode(data.sessionCode);
+                    const session = event.detail || event;
+                    console.log('✅ 세션 생성 완료:', session.sessionCode);
+                    this.elements.sessionCode.textContent = session.sessionCode;
+                    this.generateQRCode(session.sessionCode);
                 });
                 
                 this.sdk.on('sensor-connected', (event) => {
@@ -1782,1573 +370,189 @@
                     this.handleSensorConnected(data.sensorId);
                 });
                 
-                this.sdk.on('sensor-disconnected', (event) => {
-                    const data = event.detail || event;
-                    this.handleSensorDisconnected(data.sensorId);
-                });
-                
                 this.sdk.on('sensor-data', (event) => {
                     const data = event.detail || event;
                     this.handleSensorData(data);
                 });
                 
-                // 키보드 테스트 이벤트 (개발용)
+                // 키보드 테스트 (개발용)
+                this.setupKeyboardControls();
+            }    
+        
+            setupKeyboardControls() {
+                // 키보드 테스트 기능 (F2 키로 활성화)
                 document.addEventListener('keydown', (event) => {
-                    this.handleKeyboardInput(event);
-                });
-                
-                // 창 크기 변경 이벤트
-                window.addEventListener('resize', () => {
-                    this.resizeCanvas();
-                });
-            }  
-          
-            // 센서 데이터 처리 및 자동차 조작 (작업 8의 핵심 기능)
-            handleSensorData(sensorData) {
-                const { sensorId, data } = sensorData;
-                
-                if (!data || !data.orientation) {
-                    console.warn('센서 데이터가 올바르지 않습니다:', sensorData);
-                    return;
-                }
-                
-                // 센서 데이터 파싱
-                const { orientation, acceleration } = data;
-                const { alpha, beta, gamma } = orientation;
-                
-                // 기울기 데이터를 자동차 조작으로 변환
-                const processedData = this.processSensorData(orientation, acceleration);
-                
-                // 플레이어 데이터 업데이트
-                if (this.players[sensorId]) {
-                    this.players[sensorId].sensorData = {
-                        tiltX: gamma,  // 좌우 기울기
-                        tiltY: beta,   // 앞뒤 기울기
-                        acceleration: acceleration ? acceleration.z : 0
-                    };
-                    
-                    // 조작 데이터 적용
-                    this.players[sensorId].steering = processedData.steering;
-                    this.players[sensorId].speed = processedData.speed;
-                    
-                    // 실시간 자동차 움직임 반영
-                    this.applySensorToCarMovement(sensorId, processedData);
-                    
-                    // HUD 업데이트
-                    this.updateHUD();
-                }
-            }
-            
-            // 센서 데이터를 자동차 조작으로 변환하는 핵심 로직 (작업 17 개선)
-            processSensorData(orientation, acceleration) {
-                try {
-                    // 입력 데이터 검증
-                    if (!orientation || typeof orientation !== 'object') {
-                        console.warn('유효하지 않은 orientation 데이터:', orientation);
-                        return { steering: 0, speed: 0, rawData: null };
-                    }
-                    
-                    const { alpha = 0, beta = 0, gamma = 0 } = orientation;
-                    
-                    // NaN 값 체크 및 기본값 설정
-                    const safeGamma = isNaN(gamma) ? 0 : gamma;
-                    const safeBeta = isNaN(beta) ? 0 : beta;
-                    const safeAlpha = isNaN(alpha) ? 0 : alpha;
-                    
-                    // 좌우 기울기 → 핸들 조작 매핑 (-90° ~ +90°)
-                    let steering = 0;
-                    if (Math.abs(safeGamma) > 5) { // 데드존 설정 (5도)
-                        steering = Math.max(-1, Math.min(1, safeGamma / 45)); // -45° ~ +45° 범위로 정규화
-                    }
-                    
-                    // 앞뒤 기울기 → 가속/브레이크 매핑 (-180° ~ +180°)
-                    let speed = 0;
-                    if (safeBeta < -15) {
-                        // 앞으로 기울기 → 가속 (15도 이상)
-                        speed = Math.min(1, Math.abs(safeBeta + 15) / 30); // 최대 45도까지
-                    } else if (safeBeta > 15) {
-                        // 뒤로 기울기 → 브레이크/후진 (15도 이상)
-                        speed = -Math.min(0.5, (safeBeta - 15) / 30); // 브레이크는 절반 강도
-                    }
-                    
-                    // 가속도 데이터 활용 (선택적)
-                    if (acceleration && typeof acceleration === 'object' && !isNaN(acceleration.z)) {
-                        const accelBoost = Math.max(0, acceleration.z / 10); // 가속도 보정
-                        speed += accelBoost * 0.2; // 20% 보정
-                    }
-                    
-                    // 센서 감도 조정 및 데이터 필터링
-                    steering = this.applySensorFiltering(steering, 'steering');
-                    speed = this.applySensorFiltering(speed, 'speed');
-                    
-                    // 최종 값 범위 제한
-                    steering = Math.max(-1, Math.min(1, steering));
-                    speed = Math.max(-1, Math.min(1, speed));
-                    
-                    return {
-                        steering: steering,
-                        speed: speed,
-                        rawData: { alpha: safeAlpha, beta: safeBeta, gamma: safeGamma }
-                    };
-                    
-                } catch (error) {
-                    console.error('센서 데이터 처리 오류:', error);
-                    this.handleGameError(error, '센서 데이터 처리');
-                    return { steering: 0, speed: 0, rawData: null };
-                }
-            }
-            
-            // 센서 데이터 필터링 (노이즈 제거 및 부드러운 전환)
-            applySensorFiltering(value, type) {
-                // 이전 값이 없으면 현재 값 사용
-                if (!this.previousSensorValues) {
-                    this.previousSensorValues = { steering: 0, speed: 0 };
-                }
-                
-                const previousValue = this.previousSensorValues[type] || 0;
-                
-                // 로우패스 필터 적용 (부드러운 전환)
-                const smoothingFactor = 0.7; // 0.7 = 70% 이전값, 30% 새값
-                const filteredValue = previousValue * smoothingFactor + value * (1 - smoothingFactor);
-                
-                // 데드존 적용
-                const deadzone = type === 'steering' ? 0.05 : 0.1;
-                const finalValue = Math.abs(filteredValue) < deadzone ? 0 : filteredValue;
-                
-                // 이전 값 저장
-                this.previousSensorValues[type] = finalValue;
-                
-                return finalValue;
-            }
-            
-            // 실시간으로 자동차 움직임에 반영 (작업 17 안전성 개선)
-            applySensorToCarMovement(sensorId, processedData) {
-                try {
-                    if (this.gameState !== 'racing' || !this.cars) return;
-                    
-                    const carKey = sensorId === 'sensor1' ? 'player1' : 'player2';
-                    const car = this.cars[carKey];
-                    
-                    if (car && typeof car.applySensorInput === 'function') {
-                        // Car 클래스의 applySensorInput 메서드 호출
-                        car.applySensorInput(processedData.speed, processedData.steering);
-                    }
-                } catch (error) {
-                    console.error('자동차 움직임 적용 오류:', error);
-                    this.handleGameError(error, '자동차 제어');
-                }
-            }        
-    
-            // 센서 연결 처리 (작업 14 개선)
-            handleSensorConnected(sensorId) {
-                this.connectedSensors.add(sensorId);
-                this.connectionStatus[sensorId] = true;
-                
-                // 플레이어 객체가 존재하는 경우에만 연결 상태 업데이트
-                if (this.players[sensorId]) {
-                    this.players[sensorId].connected = true;
-                }
-                
-                console.log(`✅ ${sensorId} 센서 연결됨`);
-                this.updateConnectionUI();
-                
-                // 재연결 대기 메시지 숨김
-                this.hideReconnectionMessage();
-                
-                // 게임 상태에 따른 처리
-                if (this.gameState === 'paused' && this.connectedSensors.size >= 2) {
-                    // 일시정지 상태에서 모든 센서가 재연결되면 게임 재개
-                    this.resumeGameAfterReconnection();
-                } else if (this.gameState === 'waiting' && this.connectedSensors.size >= 2) {
-                    // 대기 상태에서 두 센서 모두 연결되면 게임 시작 준비
-                    this.startGamePreparation();
-                }
-                
-                // 재연결 성공 메시지 표시
-                this.showReconnectionSuccess(sensorId);
-            }
-            
-            // 재연결 후 게임 재개 (작업 14)
-            resumeGameAfterReconnection() {
-                console.log('🔄 센서 재연결 완료, 게임 재개');
-                
-                // 일시정지 버튼 상태 복원
-                const pauseResumeBtn = document.getElementById('pauseResumeBtn');
-                if (pauseResumeBtn) {
-                    pauseResumeBtn.innerHTML = '⏸️ 일시정지';
-                    pauseResumeBtn.disabled = false;
-                }
-                
-                // 3초 카운트다운 후 게임 재개
-                this.startReconnectionCountdown();
-            }
-            
-            // 재연결 카운트다운 (작업 14)
-            startReconnectionCountdown() {
-                let countdown = 3;
-                
-                const countdownElement = document.createElement('div');
-                countdownElement.className = 'countdown';
-                countdownElement.id = 'reconnectionCountdown';
-                countdownElement.style.color = 'var(--success)';
-                document.body.appendChild(countdownElement);
-                
-                const showCountdown = (number) => {
-                    if (number > 0) {
-                        countdownElement.textContent = number;
-                    } else {
-                        countdownElement.textContent = '재개!';
-                    }
-                    countdownElement.style.animation = 'none';
-                    countdownElement.offsetHeight; // 강제 리플로우
-                    countdownElement.style.animation = 'countdownPulse 1s ease-in-out';
-                };
-                
-                showCountdown(countdown);
-                
-                const countdownInterval = setInterval(() => {
-                    countdown--;
-                    if (countdown >= 0) {
-                        showCountdown(countdown);
-                    } else {
-                        clearInterval(countdownInterval);
-                        countdownElement.remove();
-                        this.resumeGame();
-                    }
-                }, 1000);
-            }
-            
-            // 재연결 성공 메시지 (작업 14)
-            showReconnectionSuccess(sensorId) {
-                const playerName = sensorId === 'sensor1' ? '플레이어 1' : '플레이어 2';
-                
-                // 성공 메시지 패널 생성
-                const successPanel = document.createElement('div');
-                successPanel.className = 'ui-panel';
-                successPanel.style.cssText = `
-                    top: 20%;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    text-align: center;
-                    min-width: 300px;
-                    z-index: 200;
-                    background: rgba(16, 185, 129, 0.95);
-                    border: 2px solid var(--success);
-                `;
-                
-                successPanel.innerHTML = `
-                    <div style="color: white;">
-                        <h4 style="margin-bottom: 0.5rem;">✅ 재연결 성공!</h4>
-                        <div>${playerName} 센서가 다시 연결되었습니다</div>
-                    </div>
-                `;
-                
-                document.body.appendChild(successPanel);
-                
-                // 2초 후 자동 제거
-                setTimeout(() => {
-                    successPanel.remove();
-                }, 2000);
-            }
-            
-            // 센서 연결 해제 처리 (작업 14 개선)
-            handleSensorDisconnected(sensorId) {
-                this.connectedSensors.delete(sensorId);
-                this.connectionStatus[sensorId] = false;
-                this.players[sensorId].connected = false;
-                
-                console.log(`❌ ${sensorId} 센서 연결 해제됨`);
-                this.updateConnectionUI();
-                
-                // 게임 중이면 일시정지 및 재연결 대기 메시지 표시
-                if (this.gameState === 'racing') {
-                    this.pauseGameForReconnection(sensorId);
-                } else if (this.gameState === 'preparing') {
-                    // 준비 중이면 대기 상태로 변경
-                    this.gameState = 'waiting';
-                    this.updateGameStatus();
-                }
-                
-                // 재연결 대기 메시지 표시
-                this.showReconnectionMessage(sensorId);
-            }
-            
-            // 재연결을 위한 게임 일시정지 (작업 14)
-            pauseGameForReconnection(sensorId) {
-                if (this.gameState === 'racing') {
-                    this.pauseGame();
-                    
-                    // 일시정지 버튼 상태 업데이트
-                    const pauseResumeBtn = document.getElementById('pauseResumeBtn');
-                    if (pauseResumeBtn) {
-                        pauseResumeBtn.innerHTML = '📡 재연결 대기';
-                        pauseResumeBtn.disabled = true;
-                    }
-                    
-                    console.log(`⏸️ ${sensorId} 센서 연결 끊김으로 게임 일시정지`);
-                }
-            }
-            
-            // 재연결 대기 메시지 표시 (작업 14)
-            showReconnectionMessage(sensorId) {
-                // 기존 재연결 메시지 제거
-                this.hideReconnectionMessage();
-                
-                const reconnectionPanel = document.createElement('div');
-                reconnectionPanel.className = 'ui-panel';
-                reconnectionPanel.id = 'reconnectionPanel';
-                reconnectionPanel.style.cssText = `
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    text-align: center;
-                    min-width: 400px;
-                    z-index: 250;
-                    background: rgba(239, 68, 68, 0.95);
-                    border: 2px solid var(--error);
-                `;
-                
-                const playerName = sensorId === 'sensor1' ? '플레이어 1' : '플레이어 2';
-                
-                reconnectionPanel.innerHTML = `
-                    <div style="color: white;">
-                        <h3 style="margin-bottom: 1rem;">📡 센서 연결 끊김</h3>
-                        <div style="font-size: 1.2rem; margin-bottom: 1rem;">
-                            <strong>${playerName}</strong>의 센서 연결이 끊어졌습니다
-                        </div>
-                        <div style="margin-bottom: 1.5rem; opacity: 0.9;">
-                            모바일 기기를 확인하고 다시 연결해주세요
-                        </div>
-                        <div class="reconnection-spinner" style="margin: 1rem auto; width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                        <div style="font-size: 0.9rem; opacity: 0.8;">
-                            재연결되면 자동으로 게임이 재개됩니다
-                        </div>
-                    </div>
-                `;
-                
-                document.body.appendChild(reconnectionPanel);
-                
-                // 스피너 애니메이션 CSS 추가
-                if (!document.getElementById('reconnectionSpinnerStyle')) {
-                    const style = document.createElement('style');
-                    style.id = 'reconnectionSpinnerStyle';
-                    style.textContent = `
-                        @keyframes spin {
-                            0% { transform: rotate(0deg); }
-                            100% { transform: rotate(360deg); }
-                        }
-                    `;
-                    document.head.appendChild(style);
-                }
-                
-                console.log(`📡 ${sensorId} 재연결 대기 메시지 표시`);
-            }
-            
-            // 재연결 대기 메시지 숨김 (작업 14)
-            hideReconnectionMessage() {
-                const reconnectionPanel = document.getElementById('reconnectionPanel');
-                if (reconnectionPanel) {
-                    reconnectionPanel.remove();
-                }
-            }
-            
-            // 키보드 테스트 기능 (작업 15 개선)
-            handleKeyboardInput(event) {
-                const key = event.key.toLowerCase();
-                
-                // 디버그 모드 토글 (F1 키)
-                if (key === 'f1') {
-                    event.preventDefault();
-                    this.toggleDebugMode();
-                    return;
-                }
-                
-                // 키보드 테스트 모드 토글 (F2 키)
-                if (key === 'f2') {
-                    event.preventDefault();
-                    this.toggleKeyboardTestMode();
-                    return;
-                }
-                
-                // 키보드 테스트 모드가 비활성화되어 있으면 키보드 입력 무시
-                if (!this.keyboardTestMode) return;
-                
-                // 게임이 진행 중이 아니면 키보드 입력 무시
-                if (this.gameState !== 'racing' && this.gameState !== 'preparing') return;
-                
-                // 키보드 입력 처리
-                this.processKeyboardInput(key, event);
-            }
-            
-            // 키보드 입력 처리 (작업 15)
-            processKeyboardInput(key, event) {
-                event.preventDefault();
-                
-                // 키 상태 추적
-                if (!this.keyStates) {
-                    this.keyStates = {};
-                }
-                
-                this.keyStates[key] = true;
-                
-                // 연속 입력 처리를 위한 키 업 이벤트 리스너
-                const handleKeyUp = (upEvent) => {
-                    if (upEvent.key.toLowerCase() === key) {
-                        this.keyStates[key] = false;
-                        document.removeEventListener('keyup', handleKeyUp);
-                    }
-                };
-                document.addEventListener('keyup', handleKeyUp);
-                
-                // 키보드 조작 적용
-                this.applyKeyboardControls();
-            }
-            
-            // 키보드 조작 적용 (작업 15)
-            applyKeyboardControls() {
-                if (!this.keyStates) return;
-                
-                // 플레이어 1 조작 (WASD)
-                let player1Speed = 0;
-                let player1Steering = 0;
-                
-                if (this.keyStates['w']) player1Speed += 1;
-                if (this.keyStates['s']) player1Speed -= 0.5;
-                if (this.keyStates['a']) player1Steering -= 1;
-                if (this.keyStates['d']) player1Steering += 1;
-                
-                // 플레이어 2 조작 (화살표 키)
-                let player2Speed = 0;
-                let player2Steering = 0;
-                
-                if (this.keyStates['arrowup']) player2Speed += 1;
-                if (this.keyStates['arrowdown']) player2Speed -= 0.5;
-                if (this.keyStates['arrowleft']) player2Steering -= 1;
-                if (this.keyStates['arrowright']) player2Steering += 1;
-                
-                // 자동차에 키보드 입력 적용
-                if (this.cars) {
-                    if (this.cars.player1) {
-                        this.cars.player1.applySensorInput(player1Speed, player1Steering);
-                    }
-                    if (this.cars.player2) {
-                        this.cars.player2.applySensorInput(player2Speed, player2Steering);
-                    }
-                }
-                
-                // 플레이어 데이터 업데이트
-                this.players.sensor1.speed = player1Speed;
-                this.players.sensor1.steering = player1Steering;
-                this.players.sensor2.speed = player2Speed;
-                this.players.sensor2.steering = player2Steering;
-                
-                // HUD 업데이트
-                this.updateHUD();
-            }
-            
-            // 키보드 테스트 모드 토글 (작업 15)
-            toggleKeyboardTestMode() {
-                this.keyboardTestMode = !this.keyboardTestMode;
-                
-                console.log(`⌨️ 키보드 테스트 모드: ${this.keyboardTestMode ? '활성화' : '비활성화'}`);
-                
-                // 키보드 테스트 모드 UI 표시
-                this.showKeyboardTestModeUI();
-                
-                // 키보드 테스트 모드 비활성화 시 키 상태 초기화
-                if (!this.keyboardTestMode) {
-                    this.keyStates = {};
-                }
-            }
-            
-            // 키보드 테스트 모드 UI 표시 (작업 15)
-            showKeyboardTestModeUI() {
-                // 기존 UI 제거
-                const existingUI = document.getElementById('keyboardTestUI');
-                if (existingUI) {
-                    existingUI.remove();
-                }
-                
-                if (!this.keyboardTestMode) return;
-                
-                const keyboardUI = document.createElement('div');
-                keyboardUI.id = 'keyboardTestUI';
-                keyboardUI.style.cssText = `
-                    position: fixed;
-                    top: 1rem;
-                    left: 50%;
-                    transform: translateX(-50%);
-                    background: rgba(139, 92, 246, 0.95);
-                    color: white;
-                    padding: 0.75rem 1.5rem;
-                    border-radius: 0.5rem;
-                    font-size: 0.9rem;
-                    font-weight: 600;
-                    z-index: 150;
-                    border: 2px solid var(--secondary);
-                    backdrop-filter: blur(8px);
-                `;
-                
-                keyboardUI.innerHTML = `
-                    ⌨️ 키보드 테스트 모드 활성화
-                    <div style="font-size: 0.8rem; margin-top: 0.25rem; opacity: 0.9;">
-                        플레이어 1: WASD | 플레이어 2: 화살표 키 | F2: 토글 | F1: 디버그
-                    </div>
-                `;
-                
-                document.body.appendChild(keyboardUI);
-            }
-            
-            // 디버그 모드 토글 (작업 15)
-            toggleDebugMode() {
-                this.debugMode = !this.debugMode;
-                
-                console.log(`🐛 디버그 모드: ${this.debugMode ? '활성화' : '비활성화'}`);
-                
-                if (this.debugMode) {
-                    // 디버그 모드 활성화 시 전체 테스트 시작
-                    console.log('🧪 디버그 모드 활성화 - 전체 테스트 시작');
-                    this.startAutomaticTests();
-                } else {
-                    // 디버그 모드 비활성화 시 테스트 정리
-                    this.cleanupDebugMode();
-                }
-                
-                // 디버그 정보 UI 표시/숨김
-                this.showDebugUI();
-            }
-            
-            // 디버그 모드 정리
-            cleanupDebugMode() {
-                // 디버그 업데이트 인터벌 정리
-                if (this.debugUpdateInterval) {
-                    clearInterval(this.debugUpdateInterval);
-                    this.debugUpdateInterval = null;
-                }
-                
-                // 테스트 결과 패널 제거
-                const testResultsPanel = document.getElementById('testResultsPanel');
-                if (testResultsPanel) {
-                    testResultsPanel.remove();
-                }
-                
-                console.log('🧹 디버그 모드 정리 완료');
-            }
-            
-            // 디버그 UI 표시 (작업 15)
-            showDebugUI() {
-                // 기존 디버그 UI 제거
-                const existingDebugUI = document.getElementById('debugUI');
-                if (existingDebugUI) {
-                    existingDebugUI.remove();
-                }
-                
-                if (!this.debugMode) return;
-                
-                const debugUI = document.createElement('div');
-                debugUI.id = 'debugUI';
-                debugUI.style.cssText = `
-                    position: fixed;
-                    bottom: 1rem;
-                    right: 1rem;
-                    background: rgba(0, 0, 0, 0.8);
-                    color: #00ff00;
-                    padding: 1rem;
-                    border-radius: 0.5rem;
-                    font-family: 'Courier New', monospace;
-                    font-size: 0.8rem;
-                    z-index: 150;
-                    min-width: 250px;
-                    border: 1px solid #00ff00;
-                `;
-                
-                document.body.appendChild(debugUI);
-                
-                // 디버그 정보 업데이트 시작
-                this.startDebugInfoUpdate();
-            }
-            
-            // 디버그 정보 업데이트 (작업 15)
-            startDebugInfoUpdate() {
-                if (this.debugUpdateInterval) {
-                    clearInterval(this.debugUpdateInterval);
-                }
-                
-                this.debugUpdateInterval = setInterval(() => {
-                    const debugUI = document.getElementById('debugUI');
-                    if (!debugUI || !this.debugMode) {
-                        clearInterval(this.debugUpdateInterval);
+                    if (event.key === 'F2') {
+                        event.preventDefault();
+                        this.toggleKeyboardMode();
                         return;
                     }
                     
-                    const debugInfo = this.getDebugInfo();
-                    debugUI.innerHTML = `
-                        <div style="color: #00ff00; font-weight: bold; margin-bottom: 0.5rem;">🐛 DEBUG INFO</div>
-                        <div>게임 상태: ${debugInfo.gameState}</div>
-                        <div>연결된 센서: ${debugInfo.connectedSensors}</div>
-                        <div>키보드 모드: ${debugInfo.keyboardMode}</div>
-                        <div>FPS: ${debugInfo.fps}</div>
-                        <div style="margin-top: 0.5rem; color: #ffff00;">플레이어 1:</div>
-                        <div>  위치: ${debugInfo.player1.position}</div>
-                        <div>  속도: ${debugInfo.player1.speed} km/h</div>
-                        <div>  조향: ${debugInfo.player1.steering}</div>
-                        <div style="margin-top: 0.5rem; color: #ffff00;">플레이어 2:</div>
-                        <div>  위치: ${debugInfo.player2.position}</div>
-                        <div>  속도: ${debugInfo.player2.speed} km/h</div>
-                        <div>  조향: ${debugInfo.player2.steering}</div>
-                    `;
-                }, 100);
+                    if (this.keyboardMode && this.gameState === 'racing') {
+                        this.handleKeyboardInput(event);
+                    }
+                });
             }
             
-            // 디버그 정보 수집 (작업 15)
-            getDebugInfo() {
-                const fps = this.lastFrameTime ? Math.round(1000 / (Date.now() - this.lastFrameTime)) : 0;
-                this.lastFrameTime = Date.now();
+            toggleKeyboardMode() {
+                this.keyboardMode = !this.keyboardMode;
+                console.log(`⌨️ 키보드 모드: ${this.keyboardMode ? '활성화' : '비활성화'}`);
                 
-                return {
-                    gameState: this.gameState,
-                    connectedSensors: this.connectedSensors.size,
-                    keyboardMode: this.keyboardTestMode ? 'ON' : 'OFF',
-                    fps: fps,
-                    player1: {
-                        position: this.cars?.player1 ? 
-                            `(${this.cars.player1.getPosition().x.toFixed(1)}, ${this.cars.player1.getPosition().z.toFixed(1)})` : 
-                            'N/A',
-                        speed: this.cars?.player1 ? this.cars.player1.getSpeed().toFixed(1) : '0',
-                        steering: this.players.sensor1.steering.toFixed(2)
-                    },
-                    player2: {
-                        position: this.cars?.player2 ? 
-                            `(${this.cars.player2.getPosition().x.toFixed(1)}, ${this.cars.player2.getPosition().z.toFixed(1)})` : 
-                            'N/A',
-                        speed: this.cars?.player2 ? this.cars.player2.getSpeed().toFixed(1) : '0',
-                        steering: this.players.sensor2.steering.toFixed(2)
-                    }
-                };
+                if (this.keyboardMode) {
+                    // 테스트용 센서 연결 시뮬레이션
+                    this.handleSensorConnected('sensor1');
+                    this.handleSensorConnected('sensor2');
+                }
+            }
+            
+            handleKeyboardInput(event) {
+                // 플레이어 1: WASD
+                if (event.key === 'w') this.updateCarMovement('sensor1', 0, 1);
+                if (event.key === 's') this.updateCarMovement('sensor1', 0, -0.5);
+                if (event.key === 'a') this.updateCarMovement('sensor1', -1, 0);
+                if (event.key === 'd') this.updateCarMovement('sensor1', 1, 0);
+                
+                // 플레이어 2: 화살표 키
+                if (event.key === 'ArrowUp') this.updateCarMovement('sensor2', 0, 1);
+                if (event.key === 'ArrowDown') this.updateCarMovement('sensor2', 0, -0.5);
+                if (event.key === 'ArrowLeft') this.updateCarMovement('sensor2', -1, 0);
+                if (event.key === 'ArrowRight') this.updateCarMovement('sensor2', 1, 0);
+            }
+            
+            handleSensorConnected(sensorId) {
+                this.connectedSensors.add(sensorId);
+                this.players[sensorId].connected = true;
+                
+                console.log(`✅ ${sensorId} 센서 연결됨`);
+                
+                // 두 센서 모두 연결되면 게임 시작
+                if (this.connectedSensors.size >= 2) {
+                    this.startGame();
+                }
+            }
+            
+            handleSensorData(data) {
+                const { sensorId, data: sensorData } = data;
+                
+                if (!sensorData || !sensorData.orientation) return;
+                
+                const { orientation } = sensorData;
+                const { beta, gamma } = orientation;
+                
+                // 센서 데이터를 자동차 움직임으로 변환
+                const steering = gamma * 0.02; // 좌우 기울기 → 핸들
+                const speed = beta < -10 ? 1 : (beta > 10 ? -0.5 : 0); // 앞뒤 기울기 → 가속/브레이크
+                
+                this.updateCarMovement(sensorId, steering, speed);
+            }
+            
+            updateCarMovement(sensorId, steering, speed) {
+                const player = this.players[sensorId];
+                if (!player || !player.car) return;
+                
+                // 자동차 위치 및 회전 업데이트
+                player.steering = steering;
+                player.speed = speed;
+                
+                // CSS transform 적용
+                this.applyCarTransform(player);
             } 
            
-            startGamePreparation() {
-                // 세션 패널 숨기고 게임 HUD 표시
+            applyCarTransform(player) {
+                if (!player.car) return;
+                
+                // 위치 업데이트
+                player.position.x += player.steering * 2;
+                player.position.z += player.speed * 3;
+                
+                // 회전 업데이트
+                player.rotation.y += player.steering * 0.5;
+                
+                // 경계 제한
+                player.position.x = Math.max(-350, Math.min(350, player.position.x));
+                player.position.z = Math.max(-150, Math.min(150, player.position.z));
+                
+                // CSS transform 적용
+                const transform = `
+                    translate3d(${player.position.x}px, ${player.position.y}px, ${player.position.z}px)
+                    rotateY(${player.rotation.y}deg)
+                `;
+                
+                player.car.style.transform = transform;
+                
+                // 바퀴 회전 애니메이션
+                this.animateWheels(player);
+            }
+            
+            animateWheels(player) {
+                if (!player.car) return;
+                
+                const wheels = player.car.querySelectorAll('.wheel');
+                const rotationSpeed = Math.abs(player.speed) * 10;
+                
+                wheels.forEach(wheel => {
+                    const currentRotation = parseFloat(wheel.dataset.rotation || 0);
+                    const newRotation = currentRotation + rotationSpeed;
+                    wheel.dataset.rotation = newRotation;
+                    wheel.style.transform = `rotateX(${newRotation}deg)`;
+                });
+            }
+            
+            startGame() {
+                this.gameState = 'racing';
+                
+                // UI 전환
                 this.elements.sessionPanel.classList.add('hidden');
-                this.elements.gameHUD.classList.remove('hidden');
+                this.elements.gameScreen.classList.remove('hidden');
                 this.elements.controlPanel.classList.remove('hidden');
                 
-                // 게임 상태를 준비 상태로 변경
-                this.gameState = 'preparing';
-                
-                // 카운트다운 시작
-                this.startCountdown();
-                
-                console.log('🏁 게임 준비 시작!');
+                console.log('🏁 게임 시작!');
             }
             
-            // 게임 시작 카운트다운 구현 (작업 9)
-            startCountdown() {
-                let countdown = 3;
-                this.gameState = 'preparing';
-                
-                // 카운트다운 UI 요소 생성
-                const countdownElement = document.createElement('div');
-                countdownElement.className = 'countdown';
-                countdownElement.id = 'countdownDisplay';
-                document.body.appendChild(countdownElement);
-                
-                const showCountdown = (number) => {
-                    countdownElement.textContent = number;
-                    countdownElement.style.animation = 'none';
-                    // 강제 리플로우
-                    countdownElement.offsetHeight;
-                    countdownElement.style.animation = 'countdownPulse 1s ease-in-out';
+            startGameLoop() {
+                const gameLoop = () => {
+                    if (this.gameState === 'racing') {
+                        // 게임 로직 업데이트
+                        this.updateGame();
+                    }
+                    
+                    requestAnimationFrame(gameLoop);
                 };
                 
-                // 3, 2, 1 카운트다운
-                showCountdown(countdown);
-                
-                this.countdownTimer = setInterval(() => {
-                    countdown--;
-                    if (countdown > 0) {
-                        showCountdown(countdown);
-                    } else {
-                        // GO! 표시
-                        countdownElement.textContent = 'GO!';
-                        countdownElement.style.color = '#10b981'; // 초록색
-                        countdownElement.style.animation = 'countdownPulse 1s ease-in-out';
+                gameLoop();
+            }
+            
+            updateGame() {
+                // 자동차 관성 적용
+                Object.values(this.players).forEach(player => {
+                    if (player.connected) {
+                        // 마찰력 적용
+                        player.speed *= 0.95;
+                        player.steering *= 0.9;
                         
-                        // 1초 후 카운트다운 종료 및 게임 시작
-                        setTimeout(() => {
-                            this.finishCountdown();
-                        }, 1000);
-                        
-                        clearInterval(this.countdownTimer);
-                    }
-                }, 1000);
-                
-                console.log('⏱️ 카운트다운 시작!');
-            }
-            
-            finishCountdown() {
-                // 카운트다운 UI 제거
-                const countdownElement = document.getElementById('countdownDisplay');
-                if (countdownElement) {
-                    countdownElement.remove();
-                }
-                
-                // 게임 상태를 racing으로 변경
-                this.gameState = 'racing';
-                this.raceStartTime = Date.now();
-                
-                // 게임 타이머 시작
-                this.startGameTimer();
-                
-                console.log('🏁 경주 시작!');
-            }
-            
-            // 게임 타이머 시작
-            startGameTimer() {
-                this.gameTimer = setInterval(() => {
-                    if (this.gameState === 'racing' && !this.isPaused) {
-                        const currentTime = Date.now();
-                        const elapsedTime = (currentTime - this.raceStartTime) / 1000;
-                        
-                        // 플레이어별 시간 업데이트
-                        Object.keys(this.players).forEach(playerId => {
-                            if (this.players[playerId].connected) {
-                                this.players[playerId].totalTime = elapsedTime;
-                            }
-                        });
-                        
-                        // HUD 업데이트
-                        this.updateHUD();
-                    }
-                }, 100); // 100ms마다 업데이트
-            }
-            
-            // 게임 일시정지 및 재개 기능 (작업 9)
-            pauseGame() {
-                if (this.gameState === 'racing') {
-                    this.gameState = 'paused';
-                    this.isPaused = true;
-                    
-                    // 타이머 일시정지
-                    if (this.gameTimer) {
-                        clearInterval(this.gameTimer);
-                        this.gameTimer = null;
-                    }
-                    
-                    console.log('⏸️ 게임 일시정지');
-                    this.updateGameStatus();
-                }
-            }
-            
-            resumeGame() {
-                if (this.gameState === 'paused') {
-                    this.gameState = 'racing';
-                    this.isPaused = false;
-                    
-                    // 타이머 재시작
-                    this.startGameTimer();
-                    
-                    console.log('▶️ 게임 재개');
-                    this.updateGameStatus();
-                }
-            }
-            
-            // 게임 재시작 (작업 13 개선)
-            resetGame() {
-                console.log('🔄 게임 재시작 시작...');
-                
-                // 결과 패널 제거
-                this.removeResultPanels();
-                
-                // 기존 타이머들 정리
-                this.clearAllTimers();
-                
-                // 게임 상태만 초기화 (세션과 센서 연결은 유지)
-                this.resetGameStateOnly();
-                
-                // 자동차 위치 리셋
-                this.resetCarPositions();
-                
-                // UI 업데이트
-                this.updateHUD();
-                this.updateGameStatus();
-                
-                // 센서가 연결되어 있으면 바로 카운트다운 시작
-                if (this.connectedSensors.size >= 2) {
-                    this.startCountdown();
-                } else {
-                    console.log('⚠️ 센서 재연결 대기 중...');
-                    this.gameState = 'waiting';
-                    this.updateGameStatus();
-                }
-                
-                console.log('✅ 게임 재시작 완료 (세션 유지)');
-            }
-            
-            // 결과 패널 제거 (작업 13)
-            removeResultPanels() {
-                const existingPanels = document.querySelectorAll('.ui-panel');
-                existingPanels.forEach(panel => {
-                    if (panel.innerHTML.includes('경주 완료') || panel.innerHTML.includes('우승자')) {
-                        panel.remove();
+                        // 최소 임계값 이하면 0으로 설정
+                        if (Math.abs(player.speed) < 0.01) player.speed = 0;
+                        if (Math.abs(player.steering) < 0.01) player.steering = 0;
                     }
                 });
-            }
-            
-            // 모든 타이머 정리 (작업 13)
-            clearAllTimers() {
-                if (this.countdownTimer) {
-                    clearInterval(this.countdownTimer);
-                    this.countdownTimer = null;
-                }
-                if (this.gameTimer) {
-                    clearInterval(this.gameTimer);
-                    this.gameTimer = null;
-                }
-                
-                // 카운트다운 UI 제거
-                const countdownElement = document.getElementById('countdownDisplay');
-                if (countdownElement) {
-                    countdownElement.remove();
-                }
-            }
-            
-            // 게임 상태만 초기화 (세션 유지) (작업 13)
-            resetGameStateOnly() {
-                // 게임 상태 초기화
-                this.gameState = 'preparing';
-                this.isPaused = false;
-                this.raceStartTime = null;
-                this.raceFinished = false;
-                
-                // 플레이어별 상태 추적 데이터 초기화
-                Object.keys(this.players).forEach(playerId => {
-                    this.players[playerId].speed = 0;
-                    this.players[playerId].steering = 0;
-                    this.players[playerId].lapCount = 0;
-                    this.players[playerId].lapTime = 0;
-                    this.players[playerId].totalTime = 0;
-                    this.players[playerId].position = { x: 0, y: 0, z: 0 };
-                    this.players[playerId].sensorData = { tiltX: 0, tiltY: 0, acceleration: 0 };
-                });
-                
-                // 랩 추적 데이터 초기화
-                this.initializeLapTracking();
-                
-                // 센서 데이터 필터링 초기화
-                this.previousSensorValues = { steering: 0, speed: 0 };
-                
-                // 일시정지 버튼 상태 리셋
-                const pauseResumeBtn = document.getElementById('pauseResumeBtn');
-                if (pauseResumeBtn) {
-                    pauseResumeBtn.innerHTML = '⏸️ 일시정지';
-                }
-            }
-            
-            // 자동차 위치 리셋 (작업 13)
-            resetCarPositions() {
-                if (this.cars) {
-                    // 시작 위치로 리셋 (체크포인트 0 근처)
-                    this.cars.player1.reset(-45, 0.5, -2);
-                    this.cars.player2.reset(-45, 0.5, 2);
-                    
-                    console.log('🏎️ 자동차 위치 리셋 완료');
-                }
-            }
-            
-            // 게임 완전 종료 및 세션 정리 (작업 13)
-            terminateGame() {
-                console.log('🛑 게임 완전 종료 시작...');
-                
-                // 모든 타이머 정리
-                this.clearAllTimers();
-                
-                // 게임 상태 초기화
-                this.gameState = 'waiting';
-                this.raceFinished = true;
-                
-                // 세션 정리
-                this.cleanupSession();
-                
-                // 메모리 해제
-                this.cleanupMemory();
-                
-                console.log('✅ 게임 완전 종료 완료');
-            }
-            
-            // 세션 정리 (작업 13)
-            cleanupSession() {
+            }         
+   
+            async createSession() {
                 try {
-                    // 센서 연결 해제
-                    this.connectedSensors.clear();
-                    
-                    // 연결 상태 초기화
-                    this.connectionStatus = {
-                        server: false,
-                        sensor1: false,
-                        sensor2: false
-                    };
-                    
-                    // SessionSDK 정리 (필요한 경우)
-                    if (this.sdk && typeof this.sdk.disconnect === 'function') {
-                        this.sdk.disconnect();
-                    }
-                    
-                    console.log('🧹 세션 정리 완료');
+                    await this.sdk.createSession();
                 } catch (error) {
-                    console.warn('세션 정리 중 오류:', error);
+                    console.error('세션 생성 실패:', error);
                 }
-            }
-            
-            // 메모리 해제 (작업 13)
-            cleanupMemory() {
-                try {
-                    // 3D 객체 정리
-                    if (this.scene) {
-                        // 체크포인트 메시 제거
-                        this.checkpoints.forEach(checkpoint => {
-                            if (checkpoint.mesh) {
-                                this.scene.remove(checkpoint.mesh);
-                            }
-                        });
-                        
-                        // 자동차 메시 제거
-                        if (this.cars) {
-                            Object.values(this.cars).forEach(car => {
-                                if (car.mesh) {
-                                    this.scene.remove(car.mesh);
-                                }
-                            });
-                        }
-                    }
-                    
-                    // 물리 바디 정리
-                    if (this.world && this.cars) {
-                        Object.values(this.cars).forEach(car => {
-                            if (car.physicsBody) {
-                                this.world.remove(car.physicsBody);
-                            }
-                        });
-                    }
-                    
-                    // 이벤트 리스너 정리
-                    window.removeEventListener('resize', this.resizeCanvas);
-                    
-                    console.log('🧹 메모리 해제 완료');
-                } catch (error) {
-                    console.warn('메모리 해제 중 오류:', error);
-                }
-            }
-            
-            // 허브로 돌아가기 (작업 13)
-            returnToHub() {
-                console.log('🏠 허브로 돌아가기...');
-                
-                // 게임 완전 종료
-                this.terminateGame();
-                
-                // 페이지 이동
-                window.location.href = '/';
-            }
-            
-            updateConnectionUI() {
-                // 서버 연결 상태 업데이트
-                const server1Status = document.getElementById('server1Status');
-                const server2Status = document.getElementById('server2Status');
-                
-                if (server1Status) {
-                    server1Status.classList.toggle('connected', this.connectionStatus.server);
-                }
-                if (server2Status) {
-                    server2Status.classList.toggle('connected', this.connectionStatus.server);
-                }
-                
-                // 센서 연결 상태 업데이트
-                const sensor1Status = document.getElementById('sensor1Status');
-                const sensor2Status = document.getElementById('sensor2Status');
-                
-                if (sensor1Status) {
-                    sensor1Status.classList.toggle('connected', this.connectionStatus.sensor1);
-                }
-                if (sensor2Status) {
-                    sensor2Status.classList.toggle('connected', this.connectionStatus.sensor2);
-                }
-                
-                // 게임 상태 텍스트 업데이트
-                this.updateGameStatus();
-            }
-            
-            updateGameStatus() {
-                const gameStatus = document.getElementById('gameStatus');
-                if (!gameStatus) return;
-                
-                let statusText = '';
-                
-                switch (this.gameState) {
-                    case 'waiting':
-                        if (this.connectedSensors.size === 0) {
-                            statusText = '센서 연결 대기 중...';
-                        } else if (this.connectedSensors.size === 1) {
-                            statusText = '두 번째 센서 연결 대기 중...';
-                        } else {
-                            statusText = '게임 시작 준비 완료!';
-                        }
-                        break;
-                    case 'preparing':
-                        statusText = '게임 시작 카운트다운...';
-                        break;
-                    case 'racing':
-                        const elapsedTime = this.raceStartTime ? 
-                            ((Date.now() - this.raceStartTime) / 1000).toFixed(1) : '0.0';
-                        statusText = `경주 진행 중 (${elapsedTime}초)`;
-                        break;
-                    case 'paused':
-                        statusText = '게임 일시정지 - 센서 재연결 대기 중';
-                        break;
-                    case 'finished':
-                        statusText = '경주 완료!';
-                        break;
-                }
-                
-                gameStatus.textContent = statusText;
-                gameStatus.classList.toggle('hidden', this.gameState === 'waiting');
-            }  
-          
-            updateHUD() {
-                // 플레이어 1 HUD 업데이트
-                const player1Speed = document.getElementById('player1Speed');
-                const player1Lap = document.getElementById('player1Lap');
-                const player1Time = document.getElementById('player1Time');
-                
-                if (player1Speed && this.cars && this.cars.player1) {
-                    player1Speed.textContent = `${this.cars.player1.getSpeed().toFixed(1)} km/h`;
-                }
-                if (player1Lap && this.lapTracking) {
-                    const lapData = this.lapTracking.sensor1;
-                    player1Lap.textContent = `${lapData.currentLap}/${this.totalLaps}`;
-                    
-                    // 순위 표시 추가 (작업 10)
-                    if (lapData.rank) {
-                        player1Lap.textContent += ` (${lapData.rank}위)`;
-                    }
-                }
-                if (player1Time) {
-                    // 현재 랩 타임 또는 총 시간 표시
-                    if (this.lapTracking && this.lapTracking.sensor1.lapStartTime && this.gameState === 'racing') {
-                        const currentLapTime = (Date.now() - this.lapTracking.sensor1.lapStartTime) / 1000;
-                        player1Time.textContent = `${currentLapTime.toFixed(2)}s`;
-                    } else {
-                        player1Time.textContent = `${this.players.sensor1.totalTime.toFixed(2)}s`;
-                    }
-                }
-                
-                // 플레이어 2 HUD 업데이트
-                const player2Speed = document.getElementById('player2Speed');
-                const player2Lap = document.getElementById('player2Lap');
-                const player2Time = document.getElementById('player2Time');
-                
-                if (player2Speed && this.cars && this.cars.player2) {
-                    player2Speed.textContent = `${this.cars.player2.getSpeed().toFixed(1)} km/h`;
-                }
-                if (player2Lap && this.lapTracking) {
-                    const lapData = this.lapTracking.sensor2;
-                    player2Lap.textContent = `${lapData.currentLap}/${this.totalLaps}`;
-                    
-                    // 순위 표시 추가 (작업 10)
-                    if (lapData.rank) {
-                        player2Lap.textContent += ` (${lapData.rank}위)`;
-                    }
-                }
-                if (player2Time) {
-                    // 현재 랩 타임 또는 총 시간 표시
-                    if (this.lapTracking && this.lapTracking.sensor2.lapStartTime && this.gameState === 'racing') {
-                        const currentLapTime = (Date.now() - this.lapTracking.sensor2.lapStartTime) / 1000;
-                        player2Time.textContent = `${currentLapTime.toFixed(2)}s`;
-                    } else {
-                        player2Time.textContent = `${this.players.sensor2.totalTime.toFixed(2)}s`;
-                    }
-                }
-            }
-            
-            startRenderLoop() {
-                const animate = () => {
-                    requestAnimationFrame(animate);
-                    
-                    // 물리 시뮬레이션 업데이트
-                    this.world.step(1/60);
-                    
-                    // 자동차 업데이트
-                    if (this.cars) {
-                        this.cars.player1.update();
-                        this.cars.player2.update();
-                        
-                        // 플레이어별 상태 추적 업데이트 (작업 9)
-                        this.updatePlayerStates();
-                        
-                        // 트랙 이탈 감지 (작업 11)
-                        this.checkTrackBoundaries();
-                        
-                        // 트랙 이탈 감지 (작업 11)
-                        this.checkTrackBoundaries();
-                    }
-                    
-                    // 카메라 위치 업데이트
-                    this.updateCameras();
-                    
-                    // 화면 분할 렌더링
-                    this.renderSplitScreen();
-                };
-                
-                animate();
-            }
-            
-            // 플레이어별 상태 추적 (작업 9 + 10)
-            updatePlayerStates() {
-                if (this.gameState !== 'racing' || !this.cars) return;
-                
-                // 플레이어 1 상태 업데이트 (작업 17 안전성 개선)
-                if (this.cars && this.cars.player1) {
-                    const car1Pos = this.cars.player1.getPosition();
-                    const car1Speed = this.cars.player1.getSpeed();
-                    
-                    this.players.sensor1.position = {
-                        x: car1Pos.x,
-                        y: car1Pos.y,
-                        z: car1Pos.z
-                    };
-                    this.players.sensor1.speed = car1Speed;
-                    
-                    // 체크포인트 통과 감지 (작업 10)
-                    this.checkCheckpointPassing('sensor1', car1Pos);
-                }
-                
-                // 플레이어 2 상태 업데이트
-                if (this.cars.player2) {
-                    const car2Pos = this.cars.player2.getPosition();
-                    const car2Speed = this.cars.player2.getSpeed();
-                    
-                    this.players.sensor2.position = {
-                        x: car2Pos.x,
-                        y: car2Pos.y,
-                        z: car2Pos.z
-                    };
-                    this.players.sensor2.speed = car2Speed;
-                    
-                    // 체크포인트 통과 감지 (작업 10)
-                    this.checkCheckpointPassing('sensor2', car2Pos);
-                }
-                
-                // 실시간 순위 계산 및 표시 (작업 10)
-                this.updateRankings();
-            }
-            
-            // 체크포인트 통과 감지 로직 (작업 10)
-            checkCheckpointPassing(playerId, carPosition) {
-                if (!this.lapTracking || !this.checkpoints.length) return;
-                
-                const playerLapData = this.lapTracking[playerId];
-                const currentTime = Date.now();
-                
-                // 각 체크포인트와의 거리 확인
-                this.checkpoints.forEach((checkpoint, index) => {
-                    const distance = Math.sqrt(
-                        Math.pow(carPosition.x - checkpoint.position.x, 2) + 
-                        Math.pow(carPosition.z - checkpoint.position.z, 2)
-                    );
-                    
-                    // 체크포인트 통과 판정 (거리 8미터 이내)
-                    if (distance < 8) {
-                        // 순서대로 체크포인트를 통과하는지 확인
-                        const expectedCheckpoint = (playerLapData.lastCheckpoint + 1) % this.checkpoints.length;
-                        
-                        if (index === expectedCheckpoint) {
-                            this.handleCheckpointPassed(playerId, checkpoint, index, currentTime);
-                        }
-                    }
-                });
-            }
-            
-            // 체크포인트 통과 처리 (작업 10)
-            handleCheckpointPassed(playerId, checkpoint, checkpointIndex, currentTime) {
-                const playerLapData = this.lapTracking[playerId];
-                
-                playerLapData.lastCheckpoint = checkpointIndex;
-                
-                console.log(`${playerId} 체크포인트 ${checkpointIndex} (${checkpoint.name}) 통과!`);
-                
-                // 시작/결승선 통과 처리
-                if (checkpointIndex === 0) {
-                    if (playerLapData.currentLap === 0) {
-                        // 첫 번째 랩 시작
-                        this.startNewLap(playerId, currentTime);
-                    } else {
-                        // 랩 완료
-                        this.completeLap(playerId, currentTime);
-                    }
-                }
-            }
-            
-            // 새 랩 시작 (작업 10)
-            startNewLap(playerId, currentTime) {
-                const playerLapData = this.lapTracking[playerId];
-                
-                playerLapData.currentLap = 1;
-                playerLapData.lapStartTime = currentTime;
-                playerLapData.lastCheckpoint = -1; // 체크포인트 리셋
-                
-                // 플레이어 데이터 업데이트
-                this.players[playerId].lapCount = playerLapData.currentLap;
-                
-                console.log(`🏁 ${playerId} 첫 번째 랩 시작!`);
-            }
-            
-            // 랩 완주 판정 및 카운트 증가 (작업 10)
-            completeLap(playerId, currentTime) {
-                const playerLapData = this.lapTracking[playerId];
-                
-                if (playerLapData.lapStartTime) {
-                    // 랩 타임 계산
-                    const lapTime = (currentTime - playerLapData.lapStartTime) / 1000;
-                    playerLapData.lapTimes.push(lapTime);
-                    
-                    // 최고 랩 타임 업데이트
-                    if (lapTime < playerLapData.bestLapTime) {
-                        playerLapData.bestLapTime = lapTime;
-                    }
-                    
-                    // 랩 카운트 증가
-                    playerLapData.currentLap++;
-                    playerLapData.lastCheckpoint = -1; // 체크포인트 리셋
-                    
-                    // 플레이어 데이터 업데이트
-                    this.players[playerId].lapCount = playerLapData.currentLap;
-                    this.players[playerId].lapTime = lapTime;
-                    
-                    console.log(`🏆 ${playerId} 랩 ${playerLapData.currentLap - 1} 완료! 시간: ${lapTime.toFixed(2)}초`);
-                    
-                    // 경주 완료 확인 (3랩 완주)
-                    if (playerLapData.currentLap > this.totalLaps) {
-                        this.handleRaceFinish(playerId);
-                    } else {
-                        // 다음 랩 시작
-                        playerLapData.lapStartTime = currentTime;
-                    }
-                }
-            }
-            
-            // 경주 완료 처리 (작업 12 개선)
-            handleRaceFinish(playerId) {
-                if (!this.raceFinished) {
-                    this.raceFinished = true;
-                    this.gameState = 'finished';
-                    
-                    // 게임 타이머 정지
-                    if (this.gameTimer) {
-                        clearInterval(this.gameTimer);
-                        this.gameTimer = null;
-                    }
-                    
-                    // 최종 순위 계산
-                    this.calculateFinalRankings();
-                    
-                    // 최고 기록 저장
-                    this.savePersonalBests();
-                    
-                    console.log(`🏁 ${playerId} 경주 완료! 우승자!`);
-                    
-                    // 결과 표시 (약간의 지연 후)
-                    setTimeout(() => {
-                        this.showRaceResults();
-                    }, 1000);
-                }
-            }
-            
-            // 최종 순위 계산 (작업 12)
-            calculateFinalRankings() {
-                const players = ['sensor1', 'sensor2'];
-                
-                // 완주한 랩 수와 총 시간으로 순위 결정
-                players.sort((a, b) => {
-                    const playerA = this.lapTracking[a];
-                    const playerB = this.lapTracking[b];
-                    
-                    // 완주한 랩 수로 먼저 비교
-                    if (playerA.currentLap !== playerB.currentLap) {
-                        return playerB.currentLap - playerA.currentLap;
-                    }
-                    
-                    // 랩 수가 같으면 총 시간으로 비교
-                    const totalTimeA = playerA.lapTimes.reduce((sum, time) => sum + time, 0);
-                    const totalTimeB = playerB.lapTimes.reduce((sum, time) => sum + time, 0);
-                    
-                    return totalTimeA - totalTimeB;
-                });
-                
-                // 최종 순위 업데이트
-                players.forEach((playerId, index) => {
-                    this.lapTracking[playerId].finalRank = index + 1;
-                });
-                
-                console.log('🏆 최종 순위 계산 완료');
-            }
-            
-            // 최고 기록 저장 (작업 12)
-            savePersonalBests() {
-                try {
-                    const currentBests = JSON.parse(localStorage.getItem('racing3d_records') || '{}');
-                    
-                    ['sensor1', 'sensor2'].forEach((playerId, index) => {
-                        const playerData = this.lapTracking[playerId];
-                        const playerKey = `player${index + 1}`;
-                        
-                        if (!currentBests[playerKey]) {
-                            currentBests[playerKey] = {
-                                bestLapTime: Infinity,
-                                bestRaceTime: Infinity,
-                                totalRaces: 0,
-                                wins: 0
-                            };
-                        }
-                        
-                        const playerBests = currentBests[playerKey];
-                        
-                        // 최고 랩 타임 업데이트
-                        if (playerData.bestLapTime < playerBests.bestLapTime) {
-                            playerBests.bestLapTime = playerData.bestLapTime;
-                        }
-                        
-                        // 최고 레이스 타임 업데이트 (3랩 완주한 경우)
-                        if (playerData.currentLap > this.totalLaps) {
-                            const raceTime = playerData.lapTimes.reduce((sum, time) => sum + time, 0);
-                            if (raceTime < playerBests.bestRaceTime) {
-                                playerBests.bestRaceTime = raceTime;
-                            }
-                        }
-                        
-                        // 총 경주 수 증가
-                        playerBests.totalRaces++;
-                        
-                        // 승리 수 업데이트
-                        if (playerData.finalRank === 1) {
-                            playerBests.wins++;
-                        }
-                    });
-                    
-                    localStorage.setItem('racing3d_records', JSON.stringify(currentBests));
-                    console.log('💾 최고 기록 저장 완료');
-                } catch (error) {
-                    console.warn('최고 기록 저장 실패:', error);
-                }
-            }
-            
-            // 실시간 순위 계산 및 표시 (작업 10)
-            updateRankings() {
-                const players = ['sensor1', 'sensor2'];
-                
-                // 랩 수와 체크포인트 진행도로 순위 계산
-                players.sort((a, b) => {
-                    const playerA = this.lapTracking[a];
-                    const playerB = this.lapTracking[b];
-                    
-                    // 랩 수가 다르면 랩 수로 비교
-                    if (playerA.currentLap !== playerB.currentLap) {
-                        return playerB.currentLap - playerA.currentLap;
-                    }
-                    
-                    // 랩 수가 같으면 체크포인트 진행도로 비교
-                    if (playerA.lastCheckpoint !== playerB.lastCheckpoint) {
-                        return playerB.lastCheckpoint - playerA.lastCheckpoint;
-                    }
-                    
-                    // 모든 것이 같으면 위치로 비교 (x 좌표 기준)
-                    const posA = this.players[a].position;
-                    const posB = this.players[b].position;
-                    return posB.x - posA.x;
-                });
-                
-                // 순위 업데이트
-                players.forEach((playerId, index) => {
-                    this.lapTracking[playerId].rank = index + 1;
-                });
-            }
-            
-            // 트랙 이탈 감지 (작업 11)
-            checkTrackBoundaries() {
-                if (!this.cars || this.gameState !== 'racing') return;
-                
-                const trackWidth = 10; // 트랙 폭의 절반
-                const trackLength = 50; // 트랙 길이의 절반
-                
-                // 플레이어 1 트랙 이탈 확인
-                if (this.cars.player1) {
-                    const pos1 = this.cars.player1.getPosition();
-                    if (this.isOutOfBounds(pos1, trackWidth, trackLength)) {
-                        this.handleTrackExit('player1', pos1);
-                    }
-                }
-                
-                // 플레이어 2 트랙 이탈 확인
-                if (this.cars.player2) {
-                    const pos2 = this.cars.player2.getPosition();
-                    if (this.isOutOfBounds(pos2, trackWidth, trackLength)) {
-                        this.handleTrackExit('player2', pos2);
-                    }
-                }
-            }
-            
-            // 트랙 경계 확인 (작업 11)
-            isOutOfBounds(position, trackWidth, trackLength) {
-                return Math.abs(position.z) > trackWidth || 
-                       Math.abs(position.x) > trackLength ||
-                       position.y < -2; // 트랙 아래로 떨어진 경우
-            }
-            
-            // 트랙 이탈 처리 (작업 11)
-            handleTrackExit(playerId, position) {
-                console.log(`🚨 ${playerId} 트랙 이탈 감지!`);
-                
-                // 자동차 리셋 위치 계산
-                const resetPosition = this.calculateResetPosition(position);
-                
-                // 자동차 리셋
-                if (playerId === 'player1' && this.cars.player1) {
-                    this.resetCarToTrack(this.cars.player1, resetPosition);
-                } else if (playerId === 'player2' && this.cars.player2) {
-                    this.resetCarToTrack(this.cars.player2, resetPosition);
-                }
-                
-                // 페널티 적용 (속도 감소)
-                this.applyTrackExitPenalty(playerId);
-            }
-            
-            // 리셋 위치 계산 (작업 11)
-            calculateResetPosition(currentPosition) {
-                // 가장 가까운 트랙 위치로 리셋
-                const trackWidth = 8;
-                const trackLength = 45;
-                
-                let resetX = Math.max(-trackLength, Math.min(trackLength, currentPosition.x));
-                let resetZ = Math.max(-trackWidth, Math.min(trackWidth, currentPosition.z));
-                
-                // 트랙 중앙으로 약간 이동
-                if (Math.abs(resetZ) > trackWidth * 0.8) {
-                    resetZ = resetZ > 0 ? trackWidth * 0.7 : -trackWidth * 0.7;
-                }
-                
-                return {
-                    x: resetX,
-                    y: 0.5,
-                    z: resetZ
-                };
-            }
-            
-            // 자동차를 트랙으로 리셋 (작업 11)
-            resetCarToTrack(car, resetPosition) {
-                if (car && car.physicsBody) {
-                    // 위치 리셋
-                    car.physicsBody.position.set(resetPosition.x, resetPosition.y, resetPosition.z);
-                    
-                    // 속도 및 회전 초기화
-                    car.physicsBody.velocity.set(0, 0, 0);
-                    car.physicsBody.angularVelocity.set(0, 0, 0);
-                    
-                    // 자동차 방향을 트랙 방향으로 조정
-                    car.physicsBody.quaternion.set(0, 0, 0, 1);
-                    
-                    console.log(`🔄 자동차 트랙으로 리셋: (${resetPosition.x.toFixed(1)}, ${resetPosition.y.toFixed(1)}, ${resetPosition.z.toFixed(1)})`);
-                }
-            }
-            
-            // 트랙 이탈 페널티 적용 (작업 11)
-            applyTrackExitPenalty(playerId) {
-                // 랩 타임에 페널티 추가 (2초)
-                if (this.lapTracking && this.lapTracking[playerId === 'player1' ? 'sensor1' : 'sensor2']) {
-                    const sensorId = playerId === 'player1' ? 'sensor1' : 'sensor2';
-                    const lapData = this.lapTracking[sensorId];
-                    
-                    if (lapData.lapStartTime) {
-                        // 페널티 시간 추가
-                        lapData.lapStartTime -= 2000; // 2초 페널티
-                        console.log(`⏱️ ${playerId} 트랙 이탈 페널티: +2초`);
-                    }
-                }
-            }
-            
-            updateCameras() {
-                if (!this.cameras || !this.cars) return;
-                
-                // 플레이어 1 카메라 (자동차 뒤에서 따라가기)
-                if (this.cars.player1 && this.cars.player1.mesh) {
-                    const car1Pos = this.cars.player1.mesh.position;
-                    const car1Rot = this.cars.player1.mesh.rotation;
-                    
-                    // 카메라를 자동차 뒤쪽 5미터, 위쪽 3미터에 배치
-                    const offset = new THREE.Vector3(0, 3, 5);
-                    offset.applyEuler(car1Rot);
-                    
-                    this.cameras.player1.position.copy(car1Pos).add(offset);
-                    this.cameras.player1.lookAt(car1Pos);
-                }
-                
-                // 플레이어 2 카메라 (자동차 뒤에서 따라가기)
-                if (this.cars.player2 && this.cars.player2.mesh) {
-                    const car2Pos = this.cars.player2.mesh.position;
-                    const car2Rot = this.cars.player2.mesh.rotation;
-                    
-                    // 카메라를 자동차 뒤쪽 5미터, 위쪽 3미터에 배치
-                    const offset = new THREE.Vector3(0, 3, 5);
-                    offset.applyEuler(car2Rot);
-                    
-                    this.cameras.player2.position.copy(car2Pos).add(offset);
-                    this.cameras.player2.lookAt(car2Pos);
-                }
-            }
-            
-            renderSplitScreen() {
-                const width = window.innerWidth;
-                const height = window.innerHeight;
-                
-                // 왼쪽 화면 (플레이어 1)
-                this.renderer.setViewport(0, 0, width / 2, height);
-                this.renderer.setScissor(0, 0, width / 2, height);
-                this.renderer.setScissorTest(true);
-                this.renderer.render(this.scene, this.cameras.player1);
-                
-                // 오른쪽 화면 (플레이어 2)
-                this.renderer.setViewport(width / 2, 0, width / 2, height);
-                this.renderer.setScissor(width / 2, 0, width / 2, height);
-                this.renderer.render(this.scene, this.cameras.player2);
-                
-                // 스크린 테스트 비활성화
-                this.renderer.setScissorTest(false);
-            }   
-         
-            resizeCanvas() {
-                if (this.renderer) {
-                    this.renderer.setSize(window.innerWidth, window.innerHeight);
-                    
-                    // 카메라 비율 업데이트
-                    const aspect = (window.innerWidth / 2) / window.innerHeight;
-                    this.cameras.player1.aspect = aspect;
-                    this.cameras.player1.updateProjectionMatrix();
-                    
-                    this.cameras.player2.aspect = aspect;
-                    this.cameras.player2.updateProjectionMatrix();
-                }
-            }
-            
-            createSession() {
-                this.sdk.createSession();
             }
             
             generateQRCode(sessionCode) {
                 const qrContainer = this.elements.qrContainer;
                 
-                // QR 코드 생성 URL (올바른 센서 클라이언트 경로 사용)
+                // QR 코드 생성 URL (Render.com 배포 고려)
                 const baseUrl = window.location.origin;
                 const qrUrl = `${baseUrl}/sensor.html?session=${sessionCode}`;
                 
-                console.log('🔗 QR 코드 URL 생성:', qrUrl);
+                console.log('🔗 QR 코드 URL:', qrUrl);
                 
                 // QRCode 라이브러리 사용 (폴백 처리 포함)
                 if (typeof QRCode !== 'undefined') {
@@ -3374,210 +578,37 @@
                 const qrUrl = `${baseUrl}/sensor.html?session=${sessionCode}`;
                 const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
                 
-                console.log('🔗 QR 코드 폴백 URL 생성:', qrUrl);
+                console.log('🔗 QR 코드 폴백 URL:', qrUrl);
                 
                 container.innerHTML = `<img src="${qrApiUrl}" alt="QR Code" style="width: 200px; height: 200px;">`;
             }
             
-            // 경주 결과 표시 (작업 12 개선)
-            showRaceResults() {
-                // 결과 패널 생성
-                const resultsPanel = document.createElement('div');
-                resultsPanel.className = 'ui-panel';
-                resultsPanel.style.cssText = `
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    text-align: center;
-                    min-width: 600px;
-                    max-width: 800px;
-                    z-index: 300;
-                    max-height: 80vh;
-                    overflow-y: auto;
-                `;
+            resetGame() {
+                // 게임 상태 리셋
+                this.gameState = 'waiting';
                 
-                // 결과 내용 생성
-                const sensor1Data = this.lapTracking.sensor1;
-                const sensor2Data = this.lapTracking.sensor2;
-                
-                const winner = (sensor1Data.finalRank || sensor1Data.rank) === 1 ? 'sensor1' : 'sensor2';
-                const winnerName = winner === 'sensor1' ? '플레이어 1' : '플레이어 2';
-                
-                // 최고 기록 불러오기
-                const personalBests = this.getPersonalBests();
-                
-                // 경주 통계 계산
-                const raceStats = this.calculateRaceStatistics();
-                
-                resultsPanel.innerHTML = `
-                    <h2 style="color: var(--primary); margin-bottom: 1rem;">🏁 경주 완료!</h2>
-                    <h3 style="color: var(--success); margin-bottom: 2rem;">🏆 우승자: ${winnerName}</h3>
-                    
-                    <!-- 경주 결과 -->
-                    <div style="display: flex; gap: 2rem; justify-content: center; margin-bottom: 2rem;">
-                        ${this.generatePlayerResultCard('플레이어 1', sensor1Data, personalBests.player1, 1)}
-                        ${this.generatePlayerResultCard('플레이어 2', sensor2Data, personalBests.player2, 2)}
-                    </div>
-                    
-                    <!-- 경주 통계 -->
-                    <div style="margin-bottom: 2rem; padding: 1rem; background: rgba(59, 130, 246, 0.1); border-radius: 0.5rem;">
-                        <h4 style="color: var(--primary); margin-bottom: 1rem;">📊 경주 통계</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
-                            <div>총 경주 시간: ${raceStats.totalRaceTime.toFixed(2)}초</div>
-                            <div>평균 속도: ${raceStats.averageSpeed.toFixed(1)} km/h</div>
-                            <div>최고 속도: ${raceStats.maxSpeed.toFixed(1)} km/h</div>
-                            <div>총 거리: ${(this.totalLaps * this.lapDistance).toFixed(0)}m</div>
-                        </div>
-                    </div>
-                    
-                    <!-- 개인 최고 기록 -->
-                    <div style="margin-bottom: 2rem; padding: 1rem; background: rgba(139, 92, 246, 0.1); border-radius: 0.5rem;">
-                        <h4 style="color: var(--secondary); margin-bottom: 1rem;">🏅 개인 최고 기록</h4>
-                        <div style="display: flex; gap: 2rem; justify-content: center;">
-                            <div style="text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
-                                <div style="font-weight: 600; color: var(--primary);">플레이어 1</div>
-                                <div>최고 랩: ${personalBests.player1.bestLapTime === Infinity ? 'N/A' : personalBests.player1.bestLapTime.toFixed(2)}초</div>
-                                <div>최고 레이스: ${personalBests.player1.bestRaceTime === Infinity ? 'N/A' : personalBests.player1.bestRaceTime.toFixed(2)}초</div>
-                                <div>승률: ${personalBests.player1.totalRaces > 0 ? ((personalBests.player1.wins / personalBests.player1.totalRaces) * 100).toFixed(1) : 0}%</div>
-                            </div>
-                            <div style="text-align: center; color: var(--text-secondary); font-size: 0.9rem;">
-                                <div style="font-weight: 600; color: var(--primary);">플레이어 2</div>
-                                <div>최고 랩: ${personalBests.player2.bestLapTime === Infinity ? 'N/A' : personalBests.player2.bestLapTime.toFixed(2)}초</div>
-                                <div>최고 레이스: ${personalBests.player2.bestRaceTime === Infinity ? 'N/A' : personalBests.player2.bestRaceTime.toFixed(2)}초</div>
-                                <div>승률: ${personalBests.player2.totalRaces > 0 ? ((personalBests.player2.wins / personalBests.player2.totalRaces) * 100).toFixed(1) : 0}%</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 1rem; justify-content: center;">
-                        <button class="btn btn-primary" onclick="game.resetGame(); this.parentElement.parentElement.remove();">🔄 다시 경주</button>
-                        <button class="btn btn-secondary" onclick="game.clearRecords(); this.parentElement.parentElement.remove(); game.showRaceResults();">🗑️ 기록 초기화</button>
-                        <button class="btn btn-secondary" onclick="game.returnToHub()">🏠 허브로 돌아가기</button>
-                    </div>
-                `;
-                
-                document.body.appendChild(resultsPanel);
-                
-                console.log('🏆 경주 결과 표시 완료');
-            }
-            
-            // 플레이어 결과 카드 생성 (작업 12)
-            generatePlayerResultCard(playerName, playerData, personalBest, playerNum) {
-                const isWinner = (playerData.finalRank || playerData.rank) === 1;
-                const completedLaps = Math.min(playerData.currentLap - 1, this.totalLaps);
-                const totalRaceTime = playerData.lapTimes.reduce((sum, time) => sum + time, 0);
-                
-                return `
-                    <div style="text-align: center; padding: 1rem; border-radius: 0.5rem; ${isWinner ? 'background: rgba(16, 185, 129, 0.1); border: 2px solid var(--success);' : 'background: rgba(71, 85, 105, 0.1);'}">
-                        <h4 style="color: var(--primary); margin-bottom: 1rem;">
-                            ${isWinner ? '🥇' : '🥈'} ${playerName}
-                        </h4>
-                        <div style="color: var(--text-secondary); font-size: 0.9rem;">
-                            <div style="margin-bottom: 0.5rem;">
-                                <strong>최종 순위:</strong> ${playerData.finalRank || playerData.rank}위
-                            </div>
-                            <div style="margin-bottom: 0.5rem;">
-                                <strong>완주 랩:</strong> ${completedLaps}/${this.totalLaps}
-                            </div>
-                            <div style="margin-bottom: 0.5rem;">
-                                <strong>총 시간:</strong> ${totalRaceTime > 0 ? totalRaceTime.toFixed(2) : 'N/A'}초
-                            </div>
-                            <div style="margin-bottom: 0.5rem;">
-                                <strong>최고 랩:</strong> ${playerData.bestLapTime === Infinity ? 'N/A' : playerData.bestLapTime.toFixed(2)}초
-                            </div>
-                            <div style="margin-bottom: 0.5rem;">
-                                <strong>평균 랩:</strong> ${playerData.lapTimes.length > 0 ? (playerData.lapTimes.reduce((a, b) => a + b, 0) / playerData.lapTimes.length).toFixed(2) : 'N/A'}초
-                            </div>
-                            ${playerData.bestLapTime < personalBest.bestLapTime ? '<div style="color: var(--success); font-weight: 600;">🎉 새로운 최고 랩 기록!</div>' : ''}
-                            ${completedLaps === this.totalLaps && totalRaceTime < personalBest.bestRaceTime ? '<div style="color: var(--success); font-weight: 600;">🎉 새로운 최고 레이스 기록!</div>' : ''}
-                        </div>
-                    </div>
-                `;
-            }
-            
-            // 경주 통계 계산 (작업 12)
-            calculateRaceStatistics() {
-                const allLapTimes = [
-                    ...this.lapTracking.sensor1.lapTimes,
-                    ...this.lapTracking.sensor2.lapTimes
-                ];
-                
-                const totalRaceTime = this.raceStartTime ? (Date.now() - this.raceStartTime) / 1000 : 0;
-                
-                // 평균 속도 계산 (대략적)
-                const totalDistance = this.totalLaps * this.lapDistance * 2; // 두 플레이어
-                const averageSpeed = totalRaceTime > 0 ? (totalDistance / totalRaceTime) * 3.6 : 0;
-                
-                return {
-                    totalRaceTime,
-                    averageSpeed,
-                    maxSpeed: Math.max(
-                        this.cars?.player1?.getSpeed() || 0,
-                        this.cars?.player2?.getSpeed() || 0
-                    ),
-                    totalLaps: allLapTimes.length,
-                    fastestLap: allLapTimes.length > 0 ? Math.min(...allLapTimes) : 0
-                };
-            }
-            
-            // 개인 최고 기록 불러오기 (작업 12)
-            getPersonalBests() {
-                try {
-                    const records = JSON.parse(localStorage.getItem('racing3d_records') || '{}');
-                    return {
-                        player1: records.player1 || {
-                            bestLapTime: Infinity,
-                            bestRaceTime: Infinity,
-                            totalRaces: 0,
-                            wins: 0
-                        },
-                        player2: records.player2 || {
-                            bestLapTime: Infinity,
-                            bestRaceTime: Infinity,
-                            totalRaces: 0,
-                            wins: 0
-                        }
-                    };
-                } catch (error) {
-                    console.warn('개인 기록 불러오기 실패:', error);
-                    return {
-                        player1: { bestLapTime: Infinity, bestRaceTime: Infinity, totalRaces: 0, wins: 0 },
-                        player2: { bestLapTime: Infinity, bestRaceTime: Infinity, totalRaces: 0, wins: 0 }
-                    };
-                }
-            }
-            
-            // 기록 초기화 (작업 12)
-            clearRecords() {
-                try {
-                    localStorage.removeItem('racing3d_records');
-                    console.log('🗑️ 모든 기록이 초기화되었습니다');
-                    alert('모든 기록이 초기화되었습니다!');
-                } catch (error) {
-                    console.warn('기록 초기화 실패:', error);
-                }
-            }
-            
-            // 일시정지/재개 토글 메서드 (작업 9)
-            togglePauseResume() {
-                const pauseResumeBtn = document.getElementById('pauseResumeBtn');
-                
-                if (this.gameState === 'racing') {
-                    this.pauseGame();
-                    if (pauseResumeBtn) {
-                        pauseResumeBtn.innerHTML = '▶️ 재개';
+                // 자동차 위치 리셋
+                Object.values(this.players).forEach(player => {
+                    if (player.car) {
+                        player.position = { x: 0, y: 0, z: 0 };
+                        player.rotation = { x: 0, y: 0, z: 0 };
+                        player.speed = 0;
+                        player.steering = 0;
+                        player.car.style.transform = 'translate3d(0px, 0px, 0px) rotateY(0deg)';
                     }
-                } else if (this.gameState === 'paused') {
-                    this.resumeGame();
-                    if (pauseResumeBtn) {
-                        pauseResumeBtn.innerHTML = '⏸️ 일시정지';
-                    }
-                }
+                });
+                
+                // UI 리셋
+                this.elements.sessionPanel.classList.remove('hidden');
+                this.elements.gameScreen.classList.add('hidden');
+                this.elements.controlPanel.classList.add('hidden');
+                
+                console.log('🔄 게임 리셋 완료');
             }
         }
         
         // 게임 시작
-        const game = new RacingGame();
+        const game = new CSS3DRacingGame();
     </script>
 </body>
 </html>
