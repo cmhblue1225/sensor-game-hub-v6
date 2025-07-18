@@ -112,9 +112,11 @@ class PerformanceOptimizer {
         const quality = this.qualitySettings.levels[this.qualitySettings.current];
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.pixelRatio));
         
-        // 그림자 맵 크기 최적화
-        renderer.shadowMap.mapSize.width = quality.shadowMapSize;
-        renderer.shadowMap.mapSize.height = quality.shadowMapSize;
+        // 그림자 맵 크기 최적화 (shadowMap이 활성화된 경우에만)
+        if (renderer.shadowMap && renderer.shadowMap.enabled && renderer.shadowMap.mapSize) {
+            renderer.shadowMap.mapSize.width = quality.shadowMapSize;
+            renderer.shadowMap.mapSize.height = quality.shadowMapSize;
+        }
         
         // 렌더링 최적화 플래그
         renderer.sortObjects = true;
