@@ -3291,9 +3291,11 @@
             generateQRCode(sessionCode) {
                 const qrContainer = this.elements.qrContainer;
                 
-                // QR 코드 생성 URL
+                // QR 코드 생성 URL (올바른 센서 클라이언트 경로 사용)
                 const baseUrl = window.location.origin;
-                const qrUrl = `${baseUrl}/sensor?code=${sessionCode}`;
+                const qrUrl = `${baseUrl}/sensor.html?session=${sessionCode}`;
+                
+                console.log('🔗 QR 코드 URL 생성:', qrUrl);
                 
                 // QRCode 라이브러리 사용 (폴백 처리 포함)
                 if (typeof QRCode !== 'undefined') {
@@ -3316,8 +3318,10 @@
             
             generateQRCodeFallback(sessionCode, container) {
                 const baseUrl = window.location.origin;
-                const qrUrl = `${baseUrl}/sensor?code=${sessionCode}`;
+                const qrUrl = `${baseUrl}/sensor.html?session=${sessionCode}`;
                 const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
+                
+                console.log('🔗 QR 코드 폴백 URL 생성:', qrUrl);
                 
                 container.innerHTML = `<img src="${qrApiUrl}" alt="QR Code" style="width: 200px; height: 200px;">`;
             }
