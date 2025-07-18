@@ -1,0 +1,2568 @@
+/**
+ * 🚁 3D 드론 레이싱 게임 메인 클래스
+ * 
+ * 미래적인 네온 도시에서 펼쳐지는 듀얼 플레이어 드론 경주 게임
+ * - SessionSDK 통합 및 세션 유지 재시작
+ * - Three.js 3D 렌더링 및 Cannon.js 물리 엔진
+ * - 화면 분할 듀얼 카메라 시스템
+ */
+
+class DroneRacingGame {
+    constructor() {
+        console.log('🚁 3D 드론 레이싱 게임 초기화 시작');
+        
+        // 캔버스 및 렌더링 설정
+        this.canvas = document.getElementById('gameCanvas');
+        this.setupRenderer();
+        
+        // 게임 상태
+        this.gameState = 'waiting'; // waiting, racing, finished, paused
+        this.sessionPersistent = true; // 재시작 시 세션 유지
+        this.raceStartTime = 0;
+        this.startTime = 0; // 경주 시작 시간
+        this.raceFinished = false; // 경주 완료 플래그
+        this.isPaused = false;
+        
+        // SessionSDK 통합
+        this.sdk = new SessionSDK({
+            gameId: 'drone-racing',
+            gameType: 'dual',
+            debug: true
+        });
+        
+        // 게임 컴포넌트들 (나중에 초기화)
+        this.drones = {};
+        this.track = null;
+        this.effects = null;
+        this.ui = null;
+        this.physics = null;
+        this.gameStateManager = null;
+        this.performanceOptimizer = null;
+        
+        // 센서 연결 상태 모니터링
+        this.sensorConnectionMonitor = {
+            lastHeartbeat: new Map(),
+            connectionTimeout: 5000, // 5초
+            reconnectAttempts: new Map(),
+            maxReconnectAttempts: 3,
+            isMonitoring: false
+        };
+        
+        // 테스트 모드
+        this.testMode = false;
+        this.keyboardControls = {
+            player1: { forward: false, backward: false, left: false, right: false, boost: false },
+            player2: { forward: false, backward: false, left: false, right: false, boost: false }
+        };
+        
+        this.setupEventListeners();
+        this.gameLoop();
+        
+        console.log('✅ 드론 레이싱 게임 초기화 완료');
+    }
+    
+    /**
+     * 3D 렌더러 설정
+     */
+    setupRenderer() {
+        // Three.js 렌더러 설정
+        this.renderer = new THREE.WebGLRenderer({
+            canvas: this.canvas,
+            antialias: true,
+            alpha: true
+        });
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        
+        // 씬 생성
+        this.scene = new THREE.Scene();
+        this.scene.fog = new THREE.Fog(0x0f172a, 50, 200);
+        
+        // 듀얼 카메라 시스템 (화면 분할)
+        this.cameras = {
+            player1: new THREE.PerspectiveCamera(75, 0.5, 0.1, 1000),
+            player2: new THREE.PerspectiveCamera(75, 0.5, 0.1, 1000)
+        };
+        
+        // 카메라 초기 위치 설정
+        this.cameras.player1.position.set(-15, 10, 0);
+        this.cameras.player2.position.set(15, 10, 0);
+        
+        // 윈도우 리사이즈 처리
+        window.addEventListener('resize', () => this.onWindowResize());
+    }
+    
+    /**
+     * 이벤트 리스너 설정
+     */
+    setupEventListeners() {
+        // ✅ 중요: 서버 연결 완료 후 세션 생성
+        this.sdk.on('connected', () => {
+            console.log('✅ 서버 연결 완료, 세션 생성 중...');
+            this.createSession();
+        });
+        
+        // ✅ 중요: CustomEvent 처리 패턴
+        this.sdk.on('session-created', (event) => {
+            const session = event.detail || event;  // 필수 패턴!
+            console.log('세션 생성됨:', session);
+            this.displaySessionInfo(session);
+        });
+        
+        this.sdk.on('sensor-connected', (event) => {
+            const data = event.detail || event;     // 필수 패턴!
+            console.log('센서 연결됨:', data);
+            this.onSensorConnected(data);
+        });
+        
+        this.sdk.on('sensor-data', (event) => {
+            const data = event.detail || event;     // 필수 패턴!
+            this.processSensorData(data);
+        });
+        
+        this.sdk.on('game-ready', (event) => {
+            const data = event.detail || event;     // 필수 패턴!
+            console.log('게임 준비 완료');
+            this.startRace();
+        });
+        
+        // 센서 연결 해제 처리
+        this.sdk.on('sensor-disconnected', (event) => {
+            const data = event.detail || event;     // 필수 패턴!
+            console.log('센서 연결 해제:', data.sensorId);
+            this.onSensorDisconnected(data);
+        });
+        
+        // 키보드 테스트 컨트롤
+        this.setupKeyboardControls();
+        
+        // 성능 모니터링 UI 설정
+        this.setupPerformanceMonitoring();
+    }
+    
+    /**
+     * 세션 생성
+     */
+    async createSession() {
+        try {
+            await this.sdk.createSession();
+        } catch (error) {
+            console.error('세션 생성 실패:', error);
+        }
+    }
+    
+    /**
+     * 세션 정보 표시 (QR 코드 포함)
+     */
+    displaySessionInfo(session) {
+        document.getElementById('sessionCode').textContent = session.sessionCode;
+        
+        const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+        
+        if (typeof QRCode !== 'undefined') {
+            QRCode.toCanvas(document.createElement('canvas'), qrUrl, (error, canvas) => {
+                if (!error) {
+                    canvas.style.width = '200px';
+                    canvas.style.height = '200px';
+                    document.getElementById('qrContainer').innerHTML = '';
+                    document.getElementById('qrContainer').appendChild(canvas);
+                } else {
+                    console.error('QR 코드 생성 실패:', error);
+                    this.showQRCodeFallback(qrUrl);
+                }
+            });
+        } else {
+            console.warn('QRCode 라이브러리가 로드되지 않았습니다. 폴백 사용.');
+            this.showQRCodeFallback(qrUrl);
+        }
+    }
+    
+    /**
+     * QR 코드 폴백 처리
+     */
+    showQRCodeFallback(qrUrl) {
+        const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
+        const img = document.createElement('img');
+        img.src = qrApiUrl;
+        img.style.width = '200px';
+        img.style.height = '200px';
+        img.alt = 'QR Code';
+        
+        document.getElementById('qrContainer').innerHTML = '';
+        document.getElementById('qrContainer').appendChild(img);
+    }
+    
+    /**
+     * 센서 연결 처리
+     */
+    onSensorConnected(data) {
+        console.log(`센서 연결됨: ${data.sensorId} (${data.connectedSensors}/${data.maxSensors})`);
+        
+        // 게임 상태 관리자에 센서 연결 상태 업데이트
+        if (this.gameStateManager) {
+            this.gameStateManager.updateSensorConnection(data.sensorId, true);
+        }
+        
+        // UI 업데이트
+        if (data.connectedSensors === 1) {
+            // 첫 번째 센서 연결
+            this.showMessage('첫 번째 플레이어 연결됨! 두 번째 플레이어를 기다리는 중...');
+        } else if (data.connectedSensors === 2) {
+            // 모든 센서 연결 완료
+            this.showMessage('모든 플레이어 연결 완료! 게임을 시작합니다.');
+        }
+    }
+    
+    /**
+     * 센서 연결 해제 처리
+     */
+    onSensorDisconnected(data) {
+        console.log(`센서 연결 해제: ${data.sensorId}`);
+        
+        // 재연결 시도 횟수 초기화
+        this.sensorConnectionMonitor.reconnectAttempts.set(data.sensorId, 0);
+        
+        // 게임 상태 관리자에 센서 연결 해제 상태 업데이트
+        if (this.gameStateManager) {
+            this.gameStateManager.updateSensorConnection(data.sensorId, false);
+        }
+        
+        // 게임 일시정지 (세션 유지)
+        if (this.gameState === 'racing') {
+            this.pauseGame();
+        }
+        
+        // 재연결 메시지 표시
+        this.showReconnectionMessage(data.sensorId);
+        
+        // 자동 재연결 시도 시작
+        this.startReconnectionAttempts(data.sensorId);
+    }
+    
+    /**
+     * 센서 연결 끊김 감지 및 게임 일시정지
+     */
+    detectSensorDisconnection() {
+        if (!this.sensorConnectionMonitor.isMonitoring) return;
+        
+        const currentTime = Date.now();
+        
+        this.sensorConnectionMonitor.lastHeartbeat.forEach((lastTime, sensorId) => {
+            const timeSinceLastHeartbeat = currentTime - lastTime;
+            
+            if (timeSinceLastHeartbeat > this.sensorConnectionMonitor.connectionTimeout) {
+                console.log(`센서 ${sensorId} 연결 타임아웃 감지`);
+                
+                // 연결 해제 이벤트 시뮬레이션
+                this.onSensorDisconnected({ sensorId });
+                
+                // 해당 센서의 하트비트 제거
+                this.sensorConnectionMonitor.lastHeartbeat.delete(sensorId);
+            }
+        });
+    }
+    
+    /**
+     * 자동 재연결 시도 시작
+     */
+    startReconnectionAttempts(sensorId) {
+        const attempts = this.sensorConnectionMonitor.reconnectAttempts.get(sensorId) || 0;
+        
+        if (attempts >= this.sensorConnectionMonitor.maxReconnectAttempts) {
+            console.log(`센서 ${sensorId} 최대 재연결 시도 횟수 초과`);
+            this.showReconnectionFailure(sensorId);
+            return;
+        }
+        
+        console.log(`센서 ${sensorId} 재연결 시도 ${attempts + 1}/${this.sensorConnectionMonitor.maxReconnectAttempts}`);
+        
+        // 재연결 시도 횟수 증가
+        this.sensorConnectionMonitor.reconnectAttempts.set(sensorId, attempts + 1);
+        
+        // UI 업데이트
+        this.updateReconnectionMessage(sensorId, attempts + 1);
+        
+        // 3초 후 다시 시도
+        setTimeout(() => {
+            // 아직 연결되지 않았으면 다시 시도
+            if (!this.isSensorConnected(sensorId)) {
+                this.startReconnectionAttempts(sensorId);
+            }
+        }, 3000);
+    }
+    
+    /**
+     * 센서 연결 상태 확인
+     */
+    isSensorConnected(sensorId) {
+        if (this.gameStateManager) {
+            const playerState = this.gameStateManager.getPlayerState(sensorId);
+            return playerState?.isConnected || false;
+        }
+        return false;
+    }
+    
+    /**
+     * 센서 재연결 시 게임 재개
+     */
+    onSensorReconnected(sensorId) {
+        console.log(`센서 ${sensorId} 재연결됨`);
+        
+        // 재연결 시도 횟수 초기화
+        this.sensorConnectionMonitor.reconnectAttempts.delete(sensorId);
+        
+        // 하트비트 갱신
+        this.sensorConnectionMonitor.lastHeartbeat.set(sensorId, Date.now());
+        
+        // 게임 상태 관리자에 연결 상태 업데이트
+        if (this.gameStateManager) {
+            this.gameStateManager.updateSensorConnection(sensorId, true);
+        }
+        
+        // 재연결 메시지 숨김
+        this.hideReconnectionMessage();
+        
+        // 모든 센서가 연결되었으면 게임 재개
+        if (this.areAllSensorsConnected()) {
+            this.resumeGame();
+            this.ui?.showToast('모든 센서가 재연결되었습니다. 게임을 재개합니다.', 'success', 3000);
+        }
+    }
+    
+    /**
+     * 모든 센서 연결 상태 확인
+     */
+    areAllSensorsConnected() {
+        if (this.gameStateManager) {
+            const sessionInfo = this.gameStateManager.getGameState().sessionInfo;
+            return sessionInfo.connectedSensors >= sessionInfo.maxSensors;
+        }
+        return false;
+    }
+    
+    /**
+     * 재연결 실패 처리
+     */
+    showReconnectionFailure(sensorId) {
+        const playerName = sensorId === 'player1' ? '플레이어 1' : '플레이어 2';
+        
+        this.ui?.showToast(
+            `${playerName} 센서 재연결에 실패했습니다. 수동으로 재연결해주세요.`,
+            'error',
+            10000
+        );
+        
+        // 드론 자동 조종 모드 활성화 (선택사항)
+        this.enableAutoPilot(sensorId);
+    }
+    
+    /**
+     * 드론 자동 조종 모드 구현 (선택사항)
+     */
+    enableAutoPilot(sensorId) {
+        const drone = this.drones[sensorId];
+        if (!drone) return;
+        
+        console.log(`${sensorId} 자동 조종 모드 활성화`);
+        
+        // 간단한 AI 조종 로직
+        drone.autoPilot = {
+            enabled: true,
+            targetCheckpoint: 0,
+            lastUpdate: Date.now()
+        };
+        
+        this.ui?.showToast(
+            `${sensorId === 'player1' ? '플레이어 1' : '플레이어 2'} 자동 조종 모드 활성화`,
+            'info',
+            5000
+        );
+    }
+    
+    /**
+     * 자동 조종 모드 해제
+     */
+    disableAutoPilot(sensorId) {
+        const drone = this.drones[sensorId];
+        if (!drone || !drone.autoPilot) return;
+        
+        console.log(`${sensorId} 자동 조종 모드 해제`);
+        
+        drone.autoPilot.enabled = false;
+        delete drone.autoPilot;
+        
+        this.ui?.showToast(
+            `${sensorId === 'player1' ? '플레이어 1' : '플레이어 2'} 수동 조종 모드 복원`,
+            'success',
+            3000
+        );
+    }
+    
+    /**
+     * 연결 상태 UI 업데이트
+     */
+    updateConnectionStatus() {
+        if (!this.ui) return;
+        
+        const connectionStatus = {
+            player1: this.isSensorConnected('player1'),
+            player2: this.isSensorConnected('player2')
+        };
+        
+        // HUD에 연결 상태 표시
+        Object.entries(connectionStatus).forEach(([playerId, isConnected]) => {
+            const hudElement = document.getElementById(`${playerId}HUD`);
+            if (hudElement) {
+                const connectionIndicator = hudElement.querySelector('.connection-indicator') || 
+                    this.createConnectionIndicator(hudElement);
+                
+                connectionIndicator.className = `connection-indicator ${isConnected ? 'connected' : 'disconnected'}`;
+                connectionIndicator.textContent = isConnected ? '🟢' : '🔴';
+                connectionIndicator.title = isConnected ? '연결됨' : '연결 끊김';
+            }
+        });
+    }
+    
+    /**
+     * 연결 상태 표시기 생성
+     */
+    createConnectionIndicator(hudElement) {
+        const indicator = document.createElement('div');
+        indicator.className = 'connection-indicator';
+        indicator.style.cssText = `
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            font-size: 12px;
+            z-index: 10;
+        `;
+        
+        hudElement.appendChild(indicator);
+        return indicator;
+    }
+    
+    /**
+     * 재연결 메시지 업데이트
+     */
+    updateReconnectionMessage(sensorId, attemptCount) {
+        const panel = document.getElementById('reconnectPanel');
+        const message = document.getElementById('reconnectMessage');
+        
+        if (panel && message) {
+            const playerName = sensorId === 'player1' ? '플레이어 1' : '플레이어 2';
+            message.textContent = 
+                `${playerName} 센서 재연결 시도 중... (${attemptCount}/${this.sensorConnectionMonitor.maxReconnectAttempts})`;
+        }
+    }
+    
+    /**
+     * 재연결 메시지 숨김
+     */
+    hideReconnectionMessage() {
+        const panel = document.getElementById('reconnectPanel');
+        if (panel) {
+            panel.classList.add('hidden');
+        }
+        
+        if (this.ui) {
+            this.ui.hideReconnectionMessage();
+        }
+    }
+    
+    /**
+     * 센서 데이터 처리 (성능 최적화 적용)
+     */
+    processSensorData(data) {
+        if (this.gameState !== 'racing' || this.isPaused) return;
+        
+        const { sensorId, data: sensorData } = data;
+        
+        // 센서 하트비트 업데이트
+        this.sensorConnectionMonitor.lastHeartbeat.set(sensorId, Date.now());
+        
+        // 드론이 초기화되지 않았으면 무시
+        if (!this.drones[sensorId]) return;
+        
+        // 성능 최적화: 센서 데이터 throttling (50ms 간격)
+        let processedData = sensorData;
+        if (this.performanceOptimizer) {
+            const throttledData = this.performanceOptimizer.throttleSensorData(sensorId, sensorData);
+            if (!throttledData) return; // throttling으로 인해 처리하지 않음
+            processedData = throttledData;
+        }
+        
+        // 센서 데이터 필터링 및 검증
+        const filteredData = this.filterSensorData(processedData);
+        
+        // 드론에 센서 데이터 전달
+        this.drones[sensorId].updateFromSensor({ data: filteredData });
+        
+        // 디버그 정보 업데이트
+        if (this.testMode) {
+            this.updateDebugInfo();
+        }
+    }
+    
+    /**
+     * 센서 데이터 필터링 및 검증
+     */
+    filterSensorData(sensorData) {
+        const filtered = {
+            orientation: {
+                alpha: this.clampValue(sensorData.orientation?.alpha || 0, 0, 360),
+                beta: this.clampValue(sensorData.orientation?.beta || 0, -180, 180),
+                gamma: this.clampValue(sensorData.orientation?.gamma || 0, -90, 90)
+            },
+            acceleration: {
+                x: this.clampValue(sensorData.acceleration?.x || 0, -50, 50),
+                y: this.clampValue(sensorData.acceleration?.y || 0, -50, 50),
+                z: this.clampValue(sensorData.acceleration?.z || 0, -50, 50)
+            },
+            rotationRate: {
+                alpha: this.clampValue(sensorData.rotationRate?.alpha || 0, -360, 360),
+                beta: this.clampValue(sensorData.rotationRate?.beta || 0, -360, 360),
+                gamma: this.clampValue(sensorData.rotationRate?.gamma || 0, -360, 360)
+            }
+        };
+        
+        return filtered;
+    }
+    
+    /**
+     * 값 범위 제한
+     */
+    clampValue(value, min, max) {
+        if (isNaN(value)) return 0;
+        return Math.max(min, Math.min(max, value));
+    }
+    
+    /**
+     * 경주 시작
+     */
+    async startRace() {
+        console.log('🏁 경주 시작 준비');
+        
+        // UI 전환
+        document.getElementById('sessionPanel').classList.add('hidden');
+        document.getElementById('gameHUD').classList.remove('hidden');
+        document.getElementById('controlPanel').classList.remove('hidden');
+        
+        // 게임 컴포넌트 초기화 (나중에 구현)
+        await this.initializeGameComponents();
+        
+        // 센서 연결 모니터링 활성화
+        this.sensorConnectionMonitor.isMonitoring = true;
+        
+        // 게임 상태 관리자를 통한 카운트다운 시작
+        if (this.gameStateManager) {
+            this.gameStateManager.setState(this.gameStateManager.states.COUNTDOWN);
+        } else {
+            this.startCountdown();
+        }
+    }
+    
+    /**
+     * 카운트다운 시작
+     */
+    startCountdown() {
+        const countdownElement = document.getElementById('countdown');
+        countdownElement.classList.remove('hidden');
+        
+        let count = 3;
+        
+        const countdown = () => {
+            if (count > 0) {
+                countdownElement.textContent = count;
+                count--;
+                setTimeout(countdown, 1000);
+            } else {
+                countdownElement.textContent = 'GO!';
+                setTimeout(() => {
+                    countdownElement.classList.add('hidden');
+                    this.gameState = 'racing';
+                    this.raceStartTime = Date.now();
+                    console.log('🚁 경주 시작!');
+                }, 1000);
+            }
+        };
+        
+        countdown();
+    }
+    
+    /**
+     * 게임 컴포넌트 초기화
+     */
+    async initializeGameComponents() {
+        console.log('게임 컴포넌트 초기화 중...');
+        
+        // UI 시스템 초기화
+        this.ui = new GameUI(this);
+        
+        // 물리 엔진 초기화
+        this.physics = new PhysicsEngine(this.scene);
+        
+        // 효과 시스템 초기화
+        this.effects = new EffectsSystem(this.scene);
+        
+        // 게임 상태 관리자 초기화
+        this.gameStateManager = new GameStateManager(this);
+        
+        // 성능 최적화 시스템 초기화
+        this.performanceOptimizer = new PerformanceOptimizer(this);
+        
+        // 버그 수정 시스템 초기화 및 적용
+        this.bugFixes = new GameBugFixes(this);
+        this.bugFixes.applyAllFixes();
+        
+        // 기본 조명 설정
+        this.setupLighting();
+        
+        // 기본 환경 생성
+        this.createBasicEnvironment();
+        
+        // 물리 이벤트 리스너 설정
+        this.setupPhysicsEvents();
+        
+        console.log('게임 컴포넌트 초기화 완료');
+    }
+    
+    /**
+     * 물리 이벤트 리스너 설정
+     */
+    setupPhysicsEvents() {
+        // 드론 간 충돌
+        window.addEventListener('drone-collision', (event) => {
+            const { droneA, droneB } = event.detail;
+            console.log(`드론 충돌: ${droneA} vs ${droneB}`);
+            this.ui?.showToast('드론 충돌!', 'warning', 2000);
+            
+            // 충돌 폭발 효과
+            if (this.effects && this.drones[droneA] && this.drones[droneB]) {
+                const posA = this.drones[droneA].mesh.position;
+                const posB = this.drones[droneB].mesh.position;
+                const collisionPos = posA.clone().add(posB).multiplyScalar(0.5);
+                this.effects.createExplosionEffect(collisionPos, 0.8);
+            }
+        });
+        
+        // 벽 충돌
+        window.addEventListener('wall-collision', (event) => {
+            const { drone } = event.detail;
+            console.log(`벽 충돌: ${drone}`);
+            this.ui?.showToast(`${drone} 벽 충돌!`, 'error', 2000);
+            
+            // 벽 충돌 효과
+            if (this.effects && this.drones[drone]) {
+                const dronePos = this.drones[drone].mesh.position;
+                this.effects.createExplosionEffect(dronePos, 0.5);
+            }
+        });
+        
+        // 체크포인트 통과
+        window.addEventListener('checkpoint-passed', (event) => {
+            const { drone, checkpoint } = event.detail;
+            console.log(`체크포인트 통과: ${drone} -> ${checkpoint}`);
+            this.handleCheckpointPassed(drone, checkpoint);
+            
+            // 체크포인트 통과 효과
+            if (this.effects && this.trackCheckpoints && this.trackCheckpoints[checkpoint]) {
+                const checkpointPos = this.trackCheckpoints[checkpoint].position;
+                const color = checkpoint === 0 ? 0xffff00 : 0x00ffaa;
+                this.effects.createCheckpointPassEffect(checkpointPos, color);
+            }
+        });
+        
+        // 부스터 존 진입
+        window.addEventListener('booster-zone-entered', (event) => {
+            const { drone, zone } = event.detail;
+            console.log(`부스터 존 진입: ${drone} -> ${zone}`);
+            this.handleBoosterZoneEntry(drone, zone);
+        });
+        
+        // 트랙 이탈 처리
+        window.addEventListener('track-out-of-bounds', (event) => {
+            const { drone, resetPosition } = event.detail;
+            console.log(`트랙 이탈: ${drone}`);
+            this.handleTrackOutOfBounds(drone, resetPosition);
+        });
+    }
+    
+    /**
+     * 부스터 존 진입 처리
+     */
+    handleBoosterZoneEntry(droneId, zoneId) {
+        const drone = this.drones[droneId];
+        if (!drone) return;
+        
+        // 부스터 존에 있는 드론 추적
+        if (!this.dronesInBoosterZones) {
+            this.dronesInBoosterZones = new Set();
+        }
+        
+        this.dronesInBoosterZones.add(droneId);
+        
+        // UI 메시지 표시
+        this.ui?.showToast(`${droneId === 'player1' ? '플레이어 1' : '플레이어 2'} 부스터 충전!`, 'info', 1500);
+        
+        console.log(`${droneId} 부스터 존 진입`);
+    }
+    
+    /**
+     * 조명 설정
+     */
+    setupLighting() {
+        // 환경광 (전체적인 밝기)
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
+        this.scene.add(ambientLight);
+        
+        // 주 방향광 (태양광)
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(50, 50, 50);
+        directionalLight.castShadow = true;
+        directionalLight.shadow.mapSize.width = 2048;
+        directionalLight.shadow.mapSize.height = 2048;
+        directionalLight.shadow.camera.near = 0.5;
+        directionalLight.shadow.camera.far = 500;
+        this.scene.add(directionalLight);
+        
+        // 네온 효과를 위한 포인트 라이트들
+        const colors = [0x00aaff, 0x00ff88, 0xff0088, 0xffaa00];
+        for (let i = 0; i < 4; i++) {
+            const light = new THREE.PointLight(colors[i], 1, 100);
+            const angle = (i / 4) * Math.PI * 2;
+            light.position.set(
+                Math.cos(angle) * 30,
+                10,
+                Math.sin(angle) * 30
+            );
+            
+            // 네온 애니메이션을 위한 기본 강도 저장
+            light.userData = { baseIntensity: 1 };
+            
+            this.scene.add(light);
+        }
+    }
+    
+    /**
+     * 기본 환경 생성
+     */
+    createBasicEnvironment() {
+        // 바닥 생성
+        const floorGeometry = new THREE.PlaneGeometry(200, 200);
+        const floorMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x1a1a2e,
+            transparent: true,
+            opacity: 0.8
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.receiveShadow = true;
+        this.scene.add(floor);
+        
+        // 기본 트랙 링 (임시)
+        const ringGeometry = new THREE.TorusGeometry(25, 2, 8, 32);
+        const ringMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x00aaff,
+            transparent: true,
+            opacity: 0.6
+        });
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 1;
+        this.scene.add(ring);
+        
+        // 실제 드론들 생성
+        this.createDrones();
+        
+        // 부스터 존 생성
+        this.createBoosterZones();
+        
+        // 장애물 생성
+        this.createObstacles();
+    }
+    
+    /**
+     * 부스터 충전 구역 생성
+     */
+    createBoosterZones() {
+        this.boosterZones = [];
+        
+        // 4개의 부스터 충전 구역을 트랙 주변에 배치
+        const positions = [
+            { x: 0, z: 30 },    // 북쪽
+            { x: 30, z: 0 },    // 동쪽
+            { x: 0, z: -30 },   // 남쪽
+            { x: -30, z: 0 }    // 서쪽
+        ];
+        
+        positions.forEach((pos, index) => {
+            // 부스터 존 시각적 표시
+            const zoneGeometry = new THREE.CylinderGeometry(3, 3, 0.5, 16);
+            const zoneMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffaa00,
+                transparent: true,
+                opacity: 0.6
+            });
+            const zoneMesh = new THREE.Mesh(zoneGeometry, zoneMaterial);
+            zoneMesh.position.set(pos.x, 0.25, pos.z);
+            zoneMesh.name = `boosterZone${index}`;
+            this.scene.add(zoneMesh);
+            
+            // 부스터 존 물리 바디 생성
+            const zoneBody = new CANNON.Body({
+                mass: 0, // 정적 바디
+                shape: new CANNON.Cylinder(3, 3, 0.5, 8),
+                isTrigger: true // 트리거로 설정
+            });
+            zoneBody.position.set(pos.x, 0.25, pos.z);
+            zoneBody.userData = { type: 'boosterZone', index: index };
+            
+            if (this.physics && this.physics.world) {
+                this.physics.world.add(zoneBody);
+            }
+            
+            // 네온 효과 추가
+            const glowGeometry = new THREE.RingGeometry(2.5, 3.5, 16);
+            const glowMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffaa00,
+                transparent: true,
+                opacity: 0.3,
+                side: THREE.DoubleSide
+            });
+            const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+            glow.rotation.x = -Math.PI / 2;
+            glow.position.set(pos.x, 0.1, pos.z);
+            this.scene.add(glow);
+            
+            // 부스터 존 데이터 저장
+            this.boosterZones.push({
+                mesh: zoneMesh,
+                body: zoneBody,
+                glow: glow,
+                position: pos,
+                isActive: true
+            });
+            
+            console.log(`부스터 존 ${index} 생성: (${pos.x}, ${pos.z})`);
+        });
+        
+        // 부스터 존 애니메이션 시작
+        this.animateBoosterZones();
+    }
+    
+    /**
+     * 부스터 존 애니메이션
+     */
+    animateBoosterZones() {
+        if (!this.boosterZones) return;
+        
+        const time = Date.now() * 0.001;
+        
+        this.boosterZones.forEach((zone, index) => {
+            if (!zone.mesh || !zone.glow) return;
+            
+            // 회전 애니메이션
+            zone.mesh.rotation.y = time + index * Math.PI / 2;
+            
+            // 글로우 효과 펄스
+            const pulse = Math.sin(time * 2 + index) * 0.3 + 0.7;
+            zone.glow.material.opacity = pulse * 0.3;
+            zone.mesh.material.opacity = pulse * 0.6;
+            
+            // 상하 움직임
+            zone.mesh.position.y = 0.25 + Math.sin(time * 3 + index) * 0.1;
+        });
+        
+        // 다음 프레임에서 계속 애니메이션
+        requestAnimationFrame(() => this.animateBoosterZones());
+    }
+    
+    /**
+     * 드론들 생성
+     */
+    createDrones() {
+        // 플레이어 1 드론 (왼쪽 시작)
+        this.drones.player1 = new Drone('player1', this.scene, this.physics, { x: -15, y: 5, z: 0 });
+        
+        // 플레이어 2 드론 (오른쪽 시작)
+        this.drones.player2 = new Drone('player2', this.scene, this.physics, { x: 15, y: 5, z: 0 });
+        
+        // 카메라가 드론을 따라가도록 설정
+        this.setupCameraFollow();
+        
+        // 드론 이벤트 리스너 설정
+        this.setupDroneEvents();
+    }
+    
+    /**
+     * 카메라 추적 설정
+     */
+    setupCameraFollow() {
+        // 플레이어 1 카메라 (드론 뒤쪽에서 추적)
+        this.cameras.player1.position.set(-15, 8, 10);
+        this.cameras.player1.lookAt(-15, 5, 0);
+        
+        // 플레이어 2 카메라 (드론 뒤쪽에서 추적)
+        this.cameras.player2.position.set(15, 8, 10);
+        this.cameras.player2.lookAt(15, 5, 0);
+    }
+    
+    /**
+     * 드론 이벤트 리스너 설정
+     */
+    setupDroneEvents() {
+        // 경주 완주 이벤트
+        window.addEventListener('race-finished', (event) => {
+            const { playerId, totalTime, bestLap, maxSpeed } = event.detail;
+            this.handleRaceFinished(playerId, { totalTime, bestLap, maxSpeed });
+        });
+    }
+    
+    /**
+     * 게임 재시작 (세션 유지)
+     */
+    restartGame() {
+        console.log('🔄 게임 재시작 (세션 유지)');
+        
+        // 게임 상태 관리자를 통한 재시작
+        if (this.gameStateManager) {
+            this.gameStateManager.restart();
+        } else {
+            // 폴백: 직접 상태 초기화
+            this.gameState = 'waiting';
+            this.raceStartTime = 0;
+            this.isPaused = false;
+        }
+        
+        // UI 초기화
+        document.getElementById('resultsPanel').classList.add('hidden');
+        document.getElementById('reconnectPanel').classList.add('hidden');
+        document.getElementById('gameHUD').classList.add('hidden');
+        document.getElementById('controlPanel').classList.add('hidden');
+        
+        // 드론 상태 리셋
+        this.resetDrones();
+        
+        // 센서가 연결되어 있으면 바로 게임 시작
+        const session = this.sdk.getSession();
+        if (session && this.sdk.isConnected()) {
+            // 연결된 센서 수 확인 후 게임 시작
+            setTimeout(() => {
+                this.startRace();
+            }, 500);
+        }
+    }
+    
+    /**
+     * 게임 일시정지/재개
+     */
+    togglePause() {
+        if (this.gameStateManager) {
+            this.gameStateManager.togglePause();
+        } else {
+            // 폴백: 직접 일시정지 처리
+            if (this.gameState !== 'racing') return;
+            
+            this.isPaused = !this.isPaused;
+            
+            const button = document.querySelector('.control-panel button:nth-child(2)');
+            if (this.isPaused) {
+                button.textContent = '▶️ 재개';
+                this.showMessage('게임이 일시정지되었습니다');
+            } else {
+                button.textContent = '⏸️ 일시정지';
+                this.showMessage('게임이 재개되었습니다');
+            }
+        }
+    }
+    
+    /**
+     * 게임 일시정지
+     */
+    pauseGame() {
+        if (this.gameState === 'racing') {
+            this.isPaused = true;
+            const button = document.querySelector('.control-panel button:nth-child(2)');
+            if (button) {
+                button.textContent = '▶️ 재개';
+            }
+        }
+    }
+    
+    /**
+     * 게임 재개
+     */
+    resumeGame() {
+        if (this.gameState === 'racing') {
+            this.isPaused = false;
+            const button = document.querySelector('.control-panel button:nth-child(2)');
+            if (button) {
+                button.textContent = '⏸️ 일시정지';
+            }
+            
+            // 재연결 메시지 숨김
+            document.getElementById('reconnectPanel').classList.add('hidden');
+        }
+    }
+    
+    /**
+     * 드론 리셋
+     */
+    resetDrones() {
+        console.log('드론 상태 리셋');
+        
+        // 플레이어 1 드론 리셋
+        if (this.drones.player1) {
+            this.drones.player1.reset({ x: -15, y: 5, z: 0 });
+        }
+        
+        // 플레이어 2 드론 리셋
+        if (this.drones.player2) {
+            this.drones.player2.reset({ x: 15, y: 5, z: 0 });
+        }
+        
+        // 카메라 위치 리셋
+        this.setupCameraFollow();
+        
+        console.log('✅ 모든 드론 리셋 완료');
+    }
+    
+    /**
+     * 재연결 메시지 표시
+     */
+    showReconnectionMessage(sensorId) {
+        const panel = document.getElementById('reconnectPanel');
+        const message = document.getElementById('reconnectMessage');
+        
+        message.textContent = `${sensorId} 센서 연결이 끊어졌습니다. 재연결을 기다리는 중...`;
+        panel.classList.remove('hidden');
+    }
+    
+    /**
+     * 메시지 표시
+     */
+    showMessage(text, duration = 3000) {
+        // 간단한 토스트 메시지 (나중에 개선)
+        console.log(`📢 ${text}`);
+    }
+    
+    /**
+     * 키보드 테스트 컨트롤 설정
+     */
+    setupKeyboardControls() {
+        // 키보드 상태 추적
+        this.keyboardState = new Set();
+        
+        window.addEventListener('keydown', (e) => {
+            // 중복 키 입력 방지
+            if (this.keyboardState.has(e.code)) return;
+            this.keyboardState.add(e.code);
+            
+            // 전역 키보드 단축키 (게임 상태와 무관)
+            this.handleGlobalKeyboard(e);
+            
+            // 게임 중 키보드 컨트롤
+            if (this.gameState === 'racing' && !this.isPaused && this.testMode) {
+                this.handleGameplayKeyboard(e, true);
+            }
+        });
+        
+        window.addEventListener('keyup', (e) => {
+            this.keyboardState.delete(e.code);
+            
+            // 게임 중 키보드 컨트롤 해제
+            if (this.testMode) {
+                this.handleGameplayKeyboard(e, false);
+            }
+        });
+        
+        // 키보드 도움말 표시
+        this.showKeyboardHelp();
+    }
+    
+    /**
+     * 전역 키보드 단축키 처리
+     */
+    handleGlobalKeyboard(e) {
+        switch(e.key.toLowerCase()) {
+            case 't':
+                // 테스트 모드 토글
+                this.toggleTestMode();
+                break;
+                
+            case 'h':
+                // 도움말 토글
+                this.toggleKeyboardHelp();
+                break;
+                
+            case 'd':
+                // 디버그 모드 토글 (Ctrl+D)
+                if (e.ctrlKey) {
+                    this.toggleDebugMode();
+                    e.preventDefault();
+                }
+                break;
+                
+            case 'r':
+                // 게임 재시작 (Ctrl+R 방지하고 게임 재시작)
+                if (e.ctrlKey) {
+                    this.restartGame();
+                    e.preventDefault();
+                }
+                break;
+                
+            case 'p':
+                // 일시정지/재개
+                if (this.gameState === 'racing') {
+                    this.togglePause();
+                }
+                break;
+                
+            case 'escape':
+                // ESC로 메뉴 토글
+                this.toggleGameMenu();
+                break;
+                
+            case 'f11':
+                // 전체화면 토글
+                this.toggleFullscreen();
+                e.preventDefault();
+                break;
+        }
+    }
+    
+    /**
+     * 게임플레이 키보드 처리
+     */
+    handleGameplayKeyboard(e, isPressed) {
+        // 플레이어 1 컨트롤 (WASD + Shift + Q/E)
+        switch(e.key.toLowerCase()) {
+            case 'w': this.keyboardControls.player1.forward = isPressed; break;
+            case 's': this.keyboardControls.player1.backward = isPressed; break;
+            case 'a': this.keyboardControls.player1.left = isPressed; break;
+            case 'd': this.keyboardControls.player1.right = isPressed; break;
+            case 'q': this.keyboardControls.player1.up = isPressed; break;
+            case 'e': this.keyboardControls.player1.down = isPressed; break;
+        }
+        
+        // Shift 키 처리 (특별 처리 필요)
+        if (e.key === 'Shift') {
+            this.keyboardControls.player1.boost = isPressed;
+        }
+        
+        // 플레이어 2 컨트롤 (화살표 키 + Space + Numpad)
+        switch(e.key) {
+            case 'ArrowUp': this.keyboardControls.player2.forward = isPressed; break;
+            case 'ArrowDown': this.keyboardControls.player2.backward = isPressed; break;
+            case 'ArrowLeft': this.keyboardControls.player2.left = isPressed; break;
+            case 'ArrowRight': this.keyboardControls.player2.right = isPressed; break;
+            case ' ': 
+                this.keyboardControls.player2.boost = isPressed;
+                e.preventDefault(); // 스페이스바 스크롤 방지
+                break;
+            case 'PageUp': this.keyboardControls.player2.up = isPressed; break;
+            case 'PageDown': this.keyboardControls.player2.down = isPressed; break;
+        }
+    }
+    
+    /**
+     * 테스트 모드 토글
+     */
+    toggleTestMode() {
+        this.testMode = !this.testMode;
+        
+        const message = this.testMode ? 
+            '🎮 키보드 테스트 모드 활성화! (H키로 도움말)' : 
+            '📱 센서 모드로 전환됨';
+            
+        console.log(`테스트 모드: ${this.testMode ? '활성화' : '비활성화'}`);
+        
+        if (this.ui) {
+            this.ui.showToast(message, 'info', 3000);
+        }
+        
+        // 테스트 모드 UI 업데이트
+        this.updateTestModeUI();
+    }
+    
+    /**
+     * 디버그 모드 토글
+     */
+    toggleDebugMode() {
+        this.debugMode = !this.debugMode;
+        
+        const message = this.debugMode ? 
+            '🔧 디버그 모드 활성화' : 
+            '🔧 디버그 모드 비활성화';
+            
+        console.log(`디버그 모드: ${this.debugMode ? '활성화' : '비활성화'}`);
+        
+        if (this.ui) {
+            this.ui.showToast(message, 'info', 2000);
+            
+            if (this.debugMode) {
+                this.ui.showDebugInfo(this.getDebugData());
+            } else {
+                this.ui.hideDebugInfo();
+            }
+        }
+    }
+    
+    /**
+     * 키보드 도움말 토글
+     */
+    toggleKeyboardHelp() {
+        const helpElement = document.getElementById('keyboardHelp');
+        
+        if (helpElement) {
+            const isVisible = !helpElement.classList.contains('hidden');
+            helpElement.classList.toggle('hidden', isVisible);
+            
+            if (this.ui) {
+                this.ui.showToast(
+                    isVisible ? '키보드 도움말 숨김' : '키보드 도움말 표시', 
+                    'info', 
+                    1500
+                );
+            }
+        }
+    }
+    
+    /**
+     * 게임 메뉴 토글
+     */
+    toggleGameMenu() {
+        // 간단한 게임 메뉴 구현
+        const menuExists = document.getElementById('gameMenu');
+        
+        if (menuExists) {
+            menuExists.remove();
+        } else {
+            this.showGameMenu();
+        }
+    }
+    
+    /**
+     * 전체화면 토글
+     */
+    toggleFullscreen() {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.log('전체화면 모드 실패:', err);
+            });
+        } else {
+            document.exitFullscreen();
+        }
+    }
+    
+    /**
+     * 키보드 도움말 표시
+     */
+    showKeyboardHelp() {
+        const helpHTML = `
+            <div id="keyboardHelp" class="keyboard-help hidden">
+                <div class="help-header">
+                    <h3>🎮 키보드 컨트롤</h3>
+                    <button onclick="document.getElementById('keyboardHelp').classList.add('hidden')">×</button>
+                </div>
+                <div class="help-content">
+                    <div class="help-section">
+                        <h4>전역 단축키</h4>
+                        <div class="key-binding"><kbd>T</kbd> 테스트 모드 토글</div>
+                        <div class="key-binding"><kbd>H</kbd> 도움말 표시/숨김</div>
+                        <div class="key-binding"><kbd>Ctrl+D</kbd> 디버그 모드</div>
+                        <div class="key-binding"><kbd>P</kbd> 일시정지/재개</div>
+                        <div class="key-binding"><kbd>Ctrl+R</kbd> 게임 재시작</div>
+                        <div class="key-binding"><kbd>ESC</kbd> 게임 메뉴</div>
+                        <div class="key-binding"><kbd>F11</kbd> 전체화면</div>
+                    </div>
+                    <div class="help-section">
+                        <h4>플레이어 1 (테스트 모드)</h4>
+                        <div class="key-binding"><kbd>W/S</kbd> 전진/후진</div>
+                        <div class="key-binding"><kbd>A/D</kbd> 좌회전/우회전</div>
+                        <div class="key-binding"><kbd>Q/E</kbd> 상승/하강</div>
+                        <div class="key-binding"><kbd>Shift</kbd> 부스터</div>
+                    </div>
+                    <div class="help-section">
+                        <h4>플레이어 2 (테스트 모드)</h4>
+                        <div class="key-binding"><kbd>↑/↓</kbd> 전진/후진</div>
+                        <div class="key-binding"><kbd>←/→</kbd> 좌회전/우회전</div>
+                        <div class="key-binding"><kbd>PgUp/PgDn</kbd> 상승/하강</div>
+                        <div class="key-binding"><kbd>Space</kbd> 부스터</div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', helpHTML);
+        this.addKeyboardHelpStyles();
+    }
+    
+    /**
+     * 키보드 도움말 스타일 추가
+     */
+    addKeyboardHelpStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .keyboard-help {
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(15, 23, 42, 0.95);
+                border: 2px solid var(--neon-cyan);
+                border-radius: 10px;
+                padding: 20px;
+                z-index: 10000;
+                max-width: 600px;
+                max-height: 80vh;
+                overflow-y: auto;
+                backdrop-filter: blur(10px);
+            }
+            
+            .help-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+                border-bottom: 1px solid var(--neon-cyan);
+                padding-bottom: 10px;
+            }
+            
+            .help-header h3 {
+                color: var(--neon-cyan);
+                margin: 0;
+            }
+            
+            .help-header button {
+                background: none;
+                border: none;
+                color: var(--text-primary);
+                font-size: 24px;
+                cursor: pointer;
+                padding: 5px 10px;
+                border-radius: 5px;
+                transition: background 0.3s;
+            }
+            
+            .help-header button:hover {
+                background: rgba(255, 255, 255, 0.1);
+            }
+            
+            .help-content {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                gap: 20px;
+            }
+            
+            .help-section h4 {
+                color: var(--neon-yellow);
+                margin-bottom: 10px;
+                font-size: 1.1em;
+            }
+            
+            .key-binding {
+                display: flex;
+                align-items: center;
+                margin-bottom: 8px;
+                color: var(--text-secondary);
+            }
+            
+            .key-binding kbd {
+                background: var(--neon-blue);
+                color: #000;
+                padding: 4px 8px;
+                border-radius: 4px;
+                font-family: monospace;
+                font-weight: bold;
+                margin-right: 10px;
+                min-width: 60px;
+                text-align: center;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+            }
+            
+            @media (max-width: 768px) {
+                .keyboard-help {
+                    width: 90%;
+                    max-width: none;
+                }
+                
+                .help-content {
+                    grid-template-columns: 1fr;
+                }
+            }
+        `;
+        
+        document.head.appendChild(style);
+    }
+    
+    /**
+     * 테스트 모드 UI 업데이트
+     */
+    updateTestModeUI() {
+        // 테스트 모드 표시기 추가/제거
+        let indicator = document.getElementById('testModeIndicator');
+        
+        if (this.testMode) {
+            if (!indicator) {
+                indicator = document.createElement('div');
+                indicator.id = 'testModeIndicator';
+                indicator.innerHTML = '🎮 키보드 테스트 모드';
+                indicator.style.cssText = `
+                    position: fixed;
+                    top: 10px;
+                    left: 10px;
+                    background: rgba(255, 255, 0, 0.9);
+                    color: #000;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-weight: bold;
+                    z-index: 1000;
+                    animation: testModePulse 2s ease-in-out infinite;
+                `;
+                document.body.appendChild(indicator);
+                
+                // 애니메이션 스타일 추가
+                const style = document.createElement('style');
+                style.textContent = `
+                    @keyframes testModePulse {
+                        0%, 100% { opacity: 0.8; transform: scale(1); }
+                        50% { opacity: 1; transform: scale(1.05); }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+        } else {
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+    }
+    
+    /**
+     * 게임 메뉴 표시
+     */
+    showGameMenu() {
+        const menuHTML = `
+            <div id="gameMenu" class="game-menu">
+                <div class="menu-content">
+                    <h3>게임 메뉴</h3>
+                    <button onclick="window.droneRacingGame.togglePause()">
+                        ${this.isPaused ? '▶️ 재개' : '⏸️ 일시정지'}
+                    </button>
+                    <button onclick="window.droneRacingGame.restartGame(); document.getElementById('gameMenu').remove();">
+                        🔄 재시작
+                    </button>
+                    <button onclick="window.droneRacingGame.toggleTestMode()">
+                        ${this.testMode ? '📱 센서 모드' : '🎮 테스트 모드'}
+                    </button>
+                    <button onclick="window.droneRacingGame.toggleDebugMode()">
+                        ${this.debugMode ? '🔧 디버그 끄기' : '🔧 디버그 켜기'}
+                    </button>
+                    <button onclick="window.location.href='/'">🏠 허브로</button>
+                    <button onclick="document.getElementById('gameMenu').remove()">❌ 닫기</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', menuHTML);
+        this.addGameMenuStyles();
+    }
+    
+    /**
+     * 게임 메뉴 스타일 추가
+     */
+    addGameMenuStyles() {
+        const style = document.createElement('style');
+        style.textContent = `
+            .game-menu {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            }
+            
+            .menu-content {
+                background: var(--bg-primary);
+                border: 2px solid var(--neon-cyan);
+                border-radius: 15px;
+                padding: 30px;
+                display: flex;
+                flex-direction: column;
+                gap: 15px;
+                min-width: 250px;
+            }
+            
+            .menu-content h3 {
+                color: var(--neon-cyan);
+                text-align: center;
+                margin: 0 0 20px 0;
+            }
+            
+            .menu-content button {
+                padding: 12px 20px;
+                background: var(--bg-secondary);
+                border: 1px solid var(--border);
+                border-radius: 8px;
+                color: var(--text-primary);
+                cursor: pointer;
+                transition: all 0.3s ease;
+                font-size: 16px;
+            }
+            
+            .menu-content button:hover {
+                background: var(--neon-blue);
+                color: #000;
+                transform: translateY(-2px);
+            }
+        `;
+        
+        document.head.appendChild(style);
+    }
+    
+    /**
+     * 디버그 데이터 가져오기
+     */
+    getDebugData() {
+        return {
+            fps: Math.round(1000 / 16.67), // 추정 FPS
+            gameState: this.gameState,
+            connectedSensors: this.gameStateManager?.getGameState().sessionInfo.connectedSensors || 0,
+            testMode: this.testMode,
+            player1: this.drones.player1?.getData?.() || null,
+            player2: this.drones.player2?.getData?.() || null,
+            physicsInfo: this.physics?.getDebugInfo?.() || null
+        };
+    }
+    
+    /**
+     * 윈도우 리사이즈 처리
+     */
+    onWindowResize() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        this.renderer.setSize(width, height);
+        
+        // 듀얼 카메라 aspect ratio 업데이트
+        this.cameras.player1.aspect = 0.5;
+        this.cameras.player1.updateProjectionMatrix();
+        
+        this.cameras.player2.aspect = 0.5;
+        this.cameras.player2.updateProjectionMatrix();
+    }
+    
+    /**
+     * 게임 루프 (성능 최적화 적용)
+     */
+    gameLoop() {
+        const now = performance.now();
+        const deltaTime = this.lastFrameTime ? (now - this.lastFrameTime) / 1000 : 1/60;
+        this.lastFrameTime = now;
+        
+        // 성능 최적화: 프레임 스킵 확인
+        if (this.performanceOptimizer && this.performanceOptimizer.shouldSkipFrame()) {
+            requestAnimationFrame(() => this.gameLoop());
+            return;
+        }
+        
+        // 성능 최적화: 파티클 시스템 최적화
+        if (this.performanceOptimizer) {
+            this.performanceOptimizer.optimizeParticleSystem();
+        }
+        
+        // 물리 시뮬레이션 업데이트
+        if (this.physics && this.gameState === 'racing' && !this.isPaused) {
+            this.physics.update(Math.min(deltaTime, 1/30)); // 최대 deltaTime 제한
+        }
+        
+        // 드론 업데이트
+        if (this.gameState === 'racing' && !this.isPaused) {
+            this.updateDrones(deltaTime);
+            this.updateCollisionEffects();
+        }
+        
+        // 효과 시스템 업데이트
+        if (this.effects) {
+            this.effects.update(deltaTime);
+        }
+        
+        // 센서 연결 상태 모니터링 (성능 최적화: 매 5프레임마다)
+        if (this.gameState === 'racing' && this.frameCount % 5 === 0) {
+            this.detectSensorDisconnection();
+            this.updateConnectionStatus();
+        }
+        
+        // UI 업데이트 (성능 최적화: 매 3프레임마다)
+        if (this.ui && this.gameState === 'racing' && this.frameCount % 3 === 0) {
+            this.updateUI();
+            this.updateRealTimeRankings();
+        }
+        
+        // 카메라 추적 업데이트
+        if (this.gameState === 'racing') {
+            this.updateCameraFollow();
+        }
+        
+        // 렌더링 (성능 최적화 적용)
+        this.render();
+        
+        // 프레임 카운터 증가
+        this.frameCount = (this.frameCount || 0) + 1;
+        
+        requestAnimationFrame(() => this.gameLoop());
+    }
+    
+    /**
+     * 드론 업데이트
+     */
+    updateDrones(deltaTime) {
+        // 키보드 테스트 모드에서 드론 조작
+        if (this.testMode) {
+            if (this.drones.player1) {
+                this.drones.player1.updateFromKeyboard(this.keyboardControls.player1);
+            }
+            if (this.drones.player2) {
+                this.drones.player2.updateFromKeyboard(this.keyboardControls.player2);
+            }
+        }
+        
+        // 부스터 존 충전 처리
+        this.updateBoosterZoneCharging(deltaTime);
+        
+        // 모든 드론 업데이트 및 트레일 효과
+        Object.entries(this.drones).forEach(([droneId, drone]) => {
+            if (drone && drone.update) {
+                drone.update(deltaTime);
+                
+                // 드론 트레일 효과 생성
+                if (this.effects && drone.mesh && drone.body) {
+                    const position = drone.mesh.position;
+                    const velocity = drone.body.velocity;
+                    const color = droneId === 'player1' ? 0x00ff88 : 0xff0088;
+                    
+                    // 드론이 움직이고 있을 때만 트레일 생성
+                    if (velocity.length() > 1) {
+                        this.effects.createDroneTrail(droneId, position, velocity, color);
+                    }
+                    
+                    // 부스터 활성화 시 파티클 효과
+                    const droneData = drone.getData ? drone.getData() : {};
+                    if (droneData.booster && droneData.booster.isActive) {
+                        const direction = new THREE.Vector3(velocity.x, velocity.y, velocity.z).normalize();
+                        this.effects.createBoosterParticles(position, direction, 1.5);
+                    }
+                }
+            }
+        });
+    }
+    
+    /**
+     * 부스터 존 충전 처리
+     */
+    updateBoosterZoneCharging(deltaTime) {
+        if (!this.boosterZones) return;
+        
+        // 모든 드론에 대해 부스터 존 확인
+        Object.entries(this.drones).forEach(([droneId, drone]) => {
+            if (!drone || !drone.body) return;
+            
+            let isInAnyZone = false;
+            let currentZone = null;
+            
+            // 각 부스터 존과의 거리 확인
+            this.boosterZones.forEach((zone, zoneIndex) => {
+                if (!zone.body) return;
+                
+                const distance = drone.body.position.distanceTo(zone.body.position);
+                
+                if (distance < 4) { // 부스터 존 반경 내
+                    isInAnyZone = true;
+                    currentZone = zone;
+                    
+                    // 부스터 충전
+                    const wasCharging = drone.chargeBoosterInZone(deltaTime);
+                    
+                    // 충전 중일 때 시각 효과 강화
+                    if (wasCharging) {
+                        zone.mesh.material.opacity = 0.9;
+                        zone.glow.material.opacity = 0.8;
+                        zone.glow.scale.setScalar(1.2);
+                        
+                        // 충전 파티클 효과 (간단한 구현)
+                        this.createChargingEffect(drone.mesh.position, zoneIndex);
+                        
+                        // UI에 충전 상태 표시
+                        if (this.ui) {
+                            this.ui.showToast(`${droneId === 'player1' ? '플레이어 1' : '플레이어 2'} 부스터 충전 중...`, 'info', 500);
+                        }
+                    }
+                } else {
+                    // 부스터 존에서 벗어났을 때 원래 상태로 복원
+                    zone.mesh.material.opacity = 0.6;
+                    zone.glow.material.opacity = 0.3;
+                    zone.glow.scale.setScalar(1.0);
+                }
+            });
+            
+            // 드론이 부스터 존을 벗어났으면 효과 해제
+            if (!isInAnyZone) {
+                drone.exitBoosterZone();
+            }
+        });
+    }
+    
+    /**
+     * 부스터 충전 효과 생성
+     */
+    createChargingEffect(dronePosition, zoneIndex) {
+        // 간단한 충전 효과 (매 프레임마다 호출되므로 가벼워야 함)
+        if (Math.random() < 0.1) { // 10% 확률로만 파티클 생성
+            const particleGeometry = new THREE.SphereGeometry(0.1);
+            const particleMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffaa00,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+            particle.position.set(
+                dronePosition.x + (Math.random() - 0.5) * 4,
+                dronePosition.y + Math.random() * 2,
+                dronePosition.z + (Math.random() - 0.5) * 4
+            );
+            
+            this.scene.add(particle);
+            
+            // 파티클 애니메이션
+            const startTime = Date.now();
+            const animateParticle = () => {
+                const elapsed = Date.now() - startTime;
+                const progress = elapsed / 1000; // 1초 지속
+                
+                if (progress < 1 && particle.parent) {
+                    particle.position.y += 0.05;
+                    particle.material.opacity = 0.8 * (1 - progress);
+                    particle.scale.setScalar(1 + progress);
+                    requestAnimationFrame(animateParticle);
+                } else {
+                    this.scene.remove(particle);
+                }
+            };
+            
+            animateParticle();
+        }
+    }
+    
+    /**
+     * UI 업데이트
+     */
+    updateUI() {
+        if (!this.ui) return;
+        
+        // 각 플레이어의 HUD 업데이트
+        Object.entries(this.drones).forEach(([playerId, drone]) => {
+            if (drone && drone.getData) {
+                this.ui.updatePlayerHUD(playerId, drone.getData());
+            }
+        });
+    }
+    
+    /**
+     * 카메라 추적 업데이트
+     */
+    updateCameraFollow() {
+        // 플레이어 1 카메라가 드론을 따라가도록
+        if (this.drones.player1 && this.drones.player1.mesh) {
+            const drone1Pos = this.drones.player1.mesh.position;
+            this.cameras.player1.position.set(
+                drone1Pos.x - 10,
+                drone1Pos.y + 8,
+                drone1Pos.z + 15
+            );
+            this.cameras.player1.lookAt(drone1Pos);
+        }
+        
+        // 플레이어 2 카메라가 드론을 따라가도록
+        if (this.drones.player2 && this.drones.player2.mesh) {
+            const drone2Pos = this.drones.player2.mesh.position;
+            this.cameras.player2.position.set(
+                drone2Pos.x + 10,
+                drone2Pos.y + 8,
+                drone2Pos.z + 15
+            );
+            this.cameras.player2.lookAt(drone2Pos);
+        }
+    }
+    
+    /**
+     * 디버그 정보 업데이트
+     */
+    updateDebugInfo() {
+        if (!this.testMode || !this.ui) return;
+        
+        const debugData = {
+            fps: Math.round(1000 / 16.67), // 대략적인 FPS
+            gameState: this.gameState,
+            connectedSensors: Object.keys(this.drones).length,
+            testMode: this.testMode,
+            player1: this.drones.player1?.getData(),
+            player2: this.drones.player2?.getData()
+        };
+        
+        this.ui.showDebugInfo(debugData);
+    }
+    
+    /**
+     * 경주 완주 처리
+     */
+    handleRaceFinished(playerId, raceData) {
+        console.log(`🏁 ${playerId} 경주 완주!`, raceData);
+        
+        // 게임 상태 변경
+        this.gameState = 'finished';
+        
+        // 결과 데이터 준비
+        const resultsData = {
+            winner: playerId,
+            raceTime: Date.now() - this.raceStartTime,
+            player1Data: this.drones.player1?.getData() || {},
+            player2Data: this.drones.player2?.getData() || {}
+        };
+        
+        // 결과 화면 표시
+        if (this.ui) {
+            this.ui.showResults(resultsData);
+        }
+    }
+    
+    /**
+     * 렌더링 (성능 최적화 적용)
+     */
+    render() {
+        if (!this.renderer || !this.scene) return;
+        
+        const renderStart = performance.now();
+        
+        // 성능 최적화: 렌더링 최적화 적용
+        if (this.performanceOptimizer) {
+            this.performanceOptimizer.optimizeRendering(this.scene, this.cameras.player1, this.renderer);
+            this.performanceOptimizer.optimizeSplitScreenRendering();
+        }
+        
+        // 화면 분할 렌더링
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        const halfWidth = width / 2;
+        
+        // 렌더러 설정 최적화
+        this.renderer.setScissorTest(true);
+        
+        // 왼쪽 화면 (플레이어 1)
+        this.renderer.setViewport(0, 0, halfWidth, height);
+        this.renderer.setScissor(0, 0, halfWidth, height);
+        this.renderer.render(this.scene, this.cameras.player1);
+        
+        // 오른쪽 화면 (플레이어 2)
+        this.renderer.setViewport(halfWidth, 0, halfWidth, height);
+        this.renderer.setScissor(halfWidth, 0, halfWidth, height);
+        this.renderer.render(this.scene, this.cameras.player2);
+        
+        // 스크린 분할 해제
+        this.renderer.setScissorTest(false);
+        
+        // 성능 통계 업데이트
+        if (this.performanceOptimizer) {
+            this.performanceOptimizer.performanceStats.renderTime = performance.now() - renderStart;
+        }
+    }
+    
+    /**
+     * 성능 모니터링 UI 설정
+     */
+    setupPerformanceMonitoring() {
+        // 개발자 모드 토글 (F12 키)
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'F12') {
+                event.preventDefault();
+                this.togglePerformancePanel();
+            }
+            
+            // 성능 통계 출력 (Ctrl + P)
+            if (event.ctrlKey && event.key === 'p') {
+                event.preventDefault();
+                this.showPerformanceStats();
+            }
+        });
+        
+        // 성능 모니터링 UI 업데이트 (1초마다)
+        setInterval(() => {
+            this.updatePerformanceUI();
+        }, 1000);
+    }
+    
+    /**
+     * 성능 패널 토글
+     */
+    togglePerformancePanel() {
+        const panel = document.getElementById('performancePanel');
+        if (panel) {
+            panel.classList.toggle('hidden');
+            
+            if (!panel.classList.contains('hidden')) {
+                console.log('🚀 성능 모니터링 패널 활성화');
+                if (this.ui) {
+                    this.ui.showToast('성능 모니터링 활성화 (F12로 토글)', 'info', 3000);
+                }
+            }
+        }
+    }
+    
+    /**
+     * 성능 UI 업데이트
+     */
+    updatePerformanceUI() {
+        if (!this.performanceOptimizer) return;
+        
+        const stats = this.performanceOptimizer.getPerformanceStats();
+        
+        // FPS 업데이트
+        const fpsElement = document.getElementById('fpsValue');
+        if (fpsElement) {
+            fpsElement.textContent = stats.fps;
+            fpsElement.style.color = stats.fps >= 50 ? '#00ff88' : stats.fps >= 30 ? '#ffaa00' : '#ff4444';
+        }
+        
+        // 프레임 시간 업데이트
+        const frameTimeElement = document.getElementById('frameTimeValue');
+        if (frameTimeElement) {
+            frameTimeElement.textContent = `${stats.frameTime.toFixed(2)}ms`;
+        }
+        
+        // 메모리 사용량 업데이트
+        const memoryElement = document.getElementById('memoryValue');
+        if (memoryElement) {
+            memoryElement.textContent = `${stats.memoryMB}MB`;
+        }
+        
+        // 파티클 수 업데이트
+        const particleElement = document.getElementById('particleValue');
+        if (particleElement) {
+            particleElement.textContent = stats.particleCount;
+        }
+        
+        // 품질 설정 업데이트
+        const qualityElement = document.getElementById('qualityValue');
+        if (qualityElement) {
+            qualityElement.textContent = stats.quality.toUpperCase();
+            qualityElement.style.color = 
+                stats.quality === 'high' ? '#00ff88' : 
+                stats.quality === 'medium' ? '#ffaa00' : '#ff4444';
+        }
+    }
+    
+    /**
+     * 성능 통계 콘솔 출력
+     */
+    showPerformanceStats() {
+        if (!this.performanceOptimizer) {
+            console.log('성능 최적화 시스템이 초기화되지 않았습니다.');
+            return;
+        }
+        
+        const stats = this.performanceOptimizer.showDebugInfo();
+        
+        // 추가 게임 관련 통계
+        const gameStats = {
+            '게임 상태': this.gameState,
+            '드론 수': Object.keys(this.drones).length,
+            '물리 바디 수': this.physics ? this.physics.bodies.size : 0,
+            '효과 통계': this.effects ? this.effects.getPerformanceStats() : null,
+            '물리 통계': this.physics ? this.physics.getPerformanceStats() : null
+        };
+        
+        console.log('🎮 게임 통계:', gameStats);
+        
+        return { performance: stats, game: gameStats };
+    }
+}
+
+// 게임 시작
+let game;
+window.addEventListener('load', () => {
+    game = new DroneRacingGame();
+});
+
+// 전역 함수로 노출 (HTML에서 호출용)
+window.game = game; 
+   /**
+     * 체크포인트 통과 처리
+     */
+    handleCheckpointPassed(droneId, checkpointIndex) {
+        const drone = this.drones[droneId];
+        if (!drone) return;
+        
+        // 드론의 체크포인트 진행 상황 초기화
+        if (!drone.raceProgress) {
+            drone.raceProgress = {
+                currentCheckpoint: -1,
+                lapCount: 0,
+                lapStartTime: Date.now(),
+                lapTimes: [],
+                bestLapTime: null,
+                totalTime: 0,
+                checkpointsPassed: 0
+            };
+        }
+        
+        const progress = drone.raceProgress;
+        const expectedNext = (progress.currentCheckpoint + 1) % this.trackCheckpoints.length;
+        
+        // 올바른 순서로 체크포인트 통과 확인
+        if (checkpointIndex === expectedNext) {
+            progress.currentCheckpoint = checkpointIndex;
+            progress.checkpointsPassed++;
+            
+            const playerName = droneId === 'player1' ? '플레이어 1' : '플레이어 2';
+            
+            // 시작점(체크포인트 0) 통과 시 랩 완료 처리
+            if (checkpointIndex === 0 && progress.checkpointsPassed > 0) {
+                const currentTime = Date.now();
+                const lapTime = (currentTime - progress.lapStartTime) / 1000;
+                
+                progress.lapCount++;
+                progress.lapTimes.push(lapTime);
+                progress.lapStartTime = currentTime;
+                
+                // 최고 랩 타임 업데이트
+                if (!progress.bestLapTime || lapTime < progress.bestLapTime) {
+                    progress.bestLapTime = lapTime;
+                }
+                
+                // UI 업데이트
+                this.ui?.updateLapCounter(droneId, progress.lapCount);
+                
+                // 랩 완료 메시지
+                this.ui?.showToast(`${playerName} 랩 ${progress.lapCount} 완료! (${lapTime.toFixed(2)}s)`, 'success', 2500);
+                
+                // 3랩 완료 시 경주 종료
+                if (progress.lapCount >= 3) {
+                    this.handleRaceFinish(droneId);
+                    return;
+                }
+            } else {
+                // 일반 체크포인트 통과
+                const checkpointName = checkpointIndex === 0 ? '시작점' : `체크포인트 ${checkpointIndex}`;
+                this.ui?.showToast(`${playerName} ${checkpointName} 통과!`, 'info', 1000);
+            }
+            
+            // 체크포인트 통과 시각 효과
+            this.showCheckpointPassEffect(checkpointIndex);
+            
+            // 순위 계산 및 업데이트
+            this.updateRankings();
+            
+        } else {
+            // 잘못된 순서로 체크포인트 통과
+            console.log(`${droneId}: 잘못된 체크포인트 순서 (현재: ${progress.currentCheckpoint}, 통과: ${checkpointIndex})`);
+        }
+    }
+    
+    /**
+     * 체크포인트 통과 시각 효과
+     */
+    showCheckpointPassEffect(checkpointIndex) {
+        if (!this.trackCheckpoints || !this.trackCheckpoints[checkpointIndex]) return;
+        
+        const checkpoint = this.trackCheckpoints[checkpointIndex];
+        const originalColor = checkpoint.mesh.material.color.clone();
+        
+        // 체크포인트 색상 변경 (잠시 밝게)
+        checkpoint.mesh.material.color.set(0xffffff);
+        checkpoint.mesh.material.opacity = 1.0;
+        
+        // 크기 변화 효과
+        const originalScale = checkpoint.mesh.scale.clone();
+        checkpoint.mesh.scale.multiplyScalar(1.2);
+        
+        // 원래 상태로 복원
+        setTimeout(() => {
+            checkpoint.mesh.material.color.copy(originalColor);
+            checkpoint.mesh.material.opacity = 0.6;
+            checkpoint.mesh.scale.copy(originalScale);
+        }, 500);
+    }
+    
+    /**
+     * 순위 계산 및 업데이트
+     */
+    updateRankings() {
+        const players = Object.entries(this.drones).map(([id, drone]) => {
+            const progress = drone.raceProgress || {
+                lapCount: 0,
+                currentCheckpoint: -1,
+                checkpointsPassed: 0
+            };
+            
+            return {
+                id,
+                drone,
+                lapCount: progress.lapCount,
+                currentCheckpoint: progress.currentCheckpoint,
+                checkpointsPassed: progress.checkpointsPassed,
+                totalProgress: progress.lapCount * this.trackCheckpoints.length + progress.checkpointsPassed
+            };
+        });
+        
+        // 진행도에 따라 순위 정렬
+        players.sort((a, b) => {
+            if (a.lapCount !== b.lapCount) {
+                return b.lapCount - a.lapCount; // 랩 수가 많은 순
+            }
+            return b.checkpointsPassed - a.checkpointsPassed; // 체크포인트 통과 수가 많은 순
+        });
+        
+        // 각 드론에 순위 할당
+        players.forEach((player, index) => {
+            if (player.drone.raceProgress) {
+                player.drone.raceProgress.rank = index + 1;
+            }
+        });
+    }
+    
+    /**
+     * 경주 종료 처리
+     */
+    handleRaceFinish(winnerId) {
+        if (this.raceFinished) return;
+        
+        this.raceFinished = true;
+        
+        const winnerName = winnerId === 'player1' ? '플레이어 1' : '플레이어 2';
+        const totalRaceTime = Date.now() - this.raceStartTime;
+        
+        console.log(`🏁 경주 종료! 승자: ${winnerName}`);
+        
+        // 게임 상태 관리자를 통한 경주 완료 처리
+        if (this.gameStateManager) {
+            const raceData = {
+                winner: winnerId,
+                totalTime: totalRaceTime,
+                finishTime: Date.now()
+            };
+            this.gameStateManager.finishRace(winnerId, raceData);
+        } else {
+            this.gameState = 'finished';
+        }
+        
+        // 승리 메시지
+        this.ui?.showToast(`🏆 ${winnerName} 승리!`, 'success', 5000);
+        
+        // 최종 결과 데이터 준비
+        const resultsData = this.prepareRaceResults(winnerId, totalRaceTime);
+        
+        // 결과 화면 표시 (2초 후)
+        setTimeout(() => {
+            this.ui?.showResults(resultsData);
+        }, 2000);
+        
+        // 승리 효과
+        this.showVictoryEffects(winnerId);
+    }
+    
+    /**
+     * 경주 결과 데이터 준비
+     */
+    prepareRaceResults(winnerId, totalRaceTime) {
+        const player1Results = this.getPlayerResults('player1');
+        const player2Results = this.getPlayerResults('player2');
+        
+        // 추가 통계 계산
+        const raceStatistics = this.calculateRaceStatistics();
+        
+        return {
+            winner: winnerId,
+            winnerName: winnerId === 'player1' ? '플레이어 1' : '플레이어 2',
+            raceTime: totalRaceTime,
+            raceDate: new Date().toLocaleString('ko-KR'),
+            player1Data: {
+                ...player1Results,
+                statistics: this.getPlayerStatistics('player1')
+            },
+            player2Data: {
+                ...player2Results,
+                statistics: this.getPlayerStatistics('player2')
+            },
+            raceStatistics: raceStatistics
+        };
+    }
+    
+    /**
+     * 경주 통계 계산
+     */
+    calculateRaceStatistics() {
+        const player1 = this.drones.player1?.raceProgress || {};
+        const player2 = this.drones.player2?.raceProgress || {};
+        
+        return {
+            totalLaps: Math.max(player1.lapCount || 0, player2.lapCount || 0),
+            fastestLap: Math.min(
+                player1.bestLapTime || Infinity,
+                player2.bestLapTime || Infinity
+            ),
+            averageLapTime: this.calculateAverageLapTime(),
+            totalCheckpoints: (player1.checkpointsPassed || 0) + (player2.checkpointsPassed || 0),
+            raceDistance: this.calculateRaceDistance(),
+            competitiveness: this.calculateCompetitiveness()
+        };
+    }
+    
+    /**
+     * 평균 랩 타임 계산
+     */
+    calculateAverageLapTime() {
+        const allLapTimes = [];
+        
+        Object.values(this.drones).forEach(drone => {
+            if (drone.raceProgress && drone.raceProgress.lapTimes) {
+                allLapTimes.push(...drone.raceProgress.lapTimes);
+            }
+        });
+        
+        if (allLapTimes.length === 0) return 0;
+        
+        const sum = allLapTimes.reduce((a, b) => a + b, 0);
+        return sum / allLapTimes.length;
+    }
+    
+    /**
+     * 경주 거리 계산 (추정)
+     */
+    calculateRaceDistance() {
+        // 트랙 한 바퀴 거리 추정 (원형 트랙 기준)
+        const trackRadius = 40; // 평균 반지름
+        const lapDistance = 2 * Math.PI * trackRadius;
+        
+        const totalLaps = Math.max(
+            this.drones.player1?.raceProgress?.lapCount || 0,
+            this.drones.player2?.raceProgress?.lapCount || 0
+        );
+        
+        return lapDistance * totalLaps;
+    }
+    
+    /**
+     * 경쟁 치열함 계산
+     */
+    calculateCompetitiveness() {
+        const player1Progress = this.drones.player1?.raceProgress || {};
+        const player2Progress = this.drones.player2?.raceProgress || {};
+        
+        const lapDifference = Math.abs((player1Progress.lapCount || 0) - (player2Progress.lapCount || 0));
+        const checkpointDifference = Math.abs(
+            (player1Progress.checkpointsPassed || 0) - (player2Progress.checkpointsPassed || 0)
+        );
+        
+        // 0-100 스케일로 경쟁 치열함 계산 (차이가 적을수록 치열함)
+        const competitiveness = Math.max(0, 100 - (lapDifference * 20 + checkpointDifference * 5));
+        
+        return competitiveness;
+    }
+    
+    /**
+     * 플레이어 통계 가져오기
+     */
+    getPlayerStatistics(playerId) {
+        const drone = this.drones[playerId];
+        if (!drone) return {};
+        
+        const gameState = this.gameStateManager?.getPlayerState(playerId);
+        
+        return {
+            collisions: gameState?.statistics?.collisions || 0,
+            boosterUsage: gameState?.statistics?.boosterUsage || 0,
+            trackExits: gameState?.statistics?.trackExits || 0,
+            checkpointsPassed: gameState?.statistics?.checkpointsPassed || 0,
+            averageSpeed: this.calculateAverageSpeed(playerId),
+            consistency: this.calculateConsistency(playerId)
+        };
+    }
+    
+    /**
+     * 평균 속도 계산
+     */
+    calculateAverageSpeed(playerId) {
+        const drone = this.drones[playerId];
+        if (!drone || !drone.raceProgress) return 0;
+        
+        // 간단한 평균 속도 계산 (실제로는 더 정교한 계산 필요)
+        const maxSpeed = drone.getData?.()?.maxSpeed || 0;
+        return maxSpeed * 0.7; // 최고 속도의 70%를 평균으로 추정
+    }
+    
+    /**
+     * 일관성 계산 (랩 타임 편차 기준)
+     */
+    calculateConsistency(playerId) {
+        const drone = this.drones[playerId];
+        if (!drone || !drone.raceProgress || !drone.raceProgress.lapTimes) return 100;
+        
+        const lapTimes = drone.raceProgress.lapTimes;
+        if (lapTimes.length < 2) return 100;
+        
+        // 표준편차 계산
+        const mean = lapTimes.reduce((a, b) => a + b, 0) / lapTimes.length;
+        const variance = lapTimes.reduce((sum, time) => sum + Math.pow(time - mean, 2), 0) / lapTimes.length;
+        const stdDev = Math.sqrt(variance);
+        
+        // 일관성 점수 (0-100, 편차가 적을수록 높음)
+        const consistency = Math.max(0, 100 - (stdDev / mean * 100));
+        
+        return Math.round(consistency);
+    }
+    
+    /**
+     * 승리 효과 표시
+     */
+    showVictoryEffects(winnerId) {
+        if (!this.effects) return;
+        
+        const winnerDrone = this.drones[winnerId];
+        if (!winnerDrone || !winnerDrone.mesh) return;
+        
+        const winnerPosition = winnerDrone.mesh.position;
+        
+        // 승리 폭죽 효과
+        for (let i = 0; i < 5; i++) {
+            setTimeout(() => {
+                const offset = new THREE.Vector3(
+                    (Math.random() - 0.5) * 10,
+                    Math.random() * 5 + 5,
+                    (Math.random() - 0.5) * 10
+                );
+                const effectPosition = winnerPosition.clone().add(offset);
+                
+                this.effects.createParticleBurst(effectPosition, 0xffff00, 30, 3.0);
+            }, i * 500);
+        }
+        
+        // 승리 링 효과
+        this.effects.createCheckpointPassEffect(winnerPosition, 0xffff00);
+    }
+    
+    /**
+     * 플레이어 결과 데이터 가져오기
+     */
+    getPlayerResults(playerId) {
+        const drone = this.drones[playerId];
+        if (!drone || !drone.raceProgress) {
+            return {
+                finishTime: null,
+                maxSpeed: 0,
+                bestLap: null,
+                lapCount: 0
+            };
+        }
+        
+        const progress = drone.raceProgress;
+        const droneData = drone.getData ? drone.getData() : {};
+        
+        return {
+            finishTime: progress.lapCount >= 3 ? Date.now() - this.raceStartTime : null,
+            maxSpeed: droneData.maxSpeed || 0,
+            bestLap: progress.bestLapTime,
+            lapCount: progress.lapCount
+        };
+    }
+    
+    /**
+     * 랩 타임 측정 및 기록
+     */
+    updateLapTiming() {
+        if (this.gameState !== 'racing' || this.isPaused) return;
+        
+        const currentTime = Date.now();
+        
+        Object.entries(this.drones).forEach(([playerId, drone]) => {
+            if (!drone.raceProgress) return;
+            
+            const progress = drone.raceProgress;
+            progress.totalTime = (currentTime - this.raceStartTime) / 1000;
+            
+            // 현재 랩 시간 계산
+            const currentLapTime = (currentTime - progress.lapStartTime) / 1000;
+            progress.currentLapTime = currentLapTime;
+        });
+    }
+    
+    /**
+     * 실시간 순위 표시 업데이트
+     */
+    updateRealTimeRankings() {
+        this.updateRankings();
+        this.updateLapTiming();
+    } 
+   
+    /**
+     * 트랙 이탈 처리
+     */
+    handleTrackOutOfBounds(droneId, resetPosition) {
+        const drone = this.drones[droneId];
+        if (!drone) return;
+        
+        const playerName = droneId === 'player1' ? '플레이어 1' : '플레이어 2';
+        
+        // UI 메시지 표시
+        this.ui?.showToast(`${playerName} 트랙 이탈! 리셋됩니다.`, 'warning', 2000);
+        
+        // 드론 리셋 (물리 엔진에서 이미 처리됨)
+        if (drone.reset) {
+            drone.reset(resetPosition);
+        }
+        
+        // 페널티 적용 (속도 감소)
+        if (this.physics) {
+            this.physics.applyCollisionPenalty(droneId, 'speed_reduction');
+        }
+        
+        // 트랙 이탈 효과
+        if (this.effects) {
+            this.effects.createExplosionEffect(new THREE.Vector3(resetPosition.x, resetPosition.y, resetPosition.z), 0.3);
+        }
+        
+        console.log(`${droneId} 트랙 이탈 처리 완료`);
+    }
+    
+    /**
+     * 충돌 후 드론 상태 조정
+     */
+    handleCollisionAdjustment(droneId, collisionType) {
+        const drone = this.drones[droneId];
+        if (!drone || !this.physics) return;
+        
+        // 물리 엔진에서 충돌 조정 적용
+        this.physics.adjustDroneAfterCollision(droneId, collisionType, 1.0);
+        
+        // 드론 상태 업데이트
+        if (drone.handleCollision) {
+            drone.handleCollision(collisionType);
+        }
+        
+        // 충돌 타입에 따른 추가 처리
+        switch (collisionType) {
+            case 'drone':
+                // 드론 간 충돌 시 양쪽 모두 영향
+                this.ui?.showToast('드론 충돌! 속도 감소', 'warning', 1500);
+                break;
+                
+            case 'wall':
+                // 벽 충돌 시 큰 페널티
+                this.ui?.showToast(`${droneId === 'player1' ? '플레이어 1' : '플레이어 2'} 벽 충돌!`, 'error', 2000);
+                this.physics.applyCollisionPenalty(droneId, 'control_disruption');
+                break;
+                
+            case 'obstacle':
+                // 장애물 충돌 시 중간 페널티
+                this.ui?.showToast('장애물 충돌!', 'warning', 1500);
+                break;
+        }
+    }
+    
+    /**
+     * 장애물 생성 (트랙 주변)
+     */
+    createObstacles() {
+        this.obstacles = [];
+        
+        // 트랙 주변에 장애물 배치
+        const obstaclePositions = [
+            { x: 20, y: 3, z: 20 },
+            { x: -20, y: 3, z: 20 },
+            { x: 20, y: 3, z: -20 },
+            { x: -20, y: 3, z: -20 },
+            { x: 35, y: 5, z: 0 },
+            { x: -35, y: 5, z: 0 },
+            { x: 0, y: 4, z: 35 },
+            { x: 0, y: 4, z: -35 }
+        ];
+        
+        obstaclePositions.forEach((pos, index) => {
+            // 장애물 시각적 표현
+            const obstacleGeometry = new THREE.BoxGeometry(2, 4, 2);
+            const obstacleMaterial = new THREE.MeshLambertMaterial({
+                color: 0xff4444,
+                transparent: true,
+                opacity: 0.8
+            });
+            const obstacleMesh = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+            obstacleMesh.position.set(pos.x, pos.y, pos.z);
+            obstacleMesh.castShadow = true;
+            obstacleMesh.name = `obstacle_${index}`;
+            this.scene.add(obstacleMesh);
+            
+            // 장애물 물리 바디
+            if (this.physics) {
+                const obstacleBody = new CANNON.Body({
+                    mass: 0, // 정적 바디
+                    shape: new CANNON.Box(new CANNON.Vec3(1, 2, 1))
+                });
+                obstacleBody.position.set(pos.x, pos.y, pos.z);
+                obstacleBody.userData = { type: 'obstacle', index: index };
+                
+                this.physics.world.add(obstacleBody);
+                
+                // 장애물 데이터 저장
+                this.obstacles.push({
+                    mesh: obstacleMesh,
+                    body: obstacleBody,
+                    position: pos,
+                    index: index
+                });
+            }
+        });
+        
+        console.log(`장애물 ${obstaclePositions.length}개 생성 완료`);
+    }
+    
+    /**
+     * 충돌 효과 및 페널티 시스템 업데이트
+     */
+    updateCollisionEffects() {
+        // 드론별 충돌 상태 확인 및 처리
+        Object.entries(this.drones).forEach(([droneId, drone]) => {
+            if (!drone || !drone.body) return;
+            
+            const body = drone.body;
+            const userData = body.userData || {};
+            
+            // 속도 페널티 적용
+            if (userData.speedPenalty && userData.speedPenalty < 1.0) {
+                // 드론 최대 속도 제한
+                const currentSpeed = body.velocity.length();
+                const maxSpeed = 30 * userData.speedPenalty; // 기본 최대 속도의 페널티 배율
+                
+                if (currentSpeed > maxSpeed) {
+                    body.velocity.scale(maxSpeed / currentSpeed);
+                }
+            }
+            
+            // 조작 방해 효과
+            if (userData.controlDisruption) {
+                // 드론 조작에 랜덤 노이즈 추가
+                const noiseForce = new CANNON.Vec3(
+                    (Math.random() - 0.5) * 2,
+                    0,
+                    (Math.random() - 0.5) * 2
+                );
+                body.applyForce(noiseForce, body.position);
+            }
+        });
+    }

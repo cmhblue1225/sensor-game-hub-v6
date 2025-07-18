@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🏎️ 3D 자동차 경주</title>
+    <title>🏎️ 3D 레이싱 게임</title>
     <style>
         :root {
             --primary: #3b82f6;
@@ -32,201 +32,12 @@
             height: 100vh;
         }
         
-        /* 3D 월드 컨테이너 */
-        .world-3d {
+        /* 게임 컨테이너 */
+        .game-container {
             width: 100vw;
             height: 100vh;
-            perspective: 1200px;
-            perspective-origin: 50% 30%;
-            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 50%, #228B22 100%);
             position: relative;
-            overflow: hidden;
-        }
-        
-        /* 3D 씬 */
-        .scene-3d {
-            width: 100%;
-            height: 100%;
-            transform-style: preserve-3d;
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-        
-        /* 3D 트랙 바닥 */
-        .track-floor {
-            width: 2000px;
-            height: 2000px;
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%) rotateX(90deg) translateZ(-50px);
-            background: 
-                radial-gradient(circle at center, #444 40%, #333 60%),
-                repeating-linear-gradient(0deg, transparent 0px, transparent 40px, #555 40px, #555 45px),
-                repeating-linear-gradient(90deg, transparent 0px, transparent 40px, #555 40px, #555 45px);
-            transform-style: preserve-3d;
-        }
-        
-        /* 트랙 경계선 */
-        .track-boundary {
-            position: absolute;
-            background: #fff;
-            transform-style: preserve-3d;
-        }
-        
-        .boundary-inner {
-            width: 800px;
-            height: 800px;
-            border: 8px solid #fff;
-            border-radius: 50%;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%) rotateX(90deg) translateZ(-45px);
-        }
-        
-        .boundary-outer {
-            width: 1200px;
-            height: 1200px;
-            border: 8px solid #fff;
-            border-radius: 50%;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%) rotateX(90deg) translateZ(-45px);
-        }
-        
-        /* 3D 자동차 */
-        .car-3d {
-            width: 60px;
-            height: 120px;
-            position: absolute;
-            transform-style: preserve-3d;
-            left: 50%;
-            top: 50%;
-            margin-left: -30px;
-            margin-top: -60px;
-            transition: transform 0.1s ease-out;
-        }
-        
-        /* 자동차 바디 */
-        .car-body-3d {
-            width: 60px;
-            height: 120px;
-            position: absolute;
-            transform-style: preserve-3d;
-        }
-        
-        /* 자동차 면들 */
-        .car-top {
-            width: 60px;
-            height: 120px;
-            background: linear-gradient(45deg, #ff4444, #cc0000);
-            position: absolute;
-            transform: translateZ(25px);
-            border-radius: 15px 15px 8px 8px;
-        }
-        
-        .car-bottom {
-            width: 60px;
-            height: 120px;
-            background: #222;
-            position: absolute;
-            transform: translateZ(-5px);
-            border-radius: 15px 15px 8px 8px;
-        }
-        
-        .car-front {
-            width: 60px;
-            height: 30px;
-            background: linear-gradient(to bottom, #ff4444, #cc0000);
-            position: absolute;
-            transform: rotateX(90deg) translateZ(60px);
-            border-radius: 15px 15px 0 0;
-        }
-        
-        .car-back {
-            width: 60px;
-            height: 30px;
-            background: linear-gradient(to bottom, #cc0000, #aa0000);
-            position: absolute;
-            top: 120px;
-            transform: rotateX(-90deg) translateZ(0px);
-            border-radius: 0 0 8px 8px;
-        }
-        
-        .car-left {
-            width: 30px;
-            height: 120px;
-            background: linear-gradient(to right, #cc0000, #ff4444);
-            position: absolute;
-            left: -15px;
-            transform: rotateY(-90deg) translateZ(15px);
-            border-radius: 15px 8px 8px 15px;
-        }
-        
-        .car-right {
-            width: 30px;
-            height: 120px;
-            background: linear-gradient(to left, #cc0000, #ff4444);
-            position: absolute;
-            right: -15px;
-            transform: rotateY(90deg) translateZ(15px);
-            border-radius: 8px 15px 15px 8px;
-        }
-        
-        /* 플레이어 2 자동차 색상 */
-        .car-3d.player2 .car-top,
-        .car-3d.player2 .car-front {
-            background: linear-gradient(45deg, #4444ff, #0000cc);
-        }
-        
-        .car-3d.player2 .car-back {
-            background: linear-gradient(to bottom, #0000cc, #0000aa);
-        }
-        
-        .car-3d.player2 .car-left {
-            background: linear-gradient(to right, #0000cc, #4444ff);
-        }
-        
-        .car-3d.player2 .car-right {
-            background: linear-gradient(to left, #0000cc, #4444ff);
-        }
-        
-        /* 자동차 바퀴 */
-        .wheel-3d {
-            width: 20px;
-            height: 30px;
-            background: linear-gradient(45deg, #222, #444);
-            border: 2px solid #555;
-            border-radius: 4px;
-            position: absolute;
-            transform-style: preserve-3d;
-        }
-        
-        .wheel-fl { top: 20px; left: -10px; transform: translateZ(15px); }
-        .wheel-fr { top: 20px; right: -10px; transform: translateZ(15px); }
-        .wheel-bl { bottom: 20px; left: -10px; transform: translateZ(15px); }
-        .wheel-br { bottom: 20px; right: -10px; transform: translateZ(15px); }
-        
-        /* 헤드라이트 */
-        .headlight-3d {
-            width: 8px;
-            height: 8px;
-            background: radial-gradient(circle, #ffffaa, #ffff88);
-            border-radius: 50%;
-            position: absolute;
-            top: 10px;
-            transform: translateZ(26px);
-            box-shadow: 0 0 10px rgba(255, 255, 170, 0.8);
-        }
-        
-        .headlight-left { left: 12px; }
-        .headlight-right { right: 12px; }
-        
-        /* 카메라 컨트롤 */
-        .camera-follow {
-            transform-style: preserve-3d;
-            transition: transform 0.2s ease-out;
+            background: linear-gradient(to bottom, #87CEEB 0%, #98FB98 100%);
         }
         
         /* 화면 분할 */
@@ -240,12 +51,82 @@
             flex: 1;
             position: relative;
             overflow: hidden;
-            border-right: 2px solid var(--border);
+            border-right: 2px solid #333;
+            perspective: 1000px;
         }
         
         .viewport:last-child {
             border-right: none;
         }
+        
+        /* 3D 트랙 */
+        .track-3d {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+        
+        /* 트랙 세그먼트 */
+        .track-segment {
+            position: absolute;
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(to right, 
+                #228B22 0%, #228B22 20%, 
+                #666 20%, #666 80%, 
+                #228B22 80%, #228B22 100%);
+            border-bottom: 4px solid #fff;
+            transform-style: preserve-3d;
+        }
+        
+        /* 자동차 */
+        .car {
+            position: absolute;
+            width: 40px;
+            height: 80px;
+            left: 50%;
+            bottom: 100px;
+            margin-left: -20px;
+            transform-style: preserve-3d;
+            transition: transform 0.1s ease-out;
+        }
+        
+        .car-body {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, #ff4444, #cc0000);
+            border-radius: 20px 20px 5px 5px;
+            position: relative;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .car.player2 .car-body {
+            background: linear-gradient(45deg, #4444ff, #0000cc);
+        }
+        
+        .car-windshield {
+            position: absolute;
+            top: 10px;
+            left: 5px;
+            right: 5px;
+            height: 30px;
+            background: rgba(135, 206, 235, 0.8);
+            border-radius: 15px 15px 0 0;
+        }
+        
+        .car-wheels {
+            position: absolute;
+            width: 8px;
+            height: 12px;
+            background: #222;
+            border-radius: 2px;
+        }
+        
+        .wheel-fl { top: 15px; left: -4px; }
+        .wheel-fr { top: 15px; right: -4px; }
+        .wheel-bl { bottom: 15px; left: -4px; }
+        .wheel-br { bottom: 15px; right: -4px; }
         
         /* UI 스타일 */
         .game-ui {
@@ -341,10 +222,6 @@
             transform: translateY(-2px);
         }
         
-        .hidden {
-            display: none !important;
-        }
-        
         /* HUD */
         .hud {
             position: fixed;
@@ -387,61 +264,171 @@
             color: var(--text-primary);
             font-weight: 600;
         }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        /* 게임 모드 선택 */
+        .mode-selection {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            z-index: 200;
+            backdrop-filter: blur(12px);
+        }
+        
+        .mode-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            justify-content: center;
+        }
+        
+        .mode-btn {
+            padding: 1rem 1.5rem;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .mode-btn:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+        }
+        
+        /* 트랙 선택 */
+        .track-selection {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            z-index: 200;
+            backdrop-filter: blur(12px);
+        }
+        
+        .track-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        
+        .track-btn {
+            padding: 1.5rem;
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 2px solid var(--border);
+            border-radius: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        
+        .track-btn:hover {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .track-btn.selected {
+            border-color: var(--primary);
+            background: rgba(59, 130, 246, 0.2);
+        }
+        
+        .track-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .track-difficulty {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        /* 결과 화면 */
+        .results-panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 41, 59, 0.95);
+            border: 1px solid var(--border);
+            border-radius: 1rem;
+            padding: 2rem;
+            text-align: center;
+            z-index: 200;
+            backdrop-filter: blur(12px);
+            min-width: 400px;
+        }
+        
+        .winner-text {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: var(--success);
+        }
+        
+        .race-stats {
+            margin: 1.5rem 0;
+            text-align: left;
+        }
+        
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 0.25rem;
+        }
     </style>
 </head>
 <body>
-    <!-- 3D 게임 월드 -->
-    <div class="world-3d">
-        <div class="scene-3d" id="scene">
-            <!-- 트랙 바닥 -->
-            <div class="track-floor"></div>
-            
-            <!-- 트랙 경계선 -->
-            <div class="track-boundary boundary-inner"></div>
-            <div class="track-boundary boundary-outer"></div>
-            
-            <!-- 화면 분할 -->
-            <div class="split-screen hidden" id="gameScreen">
-                <div class="viewport" id="viewport1">
-                    <div class="camera-follow" id="camera1">
-                        <!-- 플레이어 1 자동차 -->
-                        <div class="car-3d player1" id="car1">
-                            <div class="car-body-3d">
-                                <div class="car-top"></div>
-                                <div class="car-bottom"></div>
-                                <div class="car-front"></div>
-                                <div class="car-back"></div>
-                                <div class="car-left"></div>
-                                <div class="car-right"></div>
-                                <div class="wheel-3d wheel-fl"></div>
-                                <div class="wheel-3d wheel-fr"></div>
-                                <div class="wheel-3d wheel-bl"></div>
-                                <div class="wheel-3d wheel-br"></div>
-                                <div class="headlight-3d headlight-left"></div>
-                                <div class="headlight-3d headlight-right"></div>
-                            </div>
+    <div class="game-container">
+        <!-- 화면 분할 -->
+        <div class="split-screen hidden" id="gameScreen">
+            <div class="viewport" id="viewport1">
+                <div class="track-3d" id="track1">
+                    <!-- 플레이어 1 자동차 -->
+                    <div class="car player1" id="car1">
+                        <div class="car-body">
+                            <div class="car-windshield"></div>
+                            <div class="car-wheels wheel-fl"></div>
+                            <div class="car-wheels wheel-fr"></div>
+                            <div class="car-wheels wheel-bl"></div>
+                            <div class="car-wheels wheel-br"></div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="viewport" id="viewport2">
-                    <div class="camera-follow" id="camera2">
-                        <!-- 플레이어 2 자동차 -->
-                        <div class="car-3d player2" id="car2">
-                            <div class="car-body-3d">
-                                <div class="car-top"></div>
-                                <div class="car-bottom"></div>
-                                <div class="car-front"></div>
-                                <div class="car-back"></div>
-                                <div class="car-left"></div>
-                                <div class="car-right"></div>
-                                <div class="wheel-3d wheel-fl"></div>
-                                <div class="wheel-3d wheel-fr"></div>
-                                <div class="wheel-3d wheel-bl"></div>
-                                <div class="wheel-3d wheel-br"></div>
-                                <div class="headlight-3d headlight-left"></div>
-                                <div class="headlight-3d headlight-right"></div>
-                            </div>
+            </div>
+            
+            <div class="viewport" id="viewport2">
+                <div class="track-3d" id="track2">
+                    <!-- 플레이어 2 자동차 -->
+                    <div class="car player2" id="car2">
+                        <div class="car-body">
+                            <div class="car-windshield"></div>
+                            <div class="car-wheels wheel-fl"></div>
+                            <div class="car-wheels wheel-fr"></div>
+                            <div class="car-wheels wheel-bl"></div>
+                            <div class="car-wheels wheel-br"></div>
                         </div>
                     </div>
                 </div>
@@ -453,10 +440,10 @@
     <div class="game-ui">
         <!-- 세션 대기 패널 -->
         <div class="ui-panel session-panel" id="sessionPanel">
-            <div class="session-title">🏎️ 3D 자동차 경주</div>
+            <div class="session-title">🏎️ 3D 레이싱 게임</div>
             <div style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.6;">
-                진짜 3D 공간에서 펼쳐지는 자동차 경주!<br>
-                X, Y, Z축을 활용한 완전한 3D 레이싱 게임
+                두 명이 함께 즐기는 3D 레이싱 경쟁!<br>
+                화면 분할로 각자의 시점에서 경주하세요
             </div>
             
             <div class="session-code" id="sessionCode">----</div>
@@ -471,48 +458,116 @@
                 <strong>조작법:</strong><br>
                 좌우 기울기 → 핸들 조작<br>
                 앞뒤 기울기 → 가속/브레이크<br>
-                <strong>테스트:</strong> F2키로 키보드 모드
+                <strong>테스트:</strong> 키보드 WASD / 화살표키
+            </div>
+        </div>
+        
+        <!-- 게임 모드 선택 -->
+        <div class="mode-selection hidden" id="modeSelection">
+            <h2>게임 모드 선택</h2>
+            <p style="color: var(--text-secondary); margin: 1rem 0;">
+                원하는 경주 모드를 선택하세요
+            </p>
+            <div class="mode-buttons">
+                <button class="mode-btn" onclick="game.selectMode('quick')">
+                    🏁 빠른 경주<br>
+                    <small>3랩 경주</small>
+                </button>
+                <button class="mode-btn" onclick="game.selectMode('best-of-3')">
+                    🏆 베스트 오브 3<br>
+                    <small>3전 2승</small>
+                </button>
+                <button class="mode-btn" onclick="game.selectMode('time-attack')">
+                    ⏱️ 타임 어택<br>
+                    <small>제한시간 경주</small>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 트랙 선택 -->
+        <div class="track-selection hidden" id="trackSelection">
+            <h2>트랙 선택</h2>
+            <p style="color: var(--text-secondary); margin: 1rem 0;">
+                경주할 트랙을 선택하세요
+            </p>
+            <div class="track-buttons">
+                <div class="track-btn" onclick="game.selectTrack('speedway')">
+                    <div class="track-name">🏁 스피드웨이</div>
+                    <div class="track-difficulty">난이도: 쉬움</div>
+                </div>
+                <div class="track-btn" onclick="game.selectTrack('mountain')">
+                    <div class="track-name">🏔️ 산악 코스</div>
+                    <div class="track-difficulty">난이도: 보통</div>
+                </div>
+                <div class="track-btn" onclick="game.selectTrack('city')">
+                    <div class="track-name">🏙️ 도심 서킷</div>
+                    <div class="track-difficulty">난이도: 어려움</div>
+                </div>
+            </div>
+            <div style="margin-top: 1.5rem;">
+                <button class="btn btn-primary" onclick="game.startRaceWithTrack()">경주 시작</button>
             </div>
         </div>
         
         <!-- 컨트롤 패널 -->
         <div class="ui-panel control-panel hidden" id="controlPanel">
             <button class="btn btn-secondary" onclick="game.resetGame()">🔄 재시작</button>
+            <button class="btn btn-secondary" onclick="game.pauseGame()">⏸️ 일시정지</button>
             <a href="/" class="btn btn-secondary">🏠 허브로</a>
         </div>
         
         <!-- HUD -->
         <div class="hud hidden" id="gameHUD">
             <div class="player-hud">
-                <h3>Player 1</h3>
+                <h3>Player 1 🔴</h3>
                 <div class="hud-stat">
                     <span class="label">속도:</span>
                     <span class="value" id="p1Speed">0 km/h</span>
                 </div>
                 <div class="hud-stat">
-                    <span class="label">위치:</span>
-                    <span class="value" id="p1Position">0, 0, 0</span>
-                </div>
-                <div class="hud-stat">
                     <span class="label">랩:</span>
                     <span class="value" id="p1Lap">0/3</span>
+                </div>
+                <div class="hud-stat">
+                    <span class="label">시간:</span>
+                    <span class="value" id="p1Time">00:00</span>
+                </div>
+                <div class="hud-stat">
+                    <span class="label">순위:</span>
+                    <span class="value" id="p1Rank">-</span>
                 </div>
             </div>
             
             <div class="player-hud">
-                <h3>Player 2</h3>
+                <h3>Player 2 🔵</h3>
                 <div class="hud-stat">
                     <span class="label">속도:</span>
                     <span class="value" id="p2Speed">0 km/h</span>
                 </div>
                 <div class="hud-stat">
-                    <span class="label">위치:</span>
-                    <span class="value" id="p2Position">0, 0, 0</span>
-                </div>
-                <div class="hud-stat">
                     <span class="label">랩:</span>
                     <span class="value" id="p2Lap">0/3</span>
                 </div>
+                <div class="hud-stat">
+                    <span class="label">시간:</span>
+                    <span class="value" id="p2Time">00:00</span>
+                </div>
+                <div class="hud-stat">
+                    <span class="label">순위:</span>
+                    <span class="value" id="p2Rank">-</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 결과 패널 -->
+        <div class="results-panel hidden" id="resultsPanel">
+            <div class="winner-text" id="winnerText">🏆 Player 1 승리!</div>
+            <div class="race-stats" id="raceStats">
+                <!-- 경주 결과 통계 -->
+            </div>
+            <div style="margin-top: 1.5rem;">
+                <button class="btn btn-primary" onclick="game.nextRace()">다음 경주</button>
+                <button class="btn btn-secondary" onclick="game.resetGame()">새 게임</button>
             </div>
         </div>
     </div>
@@ -523,76 +578,108 @@
     <script src="/js/SessionSDK.js"></script>
     
     <script>
-        class Real3DRacingGame {
+        class Racing3DGame {
             constructor() {
-                // SessionSDK 초기화
                 this.sdk = new SessionSDK({
                     gameId: 'racing-3d',
                     gameType: 'dual',
                     debug: true
                 });
                 
-                // 게임 상태
                 this.gameState = 'waiting';
+                this.gameMode = null;
                 this.connectedSensors = new Set();
                 
-                // 3D 공간 좌표계 (실제 3D 위치)
                 this.players = {
                     sensor1: {
                         connected: false,
                         car: document.getElementById('car1'),
-                        camera: document.getElementById('camera1'),
-                        // 3D 위치 (X, Y, Z)
+                        track: document.getElementById('track1'),
                         position: { x: 0, y: 0, z: 0 },
-                        // 3D 회전 (X, Y, Z 축 회전)
-                        rotation: { x: 0, y: 0, z: 0 },
-                        // 물리 속성
                         velocity: { x: 0, y: 0, z: 0 },
+                        rotation: 0,
                         speed: 0,
                         steering: 0,
-                        // 게임 데이터
+                        acceleration: 0,
                         lapCount: 0,
                         lapTime: 0,
-                        bestLapTime: Infinity
+                        totalTime: 0,
+                        bestLapTime: Infinity,
+                        rank: 1,
+                        trackOffset: 0
                     },
                     sensor2: {
                         connected: false,
                         car: document.getElementById('car2'),
-                        camera: document.getElementById('camera2'),
-                        // 3D 위치 (X, Y, Z)
-                        position: { x: 100, y: 0, z: 0 },
-                        // 3D 회전 (X, Y, Z 축 회전)
-                        rotation: { x: 0, y: 0, z: 0 },
-                        // 물리 속성
+                        track: document.getElementById('track2'),
+                        position: { x: 0, y: 0, z: 0 },
                         velocity: { x: 0, y: 0, z: 0 },
+                        rotation: 0,
                         speed: 0,
                         steering: 0,
-                        // 게임 데이터
+                        acceleration: 0,
                         lapCount: 0,
                         lapTime: 0,
-                        bestLapTime: Infinity
+                        totalTime: 0,
+                        bestLapTime: Infinity,
+                        rank: 2,
+                        trackOffset: 0
                     }
                 };
                 
-                // DOM 요소
+                this.gameModes = {
+                    'quick': { laps: 3, description: '빠른 경주' },
+                    'best-of-3': { races: 3, wins: 2, description: '베스트 오브 3' },
+                    'time-attack': { timeLimit: 120, description: '타임 어택' }
+                };
+                
+                this.raceStartTime = 0;
+                this.raceWins = { sensor1: 0, sensor2: 0 };
+                this.currentRace = 1;
+                
                 this.elements = {
                     sessionPanel: document.getElementById('sessionPanel'),
+                    modeSelection: document.getElementById('modeSelection'),
+                    trackSelection: document.getElementById('trackSelection'),
                     gameScreen: document.getElementById('gameScreen'),
                     controlPanel: document.getElementById('controlPanel'),
                     gameHUD: document.getElementById('gameHUD'),
+                    resultsPanel: document.getElementById('resultsPanel'),
                     sessionCode: document.getElementById('sessionCode'),
                     qrContainer: document.getElementById('qrContainer')
                 };
                 
+                this.tracks = {
+                    'speedway': { name: '🏁 스피드웨이', difficulty: '쉬움', friction: 0.95, maxSpeed: 1.2 },
+                    'mountain': { name: '🏔️ 산악 코스', difficulty: '보통', friction: 0.90, maxSpeed: 1.0 },
+                    'city': { name: '🏙️ 도심 서킷', difficulty: '어려움', friction: 0.85, maxSpeed: 0.8 }
+                };
+                this.selectedTrack = 'speedway';
+                
+                this.audioContext = null;
+                this.audioEnabled = false;
+                this.initAudio();
+                
                 this.setupEventListeners();
+                this.generateTrackSegments();
                 this.startGameLoop();
                 
-                console.log('🏎️ Real 3D Racing Game 초기화 완료');
+                console.log('🏎️ 3D 레이싱 게임 초기화 완료');
+            }
+            
+            initAudio() {
+                try {
+                    this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    this.audioEnabled = true;
+                    console.log('🔊 오디오 시스템 초기화 완료');
+                } catch (error) {
+                    console.warn('오디오 시스템 초기화 실패:', error);
+                    this.audioEnabled = false;
+                }
             }
             
             setupEventListeners() {
-                // SessionSDK 이벤트
-                this.sdk.on('connected', (event) => {
+                this.sdk.on('connected', () => {
                     console.log('✅ 서버 연결 완료');
                     this.createSession();
                 });
@@ -619,63 +706,86 @@
                     this.handleSensorDisconnected(data.sensorId);
                 });
                 
-                // 키보드 테스트
                 this.setupKeyboardControls();
             }
             
             setupKeyboardControls() {
-                this.keyboardMode = false;
+                const keys = {};
                 
                 document.addEventListener('keydown', (event) => {
-                    if (event.key === 'F2') {
-                        event.preventDefault();
-                        this.toggleKeyboardMode();
-                        return;
-                    }
-                    
-                    if (this.keyboardMode && this.gameState === 'racing') {
-                        this.handleKeyboardInput(event);
+                    keys[event.key] = true;
+                    if (this.gameState === 'racing') {
+                        this.handleKeyboardInput(keys);
                     }
                 });
                 
                 document.addEventListener('keyup', (event) => {
-                    if (this.keyboardMode && this.gameState === 'racing') {
-                        this.handleKeyboardRelease(event);
+                    keys[event.key] = false;
+                    if (this.gameState === 'racing') {
+                        this.handleKeyboardInput(keys);
                     }
                 });
+                
+                this.keyboardKeys = keys;
             }
             
-            toggleKeyboardMode() {
-                this.keyboardMode = !this.keyboardMode;
-                console.log(`⌨️ 키보드 모드: ${this.keyboardMode ? '활성화' : '비활성화'}`);
+            handleKeyboardInput(keys) {
+                let p1Steering = 0, p1Acceleration = 0;
+                if (keys['a'] || keys['A']) p1Steering = -1;
+                if (keys['d'] || keys['D']) p1Steering = 1;
+                if (keys['w'] || keys['W']) p1Acceleration = 1;
+                if (keys['s'] || keys['S']) p1Acceleration = -0.5;
                 
-                if (this.keyboardMode) {
-                    this.handleSensorConnected('sensor1');
-                    this.handleSensorConnected('sensor2');
+                this.updateCarInput('sensor1', p1Steering, p1Acceleration);
+                
+                let p2Steering = 0, p2Acceleration = 0;
+                if (keys['ArrowLeft']) p2Steering = -1;
+                if (keys['ArrowRight']) p2Steering = 1;
+                if (keys['ArrowUp']) p2Acceleration = 1;
+                if (keys['ArrowDown']) p2Acceleration = -0.5;
+                
+                this.updateCarInput('sensor2', p2Steering, p2Acceleration);
+            }
+            
+            async createSession() {
+                try {
+                    await this.sdk.createSession();
+                } catch (error) {
+                    console.error('세션 생성 실패:', error);
                 }
             }
             
-            handleKeyboardInput(event) {
-                // 플레이어 1: WASD
-                if (event.key === 'w') this.updateCarInput('sensor1', 0, 1);
-                if (event.key === 's') this.updateCarInput('sensor1', 0, -0.5);
-                if (event.key === 'a') this.updateCarInput('sensor1', -1, 0);
-                if (event.key === 'd') this.updateCarInput('sensor1', 1, 0);
+            generateQRCode(sessionCode) {
+                const qrUrl = `${window.location.origin}/sensor.html?session=${sessionCode}`;
                 
-                // 플레이어 2: 화살표 키
-                if (event.key === 'ArrowUp') this.updateCarInput('sensor2', 0, 1);
-                if (event.key === 'ArrowDown') this.updateCarInput('sensor2', 0, -0.5);
-                if (event.key === 'ArrowLeft') this.updateCarInput('sensor2', -1, 0);
-                if (event.key === 'ArrowRight') this.updateCarInput('sensor2', 1, 0);
+                if (typeof QRCode !== 'undefined') {
+                    QRCode.toCanvas(document.createElement('canvas'), qrUrl, (error, canvas) => {
+                        if (!error) {
+                            canvas.style.width = '200px';
+                            canvas.style.height = '200px';
+                            this.elements.qrContainer.innerHTML = '';
+                            this.elements.qrContainer.appendChild(canvas);
+                        } else {
+                            console.error('QR 코드 생성 실패:', error);
+                            this.showQRCodeFallback(qrUrl);
+                        }
+                    });
+                } else {
+                    console.warn('QRCode 라이브러리가 로드되지 않았습니다. 폴백 사용.');
+                    this.showQRCodeFallback(qrUrl);
+                }
             }
             
-            handleKeyboardRelease(event) {
-                // 키를 떼면 입력 중지
-                const keys = ['w', 's', 'a', 'd', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
-                if (keys.includes(event.key)) {
-                    const sensorId = ['w', 's', 'a', 'd'].includes(event.key) ? 'sensor1' : 'sensor2';
-                    this.updateCarInput(sensorId, 0, 0);
-                }
+            showQRCodeFallback(qrUrl) {
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
+                const img = document.createElement('img');
+                img.src = qrApiUrl;
+                img.style.width = '200px';
+                img.style.height = '200px';
+                img.alt = 'QR Code';
+                
+                this.elements.qrContainer.innerHTML = '';
+                this.elements.qrContainer.appendChild(img);
             }
             
             handleSensorConnected(sensorId) {
@@ -685,7 +795,7 @@
                 console.log(`✅ ${sensorId} 센서 연결됨`);
                 
                 if (this.connectedSensors.size >= 2) {
-                    this.startGame();
+                    this.showModeSelection();
                 }
             }
             
@@ -708,9 +818,11 @@
                 const { orientation } = sensorData;
                 const { beta, gamma } = orientation;
                 
-                // 센서 데이터를 3D 움직임으로 변환
-                const steering = gamma * 0.02; // 좌우 기울기 → 핸들
-                const acceleration = beta < -10 ? 1 : (beta > 10 ? -0.5 : 0); // 앞뒤 기울기 → 가속/브레이크
+                let steering = Math.max(-1, Math.min(1, gamma * 0.03));
+                let acceleration = 0;
+                
+                if (beta < -15) acceleration = 1;
+                else if (beta > 15) acceleration = -0.5;
                 
                 this.updateCarInput(sensorId, steering, acceleration);
             }
@@ -723,21 +835,74 @@
                 player.acceleration = acceleration;
             }
             
-            startGame() {
-                this.gameState = 'racing';
-                
-                // UI 전환
+            showModeSelection() {
+                this.gameState = 'mode-selection';
                 this.elements.sessionPanel.classList.add('hidden');
+                this.elements.modeSelection.classList.remove('hidden');
+            }
+            
+            selectMode(mode) {
+                this.gameMode = mode;
+                this.elements.modeSelection.classList.add('hidden');
+                this.showTrackSelection();
+            }
+            
+            showTrackSelection() {
+                this.elements.trackSelection.classList.remove('hidden');
+                
+                document.querySelectorAll('.track-btn').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                document.querySelector('.track-btn').classList.add('selected');
+            }
+            
+            selectTrack(trackId) {
+                this.selectedTrack = trackId;
+                
+                document.querySelectorAll('.track-btn').forEach(btn => {
+                    btn.classList.remove('selected');
+                });
+                event.target.closest('.track-btn').classList.add('selected');
+            }
+            
+            startRaceWithTrack() {
+                this.elements.trackSelection.classList.add('hidden');
+                this.startRace();
+            }
+            
+            startRace() {
+                this.gameState = 'racing';
+                this.raceStartTime = Date.now();
+                
                 this.elements.gameScreen.classList.remove('hidden');
                 this.elements.controlPanel.classList.remove('hidden');
                 this.elements.gameHUD.classList.remove('hidden');
                 
-                console.log('🏁 3D 레이싱 게임 시작!');
+                Object.values(this.players).forEach(player => {
+                    player.position = { x: 0, y: 0, z: 0 };
+                    player.velocity = { x: 0, y: 0, z: 0 };
+                    player.rotation = 0;
+                    player.speed = 0;
+                    player.lapCount = 0;
+                    player.lapTime = 0;
+                    player.totalTime = 0;
+                    player.trackOffset = 0;
+                });
+                
+                console.log(`🏁 ${this.gameModes[this.gameMode].description} 시작! 트랙: ${this.tracks[this.selectedTrack].name}`);
             }
             
-            pauseGame() {
-                this.gameState = 'paused';
-                console.log('⏸️ 게임 일시정지');
+            generateTrackSegments() {
+                ['track1', 'track2'].forEach(trackId => {
+                    const track = document.getElementById(trackId);
+                    
+                    for (let i = 0; i < 20; i++) {
+                        const segment = document.createElement('div');
+                        segment.className = 'track-segment';
+                        segment.style.transform = `translateZ(${-i * 200}px)`;
+                        track.appendChild(segment);
+                    }
+                });
             }
             
             startGameLoop() {
@@ -745,8 +910,9 @@
                     if (this.gameState === 'racing') {
                         this.updatePhysics();
                         this.updateCars();
-                        this.updateCameras();
+                        this.updateTracks();
                         this.updateHUD();
+                        this.checkRaceConditions();
                     }
                     
                     requestAnimationFrame(gameLoop);
@@ -756,168 +922,322 @@
             }
             
             updatePhysics() {
-                Object.values(this.players).forEach(player => {
+                Object.entries(this.players).forEach(([sensorId, player]) => {
                     if (!player.connected) return;
                     
-                    // 가속도 적용
-                    const forwardX = Math.sin(player.rotation.y * Math.PI / 180);
-                    const forwardZ = Math.cos(player.rotation.y * Math.PI / 180);
+                    const trackSettings = this.tracks[this.selectedTrack];
                     
-                    // 가속/브레이크
+                    const forwardX = Math.sin(player.rotation * Math.PI / 180);
+                    const forwardZ = Math.cos(player.rotation * Math.PI / 180);
+                    
                     if (player.acceleration !== 0) {
-                        player.velocity.x += forwardX * player.acceleration * 0.5;
-                        player.velocity.z += forwardZ * player.acceleration * 0.5;
+                        const maxAccel = trackSettings.maxSpeed * 0.3;
+                        player.velocity.x += forwardX * player.acceleration * maxAccel;
+                        player.velocity.z += forwardZ * player.acceleration * maxAccel;
                     }
                     
-                    // 조향 (회전)
                     if (Math.abs(player.steering) > 0.01 && Math.abs(player.speed) > 0.1) {
-                        player.rotation.y += player.steering * player.speed * 2;
+                        player.rotation += player.steering * player.speed * 1.5;
                     }
                     
-                    // 마찰력
-                    player.velocity.x *= 0.95;
-                    player.velocity.z *= 0.95;
+                    player.velocity.x *= trackSettings.friction;
+                    player.velocity.z *= trackSettings.friction;
                     
-                    // 위치 업데이트
                     player.position.x += player.velocity.x;
                     player.position.z += player.velocity.z;
                     
-                    // 속도 계산
                     player.speed = Math.sqrt(player.velocity.x ** 2 + player.velocity.z ** 2);
                     
-                    // 경계 체크 (원형 트랙)
-                    const distance = Math.sqrt(player.position.x ** 2 + player.position.z ** 2);
-                    if (distance > 500) {
-                        // 트랙 밖으로 나가면 속도 감소
-                        player.velocity.x *= 0.8;
-                        player.velocity.z *= 0.8;
-                        
-                        // 위치 조정
-                        const angle = Math.atan2(player.position.z, player.position.x);
-                        player.position.x = Math.cos(angle) * 500;
-                        player.position.z = Math.sin(angle) * 500;
+                    if (Math.abs(player.position.x) > 150) {
+                        player.velocity.x *= 0.7;
+                        player.position.x = Math.sign(player.position.x) * 150;
+                        this.showOffRoadWarning(sensorId);
                     }
                     
-                    // 최소 임계값
-                    if (Math.abs(player.velocity.x) < 0.01) player.velocity.x = 0;
-                    if (Math.abs(player.velocity.z) < 0.01) player.velocity.z = 0;
-                    if (Math.abs(player.speed) < 0.01) player.speed = 0;
+                    player.trackOffset += player.speed * 2;
+                    
+                    if (player.speed > 0.1) {
+                        this.playEngineSound(sensorId, player.speed);
+                    }
+                    
+                    const lapDistance = 5000;
+                    const newLapCount = Math.floor(player.trackOffset / lapDistance);
+                    if (newLapCount > player.lapCount) {
+                        player.lapCount = newLapCount;
+                        const currentTime = (Date.now() - this.raceStartTime) / 1000;
+                        const lapTime = currentTime - player.totalTime;
+                        player.lapTime = lapTime;
+                        player.totalTime = currentTime;
+                        
+                        if (lapTime < player.bestLapTime) {
+                            player.bestLapTime = lapTime;
+                        }
+                        
+                        console.log(`🏁 ${sensorId} 랩 ${player.lapCount} 완주! 시간: ${lapTime.toFixed(2)}초`);
+                    }
                 });
+            }
+            
+            playEngineSound(sensorId, speed) {
+                if (!this.audioEnabled || !this.audioContext) return;
+                
+                try {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    const panNode = this.audioContext.createStereoPanner();
+                    
+                    panNode.pan.value = sensorId === 'sensor1' ? -0.7 : 0.7;
+                    
+                    oscillator.frequency.value = 100 + speed * 20;
+                    gainNode.gain.value = Math.min(0.1, speed * 0.02);
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(panNode);
+                    panNode.connect(this.audioContext.destination);
+                    
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 0.1);
+                } catch (error) {
+                    console.warn('엔진 사운드 재생 실패:', error);
+                }
+            }
+            
+            showOffRoadWarning(sensorId) {
+                const playerNum = sensorId === 'sensor1' ? 1 : 2;
+                const viewport = document.getElementById(`viewport${playerNum}`);
+                
+                viewport.style.filter = 'sepia(0.3) saturate(1.5)';
+                setTimeout(() => {
+                    viewport.style.filter = '';
+                }, 500);
             }
             
             updateCars() {
                 Object.values(this.players).forEach(player => {
                     if (!player.car) return;
                     
-                    // 3D transform 적용
                     const transform = `
-                        translate3d(${player.position.x}px, ${player.position.y}px, ${player.position.z}px)
-                        rotateY(${player.rotation.y}deg)
-                        rotateX(${player.rotation.x}deg)
-                        rotateZ(${player.rotation.z}deg)
+                        translateX(${player.position.x}px)
+                        translateZ(${player.position.z}px)
+                        rotateY(${player.rotation}deg)
                     `;
                     
                     player.car.style.transform = transform;
                 });
             }
             
-            updateCameras() {
-                Object.values(this.players).forEach(player => {
-                    if (!player.camera) return;
+            updateTracks() {
+                Object.entries(this.players).forEach(([sensorId, player]) => {
+                    if (!player.track) return;
                     
-                    // 카메라가 자동차를 따라가도록 설정
-                    const cameraX = -player.position.x;
-                    const cameraY = -100; // 위에서 내려다보는 각도
-                    const cameraZ = -player.position.z + 200; // 뒤에서 따라가기
-                    
-                    const cameraTransform = `
-                        translate3d(${cameraX}px, ${cameraY}px, ${cameraZ}px)
-                        rotateX(-20deg)
-                        rotateY(${-player.rotation.y}deg)
+                    const trackTransform = `
+                        translateZ(${player.trackOffset}px)
+                        rotateY(${-player.rotation}deg)
                     `;
                     
-                    player.camera.style.transform = cameraTransform;
+                    player.track.style.transform = trackTransform;
                 });
             }
             
             updateHUD() {
-                // 플레이어 1 HUD
-                const p1 = this.players.sensor1;
-                document.getElementById('p1Speed').textContent = `${(p1.speed * 10).toFixed(1)} km/h`;
-                document.getElementById('p1Position').textContent = `${p1.position.x.toFixed(0)}, ${p1.position.y.toFixed(0)}, ${p1.position.z.toFixed(0)}`;
-                document.getElementById('p1Lap').textContent = `${p1.lapCount}/3`;
-                
-                // 플레이어 2 HUD
-                const p2 = this.players.sensor2;
-                document.getElementById('p2Speed').textContent = `${(p2.speed * 10).toFixed(1)} km/h`;
-                document.getElementById('p2Position').textContent = `${p2.position.x.toFixed(0)}, ${p2.position.y.toFixed(0)}, ${p2.position.z.toFixed(0)}`;
-                document.getElementById('p2Lap').textContent = `${p2.lapCount}/3`;
+                Object.entries(this.players).forEach(([sensorId, player], index) => {
+                    const playerNum = index + 1;
+                    const speedKmh = Math.round(player.speed * 10);
+                    const currentTime = (Date.now() - this.raceStartTime) / 1000;
+                    
+                    document.getElementById(`p${playerNum}Speed`).textContent = `${speedKmh} km/h`;
+                    document.getElementById(`p${playerNum}Lap`).textContent = `${player.lapCount}/${this.gameModes[this.gameMode]?.laps || 3}`;
+                    document.getElementById(`p${playerNum}Time`).textContent = this.formatTime(currentTime);
+                    
+                    const ranks = this.calculateRanks();
+                    document.getElementById(`p${playerNum}Rank`).textContent = ranks[sensorId];
+                });
             }
             
-            async createSession() {
-                try {
-                    await this.sdk.createSession();
-                } catch (error) {
-                    console.error('세션 생성 실패:', error);
+            calculateRanks() {
+                const players = Object.entries(this.players);
+                players.sort((a, b) => {
+                    const [, playerA] = a;
+                    const [, playerB] = b;
+                    
+                    if (playerA.lapCount !== playerB.lapCount) {
+                        return playerB.lapCount - playerA.lapCount;
+                    }
+                    
+                    return playerB.trackOffset - playerA.trackOffset;
+                });
+                
+                const ranks = {};
+                players.forEach(([sensorId], index) => {
+                    ranks[sensorId] = index + 1;
+                });
+                
+                return ranks;
+            }
+            
+            checkRaceConditions() {
+                const targetLaps = this.gameModes[this.gameMode]?.laps || 3;
+                
+                Object.entries(this.players).forEach(([sensorId, player]) => {
+                    if (player.lapCount >= targetLaps) {
+                        this.finishRace(sensorId);
+                    }
+                });
+                
+                if (this.gameMode === 'time-attack') {
+                    const elapsed = (Date.now() - this.raceStartTime) / 1000;
+                    if (elapsed >= this.gameModes['time-attack'].timeLimit) {
+                        this.finishTimeAttack();
+                    }
                 }
             }
             
-            generateQRCode(sessionCode) {
-                const qrContainer = this.elements.qrContainer;
-                const baseUrl = window.location.origin;
-                const qrUrl = `${baseUrl}/sensor.html?session=${sessionCode}`;
+            finishRace(winnerId) {
+                this.gameState = 'finished';
                 
-                if (typeof QRCode !== 'undefined') {
-                    qrContainer.innerHTML = '';
-                    QRCode.toCanvas(qrContainer, qrUrl, {
-                        width: 200,
-                        height: 200,
-                        margin: 2
-                    }, (error) => {
-                        if (error) {
-                            console.error('QR 코드 생성 실패:', error);
-                            this.generateQRCodeFallback(sessionCode, qrContainer);
-                        }
-                    });
+                const winner = winnerId === 'sensor1' ? 'Player 1' : 'Player 2';
+                
+                this.playVictorySound();
+                
+                if (this.gameMode === 'best-of-3') {
+                    this.raceWins[winnerId]++;
+                    
+                    if (this.raceWins[winnerId] >= 2) {
+                        this.showResults(winner, true);
+                    } else {
+                        this.showResults(winner, false);
+                    }
                 } else {
-                    this.generateQRCodeFallback(sessionCode, qrContainer);
+                    this.showResults(winner, true);
                 }
             }
             
-            generateQRCodeFallback(sessionCode, container) {
-                const baseUrl = window.location.origin;
-                const qrUrl = `${baseUrl}/sensor.html?session=${sessionCode}`;
-                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
+            finishTimeAttack() {
+                const p1Laps = this.players.sensor1.lapCount;
+                const p2Laps = this.players.sensor2.lapCount;
                 
-                container.innerHTML = `<img src="${qrApiUrl}" alt="QR Code" style="width: 200px; height: 200px;">`;
+                let winner;
+                if (p1Laps > p2Laps) winner = 'Player 1';
+                else if (p2Laps > p1Laps) winner = 'Player 2';
+                else winner = '무승부';
+                
+                this.playVictorySound();
+                this.showResults(winner, true);
+            }
+            
+            playVictorySound() {
+                if (!this.audioEnabled || !this.audioContext) return;
+                
+                try {
+                    const oscillator = this.audioContext.createOscillator();
+                    const gainNode = this.audioContext.createGain();
+                    
+                    oscillator.frequency.value = 523;
+                    gainNode.gain.value = 0.3;
+                    
+                    oscillator.connect(gainNode);
+                    gainNode.connect(this.audioContext.destination);
+                    
+                    oscillator.start();
+                    oscillator.stop(this.audioContext.currentTime + 1);
+                } catch (error) {
+                    console.warn('승리 사운드 재생 실패:', error);
+                }
+            }
+            
+            showResults(winner, isFinal) {
+                document.getElementById('winnerText').textContent = 
+                    isFinal ? `🏆 ${winner} 최종 승리!` : `🏁 ${winner} 라운드 승리!`;
+                
+                const statsHtml = this.generateRaceStats();
+                document.getElementById('raceStats').innerHTML = statsHtml;
+                
+                this.elements.resultsPanel.classList.remove('hidden');
+                this.elements.gameHUD.classList.add('hidden');
+            }
+            
+            generateRaceStats() {
+                const p1 = this.players.sensor1;
+                const p2 = this.players.sensor2;
+                
+                return `
+                    <div class="stat-row">
+                        <span>Player 1 랩:</span>
+                        <span>${p1.lapCount}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Player 2 랩:</span>
+                        <span>${p2.lapCount}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Player 1 최고 랩:</span>
+                        <span>${this.formatTime(p1.bestLapTime)}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>Player 2 최고 랩:</span>
+                        <span>${this.formatTime(p2.bestLapTime)}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>총 경주 시간:</span>
+                        <span>${this.formatTime((Date.now() - this.raceStartTime) / 1000)}</span>
+                    </div>
+                    <div class="stat-row">
+                        <span>선택된 트랙:</span>
+                        <span>${this.tracks[this.selectedTrack].name}</span>
+                    </div>
+                `;
+            }
+            
+            formatTime(seconds) {
+                if (seconds === Infinity) return '--:--';
+                const mins = Math.floor(seconds / 60);
+                const secs = (seconds % 60).toFixed(2);
+                return `${mins.toString().padStart(2, '0')}:${secs.padStart(5, '0')}`;
+            }
+            
+            nextRace() {
+                if (this.gameMode === 'best-of-3' && Math.max(...Object.values(this.raceWins)) < 2) {
+                    this.currentRace++;
+                    this.elements.resultsPanel.classList.add('hidden');
+                    this.showTrackSelection();
+                } else {
+                    this.resetGame();
+                }
             }
             
             resetGame() {
-                this.gameState = 'waiting';
+                this.gameState = 'mode-selection';
+                this.raceWins = { sensor1: 0, sensor2: 0 };
+                this.currentRace = 1;
                 
-                // 플레이어 위치 리셋
-                this.players.sensor1.position = { x: 0, y: 0, z: 0 };
-                this.players.sensor1.rotation = { x: 0, y: 0, z: 0 };
-                this.players.sensor1.velocity = { x: 0, y: 0, z: 0 };
-                this.players.sensor1.speed = 0;
-                
-                this.players.sensor2.position = { x: 100, y: 0, z: 0 };
-                this.players.sensor2.rotation = { x: 0, y: 0, z: 0 };
-                this.players.sensor2.velocity = { x: 0, y: 0, z: 0 };
-                this.players.sensor2.speed = 0;
-                
-                // UI 리셋
-                this.elements.sessionPanel.classList.remove('hidden');
+                this.elements.resultsPanel.classList.add('hidden');
                 this.elements.gameScreen.classList.add('hidden');
                 this.elements.controlPanel.classList.add('hidden');
                 this.elements.gameHUD.classList.add('hidden');
+                this.elements.trackSelection.classList.add('hidden');
+                this.elements.modeSelection.classList.remove('hidden');
                 
-                console.log('🔄 게임 리셋 완료');
+                console.log('🔄 게임 재시작');
+            }
+            
+            pauseGame() {
+                if (this.gameState === 'racing') {
+                    this.gameState = 'paused';
+                    console.log('⏸️ 게임 일시정지');
+                    
+                    alert('센서 연결이 끊어졌습니다. 재연결을 기다리는 중...');
+                }
+            }
+            
+            resumeGame() {
+                if (this.gameState === 'paused' && this.connectedSensors.size >= 2) {
+                    this.gameState = 'racing';
+                    console.log('▶️ 게임 재개');
+                }
             }
         }
         
-        // 게임 시작
-        const game = new Real3DRacingGame();
+        const game = new Racing3DGame();
     </script>
 </body>
 </html>

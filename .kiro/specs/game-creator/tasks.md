@@ -6,7 +6,7 @@ CSS 3D transforms를 사용한 자동차 경주 게임을 센서 게임 허브�
 
 ## 작업 목록
 
-- [x] 1. 프로젝트 구조 및 기본 파일 생성
+- [ ] 1. 프로젝트 구조 및 기본 파일 생성
   - 기존 racing-3d 폴더 정리 및 새로운 구조 생성
   - GAME_TEMPLATE.html을 기반으로 한 새로운 index.html 생성
   - CSS 3D transforms 기반 스타일 시스템 구현
