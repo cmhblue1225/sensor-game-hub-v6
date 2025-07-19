@@ -18,7 +18,7 @@
         // QR 라이브러리 동적 로드
         (function() {
             const script = document.createElement('script');
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js';
+            script.src = 'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js';
             script.onerror = function() {
                 console.info('QR 라이브러리 외부 로드 실패 - 폴백 API 사용');
                 window.QRCodeLoadFailed = true;
