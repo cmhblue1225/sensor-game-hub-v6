@@ -13,21 +13,57 @@
     <meta name="format-detection" content="telephone=no">
     <title>🏆 Acorn Battle - 도토리 배틀</title>
     <link rel="stylesheet" href="style.css">
-    <!-- QR 코드 라이브러리 - 폴백 처리 포함 -->
+    <!-- QR 코드 라이브러리 - 다중 CDN 폴백 처리 -->
     <script>
-        // QR 라이브러리 동적 로드
+        // QR 라이브러리 다중 CDN 로드 시스템
         (function() {
-            const script = document.createElement('script');
-            script.src = 'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js';
-            script.onerror = function() {
-                console.info('QR 라이브러리 외부 로드 실패 - 폴백 API 사용');
-                window.QRCodeLoadFailed = true;
-            };
-            script.onload = function() {
-                console.info('QR 라이브러리 로드 성공');
-                window.QRCodeLoaded = true;
-            };
-            document.head.appendChild(script);
+            const cdnSources = [
+                'https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js',
+                'https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js',
+                'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js'
+            ];
+            
+            let currentCdnIndex = 0;
+            
+            function tryLoadQRLibrary() {
+                if (currentCdnIndex >= cdnSources.length) {
+                    console.info('모든 QR 라이브러리 CDN 로드 실패 - 폴백 API 사용');
+                    window.QRCodeLoadFailed = true;
+                    return;
+                }
+                
+                const script = document.createElement('script');
+                script.src = cdnSources[currentCdnIndex];
+                
+                script.onload = function() {
+                    console.info(`QR 라이브러리 로드 성공 (CDN ${currentCdnIndex + 1})`);
+                    window.QRCodeLoaded = true;
+                };
+                
+                script.onerror = function() {
+                    console.warn(`CDN ${currentCdnIndex + 1} 로드 실패, 다음 CDN 시도 중...`);
+                    currentCdnIndex++;
+                    // 이전 스크립트 태그 제거
+                    if (script.parentNode) {
+                        script.parentNode.removeChild(script);
+                    }
+                    // 다음 CDN 시도
+                    setTimeout(tryLoadQRLibrary, 100);
+                };
+                
+                // 타임아웃 설정 (5초)
+                setTimeout(function() {
+                    if (!window.QRCodeLoaded && !window.QRCodeLoadFailed) {
+                        console.warn(`CDN ${currentCdnIndex + 1} 로드 타임아웃`);
+                        script.onerror();
+                    }
+                }, 5000);
+                
+                document.head.appendChild(script);
+            }
+            
+            // QR 라이브러리 로드 시작
+            tryLoadQRLibrary();
         })();
     </script>
     <script src="/js/SessionSDK.js"></script>

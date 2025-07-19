@@ -160,43 +160,125 @@ class AcornBattleGame {
     }
 
     generateQRCode(url) {
-        // QR 코드 폴백 처리 (필수)
-        if (typeof QRCode !== 'undefined') {
-            try {
-                QRCode.toCanvas(this.elements.qrCanvas, url, {
-                    width: 150,
-                    height: 150,
-                    margin: 2
-                }, (error) => {
-                    if (error) {
-                        console.error('QR 코드 생성 실패:', error);
-                        this.showQRFallback(url);
-                    }
-                });
-            } catch (error) {
-                console.error('QR 코드 라이브러리 오류:', error);
+        // QR 라이브러리 로드 대기 및 재시도 로직
+        const maxRetries = 10;
+        let retryCount = 0;
+
+        const tryGenerateQR = () => {
+            // QR 라이브러리가 로드되었는지 확인
+            if (typeof QRCode !== 'undefined') {
+                try {
+                    console.info('QR 라이브러리를 사용하여 QR 코드 생성');
+                    QRCode.toCanvas(this.elements.qrCanvas, url, {
+                        width: 150,
+                        height: 150,
+                        margin: 2,
+                        color: {
+                            dark: '#000000',
+                            light: '#FFFFFF'
+                        }
+                    }, (error) => {
+                        if (error) {
+                            console.error('QR 코드 생성 실패:', error);
+                            this.showQRFallback(url);
+                        } else {
+                            console.info('QR 코드 생성 성공');
+                            if (this.elements.qrCanvas) {
+                                this.elements.qrCanvas.style.display = 'block';
+                            }
+                            if (this.elements.qrFallback) {
+                                this.elements.qrFallback.style.display = 'none';
+                            }
+                        }
+                    });
+                    return;
+                } catch (error) {
+                    console.error('QR 코드 라이브러리 오류:', error);
+                    this.showQRFallback(url);
+                    return;
+                }
+            }
+
+            // QR 라이브러리 로드 실패가 확인된 경우
+            if (window.QRCodeLoadFailed) {
+                console.info('QR 라이브러리 로드 실패 확인됨, 폴백 사용');
+                this.showQRFallback(url);
+                return;
+            }
+
+            // 아직 로딩 중인 경우 재시도
+            if (retryCount < maxRetries) {
+                retryCount++;
+                console.info(`QR 라이브러리 로드 대기 중... (${retryCount}/${maxRetries})`);
+                setTimeout(tryGenerateQR, 500);
+            } else {
+                console.warn('QR 라이브러리 로드 타임아웃, 폴백 사용');
                 this.showQRFallback(url);
             }
-        } else {
-            console.warn('QRCode 라이브러리가 로드되지 않음, 폴백 사용');
-            this.showQRFallback(url);
-        }
+        };
+
+        tryGenerateQR();
     }
 
     showQRFallback(url) {
+        console.info('QR 코드 폴백 API 사용');
+
         if (this.elements.qrCanvas) {
             this.elements.qrCanvas.style.display = 'none';
         }
+
         if (this.elements.qrFallback) {
             this.elements.qrFallback.style.display = 'block';
+            this.elements.qrFallback.innerHTML = '<div style="text-align: center; padding: 10px;">QR 코드 로딩 중...</div>';
 
-            const img = document.createElement('img');
-            img.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
-            img.alt = 'QR Code';
-            img.style.borderRadius = '8px';
+            // 다중 폴백 API 시도
+            const fallbackAPIs = [
+                `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`,
+                `https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=${encodeURIComponent(url)}`
+            ];
 
-            this.elements.qrFallback.innerHTML = '';
-            this.elements.qrFallback.appendChild(img);
+            let apiIndex = 0;
+
+            const tryFallbackAPI = () => {
+                if (apiIndex >= fallbackAPIs.length) {
+                    // 모든 API 실패 시 텍스트로 표시
+                    this.elements.qrFallback.innerHTML = `
+                        <div style="text-align: center; padding: 20px; border: 2px dashed #ccc; border-radius: 8px;">
+                            <p style="margin: 0; font-size: 14px; color: #666;">QR 코드를 표시할 수 없습니다</p>
+                            <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">세션 코드를 직접 입력하세요</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const img = document.createElement('img');
+                img.style.borderRadius = '8px';
+                img.alt = 'QR Code';
+
+                img.onload = () => {
+                    console.info(`QR 코드 폴백 API ${apiIndex + 1} 성공`);
+                    this.elements.qrFallback.innerHTML = '';
+                    this.elements.qrFallback.appendChild(img);
+                };
+
+                img.onerror = () => {
+                    console.warn(`QR 코드 폴백 API ${apiIndex + 1} 실패`);
+                    apiIndex++;
+                    tryFallbackAPI();
+                };
+
+                // 타임아웃 설정 (10초)
+                setTimeout(() => {
+                    if (img.parentNode !== this.elements.qrFallback) {
+                        console.warn(`QR 코드 폴백 API ${apiIndex + 1} 타임아웃`);
+                        img.onerror();
+                    }
+                }, 10000);
+
+                img.src = fallbackAPIs[apiIndex];
+            };
+
+            tryFallbackAPI();
         }
     }
 
@@ -696,14 +778,49 @@ class AcornBattleGame {
     }
 
     initializeGame() {
+        // 네트워크 상태 체크
+        this.checkNetworkStatus();
+
         // 기본 초기화
         console.log('게임 초기화 완료');
     }
 
-    showError(message) {
+    checkNetworkStatus() {
+        // 온라인/오프라인 상태 체크
+        if (!navigator.onLine) {
+            console.warn('오프라인 상태 감지됨');
+            this.showError('인터넷 연결을 확인해주세요');
+        }
+
+        // 네트워크 상태 변화 감지
+        window.addEventListener('online', () => {
+            console.info('온라인 상태로 변경됨');
+            this.hideError('network-offline');
+        });
+
+        window.addEventListener('offline', () => {
+            console.warn('오프라인 상태로 변경됨');
+            this.showError('인터넷 연결이 끊어졌습니다', 'network-offline');
+        });
+    }
+
+    hideError(errorType) {
+        const errorElements = document.querySelectorAll(`.error-message${errorType ? `[data-type="${errorType}"]` : ''}`);
+        errorElements.forEach(element => {
+            if (element.parentNode) {
+                element.parentNode.removeChild(element);
+            }
+        });
+    }
+
+    showError(message, errorType = 'general', duration = 3000) {
+        // 기존 같은 타입의 에러 메시지 제거
+        this.hideError(errorType);
+
         // 간단한 오류 알림 표시
         const errorDiv = document.createElement('div');
         errorDiv.className = 'error-message';
+        errorDiv.setAttribute('data-type', errorType);
         errorDiv.textContent = message;
         errorDiv.style.cssText = `
             position: fixed;
@@ -716,16 +833,19 @@ class AcornBattleGame {
             border-radius: 5px;
             z-index: 1000;
             font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         `;
 
         document.body.appendChild(errorDiv);
 
-        // 3초 후 제거
-        setTimeout(() => {
-            if (errorDiv.parentNode) {
-                errorDiv.parentNode.removeChild(errorDiv);
-            }
-        }, 3000);
+        // 지정된 시간 후 제거 (0이면 수동 제거)
+        if (duration > 0) {
+            setTimeout(() => {
+                if (errorDiv.parentNode) {
+                    errorDiv.parentNode.removeChild(errorDiv);
+                }
+            }, duration);
+        }
     }
 
     cleanup() {
