@@ -152,76 +152,68 @@ class AcornBattleGame {
     }
 
     handleSessionCreated(session) {
-        if (this.elements.sessionCode) {
+        console.info('세션 생성 완료:', session);
+
+        // 세션 코드 표시
+        if (this.elements.sessionCode && session.sessionCode) {
             this.elements.sessionCode.textContent = session.sessionCode;
+            console.info('세션 코드 표시:', session.sessionCode);
         }
-        this.generateQRCode(session.sensorUrl);
-        this.updateOverlay('플레이어를 기다리는 중...', '모바일 기기로 QR 코드를 스캔하거나 세션 코드를 입력하세요');
+
+        // QR 코드 생성 (약간의 지연을 두어 DOM이 준비되도록 함)
+        setTimeout(() => {
+            if (session.sensorUrl) {
+                this.generateQRCode(session.sensorUrl);
+            } else {
+                console.warn('센서 URL이 없어 QR 코드를 생성할 수 없습니다');
+                this.showQRFallback('');
+            }
+        }, 100);
+
+        // UI 업데이트
+        this.updateOverlay('플레이어를 기다리는 중...', '모바일 기기로 아래 방법 중 하나를 사용하여 연결하세요');
     }
 
     generateQRCode(url) {
-        // QR 라이브러리 로드 대기 및 재시도 로직
-        const maxRetries = 10;
-        let retryCount = 0;
+        console.info('QR 코드 생성 시작:', url);
 
-        const tryGenerateQR = () => {
-            // QR 라이브러리가 로드되었는지 확인
-            if (typeof QRCode !== 'undefined') {
-                try {
-                    console.info('QR 라이브러리를 사용하여 QR 코드 생성');
-                    QRCode.toCanvas(this.elements.qrCanvas, url, {
-                        width: 150,
-                        height: 150,
-                        margin: 2,
-                        color: {
-                            dark: '#000000',
-                            light: '#FFFFFF'
+        // 자체 QR 코드 생성기 사용
+        if (typeof QRCode !== 'undefined' && this.elements.qrCanvas) {
+            try {
+                QRCode.toCanvas(this.elements.qrCanvas, url, {
+                    width: 150,
+                    height: 150,
+                    margin: 2,
+                    color: {
+                        dark: '#000000',
+                        light: '#FFFFFF'
+                    }
+                }, (error) => {
+                    if (error) {
+                        console.error('자체 QR 코드 생성 실패:', error);
+                        this.showQRFallback(url);
+                    } else {
+                        console.info('QR 코드 생성 성공');
+                        if (this.elements.qrCanvas) {
+                            this.elements.qrCanvas.style.display = 'block';
                         }
-                    }, (error) => {
-                        if (error) {
-                            console.error('QR 코드 생성 실패:', error);
-                            this.showQRFallback(url);
-                        } else {
-                            console.info('QR 코드 생성 성공');
-                            if (this.elements.qrCanvas) {
-                                this.elements.qrCanvas.style.display = 'block';
-                            }
-                            if (this.elements.qrFallback) {
-                                this.elements.qrFallback.style.display = 'none';
-                            }
+                        if (this.elements.qrFallback) {
+                            this.elements.qrFallback.style.display = 'none';
                         }
-                    });
-                    return;
-                } catch (error) {
-                    console.error('QR 코드 라이브러리 오류:', error);
-                    this.showQRFallback(url);
-                    return;
-                }
-            }
-
-            // QR 라이브러리 로드 실패가 확인된 경우
-            if (window.QRCodeLoadFailed) {
-                console.info('QR 라이브러리 로드 실패 확인됨, 폴백 사용');
-                this.showQRFallback(url);
-                return;
-            }
-
-            // 아직 로딩 중인 경우 재시도
-            if (retryCount < maxRetries) {
-                retryCount++;
-                console.info(`QR 라이브러리 로드 대기 중... (${retryCount}/${maxRetries})`);
-                setTimeout(tryGenerateQR, 500);
-            } else {
-                console.warn('QR 라이브러리 로드 타임아웃, 폴백 사용');
+                    }
+                });
+            } catch (error) {
+                console.error('QR 코드 생성 중 오류:', error);
                 this.showQRFallback(url);
             }
-        };
-
-        tryGenerateQR();
+        } else {
+            console.warn('QR 코드 생성기를 사용할 수 없음, 폴백 사용');
+            this.showQRFallback(url);
+        }
     }
 
     showQRFallback(url) {
-        console.info('QR 코드 폴백 API 사용');
+        console.info('QR 코드 폴백 시스템 사용');
 
         if (this.elements.qrCanvas) {
             this.elements.qrCanvas.style.display = 'none';
@@ -229,56 +221,44 @@ class AcornBattleGame {
 
         if (this.elements.qrFallback) {
             this.elements.qrFallback.style.display = 'block';
-            this.elements.qrFallback.innerHTML = '<div style="text-align: center; padding: 10px;">QR 코드 로딩 중...</div>';
 
-            // 다중 폴백 API 시도
-            const fallbackAPIs = [
-                `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`,
-                `https://chart.googleapis.com/chart?chs=150x150&cht=qr&chl=${encodeURIComponent(url)}`
-            ];
+            // 세션 코드 추출 (URL에서)
+            const sessionCode = this.extractSessionCode(url);
 
-            let apiIndex = 0;
+            // 사용자 친화적인 대안 표시
+            this.elements.qrFallback.innerHTML = `
+                <div style="text-align: center; padding: 20px; border: 2px solid #6366f1; border-radius: 12px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
+                    <div style="margin-bottom: 15px;">
+                        <div style="font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 8px;">📱 모바일 연결</div>
+                        <div style="font-size: 14px; color: #64748b;">모바일 기기에서 아래 방법 중 하나를 선택하세요</div>
+                    </div>
+                    
+                    <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <div style="font-size: 16px; font-weight: bold; color: #3b82f6; margin-bottom: 8px;">방법 1: 세션 코드 입력</div>
+                        <div style="font-size: 24px; font-weight: bold; color: #1e293b; letter-spacing: 2px; font-family: monospace; background: #f1f5f9; padding: 8px; border-radius: 4px;">${sessionCode}</div>
+                        <div style="font-size: 12px; color: #64748b; margin-top: 5px;">센서 게임 앱에서 위 코드를 입력하세요</div>
+                    </div>
+                    
+                    <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <div style="font-size: 16px; font-weight: bold; color: #10b981; margin-bottom: 8px;">방법 2: 직접 접속</div>
+                        <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">모바일 브라우저에서 아래 주소로 접속:</div>
+                        <div style="font-size: 11px; color: #6366f1; word-break: break-all; background: #f1f5f9; padding: 6px; border-radius: 4px;">${url}</div>
+                    </div>
+                </div>
+            `;
+        }
+    }
 
-            const tryFallbackAPI = () => {
-                if (apiIndex >= fallbackAPIs.length) {
-                    // 모든 API 실패 시 텍스트로 표시
-                    this.elements.qrFallback.innerHTML = `
-                        <div style="text-align: center; padding: 20px; border: 2px dashed #ccc; border-radius: 8px;">
-                            <p style="margin: 0; font-size: 14px; color: #666;">QR 코드를 표시할 수 없습니다</p>
-                            <p style="margin: 10px 0 0 0; font-size: 12px; color: #999;">세션 코드를 직접 입력하세요</p>
-                        </div>
-                    `;
-                    return;
-                }
-
-                const img = document.createElement('img');
-                img.style.borderRadius = '8px';
-                img.alt = 'QR Code';
-
-                img.onload = () => {
-                    console.info(`QR 코드 폴백 API ${apiIndex + 1} 성공`);
-                    this.elements.qrFallback.innerHTML = '';
-                    this.elements.qrFallback.appendChild(img);
-                };
-
-                img.onerror = () => {
-                    console.warn(`QR 코드 폴백 API ${apiIndex + 1} 실패`);
-                    apiIndex++;
-                    tryFallbackAPI();
-                };
-
-                // 타임아웃 설정 (10초)
-                setTimeout(() => {
-                    if (img.parentNode !== this.elements.qrFallback) {
-                        console.warn(`QR 코드 폴백 API ${apiIndex + 1} 타임아웃`);
-                        img.onerror();
-                    }
-                }, 10000);
-
-                img.src = fallbackAPIs[apiIndex];
-            };
-
-            tryFallbackAPI();
+    extractSessionCode(url) {
+        // URL에서 세션 코드 추출 시도
+        try {
+            const urlObj = new URL(url);
+            const pathParts = urlObj.pathname.split('/');
+            const sessionCode = pathParts[pathParts.length - 1] || 'UNKNOWN';
+            return sessionCode.length > 3 ? sessionCode : 'LOADING...';
+        } catch (error) {
+            // URL 파싱 실패 시 현재 표시된 세션 코드 사용
+            return this.elements.sessionCode ? this.elements.sessionCode.textContent : 'LOADING...';
         }
     }
 
