@@ -3141,6 +3141,8 @@ class AcornSpawner {
         });
     }
 }
+
+// AcornBattleGame 클래스 - 메인 게임 클래스
 class AcornBattleGame {
     constructor() {
         // 브라우저 호환성 초기화
@@ -4052,7 +4054,6 @@ class AcornBattleGame {
         if (this.performanceManager) {
             this.performanceManager.cleanup();
         }
-    }
     }
     
     // 시각적 효과 정리
