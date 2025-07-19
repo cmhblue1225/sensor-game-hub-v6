@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="mobile-web-app-capable" content="yes">
@@ -12,10 +14,25 @@
     <title>🏆 Acorn Battle - 도토리 배틀</title>
     <link rel="stylesheet" href="style.css">
     <!-- QR 코드 라이브러리 - 폴백 처리 포함 -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js" 
-            onerror="console.warn('QR 라이브러리 로드 실패 - 폴백 사용')"></script>
+    <script>
+        // QR 라이브러리 동적 로드
+        (function() {
+            const script = document.createElement('script');
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.3/qrcode.min.js';
+            script.onerror = function() {
+                console.info('QR 라이브러리 외부 로드 실패 - 폴백 API 사용');
+                window.QRCodeLoadFailed = true;
+            };
+            script.onload = function() {
+                console.info('QR 라이브러리 로드 성공');
+                window.QRCodeLoaded = true;
+            };
+            document.head.appendChild(script);
+        })();
+    </script>
     <script src="/js/SessionSDK.js"></script>
 </head>
+
 <body>
     <div class="game-container">
         <!-- 게임 헤더 -->
@@ -72,13 +89,13 @@
                     <h3>🏆 도토리 배틀 - 게임 가이드</h3>
                     <button id="close-guide-btn" class="close-guide-btn">×</button>
                 </div>
-                
+
                 <div class="guide-sections">
                     <div class="guide-section">
                         <h4>🎯 게임 목표</h4>
                         <p>제한 시간 1분 내에 더 많은 도토리를 수집하여 승리하세요!</p>
                     </div>
-                    
+
                     <div class="guide-section">
                         <h4>🎮 조작법</h4>
                         <div class="controls-grid">
@@ -98,7 +115,7 @@
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="guide-section">
                         <h4>🎲 게임 규칙</h4>
                         <ul class="rules-list">
@@ -109,7 +126,7 @@
                             <li>⏰ 1분 후 더 많은 점수를 획득한 플레이어가 승리!</li>
                         </ul>
                     </div>
-                    
+
                     <div class="guide-section">
                         <h4>💡 게임 팁</h4>
                         <ul class="tips-list">
@@ -119,7 +136,7 @@
                             <li>충돌 후 무적 시간을 활용하여 안전하게 이동하세요</li>
                         </ul>
                     </div>
-                    
+
                     <div class="guide-section">
                         <h4>🎨 게임 요소</h4>
                         <div class="elements-grid">
@@ -142,7 +159,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="guide-footer">
                     <button id="start-tutorial-btn" class="tutorial-btn">튜토리얼 시작</button>
                     <button id="close-guide-footer-btn" class="guide-close-btn">게임 시작</button>
@@ -193,4 +210,5 @@
 
     <script src="game.js"></script>
 </body>
+
 </html>
