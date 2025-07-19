@@ -1,0 +1,105 @@
+{
+  "id": "acorn-battle",
+  "name": "Acorn Battle",
+  "displayName": "🏆 도토리 배틀",
+  "description": "2명의 플레이어가 센서를 이용해 도토리를 수집하고 상대방의 도토리를 훔치는 실시간 대전 게임",
+  "version": "1.0.0",
+  "author": "Sensor Game Hub",
+  "category": "multiplayer",
+  "gameType": "dual",
+  "minPlayers": 2,
+  "maxPlayers": 2,
+  "duration": "1분",
+  "difficulty": "보통",
+  "tags": ["센서", "대전", "실시간", "도토리", "수집"],
+  "sensors": {
+    "required": ["orientation", "motion"],
+    "optional": ["rotationRate"],
+    "compatibility": {
+      "ios": true,
+      "android": true,
+      "desktop": false
+    }
+  },
+  "features": {
+    "realtime": true,
+    "multiplayer": true,
+    "sensorControl": true,
+    "collision": true,
+    "scoring": true,
+    "timer": true,
+    "audio": true,
+    "particles": true,
+    "responsive": true
+  },
+  "controls": {
+    "tilt": "기기를 기울여 플레이어 이동",
+    "shake": "기기를 흔들어 가속 이동"
+  },
+  "rules": {
+    "objective": "제한 시간 내에 더 많은 도토리를 수집하여 승리하세요",
+    "gameplay": [
+      "맵에 흩어진 도토리를 수집하세요",
+      "도토리를 자신의 점수 구역에 저장하여 점수를 획득하세요",
+      "상대방의 점수 구역에서 도토리를 훔칠 수 있습니다",
+      "움직이는 장애물과 충돌하면 잠시 기절합니다",
+      "1분 후 더 많은 점수를 획득한 플레이어가 승리합니다"
+    ],
+    "tips": [
+      "기기를 부드럽게 기울여 정확한 조작을 하세요",
+      "상대방이 도토리를 저장하는 순간을 노려 훔치세요",
+      "장애물의 움직임 패턴을 파악하여 피하세요",
+      "무적 시간을 활용하여 안전하게 이동하세요"
+    ]
+  },
+  "ui": {
+    "theme": "dark",
+    "colors": {
+      "primary": "#6366f1",
+      "secondary": "#8b5cf6",
+      "player1": "#3B82F6",
+      "player2": "#EF4444",
+      "acorn": "#8B4513",
+      "obstacle": "#FF4444"
+    },
+    "responsive": true,
+    "mobile": true
+  },
+  "performance": {
+    "targetFPS": 30,
+    "minFPS": 15,
+    "optimizations": {
+      "mobile": true,
+      "lowEnd": true,
+      "throttling": true
+    }
+  },
+  "compatibility": {
+    "browsers": ["Chrome", "Safari", "Firefox", "Edge"],
+    "devices": ["iPhone", "iPad", "Android Phone", "Android Tablet"],
+    "minIOSVersion": "13.0",
+    "minAndroidVersion": "6.0"
+  },
+  "assets": {
+    "thumbnail": "thumbnail.png",
+    "screenshots": ["screenshot1.png", "screenshot2.png"],
+    "icon": "icon.png"
+  },
+  "technical": {
+    "framework": "Vanilla JavaScript",
+    "canvas": "2D",
+    "audio": "Web Audio API",
+    "sensors": "DeviceOrientation/Motion API",
+    "networking": "Socket.IO",
+    "storage": "SessionStorage"
+  },
+  "accessibility": {
+    "colorBlind": true,
+    "highContrast": false,
+    "screenReader": false,
+    "keyboard": false
+  },
+  "lastUpdated": "2024-01-18",
+  "status": "stable",
+  "beta": false
+}
