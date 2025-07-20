@@ -489,7 +489,143 @@ class AcornBattleGame {
             }
         });
 
+        // 충돌 감지 및 처리
+        this.checkCollisions();
+
+        // 도토리 추가 생성 (5초마다, 최대 15개)
+        this.spawnAcorns();
+
         this.updateUI();
+    }
+
+    checkCollisions() {
+        const players = [this.gameState.players.sensor1, this.gameState.players.sensor2];
+        
+        players.forEach((player, playerIndex) => {
+            if (!player || player.stunned) return;
+
+            // 도토리 수집 체크
+            this.gameState.acorns = this.gameState.acorns.filter(acorn => {
+                const distance = Math.sqrt(
+                    Math.pow(player.position.x - acorn.position.x, 2) +
+                    Math.pow(player.position.y - acorn.position.y, 2)
+                );
+
+                if (distance < player.radius + acorn.radius) {
+                    // 도토리 수집
+                    player.carriedAcorns = (player.carriedAcorns || 0) + 1;
+                    console.log(`플레이어 ${playerIndex + 1}이 도토리 수집! 보유: ${player.carriedAcorns}`);
+                    return false; // 도토리 제거
+                }
+                return true; // 도토리 유지
+            });
+
+            // 점수 구역 체크
+            this.checkScoreZones(player, playerIndex);
+
+            // 장애물 충돌 체크
+            if (!player.invulnerable) {
+                this.checkObstacleCollisions(player, playerIndex);
+            }
+        });
+    }
+
+    checkScoreZones(player, playerIndex) {
+        const sensorId = playerIndex === 0 ? 'sensor1' : 'sensor2';
+        const carriedAcorns = player.carriedAcorns || 0;
+        
+        if (carriedAcorns === 0) return;
+
+        // 자신의 점수 구역 (왼쪽 = sensor1, 오른쪽 = sensor2)
+        const ownZone = playerIndex === 0 ? 
+            { x: 0, y: 0, width: 100, height: this.canvas.height } :
+            { x: this.canvas.width - 100, y: 0, width: 100, height: this.canvas.height };
+
+        // 상대방 점수 구역
+        const enemyZone = playerIndex === 0 ? 
+            { x: this.canvas.width - 100, y: 0, width: 100, height: this.canvas.height } :
+            { x: 0, y: 0, width: 100, height: this.canvas.height };
+
+        // 자신의 점수 구역에서 점수 저장
+        if (this.isInZone(player.position, ownZone)) {
+            player.score += carriedAcorns;
+            player.carriedAcorns = 0;
+            console.log(`플레이어 ${playerIndex + 1} 점수 저장! 현재 점수: ${player.score}`);
+        }
+
+        // 상대방 점수 구역에서 도토리 훔치기
+        if (this.isInZone(player.position, enemyZone)) {
+            const enemyPlayer = playerIndex === 0 ? this.gameState.players.sensor2 : this.gameState.players.sensor1;
+            if (enemyPlayer.score > 0) {
+                const stolenAcorns = Math.min(carriedAcorns, enemyPlayer.score);
+                enemyPlayer.score -= stolenAcorns;
+                player.carriedAcorns = Math.max(0, carriedAcorns - stolenAcorns);
+                player.score += stolenAcorns;
+                console.log(`플레이어 ${playerIndex + 1}이 ${stolenAcorns}개 도토리 훔침!`);
+            }
+        }
+    }
+
+    isInZone(position, zone) {
+        return position.x >= zone.x && 
+               position.x <= zone.x + zone.width &&
+               position.y >= zone.y && 
+               position.y <= zone.y + zone.height;
+    }
+
+    checkObstacleCollisions(player, playerIndex) {
+        this.gameState.obstacles.forEach(obstacle => {
+            // 원-사각형 충돌 감지
+            const closestX = Math.max(obstacle.position.x, 
+                Math.min(player.position.x, obstacle.position.x + obstacle.size.width));
+            const closestY = Math.max(obstacle.position.y, 
+                Math.min(player.position.y, obstacle.position.y + obstacle.size.height));
+
+            const distance = Math.sqrt(
+                Math.pow(player.position.x - closestX, 2) +
+                Math.pow(player.position.y - closestY, 2)
+            );
+
+            if (distance < player.radius) {
+                // 충돌 발생
+                player.stunned = true;
+                player.stunnedUntil = Date.now() + 500; // 0.5초 기절
+                
+                // 도토리 떨어뜨리기
+                const droppedAcorns = player.carriedAcorns || 0;
+                if (droppedAcorns > 0) {
+                    for (let i = 0; i < droppedAcorns; i++) {
+                        this.gameState.acorns.push({
+                            position: {
+                                x: player.position.x + (Math.random() - 0.5) * 60,
+                                y: player.position.y + (Math.random() - 0.5) * 60
+                            },
+                            radius: 10
+                        });
+                    }
+                    player.carriedAcorns = 0;
+                }
+                
+                console.log(`플레이어 ${playerIndex + 1} 장애물 충돌! ${droppedAcorns}개 도토리 떨어뜨림`);
+            }
+        });
+    }
+
+    spawnAcorns() {
+        // 5초마다 도토리 추가 생성
+        if (!this.lastAcornSpawn) this.lastAcornSpawn = Date.now();
+        
+        if (Date.now() - this.lastAcornSpawn >= 5000 && this.gameState.acorns.length < 15) {
+            this.gameState.acorns.push({
+                position: {
+                    x: Math.random() * (this.canvas.width - 200) + 100, // 점수 구역 피하기
+                    y: Math.random() * (this.canvas.height - 100) + 50
+                },
+                radius: 10
+            });
+            this.lastAcornSpawn = Date.now();
+            console.log('새 도토리 생성! 총 개수:', this.gameState.acorns.length);
+        }
     }
 
     render() {
@@ -501,6 +637,9 @@ class AcornBattleGame {
         // 배경 렌더링
         this.renderBackground();
 
+        // 점수 구역 렌더링
+        this.renderScoreZones();
+
         // 도토리 렌더링
         this.renderAcorns();
 
@@ -509,6 +648,9 @@ class AcornBattleGame {
 
         // 플레이어 렌더링
         this.renderPlayers();
+
+        // 플레이어 보유 도토리 표시
+        this.renderCarriedAcorns();
     }
 
     renderBackground() {
@@ -521,19 +663,55 @@ class AcornBattleGame {
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
+    renderScoreZones() {
+        // 플레이어 1 점수 구역 (왼쪽, 파란색)
+        this.ctx.fillStyle = 'rgba(59, 130, 246, 0.2)';
+        this.ctx.fillRect(0, 0, 100, this.canvas.height);
+        this.ctx.strokeStyle = '#3B82F6';
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeRect(0, 0, 100, this.canvas.height);
+
+        // 플레이어 2 점수 구역 (오른쪽, 빨간색)
+        this.ctx.fillStyle = 'rgba(239, 68, 68, 0.2)';
+        this.ctx.fillRect(this.canvas.width - 100, 0, 100, this.canvas.height);
+        this.ctx.strokeStyle = '#EF4444';
+        this.ctx.lineWidth = 3;
+        this.ctx.strokeRect(this.canvas.width - 100, 0, 100, this.canvas.height);
+
+        // 구역 라벨
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = 'bold 16px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('P1 구역', 50, 30);
+        this.ctx.fillText('P2 구역', this.canvas.width - 50, 30);
+    }
+
     renderAcorns() {
         this.ctx.fillStyle = '#8B4513';
+        this.ctx.strokeStyle = '#654321';
+        this.ctx.lineWidth = 2;
+        
         this.gameState.acorns.forEach(acorn => {
             this.ctx.beginPath();
             this.ctx.arc(acorn.position.x, acorn.position.y, acorn.radius, 0, Math.PI * 2);
             this.ctx.fill();
+            this.ctx.stroke();
         });
     }
 
     renderObstacles() {
         this.ctx.fillStyle = '#FF4444';
+        this.ctx.strokeStyle = '#CC0000';
+        this.ctx.lineWidth = 2;
+        
         this.gameState.obstacles.forEach(obstacle => {
             this.ctx.fillRect(
+                obstacle.position.x,
+                obstacle.position.y,
+                obstacle.size.width,
+                obstacle.size.height
+            );
+            this.ctx.strokeRect(
                 obstacle.position.x,
                 obstacle.position.y,
                 obstacle.size.width,
@@ -545,17 +723,52 @@ class AcornBattleGame {
     renderPlayers() {
         // 플레이어 1 (파란색)
         const player1 = this.gameState.players.sensor1;
-        this.ctx.fillStyle = player1.invulnerable ? '#87CEEB' : '#3B82F6';
+        this.ctx.fillStyle = player1.stunned ? '#666666' : 
+                           player1.invulnerable ? '#87CEEB' : '#3B82F6';
+        this.ctx.strokeStyle = '#FFFFFF';
+        this.ctx.lineWidth = 3;
         this.ctx.beginPath();
         this.ctx.arc(player1.position.x, player1.position.y, player1.radius, 0, Math.PI * 2);
         this.ctx.fill();
+        this.ctx.stroke();
 
         // 플레이어 2 (빨간색)
         const player2 = this.gameState.players.sensor2;
-        this.ctx.fillStyle = player2.invulnerable ? '#FFB6C1' : '#EF4444';
+        this.ctx.fillStyle = player2.stunned ? '#666666' : 
+                           player2.invulnerable ? '#FFB6C1' : '#EF4444';
+        this.ctx.strokeStyle = '#FFFFFF';
+        this.ctx.lineWidth = 3;
         this.ctx.beginPath();
         this.ctx.arc(player2.position.x, player2.position.y, player2.radius, 0, Math.PI * 2);
         this.ctx.fill();
+        this.ctx.stroke();
+
+        // 플레이어 번호 표시
+        this.ctx.fillStyle = '#FFFFFF';
+        this.ctx.font = 'bold 14px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText('1', player1.position.x, player1.position.y + 5);
+        this.ctx.fillText('2', player2.position.x, player2.position.y + 5);
+    }
+
+    renderCarriedAcorns() {
+        // 플레이어 1 보유 도토리 표시
+        const player1 = this.gameState.players.sensor1;
+        if (player1.carriedAcorns > 0) {
+            this.ctx.fillStyle = '#FFD700';
+            this.ctx.font = 'bold 12px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`🌰${player1.carriedAcorns}`, player1.position.x, player1.position.y - 30);
+        }
+
+        // 플레이어 2 보유 도토리 표시
+        const player2 = this.gameState.players.sensor2;
+        if (player2.carriedAcorns > 0) {
+            this.ctx.fillStyle = '#FFD700';
+            this.ctx.font = 'bold 12px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`🌰${player2.carriedAcorns}`, player2.position.x, player2.position.y - 30);
+        }
     }
 
     updateTimer() {
@@ -855,5 +1068,189 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('beforeunload', () => {
     if (window.acornBattleGame) {
         window.acornBattleGame.cleanup();
+    }
+});   
+         } else {
+                this.elements.timer.style.color = '';
+                this.elements.timer.style.fontWeight = '';
+            }
+        }
+    }
+
+    updateScoreUI() {
+        if (this.elements.player1Score) {
+            this.elements.player1Score.textContent = this.gameState.players.sensor1.score;
+        }
+        if (this.elements.player2Score) {
+            this.elements.player2Score.textContent = this.gameState.players.sensor2.score;
+        }
+    }
+
+    updateUI() {
+        this.updateScoreUI();
+    }
+
+    endGame() {
+        this.gameState.phase = 'ended';
+        
+        // 게임 루프 중지
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+
+        // 승부 판정
+        const player1Score = this.gameState.players.sensor1.score;
+        const player2Score = this.gameState.players.sensor2.score;
+        
+        let resultTitle = '';
+        if (player1Score > player2Score) {
+            resultTitle = '🎉 플레이어 1 승리!';
+        } else if (player2Score > player1Score) {
+            resultTitle = '🎉 플레이어 2 승리!';
+        } else {
+            resultTitle = '🤝 무승부!';
+        }
+
+        // 결과 모달 표시
+        if (this.elements.resultModal) {
+            if (this.elements.resultTitle) {
+                this.elements.resultTitle.textContent = resultTitle;
+            }
+            if (this.elements.finalScoreP1) {
+                this.elements.finalScoreP1.textContent = player1Score;
+            }
+            if (this.elements.finalScoreP2) {
+                this.elements.finalScoreP2.textContent = player2Score;
+            }
+            this.elements.resultModal.style.display = 'flex';
+        }
+
+        console.log('게임 종료:', resultTitle);
+    }
+
+    pauseGame() {
+        if (this.gameState.phase === 'playing') {
+            this.gameState.phase = 'paused';
+            this.updateOverlay('게임 일시정지', '플레이어 재연결을 기다리는 중...');
+            if (this.elements.gameOverlay) {
+                this.elements.gameOverlay.style.display = 'flex';
+            }
+        }
+    }
+
+    resumeGame() {
+        if (this.gameState.phase === 'paused') {
+            this.gameState.phase = 'playing';
+            if (this.elements.gameOverlay) {
+                this.elements.gameOverlay.style.display = 'none';
+            }
+        }
+    }
+
+    togglePause() {
+        if (this.gameState.phase === 'playing') {
+            this.pauseGame();
+        } else if (this.gameState.phase === 'paused') {
+            this.resumeGame();
+        }
+    }
+
+    restartGame() {
+        // 게임 상태 초기화
+        this.gameState.phase = 'ready';
+        this.gameState.startTime = null;
+        this.gameState.timeRemaining = 60;
+
+        // 플레이어 상태 초기화
+        this.gameState.players.sensor1.score = 0;
+        this.gameState.players.sensor1.carriedAcorns = 0;
+        this.gameState.players.sensor1.stunned = false;
+        this.gameState.players.sensor1.invulnerable = false;
+
+        this.gameState.players.sensor2.score = 0;
+        this.gameState.players.sensor2.carriedAcorns = 0;
+        this.gameState.players.sensor2.stunned = false;
+        this.gameState.players.sensor2.invulnerable = false;
+
+        // UI 초기화
+        if (this.elements.resultModal) {
+            this.elements.resultModal.style.display = 'none';
+        }
+        if (this.elements.gameOverlay) {
+            this.elements.gameOverlay.style.display = 'flex';
+        }
+        if (this.elements.timer) {
+            this.elements.timer.style.color = '';
+            this.elements.timer.style.fontWeight = '';
+        }
+
+        // 게임 루프 중지
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+
+        this.updateOverlay('게임 준비 완료!', '게임 시작 버튼을 클릭하세요');
+        this.updateScoreUI();
+        this.updateTimerUI();
+
+        console.log('게임 재시작 준비 완료');
+    }
+
+    showError(message) {
+        console.error('게임 오류:', message);
+        this.updateOverlay('오류 발생', message);
+        if (this.elements.gameOverlay) {
+            this.elements.gameOverlay.style.display = 'flex';
+        }
+    }
+
+    cleanup() {
+        // 게임 루프 정리
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+
+        // SDK 정리
+        if (this.sdk) {
+            try {
+                this.sdk.disconnect();
+            } catch (error) {
+                console.warn('SDK 정리 중 오류:', error);
+            }
+        }
+
+        console.log('게임 정리 완료');
+    }
+
+    initializeGame() {
+        // 캔버스 크기 설정
+        if (this.canvas) {
+            this.canvas.width = 800;
+            this.canvas.height = 600;
+        }
+
+        // SDK 연결 시작
+        try {
+            this.sdk.connect();
+        } catch (error) {
+            console.error('SDK 연결 실패:', error);
+            this.showError('서버 연결에 실패했습니다. 페이지를 새로고침해주세요.');
+        }
+    }
+}
+
+// 게임 초기화
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('Acorn Battle 게임 로딩 시작');
+    
+    try {
+        const game = new AcornBattleGame();
+        console.log('Acorn Battle 게임 초기화 완료');
+        
+        // 전역 참조 (디버깅용)
+        window.acornBattleGame = game;
+    } catch (error) {
+        console.error('게임 초기화 실패:', error);
+        alert('게임을 시작할 수 없습니다. 페이지를 새로고침해주세요.');
     }
 });
