@@ -500,7 +500,7 @@ class AcornBattleGame {
 
     checkCollisions() {
         const players = [this.gameState.players.sensor1, this.gameState.players.sensor2];
-        
+
         players.forEach((player, playerIndex) => {
             if (!player || player.stunned) return;
 
@@ -533,16 +533,16 @@ class AcornBattleGame {
     checkScoreZones(player, playerIndex) {
         const sensorId = playerIndex === 0 ? 'sensor1' : 'sensor2';
         const carriedAcorns = player.carriedAcorns || 0;
-        
+
         if (carriedAcorns === 0) return;
 
         // 자신의 점수 구역 (왼쪽 = sensor1, 오른쪽 = sensor2)
-        const ownZone = playerIndex === 0 ? 
+        const ownZone = playerIndex === 0 ?
             { x: 0, y: 0, width: 100, height: this.canvas.height } :
             { x: this.canvas.width - 100, y: 0, width: 100, height: this.canvas.height };
 
         // 상대방 점수 구역
-        const enemyZone = playerIndex === 0 ? 
+        const enemyZone = playerIndex === 0 ?
             { x: this.canvas.width - 100, y: 0, width: 100, height: this.canvas.height } :
             { x: 0, y: 0, width: 100, height: this.canvas.height };
 
@@ -567,18 +567,18 @@ class AcornBattleGame {
     }
 
     isInZone(position, zone) {
-        return position.x >= zone.x && 
-               position.x <= zone.x + zone.width &&
-               position.y >= zone.y && 
-               position.y <= zone.y + zone.height;
+        return position.x >= zone.x &&
+            position.x <= zone.x + zone.width &&
+            position.y >= zone.y &&
+            position.y <= zone.y + zone.height;
     }
 
     checkObstacleCollisions(player, playerIndex) {
         this.gameState.obstacles.forEach(obstacle => {
             // 원-사각형 충돌 감지
-            const closestX = Math.max(obstacle.position.x, 
+            const closestX = Math.max(obstacle.position.x,
                 Math.min(player.position.x, obstacle.position.x + obstacle.size.width));
-            const closestY = Math.max(obstacle.position.y, 
+            const closestY = Math.max(obstacle.position.y,
                 Math.min(player.position.y, obstacle.position.y + obstacle.size.height));
 
             const distance = Math.sqrt(
@@ -590,7 +590,7 @@ class AcornBattleGame {
                 // 충돌 발생
                 player.stunned = true;
                 player.stunnedUntil = Date.now() + 500; // 0.5초 기절
-                
+
                 // 도토리 떨어뜨리기
                 const droppedAcorns = player.carriedAcorns || 0;
                 if (droppedAcorns > 0) {
@@ -605,7 +605,7 @@ class AcornBattleGame {
                     }
                     player.carriedAcorns = 0;
                 }
-                
+
                 console.log(`플레이어 ${playerIndex + 1} 장애물 충돌! ${droppedAcorns}개 도토리 떨어뜨림`);
             }
         });
@@ -614,7 +614,7 @@ class AcornBattleGame {
     spawnAcorns() {
         // 5초마다 도토리 추가 생성
         if (!this.lastAcornSpawn) this.lastAcornSpawn = Date.now();
-        
+
         if (Date.now() - this.lastAcornSpawn >= 5000 && this.gameState.acorns.length < 15) {
             this.gameState.acorns.push({
                 position: {
@@ -690,7 +690,7 @@ class AcornBattleGame {
         this.ctx.fillStyle = '#8B4513';
         this.ctx.strokeStyle = '#654321';
         this.ctx.lineWidth = 2;
-        
+
         this.gameState.acorns.forEach(acorn => {
             this.ctx.beginPath();
             this.ctx.arc(acorn.position.x, acorn.position.y, acorn.radius, 0, Math.PI * 2);
@@ -703,7 +703,7 @@ class AcornBattleGame {
         this.ctx.fillStyle = '#FF4444';
         this.ctx.strokeStyle = '#CC0000';
         this.ctx.lineWidth = 2;
-        
+
         this.gameState.obstacles.forEach(obstacle => {
             this.ctx.fillRect(
                 obstacle.position.x,
@@ -723,8 +723,8 @@ class AcornBattleGame {
     renderPlayers() {
         // 플레이어 1 (파란색)
         const player1 = this.gameState.players.sensor1;
-        this.ctx.fillStyle = player1.stunned ? '#666666' : 
-                           player1.invulnerable ? '#87CEEB' : '#3B82F6';
+        this.ctx.fillStyle = player1.stunned ? '#666666' :
+            player1.invulnerable ? '#87CEEB' : '#3B82F6';
         this.ctx.strokeStyle = '#FFFFFF';
         this.ctx.lineWidth = 3;
         this.ctx.beginPath();
@@ -734,8 +734,8 @@ class AcornBattleGame {
 
         // 플레이어 2 (빨간색)
         const player2 = this.gameState.players.sensor2;
-        this.ctx.fillStyle = player2.stunned ? '#666666' : 
-                           player2.invulnerable ? '#FFB6C1' : '#EF4444';
+        this.ctx.fillStyle = player2.stunned ? '#666666' :
+            player2.invulnerable ? '#FFB6C1' : '#EF4444';
         this.ctx.strokeStyle = '#FFFFFF';
         this.ctx.lineWidth = 3;
         this.ctx.beginPath();
