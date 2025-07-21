@@ -479,8 +479,8 @@ export class ShotTargetGame {
         // 점수 시스템 게임 시작 시간 설정
         this.scoringSystem.setGameStartTime();
         
-        // 사격 시스템에 표적 목록 설정
-        this.shootingSystem.setTargets(this.targets);
+        // 사격 시스템에 표적 목록 getter 설정 (실시간 동기화)
+        this.shootingSystem.setTargetsGetter(() => this.targets);
         
         // 타이머 시작
         this.startTimer();

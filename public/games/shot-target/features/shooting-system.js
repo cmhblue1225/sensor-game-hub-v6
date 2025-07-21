@@ -25,9 +25,14 @@ export class ShootingSystem {
         this.callbacks = new Map();
     }
 
-    // 타겟 목록 설정
-    setTargets(targets) {
-        this.targets = targets;
+    // 타겟 목록 참조 설정 (실시간 업데이트를 위해 getter 함수 사용)
+    setTargetsGetter(getTargets) {
+        this.getTargets = getTargets;
+    }
+
+    // 현재 타겟 목록 반환
+    getCurrentTargets() {
+        return this.getTargets ? this.getTargets() : this.targets;
     }
 
     // 수동 사격 (키보드/터치)
@@ -66,8 +71,9 @@ export class ShootingSystem {
     // 단일 조준점 자동 사격 체크
     checkSingleCrosshairAutoShoot(crosshair, playerId) {
         const hitRadius = GAME_CONFIG.GAMEPLAY.hitRadius;
+        const currentTargets = this.getCurrentTargets();
         
-        for (const target of this.targets) {
+        for (const target of currentTargets) {
             if (!target.isAlive) continue;
             
             const distance = GameUtils.getDistance(
@@ -103,13 +109,14 @@ export class ShootingSystem {
     // 충돌 검사 및 처리
     checkCollisions() {
         const hitResults = [];
+        const currentTargets = this.getCurrentTargets();
         
         for (let i = this.bullets.length - 1; i >= 0; i--) {
             const bullet = this.bullets[i];
             if (!bullet.isAlive) continue;
             
-            for (let j = this.targets.length - 1; j >= 0; j--) {
-                const target = this.targets[j];
+            for (let j = currentTargets.length - 1; j >= 0; j--) {
+                const target = currentTargets[j];
                 if (!target.isAlive) continue;
                 
                 // 충돌 검사
