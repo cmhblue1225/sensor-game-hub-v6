@@ -321,14 +321,9 @@ export class GamePage {
                 const playerId = data.sensorId;
                 const totalConnected = data.connectedSensors || 1;
 
-                if (!this.state.myPlayerId) {
-                    this.state.myPlayerId = playerId;
-                    this.state.sensorConnected = true;
-                    this.waitingRoomWidget.updateSensorStatus(true);
-                }
-
+                // 대규모 경쟁 모드에서는 모든 플레이어를 동등하게 처리
                 this.addMassPlayer(playerId, totalConnected - 1);
-                this.waitingRoomWidget.updateMassWaitingList(this.massPlayers, this.state.myPlayerId);
+                this.waitingRoomWidget.updateMassWaitingList(this.massPlayers, null);
                 this.waitingRoomWidget.updateMassPlayerCount(totalConnected);
                 this.calculateMassCompetitiveTargetSettings();
 
@@ -359,8 +354,8 @@ export class GamePage {
                         this.pauseGame();
                     }
 
-                    this.waitingRoomWidget.updateMassWaitingList(this.massPlayers, this.state.myPlayerId);
-                    this.scorePanelWidget.updateMassLeaderboard(this.massPlayers, this.state.myPlayerId);
+                    this.waitingRoomWidget.updateMassWaitingList(this.massPlayers, null);
+                    this.scorePanelWidget.updateMassLeaderboard(this.massPlayers, null);
                 }
             } else {
                 this.state.sensorConnected = false;
@@ -372,7 +367,7 @@ export class GamePage {
 
         this.sdk.on('sensor-data', (event) => {
             const data = event.detail || event;
-            this.sensorManager.processSensorData(data, this.gameMode, this.massPlayers, this.state.myPlayerId);
+            this.sensorManager.processSensorData(data, this.gameMode, this.massPlayers, null);
         });
 
         this.sdk.on('connection-error', (error) => {
@@ -404,6 +399,8 @@ export class GamePage {
 
         this.massPlayers.set(playerId, player);
         console.log(`👤 대규모 경쟁 플레이어 추가: ${player.name} (${playerId})`);
+        
+        // 대규모 경쟁 모드에서는 모든 플레이어가 동등함
     }
 
     calculateMassCompetitiveTargetSettings() {
@@ -493,7 +490,7 @@ export class GamePage {
             resultMessage += `플레이어 2: ${player2Score.toLocaleString()}점`;
 
         } else if (this.gameMode === 'mass-competitive') {
-            resultMessage = this.scorePanelWidget.generateMassCompetitiveResults(this.massPlayers, this.state.myPlayerId, this.state.totalTargetsCreated);
+            resultMessage = this.scorePanelWidget.generateMassCompetitiveResults(this.massPlayers, null, this.state.totalTargetsCreated);
 
             setTimeout(() => {
                 this.scorePanelWidget.showMassCompetitiveResultsModal(resultMessage);
@@ -515,6 +512,7 @@ export class GamePage {
 
         console.log('🎯 게임 종료:', resultMessage);
     }
+
 
     spawnTarget() {
         const maxTargets = this.config.maxTargets;
@@ -563,7 +561,7 @@ export class GamePage {
             this.massPlayers,
             this.canvas.width,
             this.canvas.height,
-            this.state.myPlayerId
+            null
         );
 
         if (result) {
@@ -592,7 +590,7 @@ export class GamePage {
 
         if (this.gameMode === 'mass-competitive' && player) {
             points = player.updateScore(points, this.config.comboMultiplier);
-            this.scorePanelWidget.updateMassLeaderboard(this.massPlayers, this.state.myPlayerId);
+            this.scorePanelWidget.updateMassLeaderboard(this.massPlayers, null);
         } else {
             points = this.scoringSystem.calculateScore(target, this.gameMode, playerId, this.config.comboMultiplier);
         }
@@ -674,7 +672,7 @@ export class GamePage {
             }
 
             if (leaderboardNeedsUpdate) {
-                this.scorePanelWidget.updateMassLeaderboard(this.massPlayers, this.state.myPlayerId);
+                this.scorePanelWidget.updateMassLeaderboard(this.massPlayers, null);
             }
         }
     }
@@ -741,7 +739,7 @@ export class GamePage {
 
     renderMassCompetitiveCrosshairs() {
         this.massPlayers.forEach((player, playerId) => {
-            if (!player.isActive || playerId === this.state.myPlayerId) return;
+            if (!player.isActive) return;
 
             const crosshairX = this.sensorManager.calculatePlayerCrosshairX(player, this.canvas.width);
             const crosshairY = this.sensorManager.calculatePlayerCrosshairY(player, this.canvas.height);

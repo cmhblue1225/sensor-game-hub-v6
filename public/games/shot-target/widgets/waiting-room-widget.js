@@ -65,7 +65,7 @@ export class WaitingRoomWidget {
         }
     }
 
-    updateMassWaitingList(massPlayers, myPlayerId) {
+    updateMassWaitingList(massPlayers, myPlayerId = null) {
         const waitingTitle = this.elements.massWaitingListWidget.querySelector('.waiting-title');
         waitingTitle.textContent = `🎮 참가자 대기실 (${massPlayers.size}/8)`;
 
@@ -78,7 +78,6 @@ export class WaitingRoomWidget {
             playerElement.innerHTML = `
                 <div class="mass-player-color" style="background-color: ${player.color};"></div>
                 <span>${player.name}</span>
-                ${player.id === myPlayerId ? '<span style="color: var(--success); font-weight: 600;">(나)</span>' : ''}
             `;
             waitingPlayers.appendChild(playerElement);
         });

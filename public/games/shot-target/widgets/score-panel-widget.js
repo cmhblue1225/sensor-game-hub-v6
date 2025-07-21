@@ -39,7 +39,7 @@ export class ScorePanelWidget {
         }
     }
 
-    updateMassLeaderboard(massPlayers, myPlayerId) {
+    updateMassLeaderboard(massPlayers, myPlayerId = null) {
         const sortedPlayers = Array.from(massPlayers.values())
             .sort((a, b) => b.score - a.score);
 
@@ -48,7 +48,7 @@ export class ScorePanelWidget {
 
         sortedPlayers.forEach((player, index) => {
             const playerElement = document.createElement('div');
-            playerElement.className = `mass-player-item ${player.id === myPlayerId ? 'me' : ''}`;
+            playerElement.className = 'mass-player-item';
             playerElement.innerHTML = `
                 <div class="mass-player-info">
                     <span class="mass-player-rank">${index + 1}</span>
@@ -61,7 +61,7 @@ export class ScorePanelWidget {
         });
     }
 
-    generateMassCompetitiveResults(massPlayers, myPlayerId, totalTargetsCreated) {
+    generateMassCompetitiveResults(massPlayers, myPlayerId = null, totalTargetsCreated) {
         const sortedPlayers = Array.from(massPlayers.values())
             .filter(player => player.isActive)
             .sort((a, b) => b.score - a.score);
@@ -74,9 +74,8 @@ export class ScorePanelWidget {
         sortedPlayers.forEach((player, index) => {
             const rank = index + 1;
             const medal = index < 3 ? medals[index] : `${rank}위`;
-            const isMe = player.id === myPlayerId ? ' (나)' : '';
 
-            resultMessage += `${medal} ${player.name}${isMe}\n`;
+            resultMessage += `${medal} ${player.name}\n`;
             resultMessage += `   점수: ${player.score.toLocaleString()}점\n`;
             resultMessage += `   적중: ${player.hits}발 (${player.accuracy}%)\n`;
             resultMessage += `   최대 콤보: ${player.maxCombo}\n\n`;

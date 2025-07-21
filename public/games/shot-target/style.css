@@ -320,7 +320,7 @@ body {
     position: absolute;
     width: 30px;
     height: 30px;
-    border: 2px solid #ffffff;
+    border: 2px solid var(--crosshair-color, #ffffff);
     border-radius: 50%;
     transform: translate(-50%, -50%);
     pointer-events: none;
@@ -332,7 +332,7 @@ body {
 .hud-crosshair::after {
     content: '';
     position: absolute;
-    background: #ffffff;
+    background: var(--crosshair-color, #ffffff);
     box-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
 }
 
