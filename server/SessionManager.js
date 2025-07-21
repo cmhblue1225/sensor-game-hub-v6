@@ -309,6 +309,7 @@ class SessionManager {
             case 'dual':
                 return sensorIndex === 0 ? 'sensor1' : 'sensor2';
             case 'multi':
+            case 'mass-competitive':
                 return `player${sensorIndex + 1}`;
             default:
                 return `sensor${sensorIndex + 1}`;
