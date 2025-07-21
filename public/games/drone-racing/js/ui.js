@@ -211,7 +211,7 @@ class GameUI {
     }
     
     /**
-     * 카운트다운 표시
+     * 카운트다운 표시 (개선된 버전)
      */
     showCountdown(count) {
         const countdownElement = this.elements.countdown;
@@ -225,27 +225,28 @@ class GameUI {
         // 카운트다운 텍스트 설정
         countdownElement.textContent = count > 0 ? count : 'GO!';
         
-        // 표시 설정
+        // 강제로 표시 설정 (모든 숨김 속성 제거)
         countdownElement.classList.remove('hidden');
         countdownElement.style.display = 'block';
         countdownElement.style.visibility = 'visible';
         countdownElement.style.opacity = '1';
-        countdownElement.style.zIndex = '1000';
+        countdownElement.style.zIndex = '2000'; // 더 높은 z-index
+        countdownElement.style.position = 'fixed'; // fixed 위치 확실히 설정
+        countdownElement.style.pointerEvents = 'none'; // 클릭 방지
         
         // 색상 설정
         if (count > 0) {
             countdownElement.style.color = '#ffaa00'; // 노란색
-            countdownElement.style.textShadow = '0 0 20px #ffaa00';
+            countdownElement.style.textShadow = '0 0 30px #ffaa00, 0 0 60px #ffaa00';
         } else {
             countdownElement.style.color = '#00ff88'; // 초록색 (GO!)
-            countdownElement.style.textShadow = '0 0 20px #00ff88';
+            countdownElement.style.textShadow = '0 0 30px #00ff88, 0 0 60px #00ff88';
         }
         
-        // 애니메이션 효과 (CSS 애니메이션 재시작)
+        // 애니메이션 효과 강제 재시작
         countdownElement.style.animation = 'none';
-        setTimeout(() => {
-            countdownElement.style.animation = 'pulse 1s ease-in-out';
-        }, 10);
+        countdownElement.offsetHeight; // 리플로우 강제 실행
+        countdownElement.style.animation = 'pulse 1s ease-in-out';
         
         // GO! 표시 후 숨김
         if (count === 0) {

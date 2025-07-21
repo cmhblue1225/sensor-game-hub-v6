@@ -16,6 +16,11 @@ class DroneRacingGame {
         
         // 캔버스 및 렌더링 설정
         this.canvas = document.getElementById('gameCanvas');
+        if (!this.canvas) {
+            console.error('❌ 게임 캔버스를 찾을 수 없습니다');
+            return;
+        }
+        
         this.setupRenderer();
         
         // 게임 상태
@@ -25,6 +30,7 @@ class DroneRacingGame {
         this.startTime = 0; // 경주 시작 시간
         this.raceFinished = false; // 경주 완료 플래그
         this.isPaused = false;
+        this.isInitialized = false; // 초기화 완료 플래그
         
         // SessionSDK 통합
         this.sdk = new SessionSDK({
@@ -52,16 +58,23 @@ class DroneRacingGame {
         };
         
         // 테스트 모드
-        this.testMode = false;
+        this.testMode = true; // 기본적으로 테스트 모드 활성화
         this.keyboardControls = {
-            player1: { forward: false, backward: false, left: false, right: false, boost: false },
-            player2: { forward: false, backward: false, left: false, right: false, boost: false }
+            player1: { forward: false, backward: false, left: false, right: false, boost: false, up: false, down: false },
+            player2: { forward: false, backward: false, left: false, right: false, boost: false, up: false, down: false }
         };
         
+        // 이벤트 리스너 설정
         this.setupEventListeners();
+        
+        // 기본 환경 미리 생성 (렌더링 문제 해결을 위해)
+        this.initializeBasicScene();
+        
+        // 게임 루프 시작
         this.gameLoop();
         
         console.log('✅ 드론 레이싱 게임 초기화 완료');
+        this.isInitialized = true;
     }
     
     /**
@@ -140,6 +153,107 @@ class DroneRacingGame {
         
         // 윈도우 리사이즈 처리
         window.addEventListener('resize', () => this.onWindowResize());
+    }
+    
+    /**
+     * 기본 씬 초기화 (렌더링 문제 해결을 위해)
+     */
+    initializeBasicScene() {
+        console.log('🎬 기본 씬 초기화 시작');
+        
+        // 기본 조명 설정
+        const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+        this.scene.add(ambientLight);
+        
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        directionalLight.position.set(50, 50, 50);
+        this.scene.add(directionalLight);
+        
+        // 기본 바닥 생성 (즉시 보이도록)
+        const floorGeometry = new THREE.PlaneGeometry(200, 200);
+        const floorMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x1a1a2e,
+            transparent: true,
+            opacity: 0.8
+        });
+        const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+        floor.rotation.x = -Math.PI / 2;
+        floor.position.y = 0;
+        this.scene.add(floor);
+        
+        // 기본 트랙 링 생성 (즉시 보이도록)
+        const ringGeometry = new THREE.TorusGeometry(25, 2, 8, 32);
+        const ringMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x00aaff,
+            transparent: true,
+            opacity: 0.6
+        });
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.rotation.x = -Math.PI / 2;
+        ring.position.y = 1;
+        this.scene.add(ring);
+        
+        // 기본 드론 생성 (즉시 보이도록)
+        this.createBasicDrones();
+        
+        // 카메라 위치 조정
+        this.cameras.player1.position.set(-15, 10, 15);
+        this.cameras.player1.lookAt(0, 0, 0);
+        
+        this.cameras.player2.position.set(15, 10, 15);
+        this.cameras.player2.lookAt(0, 0, 0);
+        
+        console.log('🎬 기본 씬 초기화 완료, 오브젝트 수:', this.scene.children.length);
+        
+        // 즉시 한 번 렌더링
+        this.render();
+    }
+    
+    /**
+     * 기본 드론 생성 (렌더링 문제 해결을 위해)
+     */
+    createBasicDrones() {
+        // 플레이어 1 드론 (초록색)
+        const drone1Geometry = new THREE.BoxGeometry(2, 0.5, 2);
+        const drone1Material = new THREE.MeshLambertMaterial({ color: 0x00ff88 });
+        const drone1 = new THREE.Mesh(drone1Geometry, drone1Material);
+        drone1.position.set(-10, 3, 0);
+        drone1.name = 'basicDrone1';
+        this.scene.add(drone1);
+        
+        // 플레이어 2 드론 (분홍색)
+        const drone2Geometry = new THREE.BoxGeometry(2, 0.5, 2);
+        const drone2Material = new THREE.MeshLambertMaterial({ color: 0xff0088 });
+        const drone2 = new THREE.Mesh(drone2Geometry, drone2Material);
+        drone2.position.set(10, 3, 0);
+        drone2.name = 'basicDrone2';
+        this.scene.add(drone2);
+        
+        console.log('🚁 기본 드론 생성 완료');
+    }
+    
+    /**
+     * 윈도우 리사이즈 처리
+     */
+    onWindowResize() {
+        const width = window.innerWidth;
+        const height = window.innerHeight;
+        
+        // 렌더러 크기 업데이트
+        this.renderer.setSize(width, height);
+        
+        // 카메라 aspect ratio 업데이트
+        const halfWidth = width / 2;
+        this.cameras.player1.aspect = halfWidth / height;
+        this.cameras.player1.updateProjectionMatrix();
+        
+        this.cameras.player2.aspect = halfWidth / height;
+        this.cameras.player2.updateProjectionMatrix();
+        
+        console.log(`🖥️ 윈도우 리사이즈: ${width}x${height}`);
+        
+        // 강제 렌더링
+        this.render();
     }
     
     /**
@@ -256,10 +370,15 @@ class DroneRacingGame {
         // UI 업데이트
         if (data.connectedSensors === 1) {
             // 첫 번째 센서 연결
-            this.showMessage('첫 번째 플레이어 연결됨! 두 번째 플레이어를 기다리는 중...');
+            console.log('첫 번째 플레이어 연결됨! 두 번째 플레이어를 기다리는 중...');
         } else if (data.connectedSensors === 2) {
-            // 모든 센서 연결 완료
-            this.showMessage('모든 플레이어 연결 완료! 게임을 시작합니다.');
+            // 모든 센서 연결 완료 - 자동으로 게임 시작
+            console.log('모든 플레이어 연결 완료! 게임을 시작합니다.');
+            
+            // 1초 후 자동으로 경주 시작
+            setTimeout(() => {
+                this.startRace();
+            }, 1000);
         }
     }
     
@@ -597,42 +716,102 @@ class DroneRacingGame {
         document.getElementById('gameHUD').classList.remove('hidden');
         document.getElementById('controlPanel').classList.remove('hidden');
         
-        // 게임 컴포넌트 초기화 (나중에 구현)
+        // 게임 컴포넌트 초기화
         await this.initializeGameComponents();
         
         // 센서 연결 모니터링 활성화
         this.sensorConnectionMonitor.isMonitoring = true;
         
+        // 강제로 렌더링 한 번 실행하여 드론이 보이도록 함
+        this.render();
+        
         // 게임 상태 관리자를 통한 카운트다운 시작
         if (this.gameStateManager) {
+            console.log('🎮 게임 상태 관리자를 통한 카운트다운 시작');
             this.gameStateManager.setState(this.gameStateManager.states.COUNTDOWN);
         } else {
+            console.log('🎮 직접 카운트다운 시작');
             this.startCountdown();
         }
     }
     
     /**
-     * 카운트다운 시작
+     * 카운트다운 시작 (UI 클래스를 통해 개선)
      */
     startCountdown() {
-        const countdownElement = document.getElementById('countdown');
-        countdownElement.classList.remove('hidden');
+        console.log('⏰ 카운트다운 시작');
+        
+        // UI가 초기화되지 않았으면 직접 처리
+        if (!this.ui) {
+            console.warn('⚠️ UI 시스템이 초기화되지 않았습니다. 직접 카운트다운 처리');
+            this.directCountdown();
+            return;
+        }
         
         let count = 3;
         
         const countdown = () => {
             if (count > 0) {
-                countdownElement.textContent = count;
+                console.log(`⏰ 카운트다운: ${count}`);
+                this.ui.showCountdown(count);
                 count--;
                 setTimeout(countdown, 1000);
             } else {
-                countdownElement.textContent = 'GO!';
+                console.log('🚀 GO! 경주 시작!');
+                this.ui.showCountdown(0); // GO! 표시
+                
+                // 1.5초 후 게임 시작
                 setTimeout(() => {
-                    countdownElement.classList.add('hidden');
                     this.gameState = 'racing';
                     this.raceStartTime = Date.now();
                     console.log('🚁 경주 시작!');
-                }, 1000);
+                }, 1500);
+            }
+        };
+        
+        countdown();
+    }
+    
+    /**
+     * 직접 카운트다운 처리 (UI 시스템 없이)
+     */
+    directCountdown() {
+        const countdownElement = document.getElementById('countdown');
+        if (!countdownElement) {
+            console.error('❌ 카운트다운 요소를 찾을 수 없습니다');
+            return;
+        }
+        
+        console.log('⏰ 직접 카운트다운 시작');
+        countdownElement.classList.remove('hidden');
+        countdownElement.style.display = 'block';
+        countdownElement.style.visibility = 'visible';
+        countdownElement.style.opacity = '1';
+        countdownElement.style.zIndex = '2000';
+        
+        let count = 3;
+        
+        const countdown = () => {
+            if (count > 0) {
+                console.log(`⏰ 카운트다운: ${count}`);
+                countdownElement.textContent = count;
+                countdownElement.style.color = '#ffaa00';
+                countdownElement.style.textShadow = '0 0 30px #ffaa00, 0 0 60px #ffaa00';
+                count--;
+                setTimeout(countdown, 1000);
+            } else {
+                console.log('🚀 GO! 경주 시작!');
+                countdownElement.textContent = 'GO!';
+                countdownElement.style.color = '#00ff88';
+                countdownElement.style.textShadow = '0 0 30px #00ff88, 0 0 60px #00ff88';
+                
+                setTimeout(() => {
+                    countdownElement.classList.add('hidden');
+                    countdownElement.style.display = 'none';
+                    this.gameState = 'racing';
+                    this.raceStartTime = Date.now();
+                    console.log('🚁 경주 시작!');
+                }, 1500);
             }
         };
         
@@ -1010,19 +1189,31 @@ class DroneRacingGame {
         // 플레이어 2 드론 (오른쪽 시작) - 위치를 더 가깝게
         this.drones.player2 = new Drone('player2', this.scene, this.physics, { x: 10, y: 3, z: 0 });
         
-        // 드론이 제대로 생성되었는지 확인 (Drone 클래스에서 이미 씬에 추가됨)
-        if (this.drones.player1 && this.drones.player1.mesh) {
-            console.log('✅ Player1 드론 메시 생성 완료:', this.drones.player1.mesh.position);
-            console.log('✅ Player1 드론 메시 씬 포함 여부:', this.scene.getObjectByName('player1') !== undefined);
-        } else {
-            console.error('❌ Player1 드론 메시 생성 실패');
+        // 드론이 제대로 생성되었는지 확인하고 강제로 씬에 추가
+        if (this.drones.player1) {
+            if (this.drones.player1.mesh) {
+                // 드론이 씬에 없으면 추가
+                if (!this.scene.getObjectByName('player1')) {
+                    this.scene.add(this.drones.player1.mesh);
+                }
+                console.log('✅ Player1 드론 메시 생성 완료:', this.drones.player1.mesh.position);
+                console.log('✅ Player1 드론 메시 씬 포함 여부:', this.scene.getObjectByName('player1') !== undefined);
+            } else {
+                console.error('❌ Player1 드론 메시 생성 실패');
+            }
         }
         
-        if (this.drones.player2 && this.drones.player2.mesh) {
-            console.log('✅ Player2 드론 메시 생성 완료:', this.drones.player2.mesh.position);
-            console.log('✅ Player2 드론 메시 씬 포함 여부:', this.scene.getObjectByName('player2') !== undefined);
-        } else {
-            console.error('❌ Player2 드론 메시 생성 실패');
+        if (this.drones.player2) {
+            if (this.drones.player2.mesh) {
+                // 드론이 씬에 없으면 추가
+                if (!this.scene.getObjectByName('player2')) {
+                    this.scene.add(this.drones.player2.mesh);
+                }
+                console.log('✅ Player2 드론 메시 생성 완료:', this.drones.player2.mesh.position);
+                console.log('✅ Player2 드론 메시 씬 포함 여부:', this.scene.getObjectByName('player2') !== undefined);
+            } else {
+                console.error('❌ Player2 드론 메시 생성 실패');
+            }
         }
         
         // 카메라가 드론을 따라가도록 설정
@@ -1030,6 +1221,12 @@ class DroneRacingGame {
         
         // 드론 이벤트 리스너 설정
         this.setupDroneEvents();
+        
+        // 강제로 한 번 렌더링하여 드론이 즉시 보이도록
+        setTimeout(() => {
+            this.render();
+            console.log('🚁 드론 생성 후 강제 렌더링 완료');
+        }, 100);
         
         console.log('🚁 드론 생성 완료. 씬 오브젝트 수:', this.scene.children.length);
         console.log('🚁 씬 오브젝트 목록:', this.scene.children.map(child => child.name || child.type));
@@ -1059,10 +1256,8 @@ class DroneRacingGame {
      * 카메라 추적 업데이트
      */
     updateCameraTracking() {
-        if (!this.drones.player1 || !this.drones.player2) return;
-        
         // 플레이어 1 카메라가 드론을 따라가도록
-        if (this.drones.player1.mesh) {
+        if (this.drones.player1?.mesh) {
             const drone1Pos = this.drones.player1.mesh.position;
             this.cameras.player1.position.set(
                 drone1Pos.x - 8,
@@ -1070,10 +1265,14 @@ class DroneRacingGame {
                 drone1Pos.z + 8
             );
             this.cameras.player1.lookAt(drone1Pos);
+        } else {
+            // 드론이 없으면 기본 위치로 설정
+            this.cameras.player1.position.set(-10, 8, 10);
+            this.cameras.player1.lookAt(-10, 3, 0);
         }
         
         // 플레이어 2 카메라가 드론을 따라가도록
-        if (this.drones.player2.mesh) {
+        if (this.drones.player2?.mesh) {
             const drone2Pos = this.drones.player2.mesh.position;
             this.cameras.player2.position.set(
                 drone2Pos.x + 8,
@@ -1081,6 +1280,10 @@ class DroneRacingGame {
                 drone2Pos.z + 8
             );
             this.cameras.player2.lookAt(drone2Pos);
+        } else {
+            // 드론이 없으면 기본 위치로 설정
+            this.cameras.player2.position.set(10, 8, 10);
+            this.cameras.player2.lookAt(10, 3, 0);
         }
     }
     
@@ -1755,23 +1958,12 @@ class DroneRacingGame {
     }
     
     /**
-     * 게임 루프 (성능 최적화 적용)
+     * 게임 루프 (렌더링 문제 해결을 위해 개선)
      */
     gameLoop() {
         const now = performance.now();
         const deltaTime = this.lastFrameTime ? (now - this.lastFrameTime) / 1000 : 1/60;
         this.lastFrameTime = now;
-        
-        // 성능 최적화: 프레임 스킵 확인
-        if (this.performanceOptimizer && this.performanceOptimizer.shouldSkipFrame()) {
-            requestAnimationFrame(() => this.gameLoop());
-            return;
-        }
-        
-        // 성능 최적화: 파티클 시스템 최적화
-        if (this.performanceOptimizer) {
-            this.performanceOptimizer.optimizeParticleSystem();
-        }
         
         // 물리 시뮬레이션 업데이트
         if (this.physics && this.gameState === 'racing' && !this.isPaused) {
@@ -1792,24 +1984,30 @@ class DroneRacingGame {
             this.effects.update(deltaTime);
         }
         
-        // 센서 연결 상태 모니터링 (성능 최적화: 매 5프레임마다)
-        if (this.gameState === 'racing' && this.frameCount % 5 === 0) {
+        // 센서 연결 상태 모니터링 (매 10프레임마다)
+        if (this.gameState === 'racing' && this.frameCount % 10 === 0) {
             this.detectSensorDisconnection();
             this.updateConnectionStatus();
         }
         
-        // UI 업데이트 (성능 최적화: 매 3프레임마다)
-        if (this.ui && this.gameState === 'racing' && this.frameCount % 3 === 0) {
+        // UI 업데이트 (매 5프레임마다)
+        if (this.ui && this.gameState === 'racing' && this.frameCount % 5 === 0) {
             this.updateUI();
             this.updateRealTimeRankings();
         }
         
-        // 렌더링 (성능 최적화 적용)
+        // 성능 최적화 (매 30프레임마다)
+        if (this.performanceOptimizer && this.frameCount % 30 === 0) {
+            this.performanceOptimizer.optimizeParticleSystem();
+        }
+        
+        // 렌더링 (항상 실행하여 모든 오브젝트가 표시되도록)
         this.render();
         
         // 프레임 카운터 증가
         this.frameCount = (this.frameCount || 0) + 1;
         
+        // 다음 프레임 요청
         requestAnimationFrame(() => this.gameLoop());
     }
     
@@ -2037,10 +2235,13 @@ class DroneRacingGame {
     }
     
     /**
-     * 렌더링 (성능 최적화 적용)
+     * 렌더링 (모든 오브젝트가 항상 표시되도록 개선)
      */
     render() {
-        if (!this.renderer || !this.scene) return;
+        if (!this.renderer || !this.scene) {
+            console.warn('⚠️ 렌더러 또는 씬이 초기화되지 않았습니다');
+            return;
+        }
         
         const renderStart = performance.now();
         
@@ -2048,11 +2249,14 @@ class DroneRacingGame {
         if (this.frameCount % 60 === 0) { // 1초마다 한 번
             console.log(`🎬 렌더링 - 씬 오브젝트 수: ${this.scene.children.length}`);
             console.log(`🎬 드론 메시 존재 여부: player1=${!!this.drones.player1?.mesh}, player2=${!!this.drones.player2?.mesh}`);
-        }
-        
-        // 성능 최적화: 렌더링 최적화 적용 (단, 드론 렌더링에 영향 주지 않도록)
-        if (this.performanceOptimizer && this.gameState === 'racing') {
-            this.performanceOptimizer.optimizeSplitScreenRendering();
+            
+            // 드론 위치 확인
+            if (this.drones.player1?.mesh) {
+                console.log(`🎬 Player1 드론 위치:`, this.drones.player1.mesh.position);
+            }
+            if (this.drones.player2?.mesh) {
+                console.log(`🎬 Player2 드론 위치:`, this.drones.player2.mesh.position);
+            }
         }
         
         // 화면 분할 렌더링
@@ -2062,24 +2266,30 @@ class DroneRacingGame {
         
         // 렌더러 설정
         this.renderer.setScissorTest(true);
-        this.renderer.setClearColor(0x000011, 1); // 어두운 파란색 배경
+        this.renderer.setClearColor(0x0f172a, 1); // 어두운 파란색 배경 (fog와 일치)
         
-        // 왼쪽 화면 (플레이어 1) - 카메라 aspect ratio 확인
+        // 캔버스 크기 확인 및 조정
+        if (this.renderer.domElement.width !== width || this.renderer.domElement.height !== height) {
+            this.renderer.setSize(width, height);
+            console.log(`🎬 캔버스 크기 조정: ${width}x${height}`);
+        }
+        
+        // 왼쪽 화면 (플레이어 1) 렌더링
         this.cameras.player1.aspect = halfWidth / height;
         this.cameras.player1.updateProjectionMatrix();
         
         this.renderer.setViewport(0, 0, halfWidth, height);
         this.renderer.setScissor(0, 0, halfWidth, height);
-        this.renderer.clear();
+        this.renderer.clear(true, true, true); // color, depth, stencil 모두 클리어
         this.renderer.render(this.scene, this.cameras.player1);
         
-        // 오른쪽 화면 (플레이어 2) - 카메라 aspect ratio 확인
+        // 오른쪽 화면 (플레이어 2) 렌더링
         this.cameras.player2.aspect = halfWidth / height;
         this.cameras.player2.updateProjectionMatrix();
         
         this.renderer.setViewport(halfWidth, 0, halfWidth, height);
         this.renderer.setScissor(halfWidth, 0, halfWidth, height);
-        this.renderer.clear();
+        this.renderer.clear(true, true, true); // color, depth, stencil 모두 클리어
         this.renderer.render(this.scene, this.cameras.player2);
         
         // 스크린 분할 해제
@@ -2088,6 +2298,12 @@ class DroneRacingGame {
         // 성능 통계 업데이트
         if (this.performanceOptimizer) {
             this.performanceOptimizer.performanceStats.renderTime = performance.now() - renderStart;
+        }
+        
+        // 강제로 WebGL 컨텍스트 플러시 (브라우저 호환성 개선)
+        const gl = this.renderer.getContext();
+        if (gl) {
+            gl.flush();
         }
     }
     
@@ -2201,11 +2417,39 @@ class DroneRacingGame {
     }
 }
 
-// 게임 시작
+// 게임 시작 (개선된 초기화)
 let game;
-window.addEventListener('load', () => {
-    game = new DroneRacingGame();
+
+// DOM이 완전히 로드된 후 게임 초기화
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('📄 DOM 로드 완료, 게임 초기화 시작');
+    
+    // 약간의 지연을 두어 모든 스크립트가 로드되도록
+    setTimeout(() => {
+        try {
+            game = new DroneRacingGame();
+            
+            // 전역 함수로 노출 (HTML에서 호출용)
+            window.game = game;
+            window.droneRacingGame = game; // 추가 참조
+            
+            console.log('✅ 게임 초기화 완료, 전역 변수 설정됨');
+        } catch (error) {
+            console.error('❌ 게임 초기화 실패:', error);
+        }
+    }, 100);
 });
 
-// 전역 함수로 노출 (HTML에서 호출용)
-window.game = game;
+// 윈도우 로드 이벤트도 백업으로 유지
+window.addEventListener('load', () => {
+    if (!game) {
+        console.log('🔄 윈도우 로드 이벤트에서 게임 초기화 재시도');
+        try {
+            game = new DroneRacingGame();
+            window.game = game;
+            window.droneRacingGame = game;
+        } catch (error) {
+            console.error('❌ 윈도우 로드에서 게임 초기화 실패:', error);
+        }
+    }
+});
