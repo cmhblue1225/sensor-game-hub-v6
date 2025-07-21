@@ -97,7 +97,7 @@ export class GamePage {
             massWaitingPanel: document.getElementById('massWaitingPanel'),
             massSessionCode: document.getElementById('massSessionCode'),
             massQrContainer: document.getElementById('massQrContainer'),
-            massWaitingList: document.getElementById('massWaitingList'),
+            massWaitingListWidget: document.getElementById('massWaitingListWidget'),
             massWaitingPlayers: document.getElementById('massWaitingPlayers'),
             massStartBtn: document.getElementById('massStartBtn'),
             controlPanel: document.querySelector('.control-panel')
@@ -198,6 +198,7 @@ export class GamePage {
 
         if (mode === 'mass-competitive') {
             this.elements.massWaitingPanel.classList.remove('hidden');
+            this.elements.massWaitingListWidget.classList.remove('hidden');
         } else {
             this.elements.sessionPanel.classList.remove('hidden');
         }

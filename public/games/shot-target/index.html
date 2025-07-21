@@ -139,10 +139,6 @@
                 QR 코드 생성 중...
             </div>
 
-            <div class="mass-waiting-list" id="massWaitingList">
-                <div class="waiting-title">🎮 참가자 대기실 (0/8)</div>
-                <div id="massWaitingPlayers"></div>
-            </div>
 
             <div class="session-instructions">
                 📱 센서 클라이언트: <strong>/sensor.html</strong><br>
@@ -270,6 +266,12 @@
                 <a href="/" class="btn btn-secondary">🏠 허브로</a>
             </div>
         </div>
+    </div>
+    
+    <!-- 독립적인 참가자 목록 위젯 (대규모 경쟁 모드 전용) -->
+    <div class="mass-waiting-list hidden" id="massWaitingListWidget">
+        <div class="waiting-title">🎮 참가자 대기실 (0/8)</div>
+        <div class="mass-waiting-players" id="massWaitingPlayers"></div>
     </div>
     
     <!-- Socket.IO -->

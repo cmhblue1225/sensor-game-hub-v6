@@ -66,7 +66,7 @@ export class WaitingRoomWidget {
     }
 
     updateMassWaitingList(massPlayers, myPlayerId) {
-        const waitingTitle = this.elements.massWaitingList.querySelector('.waiting-title');
+        const waitingTitle = this.elements.massWaitingListWidget.querySelector('.waiting-title');
         waitingTitle.textContent = `🎮 참가자 대기실 (${massPlayers.size}/8)`;
 
         const waitingPlayers = this.elements.massWaitingPlayers;
@@ -120,6 +120,7 @@ export class WaitingRoomWidget {
 
     hideMassWaitingPanel() {
         this.elements.massWaitingPanel.classList.add('hidden');
+        this.elements.massWaitingListWidget.classList.add('hidden');
         this.elements.massCompetitivePanel.classList.remove('hidden');
         this.elements.gameInfoPanel.classList.add('hidden');
         this.elements.crosshair.classList.remove('hidden');
