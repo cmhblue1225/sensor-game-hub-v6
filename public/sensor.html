@@ -733,6 +733,7 @@
                 // 센서 연결 성공
                 this.sdk.on('sensor-connection-success', (data) => {
                     console.log('🔍 센서 연결 성공 데이터:', data);
+                    console.log('🔍 데이터 구조:', JSON.stringify(data, null, 2));
                     this.state.sessionConnected = true;
                     this.state.currentSession = data;
                     
@@ -743,7 +744,8 @@
                     // 센서 시작 버튼 활성화
                     this.elements.startSensorBtn.disabled = false;
                     
-                    this.showMessage(`${data.sensorId}로 연결되었습니다!`, 'success');
+                    const sensorId = data.sensorId || data.id || '알 수 없음';
+                    this.showMessage(`${sensorId}로 연결되었습니다!`, 'success');
                 });
                 
                 // 게임 시작
@@ -922,21 +924,32 @@
             }
             
             updatePlayerInfo(data) {
-                const sensorId = data.sensorId || '';
+                console.log('🔍 updatePlayerInfo 호출됨, data:', data);
                 
-                // 플레이어 번호 추출 (Player1 -> 1, player2 -> 2 등)
+                // 다양한 가능한 필드명 확인
+                const sensorId = data.sensorId || data.id || data.playerId || data.sensor || '';
+                console.log('🔍 추출된 sensorId:', sensorId);
+                
+                // 플레이어 번호 추출 (Player1 -> 1, player2 -> 2, sensor1 -> 1 등)
                 const playerNumber = sensorId.match(/(\d+)/)?.[1] || '?';
+                console.log('🔍 추출된 playerNumber:', playerNumber);
                 
                 // 플레이어 정보 업데이트
                 this.elements.playerNumber.textContent = playerNumber;
-                this.elements.playerName.textContent = `플레이어 ${playerNumber}`;
-                this.elements.playerId.textContent = sensorId;
+                this.elements.playerName.textContent = playerNumber !== '?' ? `플레이어 ${playerNumber}` : '플레이어';
+                this.elements.playerId.textContent = sensorId || '연결 대기 중...';
                 
                 // 플레이어 색상 적용
                 this.elements.playerAvatar.className = 'player-avatar';
-                if (playerNumber !== '?') {
+                if (playerNumber !== '?' && playerNumber >= 1 && playerNumber <= 8) {
                     this.elements.playerAvatar.classList.add(`player-color-${playerNumber}`);
                 }
+                
+                console.log('🔍 최종 업데이트된 정보:', {
+                    playerNumber: this.elements.playerNumber.textContent,
+                    playerName: this.elements.playerName.textContent,
+                    playerId: this.elements.playerId.textContent
+                });
             }
             
             hideGameInfo() {
