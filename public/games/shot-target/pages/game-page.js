@@ -172,7 +172,7 @@ export class GamePage {
    */
    goBackToModeSelection() {
        // SDK 세션 정리
-       if (this.sdk) {
+       if (this.sdk && typeof this.sdk.cleanup === 'function') {
            this.sdk.cleanup();
         }
    
@@ -849,13 +849,15 @@ export class GamePage {
 
     pauseGame() {
         this.state.paused = true;
-        this.elements.pauseBtn.textContent = '▶️ 계속';
+        const pauseBtn = document.getElementById('pauseBtn');
+        if (pauseBtn) pauseBtn.textContent = '▶️ 계속';
         this.waitingRoomWidget.updateGameStatus('게임 일시정지');
     }
 
     resumeGame() {
         this.state.paused = false;
-        this.elements.pauseBtn.textContent = '⏸️ 일시정지';
+        const pauseBtn = document.getElementById('pauseBtn'); // 버튼을 다시 찾습니다.
+        if (pauseBtn) pauseBtn.textContent = '⏸️ 일시정지';
         this.waitingRoomWidget.updateGameStatus('게임 진행 중...');
     }
 
