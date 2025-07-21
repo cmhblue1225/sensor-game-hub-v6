@@ -7,13 +7,13 @@ class RacingTrack {
     constructor(scene, physics) {
         this.scene = scene;
         this.physics = physics;
-        
+
         // 트랙 요소들
         this.checkpoints = [];
         this.boosterZones = [];
         this.obstacles = [];
         this.boundaries = [];
-        
+
         // 트랙 설정
         this.trackConfig = {
             checkpointCount: 8,
@@ -22,7 +22,7 @@ class RacingTrack {
             trackWidth: 30,
             trackLength: 200
         };
-        
+
         console.log('🏁 레이싱 트랙 초기화');
     }
 
@@ -42,18 +42,18 @@ class RacingTrack {
      */
     createCheckpoints() {
         const radius = this.trackConfig.trackWidth * 0.8;
-        
+
         // 원형 트랙을 따라 체크포인트 배치
         for (let i = 0; i < this.trackConfig.checkpointCount; i++) {
             const angle = (i / this.trackConfig.checkpointCount) * Math.PI * 2;
             const x = Math.cos(angle) * this.trackConfig.trackLength * 0.5;
             const z = Math.sin(angle) * this.trackConfig.trackLength * 0.5;
-            
+
             // 체크포인트 생성
             const checkpoint = this.createCheckpoint(x, 10, z, radius, i);
             this.checkpoints.push(checkpoint);
         }
-        
+
         console.log(`✅ ${this.checkpoints.length}개의 체크포인트 생성됨`);
     }
 
@@ -70,10 +70,10 @@ class RacingTrack {
             opacity: 0.7,
             side: THREE.DoubleSide
         });
-        
+
         const checkpoint = new THREE.Mesh(geometry, material);
         checkpoint.position.set(x, y, z);
-        
+
         // 체크포인트 번호에 따라 회전 조정
         if (index === 0) {
             // 시작/종료 체크포인트는 수직으로
@@ -83,7 +83,7 @@ class RacingTrack {
             checkpoint.lookAt(0, y, 0);
             checkpoint.rotation.y += Math.PI / 2;
         }
-        
+
         // 체크포인트 데이터
         checkpoint.userData = {
             type: 'checkpoint',
@@ -92,12 +92,12 @@ class RacingTrack {
             isStart: index === 0,
             isActive: true
         };
-        
+
         this.scene.add(checkpoint);
-        
+
         // 체크포인트 표시등 추가
         this.addCheckpointLights(checkpoint, index);
-        
+
         return checkpoint;
     }
 
@@ -107,15 +107,15 @@ class RacingTrack {
     addCheckpointLights(checkpoint, index) {
         const color = index === 0 ? 0xffff00 : 0x00ffff;
         const intensity = index === 0 ? 2 : 1;
-        
+
         // 포인트 라이트 추가
         const light = new THREE.PointLight(color, intensity, 20);
         light.position.copy(checkpoint.position);
         this.scene.add(light);
-        
+
         // 애니메이션을 위한 기본 강도 저장
         light.userData.baseIntensity = intensity;
-        
+
         return light;
     }
 
@@ -128,17 +128,17 @@ class RacingTrack {
             // 체크포인트 사이에 부스터 존 배치
             const checkpointIndex = Math.floor((i + 0.5) * this.checkpoints.length / this.trackConfig.boosterZoneCount);
             const checkpoint = this.checkpoints[checkpointIndex];
-            
+
             if (checkpoint) {
                 const position = checkpoint.position.clone();
                 position.y = 1; // 지면에 가깝게
-                
+
                 // 부스터 존 생성
                 const boosterZone = this.createBoosterZone(position);
                 this.boosterZones.push(boosterZone);
             }
         }
-        
+
         console.log(`🚀 ${this.boosterZones.length}개의 부스터 존 생성됨`);
     }
 
@@ -155,11 +155,11 @@ class RacingTrack {
             opacity: 0.7,
             side: THREE.DoubleSide
         });
-        
+
         const boosterZone = new THREE.Mesh(geometry, material);
         boosterZone.position.copy(position);
         boosterZone.rotation.x = -Math.PI / 2; // 바닥에 평행하게
-        
+
         // 부스터 존 데이터
         boosterZone.userData = {
             type: 'boosterZone',
@@ -168,19 +168,19 @@ class RacingTrack {
             isActive: true,
             lastActivated: 0
         };
-        
+
         this.scene.add(boosterZone);
-        
+
         // 부스터 존 표시등 추가
         const light = new THREE.PointLight(0xff5500, 1.5, 15);
         light.position.copy(position);
         light.position.y += 2;
         this.scene.add(light);
-        
+
         // 애니메이션을 위한 기본 강도 저장
         light.userData.baseIntensity = 1.5;
         boosterZone.userData.light = light;
-        
+
         return boosterZone;
     }
 
@@ -193,28 +193,28 @@ class RacingTrack {
             // 체크포인트 사이에 장애물 배치
             const checkpointIndex = Math.floor((i + 0.3) * this.checkpoints.length / this.trackConfig.obstacleCount);
             const nextCheckpointIndex = (checkpointIndex + 1) % this.checkpoints.length;
-            
+
             const checkpoint = this.checkpoints[checkpointIndex];
             const nextCheckpoint = this.checkpoints[nextCheckpointIndex];
-            
+
             if (checkpoint && nextCheckpoint) {
                 // 두 체크포인트 사이의 위치 계산
                 const position = new THREE.Vector3().addVectors(
                     checkpoint.position,
                     nextCheckpoint.position
                 ).multiplyScalar(0.5);
-                
+
                 // 약간의 랜덤 오프셋 추가
                 position.x += (Math.random() - 0.5) * 10;
                 position.z += (Math.random() - 0.5) * 10;
                 position.y = 5 + Math.random() * 10; // 높이 랜덤화
-                
+
                 // 장애물 생성
                 const obstacle = this.createObstacle(position);
                 this.obstacles.push(obstacle);
             }
         }
-        
+
         console.log(`🚧 ${this.obstacles.length}개의 장애물 생성됨`);
     }
 
@@ -225,9 +225,9 @@ class RacingTrack {
         // 장애물 형태 랜덤 선택
         const types = ['box', 'sphere', 'cylinder'];
         const type = types[Math.floor(Math.random() * types.length)];
-        
+
         let geometry, size;
-        
+
         switch (type) {
             case 'box':
                 size = 3 + Math.random() * 2;
@@ -242,7 +242,7 @@ class RacingTrack {
                 geometry = new THREE.CylinderGeometry(size, size, 4 + Math.random() * 4, 16);
                 break;
         }
-        
+
         // 네온 스타일 재질
         const material = new THREE.MeshPhongMaterial({
             color: 0xff0088,
@@ -250,15 +250,15 @@ class RacingTrack {
             transparent: true,
             opacity: 0.9
         });
-        
+
         const obstacle = new THREE.Mesh(geometry, material);
         obstacle.position.copy(position);
-        
+
         // 랜덤 회전
         obstacle.rotation.x = Math.random() * Math.PI;
         obstacle.rotation.y = Math.random() * Math.PI;
         obstacle.rotation.z = Math.random() * Math.PI;
-        
+
         // 장애물 데이터
         obstacle.userData = {
             type: 'obstacle',
@@ -266,14 +266,14 @@ class RacingTrack {
             shape: type,
             damage: 10
         };
-        
+
         this.scene.add(obstacle);
-        
+
         // 물리 바디 추가
         if (this.physics) {
             this.physics.addObstacle(obstacle);
         }
-        
+
         return obstacle;
     }
 
@@ -283,18 +283,18 @@ class RacingTrack {
     createBoundaries() {
         const trackRadius = this.trackConfig.trackLength * 0.6;
         const wallHeight = 20;
-        
+
         // 원형 경계 생성
         const segments = 32;
         for (let i = 0; i < segments; i++) {
             const angle1 = (i / segments) * Math.PI * 2;
             const angle2 = ((i + 1) / segments) * Math.PI * 2;
-            
+
             const x1 = Math.cos(angle1) * trackRadius;
             const z1 = Math.sin(angle1) * trackRadius;
             const x2 = Math.cos(angle2) * trackRadius;
             const z2 = Math.sin(angle2) * trackRadius;
-            
+
             // 경계 벽 생성
             const boundary = this.createBoundaryWall(
                 x1, 0, z1,
@@ -303,7 +303,7 @@ class RacingTrack {
             );
             this.boundaries.push(boundary);
         }
-        
+
         console.log(`🧱 ${this.boundaries.length}개의 경계 생성됨`);
     }
 
@@ -315,7 +315,7 @@ class RacingTrack {
         const point1 = new THREE.Vector3(x1, y1, z1);
         const point2 = new THREE.Vector3(x2, y2, z2);
         const length = point1.distanceTo(point2);
-        
+
         // 벽 생성
         const geometry = new THREE.BoxGeometry(length, height, 1);
         const material = new THREE.MeshPhongMaterial({
@@ -324,30 +324,30 @@ class RacingTrack {
             transparent: true,
             opacity: 0.7
         });
-        
+
         const wall = new THREE.Mesh(geometry, material);
-        
+
         // 벽 위치 및 회전 설정
         const midpoint = new THREE.Vector3().addVectors(point1, point2).multiplyScalar(0.5);
         wall.position.set(midpoint.x, height / 2, midpoint.z);
-        
+
         // 두 점을 연결하는 방향으로 회전
         wall.lookAt(point2.x, height / 2, point2.z);
         wall.rotation.y += Math.PI / 2;
-        
+
         // 벽 데이터
         wall.userData = {
             type: 'boundary',
             height: height
         };
-        
+
         this.scene.add(wall);
-        
+
         // 물리 바디 추가
         if (this.physics) {
             this.physics.addBoundary(wall);
         }
-        
+
         return wall;
     }
 
@@ -357,7 +357,7 @@ class RacingTrack {
     checkCheckpointCollision(dronePosition, droneId) {
         for (const checkpoint of this.checkpoints) {
             const distance = checkpoint.position.distanceTo(dronePosition);
-            
+
             // 체크포인트 반경 내에 드론이 있는지 확인
             if (distance < checkpoint.userData.radius * 1.5) {
                 return {
@@ -374,13 +374,13 @@ class RacingTrack {
      */
     checkBoosterZoneCollision(dronePosition, droneId) {
         const now = Date.now();
-        
+
         for (const boosterZone of this.boosterZones) {
             const distance = new THREE.Vector2(
                 dronePosition.x - boosterZone.position.x,
                 dronePosition.z - boosterZone.position.z
             ).length();
-            
+
             // 부스터 존 반경 내에 드론이 있는지 확인
             if (distance < boosterZone.userData.radius) {
                 // 재사용 대기 시간 확인 (3초)
@@ -404,7 +404,7 @@ class RacingTrack {
     checkTrackBounds(dronePosition) {
         const trackRadius = this.trackConfig.trackLength * 0.6;
         const distance = new THREE.Vector2(dronePosition.x, dronePosition.z).length();
-        
+
         // 트랙 경계를 벗어났는지 확인
         return distance > trackRadius;
     }
@@ -414,15 +414,15 @@ class RacingTrack {
      */
     animateCheckpoints() {
         const time = Date.now() * 0.001;
-        
+
         this.checkpoints.forEach((checkpoint, index) => {
             // 체크포인트 회전
             checkpoint.rotation.z = time * (index % 2 ? 0.5 : -0.5);
-            
+
             // 체크포인트 크기 맥동
             const scale = 1 + Math.sin(time * 2 + index) * 0.05;
             checkpoint.scale.set(scale, scale, scale);
-            
+
             // 체크포인트 빛 강도 변화
             if (checkpoint.userData.light) {
                 const baseIntensity = checkpoint.userData.light.userData.baseIntensity || 1;
@@ -436,17 +436,17 @@ class RacingTrack {
      */
     animateBoosterZones() {
         const time = Date.now() * 0.001;
-        
+
         this.boosterZones.forEach((boosterZone, index) => {
             // 부스터 존 회전
             boosterZone.rotation.z = time * 0.7;
-            
+
             // 부스터 존 빛 강도 변화
             if (boosterZone.userData.light) {
                 const baseIntensity = boosterZone.userData.light.userData.baseIntensity || 1.5;
                 boosterZone.userData.light.intensity = baseIntensity + Math.sin(time * 5 + index * 2) * 0.5;
             }
-            
+
             // 부스터 존 색상 변화
             if (boosterZone.material) {
                 const hue = (time * 0.1 + index * 0.2) % 1;
@@ -460,16 +460,16 @@ class RacingTrack {
      */
     animateObstacles() {
         const time = Date.now() * 0.001;
-        
+
         this.obstacles.forEach((obstacle, index) => {
             // 장애물 회전
             obstacle.rotation.x += 0.005;
             obstacle.rotation.y += 0.01;
-            
+
             // 장애물 위아래 움직임
             const yOffset = Math.sin(time + index) * 0.5;
             obstacle.position.y += yOffset * 0.05;
-            
+
             // 장애물 빛 강도 변화
             if (obstacle.material) {
                 const emissiveIntensity = 0.5 + Math.sin(time * 2 + index) * 0.2;
@@ -497,7 +497,7 @@ class RacingTrack {
             if (checkpoint.geometry) checkpoint.geometry.dispose();
             if (checkpoint.material) checkpoint.material.dispose();
         });
-        
+
         // 부스터 존 정리
         this.boosterZones.forEach(boosterZone => {
             this.scene.remove(boosterZone);
@@ -505,26 +505,26 @@ class RacingTrack {
             if (boosterZone.geometry) boosterZone.geometry.dispose();
             if (boosterZone.material) boosterZone.material.dispose();
         });
-        
+
         // 장애물 정리
         this.obstacles.forEach(obstacle => {
             this.scene.remove(obstacle);
             if (obstacle.geometry) obstacle.geometry.dispose();
             if (obstacle.material) obstacle.material.dispose();
         });
-        
+
         // 경계 정리
         this.boundaries.forEach(boundary => {
             this.scene.remove(boundary);
             if (boundary.geometry) boundary.geometry.dispose();
             if (boundary.material) boundary.material.dispose();
         });
-        
+
         this.checkpoints = [];
         this.boosterZones = [];
         this.obstacles = [];
         this.boundaries = [];
-        
+
         console.log('🧹 트랙 리소스 정리 완료');
     }
 }
