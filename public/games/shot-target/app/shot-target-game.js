@@ -563,13 +563,12 @@ export class ShotTargetGame {
             this.shootingSystem.updateBullets(deltaTime);
             this.shootingSystem.updateEffects(deltaTime);
             
-            // 자동 사격 체크
-            const crosshairs = this.sensorManager.getAllCrosshairs();
-            this.shootingSystem.checkAutoShoot(crosshairs);
-            
             // 충돌 검사
             this.shootingSystem.checkCollisions();
         }
+        
+        // 직접 자동 사격 체크 (backup 파일 방식 복원)
+        this.tryShoot();
         
         // 표적 생성
         this.spawnTargets();
@@ -831,6 +830,123 @@ export class ShotTargetGame {
                     break;
             }
         });
+    }
+
+    // 자동 사격 체크 (backup 파일 방식 복원)
+    tryShoot() {
+        if (!this.gameState.playing || this.gameState.paused) return;
+        
+        const hitRadius = GAME_CONFIG.GAMEPLAY.hitRadius;
+        
+        if (this.gameMode === GAME_CONFIG.MODES.MASS_COMPETITIVE) {
+            // 대규모 경쟁 모드: 모든 플레이어의 표적 타격 처리
+            for (let i = 0; i < this.targets.length; i++) {
+                const target = this.targets[i];
+                if (!target.isAlive) continue;
+                
+                let targetHit = false;
+                
+                // 모든 활성 플레이어의 조준점 검사
+                this.sensorManager.players.forEach((player, playerId) => {
+                    if (targetHit || !player) return;
+                    
+                    // 표적과의 거리 계산
+                    const distance = GameUtils.getDistance(
+                        player.crosshair.x, player.crosshair.y,
+                        target.x, target.y
+                    );
+                    
+                    // 표적 명중 체크
+                    if (distance <= hitRadius) {
+                        this.shootTarget(target, i, playerId);
+                        targetHit = true;
+                    }
+                });
+                
+                if (targetHit) return; // 하나의 표적만 처리하고 종료
+            }
+            
+        } else {
+            // 일반 모드들 (solo, coop, competitive)
+            
+            // 첫 번째 조준점으로 표적 찾기
+            const mainPlayer = this.sensorManager?.players.get('sensor1') || 
+                              Array.from(this.sensorManager?.players.values() || [])[0];
+            
+            if (mainPlayer) {
+                for (let i = 0; i < this.targets.length; i++) {
+                    const target = this.targets[i];
+                    if (!target.isAlive) continue;
+                    
+                    const distance = GameUtils.getDistance(
+                        mainPlayer.crosshair.x, mainPlayer.crosshair.y,
+                        target.x, target.y
+                    );
+                    
+                    // 조준점이 표적의 히트존 내에 있으면 자동 발사
+                    if (distance <= hitRadius) {
+                        this.shootTarget(target, i, 'sensor1');
+                        return;
+                    }
+                }
+            }
+            
+            // 협동/경쟁 모드에서 두 번째 조준점도 확인
+            if (this.gameMode === GAME_CONFIG.MODES.COOP || 
+                this.gameMode === GAME_CONFIG.MODES.COMPETITIVE) {
+                
+                const secondPlayer = this.sensorManager?.players.get('sensor2');
+                if (secondPlayer) {
+                    for (let i = 0; i < this.targets.length; i++) {
+                        const target = this.targets[i];
+                        if (!target.isAlive) continue;
+                        
+                        const distance = GameUtils.getDistance(
+                            secondPlayer.crosshair.x, secondPlayer.crosshair.y,
+                            target.x, target.y
+                        );
+                        
+                        // 두 번째 조준점이 표적의 히트존 내에 있으면 자동 발사
+                        if (distance <= hitRadius) {
+                            this.shootTarget(target, i, 'sensor2');
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // 표적 사격 처리 (backup 파일 방식 복원)
+    shootTarget(target, targetIndex, playerId) {
+        // 사격자 정보 가져오기
+        const player = this.sensorManager?.players.get(playerId);
+        if (!player) return;
+        
+        // 총알 생성 (시각적 효과용)
+        this.shootingSystem.shoot(
+            player.crosshair.x,
+            player.crosshair.y,
+            target.x,
+            target.y,
+            playerId
+        );
+        
+        // 표적 즉시 제거 (backup 파일 방식)
+        target.hit();
+        
+        // 점수 처리
+        const hitResult = {
+            playerId: playerId,
+            targetType: target.type,
+            points: target.points,
+            position: { x: target.x, y: target.y },
+            target: target
+        };
+        
+        this.handleTargetHit(hitResult);
+        
+        console.log(`🎯 표적 명중! ${playerId} -> ${target.type} (${target.points}점)`);
     }
 
     // 수동 사격 (키보드/테스트용)
