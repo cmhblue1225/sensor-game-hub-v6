@@ -1,337 +1,199 @@
-// ===== FEATURES/SHOOTING-SYSTEM =====
-// 사격 시스템 및 충돌 검사
-
-import { GAME_CONFIG } from '../shared/config.js';
-import { GameUtils } from '../shared/utils.js';
-import { BulletFactory } from '../entities/bullet.js';
+import { Bullet } from '../entities/bullet.js';
+import { Utils } from '../shared/utils.js';
 
 export class ShootingSystem {
     constructor() {
         this.bullets = [];
-        this.targets = [];
         this.effects = [];
-        
-        // 자동 사격 설정
-        this.autoShootEnabled = true;
-        this.lastAutoShootCheck = 0;
-        this.autoShootInterval = 100; // 100ms마다 체크
-        
-        // 사격 통계
-        this.totalShots = 0;
-        this.totalHits = 0;
-        this.totalMisses = 0;
-        
-        // 콜백 함수들
-        this.callbacks = new Map();
     }
 
-    // 타겟 목록 참조 설정 (실시간 업데이트를 위해 getter 함수 사용)
-    setTargetsGetter(getTargets) {
-        this.getTargets = getTargets;
-    }
-
-    // 현재 타겟 목록 반환
-    getCurrentTargets() {
-        return this.getTargets ? this.getTargets() : this.targets;
-    }
-
-    // 수동 사격 (키보드/터치)
-    shoot(startX, startY, targetX, targetY, playerId = null) {
-        const bullet = BulletFactory.createBullet(startX, startY, targetX, targetY, playerId);
-        this.bullets.push(bullet);
-        this.totalShots++;
-        
-        // 사격 사운드 효과 (추후 구현 가능)
-        this.triggerCallback('shot-fired', { bullet, playerId });
-        
-        console.log(`🔫 사격: ${playerId || 'unknown'} (${startX}, ${startY}) -> (${targetX}, ${targetY})`);
-    }
-
-    // 자동 사격 체크 (조준점이 표적에 가까우면 자동 발사)
-    checkAutoShoot(crosshairs, playerId = null) {
-        if (!this.autoShootEnabled) return;
-        
-        const now = Date.now();
-        if (now - this.lastAutoShootCheck < this.autoShootInterval) return;
-        
-        this.lastAutoShootCheck = now;
-        
-        // 단일 조준점 처리
-        if (typeof crosshairs.x === 'number') {
-            this.checkSingleCrosshairAutoShoot(crosshairs, playerId);
-        } 
-        // 다중 조준점 처리 (Map 객체)
-        else if (crosshairs instanceof Map) {
-            crosshairs.forEach((crosshair, currentPlayerId) => {
-                this.checkSingleCrosshairAutoShoot(crosshair, currentPlayerId);
-            });
+    tryShoot(targets, crosshair, crosshair2, gameMode, hitRadius, massPlayers, canvasWidth, canvasHeight, myPlayerId) {
+        if (gameMode === 'mass-competitive') {
+            return this.tryShootMassCompetitive(targets, hitRadius, massPlayers, canvasWidth, canvasHeight);
+        } else {
+            return this.tryShootNormal(targets, crosshair, crosshair2, gameMode, hitRadius);
         }
     }
 
-    // 단일 조준점 자동 사격 체크
-    checkSingleCrosshairAutoShoot(crosshair, playerId) {
-        const hitRadius = GAME_CONFIG.GAMEPLAY.hitRadius;
-        const currentTargets = this.getCurrentTargets();
-        
-        for (const target of currentTargets) {
-            if (!target.isAlive) continue;
-            
-            const distance = GameUtils.getDistance(
-                crosshair.x, crosshair.y, 
-                target.x, target.y
-            );
-            
-            // 조준점이 표적 범위 내에 있으면 자동 발사
-            if (distance <= target.radius + hitRadius) {
-                this.shoot(crosshair.x, crosshair.y, target.x, target.y, playerId);
-                break; // 한 번에 하나의 표적만 사격
+    tryShootNormal(targets, crosshair, crosshair2, gameMode, hitRadius) {
+        // 첫 번째 조준점으로 표적 찾기
+        for (let i = 0; i < targets.length; i++) {
+            const target = targets[i];
+            const distance = Utils.calculateDistance(crosshair.x, crosshair.y, target.x, target.y);
+
+            if (distance <= hitRadius) {
+                return { target, index: i, playerId: 1, crosshair };
             }
         }
-    }
 
-    // 총알 업데이트
-    updateBullets(deltaTime) {
-        this.bullets = this.bullets.filter(bullet => {
-            if (!bullet.isAlive) return false;
-            
-            bullet.update(deltaTime);
-            
-            // 화면 밖으로 나간 총알 제거
-            if (bullet.isOutOfBounds(window.innerWidth, window.innerHeight)) {
-                bullet.destroy();
-                return false;
-            }
-            
-            return true;
-        });
-    }
+        // 협동/경쟁 모드에서 두 번째 조준점도 확인
+        if ((gameMode === 'coop' || gameMode === 'competitive') && crosshair2) {
+            for (let i = 0; i < targets.length; i++) {
+                const target = targets[i];
+                const distance = Utils.calculateDistance(crosshair2.x, crosshair2.y, target.x, target.y);
 
-    // 충돌 검사 및 처리
-    checkCollisions() {
-        const hitResults = [];
-        const currentTargets = this.getCurrentTargets();
-        
-        for (let i = this.bullets.length - 1; i >= 0; i--) {
-            const bullet = this.bullets[i];
-            if (!bullet.isAlive) continue;
-            
-            for (let j = currentTargets.length - 1; j >= 0; j--) {
-                const target = currentTargets[j];
-                if (!target.isAlive) continue;
-                
-                // 충돌 검사
-                const distance = GameUtils.getDistance(bullet.x, bullet.y, target.x, target.y);
-                
-                if (distance <= target.radius) {
-                    // 충돌 발생!
-                    const hitResult = this.processHit(bullet, target);
-                    hitResults.push(hitResult);
-                    
-                    // 총알과 표적 제거
-                    bullet.destroy();
-                    target.hit();
-                    
-                    // 적중 효과 생성
-                    this.createHitEffect(target.x, target.y, target.color);
-                    
-                    break; // 총알은 하나의 표적만 맞출 수 있음
+                if (distance <= hitRadius) {
+                    return { target, index: i, playerId: 2, crosshair: crosshair2 };
                 }
             }
         }
-        
-        // 빗나간 총알 처리 (화면 밖으로 나간 경우)
-        this.bullets.forEach(bullet => {
-            if (!bullet.isAlive && bullet.isOutOfBounds(window.innerWidth, window.innerHeight)) {
-                this.processMiss(bullet);
+
+        return null;
+    }
+
+    tryShootMassCompetitive(targets, hitRadius, massPlayers, canvasWidth, canvasHeight) {
+        for (let i = 0; i < targets.length; i++) {
+            const target = targets[i];
+
+            for (const [playerId, player] of massPlayers.entries()) {
+                if (!player.isActive || !player.tilt) continue;
+
+                const crosshairX = this.calculatePlayerCrosshairX(player, canvasWidth);
+                const crosshairY = this.calculatePlayerCrosshairY(player, canvasHeight);
+
+                const distance = Utils.calculateDistance(crosshairX, crosshairY, target.x, target.y);
+
+                if (distance <= hitRadius) {
+                    return { 
+                        target, 
+                        index: i, 
+                        playerId, 
+                        player,
+                        crosshair: { x: crosshairX, y: crosshairY }
+                    };
+                }
             }
-        });
-        
-        return hitResults;
+        }
+
+        return null;
     }
 
-    // 적중 처리
-    processHit(bullet, target) {
-        this.totalHits++;
-        
-        const hitResult = {
-            playerId: bullet.playerId,
-            targetType: target.type,
-            points: target.points,
-            position: { x: target.x, y: target.y },
-            bulletInfo: bullet.getInfo(),
-            targetInfo: target.getInfo()
-        };
-        
-        // 적중 콜백 실행
-        this.triggerCallback('target-hit', hitResult);
-        
-        console.log(`🎯 적중! ${bullet.playerId || 'unknown'} -> ${target.type} (${target.points}점)`);
-        
-        return hitResult;
+    calculatePlayerCrosshairX(player, canvasWidth) {
+        const maxTilt = 25;
+        const normalizedTiltX = Math.max(-1, Math.min(1, player.tilt.y / maxTilt));
+        let crosshairX = canvasWidth / 2 + (normalizedTiltX * canvasWidth / 2);
+        return Math.max(0, Math.min(canvasWidth, crosshairX));
     }
 
-    // 빗나감 처리
-    processMiss(bullet) {
-        this.totalMisses++;
-        
-        const missResult = {
-            playerId: bullet.playerId,
-            position: { x: bullet.x, y: bullet.y },
-            bulletInfo: bullet.getInfo()
-        };
-        
-        // 빗나감 콜백 실행
-        this.triggerCallback('shot-missed', missResult);
-        
-        console.log(`❌ 빗나감: ${bullet.playerId || 'unknown'}`);
-        
-        return missResult;
+    calculatePlayerCrosshairY(player, canvasHeight) {
+        const maxTilt = 25;
+        const normalizedTiltY = Math.max(-1, Math.min(1, player.tilt.x / maxTilt));
+        let crosshairY = canvasHeight / 2 + (normalizedTiltY * canvasHeight / 2);
+        return Math.max(0, Math.min(canvasHeight, crosshairY));
     }
 
-    // 적중 효과 생성
-    createHitEffect(x, y, color) {
-        const effect = {
-            x,
-            y,
-            color,
-            scale: 0.5,
-            alpha: 1,
-            createdAt: Date.now(),
-            duration: GAME_CONFIG.UI.effectDuration
-        };
-        
-        this.effects.push(effect);
-    }
-
-    // 효과 업데이트
-    updateEffects(deltaTime) {
-        this.effects = this.effects.filter(effect => {
-            const age = Date.now() - effect.createdAt;
-            
-            if (age > effect.duration) {
-                return false;
-            }
-            
-            // 효과 애니메이션
-            const progress = age / effect.duration;
-            effect.scale = GameUtils.lerp(0.5, 2, progress);
-            effect.alpha = 1 - progress;
-            
-            return true;
-        });
-    }
-
-    // 총알 렌더링
-    renderBullets(ctx) {
-        this.bullets.forEach(bullet => {
-            if (bullet.isAlive) {
-                bullet.render(ctx);
-            }
-        });
-    }
-
-    // 효과 렌더링
-    renderEffects(ctx) {
-        this.effects.forEach(effect => {
-            ctx.save();
-            ctx.globalAlpha = effect.alpha;
-            
-            // 적중 효과 링
-            ctx.beginPath();
-            ctx.arc(effect.x, effect.y, effect.scale * 20, 0, Math.PI * 2);
-            ctx.strokeStyle = effect.color;
-            ctx.lineWidth = 3;
-            ctx.stroke();
-            
-            // 내부 플래시
-            ctx.beginPath();
-            ctx.arc(effect.x, effect.y, effect.scale * 10, 0, Math.PI * 2);
-            ctx.fillStyle = GameUtils.hexToRgba('#ffffff', 0.5);
-            ctx.fill();
-            
-            ctx.restore();
-        });
-    }
-
-    // 산탄 사격 (특수 모드용)
-    shootSpread(startX, startY, targetX, targetY, count = 3, playerId = null) {
-        const bullets = BulletFactory.createSpreadBullets(
-            startX, startY, targetX, targetY, count, 0.2, playerId
+    shoot(target, index, playerId, crosshair, bulletSpeed, playerColor = null) {
+        const bullet = new Bullet(
+            crosshair.x,
+            crosshair.y,
+            target.x,
+            target.y,
+            bulletSpeed,
+            target,
+            playerId,
+            playerColor
         );
-        
-        this.bullets.push(...bullets);
-        this.totalShots += bullets.length;
-        
-        this.triggerCallback('spread-shot-fired', { bullets, playerId });
+
+        this.bullets.push(bullet);
+        return bullet;
     }
 
-    // 자동 사격 활성화/비활성화
-    setAutoShoot(enabled) {
-        this.autoShootEnabled = enabled;
-        console.log(`🔫 자동 사격: ${enabled ? '활성화' : '비활성화'}`);
-    }
+    createHitEffect(x, y, points, color) {
+        // 타격 원형 효과
+        this.effects.push({
+            type: 'hit',
+            x: x,
+            y: y,
+            radius: 0,
+            maxRadius: 50,
+            color: color,
+            life: 30,
+            maxLife: 30
+        });
 
-    // 사격 통계 반환
-    getStats() {
-        return {
-            totalShots: this.totalShots,
-            totalHits: this.totalHits,
-            totalMisses: this.totalMisses,
-            accuracy: GameUtils.calculateAccuracy(this.totalHits, this.totalMisses),
-            activeBullets: this.bullets.filter(b => b.isAlive).length,
-            activeEffects: this.effects.length
-        };
-    }
+        // 점수 팝업
+        this.effects.push({
+            type: 'score',
+            x: x,
+            y: y,
+            text: `+${Math.floor(points)}`,
+            life: 90,
+            maxLife: 90,
+            color: '#10b981'
+        });
 
-    // 콜백 등록
-    on(event, callback) {
-        if (!this.callbacks.has(event)) {
-            this.callbacks.set(event, []);
-        }
-        this.callbacks.get(event).push(callback);
-    }
-
-    // 콜백 실행
-    triggerCallback(event, data) {
-        if (this.callbacks.has(event)) {
-            this.callbacks.get(event).forEach(callback => {
-                try {
-                    callback(data);
-                } catch (error) {
-                    console.error(`콜백 실행 오류 (${event}):`, error);
-                }
+        // 파티클 효과
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            this.effects.push({
+                type: 'particle',
+                x: x,
+                y: y,
+                vx: Math.cos(angle) * 5,
+                vy: Math.sin(angle) * 5,
+                color: color,
+                life: 60,
+                maxLife: 60
             });
         }
     }
 
-    // 모든 총알 제거
-    clearBullets() {
-        this.bullets.forEach(bullet => bullet.destroy());
-        this.bullets = [];
+    update() {
+        // 총알 업데이트
+        this.bullets = this.bullets.filter(bullet => bullet.update());
+
+        // 효과 업데이트
+        this.effects = this.effects.filter(effect => {
+            effect.life--;
+
+            if (effect.type === 'hit') {
+                effect.radius = (1 - effect.life / effect.maxLife) * effect.maxRadius;
+            } else if (effect.type === 'particle') {
+                effect.x += effect.vx;
+                effect.y += effect.vy;
+                effect.vx *= 0.95;
+                effect.vy *= 0.95;
+            }
+
+            return effect.life > 0;
+        });
     }
 
-    // 모든 효과 제거
-    clearEffects() {
-        this.effects = [];
+    render(ctx, gameMode) {
+        // 총알 렌더링
+        this.bullets.forEach(bullet => {
+            bullet.render(ctx, gameMode);
+        });
+
+        // 효과 렌더링
+        this.effects.forEach(effect => {
+            const alpha = effect.life / effect.maxLife;
+            ctx.globalAlpha = alpha;
+
+            if (effect.type === 'hit') {
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, effect.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = effect.color;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            } else if (effect.type === 'score') {
+                ctx.fillStyle = effect.color;
+                ctx.font = 'bold 24px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(effect.text, effect.x, effect.y - (1 - alpha) * 40);
+            } else if (effect.type === 'particle') {
+                ctx.beginPath();
+                ctx.arc(effect.x, effect.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = effect.color;
+                ctx.fill();
+            }
+        });
+
+        ctx.globalAlpha = 1;
     }
 
-    // 시스템 리셋
     reset() {
-        this.clearBullets();
-        this.clearEffects();
-        this.totalShots = 0;
-        this.totalHits = 0;
-        this.totalMisses = 0;
-        
-        console.log('🔫 사격 시스템 리셋');
-    }
-
-    // 정리 (메모리 누수 방지)
-    cleanup() {
-        this.reset();
-        this.callbacks.clear();
-        this.targets = [];
-        
-        console.log('🔫 사격 시스템 정리 완료');
+        this.bullets = [];
+        this.effects = [];
     }
 }
