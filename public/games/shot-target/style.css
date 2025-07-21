@@ -620,7 +620,6 @@ body {
     position: fixed !important;
     top: 20px !important;
     left: 20px !important;
-    width: 280px !important;
     max-height: 400px !important;
     background: rgba(30, 41, 59, 0.95) !important;
     border: 2px solid var(--primary) !important;
