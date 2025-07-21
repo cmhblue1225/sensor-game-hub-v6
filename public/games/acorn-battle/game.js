@@ -974,7 +974,21 @@ class AcornBattleGame {
         // 네트워크 상태 체크
         this.checkNetworkStatus();
 
-        // 기본 초기화
+        // 캔버스 크기 설정
+        if (this.canvas) {
+            this.canvas.width = 800;
+            this.canvas.height = 600;
+        }
+
+        // SDK 연결 시작
+        try {
+            console.log('SDK 연결 시작...');
+            this.sdk.connect();
+        } catch (error) {
+            console.error('SDK 연결 실패:', error);
+            this.showError('서버 연결에 실패했습니다. 페이지를 새로고침해주세요.');
+        }
+
         console.log('게임 초기화 완료');
     }
 
