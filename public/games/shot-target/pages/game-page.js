@@ -281,10 +281,23 @@ export class GamePage {
         this.setupSDKEvents();
 
         if (mode === 'mass-competitive') {
+            // [대규모 경쟁 모드일 때]
             this.elements.massWaitingPanel.classList.remove('hidden');
-            this.elements.massWaitingListWidget.classList.remove('hidden');
+
+            // 참가자 대기실 위젯을 초기화하고 보여준다.
+            if (!this.massWaitingRoomWidget) {
+                this.massWaitingRoomWidget = new MassWaitingRoomWidget('massWaitingList');
+            }
+            this.massWaitingRoomWidget.show();
+
         } else {
+            // [대규모 경쟁 모드가 아닐 때]
             this.elements.sessionPanel.classList.remove('hidden');
+
+            // 참가자 대기실 위젯이 존재하면 확실하게 숨긴다.
+            if (this.massWaitingRoomWidget) {
+                this.massWaitingRoomWidget.hide();
+            }
         }
 
         this.waitingRoomWidget.updateGameStatus('서버 연결 중...');
