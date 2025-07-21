@@ -113,6 +113,90 @@ export class GamePage {
         this.startGameLoop();
         this.waitingRoomWidget.updateGameStatus('게임 모드를 선택하세요');
     }
+    /**
+    * 게임 상태에 따라 컨트롤 패널의 버튼을 동적으로 렌더링합니다.
+    * @param {'waiting' | 'playing'} state - 현재 게임 상태 ('대기 중' 또는 '플레이 중')
+    **/
+    renderControlPanel(state) {
+        const controlPanel = this.elements.controlPanel;
+        let buttonsHtml = '';
+
+        if (state === 'waiting') {
+            // 대기 화면(QR코드 화면)에 표시될 버튼들
+            buttonsHtml = `
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="backToModeBtn">🔄 모드 선택</button>
+                    <a href="/" class="btn btn-secondary">🏠 허브로</a>
+                </div>
+            `;
+        } else if (state === 'playing') {
+            // 실제 게임 진행 중에 표시될 버튼들
+            buttonsHtml = `
+                <div class="btn-group">
+                    <button class="btn btn-secondary" id="resetBtn">🔄 재시작</button>
+                    <button class="btn btn-primary" id="pauseBtn">⏸️ 일시정지</button>
+                    <a href="/" class="btn btn-secondary">🏠 허브로</a>
+                </div>
+            `;
+        }
+
+        controlPanel.innerHTML = buttonsHtml;
+        this.setupControlPanelListeners(state);
+    }
+
+    /**
+    * 동적으로 생성된 컨트롤 패널 버튼에 이벤트 리스너를 설정합니다.
+    * @param {'waiting' | 'playing'} state
+    */
+    setupControlPanelListeners(state) {
+        if (state === 'waiting') {
+            const backToModeBtn = document.getElementById('backToModeBtn');
+            if (backToModeBtn) {
+                backToModeBtn.addEventListener('click', () => this.goBackToModeSelection());
+            }
+        } else if (state === 'playing') {
+            const resetBtn = document.getElementById('resetBtn');
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => this.resetGame());
+            }
+
+            const pauseBtn = document.getElementById('pauseBtn');
+            if (pauseBtn) {
+                pauseBtn.addEventListener('click', () => this.togglePause());
+            }
+        }
+    }
+
+    /**
+   * 모드 선택 화면으로 돌아가는 로직을 처리합니다.
+   */
+   goBackToModeSelection() {
+       // SDK 세션 정리
+       if (this.sdk) {
+           this.sdk.cleanup();
+           this.sdk = null;
+        }
+   
+        // 모든 패널 숨기기
+        this.elements.sessionPanel.classList.add('hidden');
+        this.elements.massWaitingPanel.classList.add('hidden');
+        if (this.massWaitingRoomWidget) {
+            this.massWaitingRoomWidget.hide();
+        }
+
+        // 모드 선택 패널 표시
+        this.elements.modeSelectionPanel.classList.remove('hidden');
+
+        // 컨트롤 패널 숨기기 (모드 선택 화면에서는 불필요)
+        this.elements.controlPanel.innerHTML = '';
+
+        // 상태 초기화
+        this.waitingRoomWidget.updateGameStatus('게임 모드를 선택하세요');
+        this.waitingRoomWidget.updateServerStatus(false);
+        this.waitingRoomWidget.updateSensorStatus(false);
+        this.waitingRoomWidget.updateSensor1Status(false);
+        this.waitingRoomWidget.updateSensor2Status(false);
+    }
 
     setupCanvas() {
         const resize = () => {
@@ -204,6 +288,7 @@ export class GamePage {
         }
 
         this.waitingRoomWidget.updateGameStatus('서버 연결 중...');
+        this.renderControlPanel('waiting');
     }
 
     setupModeUI(mode) {
@@ -426,6 +511,7 @@ export class GamePage {
     }
 
     startGame() {
+        this.renderControlPanel('playing');
         this.state.playing = true;
         this.state.paused = false;
 
