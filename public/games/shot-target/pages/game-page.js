@@ -172,10 +172,9 @@ export class GamePage {
    */
    goBackToModeSelection() {
        // SDK 세션 정리
-       if (this.sdk && typeof this.sdk.cleanup === 'function') {
+       if (this.sdk) {
            this.sdk.cleanup();
         }
-        this.sdk = null;
    
         // 모든 패널 숨기기
         this.elements.sessionPanel.classList.add('hidden');
@@ -281,23 +280,10 @@ export class GamePage {
         this.setupSDKEvents();
 
         if (mode === 'mass-competitive') {
-            // [대규모 경쟁 모드일 때]
             this.elements.massWaitingPanel.classList.remove('hidden');
-
-            // 참가자 대기실 위젯을 초기화하고 보여준다.
-            if (!this.massWaitingRoomWidget) {
-                this.massWaitingRoomWidget = new MassWaitingRoomWidget('massWaitingList');
-            }
-            this.massWaitingRoomWidget.show();
-
+            this.elements.massWaitingListWidget.classList.remove('hidden');
         } else {
-            // [대규모 경쟁 모드가 아닐 때]
             this.elements.sessionPanel.classList.remove('hidden');
-
-            // 참가자 대기실 위젯이 존재하면 확실하게 숨긴다.
-            if (this.massWaitingRoomWidget) {
-                this.massWaitingRoomWidget.hide();
-            }
         }
 
         this.waitingRoomWidget.updateGameStatus('서버 연결 중...');
