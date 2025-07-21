@@ -4,7 +4,7 @@ import { ScoringSystem } from '../features/scoring-system.js';
 import { SensorManager } from '../features/sensor-manager.js';
 import { ShootingSystem } from '../features/shooting-system.js';
 import { ScorePanelWidget } from '../widgets/score-panel-widget.js';
-import { WaitingRoomWidget } from '../widgets/waiting-room-widget.js';
+import { WaitingRoomWidget, massWaitingList } from '../widgets/waiting-room-widget.js';
 import { CONFIG } from '../shared/config.js';
 import { Utils } from '../shared/utils.js';
 
@@ -46,6 +46,7 @@ export class GamePage {
         this.elements = this.initializeElements();
         this.scorePanelWidget = new ScorePanelWidget(this.elements);
         this.waitingRoomWidget = new WaitingRoomWidget(this.elements);
+        this.massWaitingList = massWaitingList;
 
         this.gameLoop = null;
         this.lastTargetSpawn = 0;
@@ -198,6 +199,11 @@ export class GamePage {
 
         if (mode === 'mass-competitive') {
             this.elements.massWaitingPanel.classList.remove('hidden');
+            this.elements.massWaitingList.classList.remove('hidden');
+            if (!this.massWaitingRoomWidget) {
+                this.massWaitingRoomWidget = new WaitingRoomWidget(this.elements);
+            }
+            this.massWaitingRoomWidget.show();
         } else {
             this.elements.sessionPanel.classList.remove('hidden');
         }
@@ -327,7 +333,13 @@ export class GamePage {
                 }
 
                 this.addMassPlayer(playerId, totalConnected - 1);
-                this.waitingRoomWidget.updateMassWaitingList(this.massPlayers, this.state.myPlayerId);
+                // 새로운 위젯에 플레이어 추가
+                if (this.massWaitingRoomWidget && this.massPlayers.has(playerId)) {
+                    const player = this.massPlayers.get(playerId);
+                    this.massWaitingRoomWidget.addPlayer(player);
+                }
+
+                //this.waitingRoomWidget.updateMassWaitingList(this.massPlayers, this.state.myPlayerId);
                 this.waitingRoomWidget.updateMassPlayerCount(totalConnected);
                 this.calculateMassCompetitiveTargetSettings();
 
@@ -351,6 +363,11 @@ export class GamePage {
 
                     player.isActive = false;
 
+                    // 새로운 위젯에서 플레이어 제거
+                    if (this.massWaitingRoomWidget) {
+                        this.massWaitingRoomWidget.removePlayer(disconnectedSensorId);
+                    }
+
                     if (disconnectedSensorId === this.state.myPlayerId) {
                         this.state.sensorConnected = false;
                         this.waitingRoomWidget.updateSensorStatus(false);
@@ -358,7 +375,7 @@ export class GamePage {
                         this.pauseGame();
                     }
 
-                    this.waitingRoomWidget.updateMassWaitingList(this.massPlayers, this.state.myPlayerId);
+                    // this.waitingRoomWidget.updateMassWaitingList(this.massPlayers, this.state.myPlayerId);
                     this.scorePanelWidget.updateMassLeaderboard(this.massPlayers, this.state.myPlayerId);
                 }
             } else {
@@ -813,6 +830,12 @@ export class GamePage {
         if (this.massPlayers.size >= 3) {
             this.calculateMassCompetitiveTargetSettings();
             this.waitingRoomWidget.hideMassWaitingPanel();
+
+            // 대기실 위젯 숨기기
+            if (this.massWaitingRoomWidget) {
+                this.massWaitingRoomWidget.hide();
+            }
+            
             this.startGame();
         }
     }
