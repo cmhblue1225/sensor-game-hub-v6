@@ -539,8 +539,6 @@ body {
 }
 
 .mass-leaderboard {
-    max-height: 300px;
-    overflow-y: auto;
     margin-top: 1rem;
 }
 
