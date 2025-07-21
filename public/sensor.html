@@ -731,9 +731,12 @@
                 });
                 
                 // 센서 연결 성공
-                this.sdk.on('sensor-connection-success', (data) => {
-                    console.log('🔍 센서 연결 성공 데이터:', data);
+                this.sdk.on('sensor-connection-success', (event) => {
+                    console.log('🔍 센서 연결 성공 이벤트:', event);
+                    const data = event.detail || event;
+                    console.log('🔍 실제 데이터:', data);
                     console.log('🔍 데이터 구조:', JSON.stringify(data, null, 2));
+                    
                     this.state.sessionConnected = true;
                     this.state.currentSession = data;
                     
