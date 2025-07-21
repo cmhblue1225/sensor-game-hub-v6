@@ -786,11 +786,7 @@ export class GamePage {
     resetGame() {
         this.scoringSystem.reset(this.gameMode);
 
-        if (this.gameMode === 'mass-competitive') {
-            this.state.timeLeft = 120;
-        } else {
-            this.state.timeLeft = 180;
-        }
+        this.state.timeLeft = 120;
 
         this.targets = [];
         this.shootingSystem.reset();
