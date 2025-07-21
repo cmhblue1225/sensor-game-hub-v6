@@ -410,6 +410,65 @@
             }
         }
         
+        /* 플레이어 정보 카드 */
+        .player-info-card {
+            background: var(--card);
+            border: 2px solid var(--primary);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        .player-avatar {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: var(--gradient);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        
+        .player-number {
+            font-size: 1.8rem;
+            font-weight: 800;
+        }
+        
+        .player-details {
+            flex: 1;
+        }
+        
+        .player-name {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+        
+        .player-id {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-family: 'Courier New', monospace;
+        }
+        
+        /* 플레이어 색상 팔레트 */
+        .player-color-1 { background: linear-gradient(135deg, #3b82f6, #1d4ed8) !important; }
+        .player-color-2 { background: linear-gradient(135deg, #ef4444, #dc2626) !important; }
+        .player-color-3 { background: linear-gradient(135deg, #10b981, #059669) !important; }
+        .player-color-4 { background: linear-gradient(135deg, #f59e0b, #d97706) !important; }
+        .player-color-5 { background: linear-gradient(135deg, #8b5cf6, #7c3aed) !important; }
+        .player-color-6 { background: linear-gradient(135deg, #06b6d4, #0891b2) !important; }
+        .player-color-7 { background: linear-gradient(135deg, #f97316, #ea580c) !important; }
+        .player-color-8 { background: linear-gradient(135deg, #84cc16, #65a30d) !important; }
+        
         /* 숨김 클래스 */
         .hidden {
             display: none !important;
@@ -467,14 +526,26 @@
         <div class="game-info" id="gameInfo">
             <div class="section-title">🎮 연결된 게임</div>
             <div class="game-type-badge" id="gameTypeBadge">SOLO</div>
+            
+            <!-- 플레이어 정보 카드 -->
+            <div class="player-info-card" id="playerInfoCard">
+                <div class="player-avatar" id="playerAvatar">
+                    <span class="player-number" id="playerNumber">?</span>
+                </div>
+                <div class="player-details">
+                    <div class="player-name" id="playerName">플레이어</div>
+                    <div class="player-id" id="playerId">연결 대기 중...</div>
+                </div>
+            </div>
+            
             <div class="game-details">
                 <div class="detail-item">
-                    <div class="detail-label">센서 ID</div>
-                    <div class="detail-value" id="sensorId">-</div>
+                    <div class="detail-label">연결된 플레이어</div>
+                    <div class="detail-value" id="connectedSensors">0/1</div>
                 </div>
                 <div class="detail-item">
-                    <div class="detail-label">연결된 센서</div>
-                    <div class="detail-value" id="connectedSensors">0/1</div>
+                    <div class="detail-label">게임 상태</div>
+                    <div class="detail-value" id="gameStatus">대기 중</div>
                 </div>
             </div>
             <button class="btn btn-primary" id="startSensorBtn" style="width: 100%; margin-top: 1rem;" disabled>
@@ -563,13 +634,19 @@
                     qrButton: document.getElementById('qrButton'),
                     gameInfo: document.getElementById('gameInfo'),
                     gameTypeBadge: document.getElementById('gameTypeBadge'),
-                    sensorId: document.getElementById('sensorId'),
                     connectedSensors: document.getElementById('connectedSensors'),
+                    gameStatus: document.getElementById('gameStatus'),
                     sensorStatus: document.getElementById('sensorStatus'),
                     activityIndicator: document.getElementById('activityIndicator'),
                     sessionInputSection: document.getElementById('sessionInputSection'),
                     qrScannerSection: document.getElementById('qrScannerSection'),
                     startSensorBtn: document.getElementById('startSensorBtn'),
+                    // 플레이어 정보 요소들
+                    playerInfoCard: document.getElementById('playerInfoCard'),
+                    playerAvatar: document.getElementById('playerAvatar'),
+                    playerNumber: document.getElementById('playerNumber'),
+                    playerName: document.getElementById('playerName'),
+                    playerId: document.getElementById('playerId'),
                     // 센서 데이터 표시 요소들
                     tiltX: document.getElementById('tiltX'),
                     tiltY: document.getElementById('tiltY'),
@@ -659,19 +736,21 @@
                     this.state.sessionConnected = true;
                     this.state.currentSession = data;
                     
-                    this.updateConnectionStatus(`게임에 연결됨 (${data.sensorId})`, true);
+                    this.updateConnectionStatus(`게임에 연결됨`, true);
                     this.showGameInfo(data);
+                    this.updatePlayerInfo(data);
                     
                     // 센서 시작 버튼 활성화
                     this.elements.startSensorBtn.disabled = false;
                     
-                    this.showMessage('게임에 연결되었습니다! 센서 시작 버튼을 눌러주세요.', 'success');
+                    this.showMessage(`${data.sensorId}로 연결되었습니다!`, 'success');
                 });
                 
                 // 게임 시작
                 this.sdk.on('game-started', (data) => {
                     this.showMessage('게임이 시작되었습니다!', 'success');
                     this.elements.gameTypeBadge.textContent = `${data.gameType.toUpperCase()} - 플레이 중`;
+                    this.elements.gameStatus.textContent = '플레이 중';
                 });
                 
                 // 호스트 연결 해제
@@ -834,12 +913,30 @@
             
             showGameInfo(data) {
                 this.elements.gameTypeBadge.textContent = data.gameType?.toUpperCase() || 'UNKNOWN';
-                this.elements.sensorId.textContent = data.sensorId || '-';
                 this.elements.connectedSensors.textContent = `${data.connectedSensors || 0}/${data.maxSensors || 1}`;
+                this.elements.gameStatus.textContent = '연결됨';
                 
                 this.elements.gameInfo.classList.add('visible');
                 this.elements.sessionInputSection.style.display = 'none';
                 this.elements.qrScannerSection.style.display = 'none';
+            }
+            
+            updatePlayerInfo(data) {
+                const sensorId = data.sensorId || '';
+                
+                // 플레이어 번호 추출 (Player1 -> 1, player2 -> 2 등)
+                const playerNumber = sensorId.match(/(\d+)/)?.[1] || '?';
+                
+                // 플레이어 정보 업데이트
+                this.elements.playerNumber.textContent = playerNumber;
+                this.elements.playerName.textContent = `플레이어 ${playerNumber}`;
+                this.elements.playerId.textContent = sensorId;
+                
+                // 플레이어 색상 적용
+                this.elements.playerAvatar.className = 'player-avatar';
+                if (playerNumber !== '?') {
+                    this.elements.playerAvatar.classList.add(`player-color-${playerNumber}`);
+                }
             }
             
             hideGameInfo() {
