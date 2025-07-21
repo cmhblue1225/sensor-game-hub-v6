@@ -11,6 +11,9 @@ class DroneRacingGame {
     constructor() {
         console.log('🚁 3D 드론 레이싱 게임 초기화 시작');
         
+        // Three.js deprecated 경고 필터링
+        this.filterThreeJSWarnings();
+        
         // 캔버스 및 렌더링 설정
         this.canvas = document.getElementById('gameCanvas');
         this.setupRenderer();
@@ -61,6 +64,48 @@ class DroneRacingGame {
         console.log('✅ 드론 레이싱 게임 초기화 완료');
     }
     
+    /**
+     * Three.js deprecated 경고 필터링
+     */
+    filterThreeJSWarnings() {
+        // 기존 console.warn을 백업
+        const originalWarn = console.warn;
+        const originalError = console.error;
+        
+        // console.warn을 오버라이드하여 Three.js deprecated 경고 필터링
+        console.warn = function(...args) {
+            const message = args.join(' ');
+            
+            // Three.js deprecated 경고 메시지 필터링 (더 포괄적)
+            if (message.includes('Scripts "build/three.js"') ||
+                message.includes('Scripts "build/three.min.js"') ||
+                message.includes('are deprecated') ||
+                message.includes('Please use ES Modules') ||
+                message.includes('r150+') ||
+                message.includes('r160')) {
+                return; // 경고 무시
+            }
+            
+            // 다른 경고는 정상적으로 출력
+            originalWarn.apply(console, args);
+        };
+        
+        // console.error도 필터링 (일부 Three.js 경고가 error로 출력될 수 있음)
+        console.error = function(...args) {
+            const message = args.join(' ');
+            
+            // Three.js deprecated 에러 메시지 필터링
+            if (message.includes('Scripts "build/three.js"') ||
+                message.includes('Scripts "build/three.min.js"') ||
+                message.includes('are deprecated')) {
+                return; // 에러 무시
+            }
+            
+            // 다른 에러는 정상적으로 출력
+            originalError.apply(console, args);
+        };
+    }
+
     /**
      * 3D 렌더러 설정
      */
@@ -879,6 +924,62 @@ class DroneRacingGame {
         requestAnimationFrame(() => this.animateBoosterZones());
     }
     
+    /**
+     * 장애물 생성
+     */
+    createObstacles() {
+        this.obstacles = [];
+        
+        // 트랙을 따라 장애물 배치
+        const obstacleCount = 8;
+        const trackRadius = 40;
+        
+        for (let i = 0; i < obstacleCount; i++) {
+            const angle = (i / obstacleCount) * Math.PI * 2;
+            const x = Math.cos(angle) * trackRadius;
+            const z = Math.sin(angle) * trackRadius;
+            
+            // 장애물 지오메트리 (기둥 형태)
+            const obstacleGeometry = new THREE.CylinderGeometry(1, 1, 8, 8);
+            const obstacleMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0xff4444,
+                transparent: true,
+                opacity: 0.8
+            });
+            
+            const obstacle = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+            obstacle.position.set(x, 4, z);
+            obstacle.castShadow = true;
+            obstacle.receiveShadow = true;
+            
+            // 경고 표시 추가
+            const warningGeometry = new THREE.RingGeometry(2, 3, 8);
+            const warningMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffff00,
+                transparent: true,
+                opacity: 0.5,
+                side: THREE.DoubleSide
+            });
+            
+            const warning = new THREE.Mesh(warningGeometry, warningMaterial);
+            warning.position.set(x, 0.1, z);
+            warning.rotation.x = -Math.PI / 2;
+            
+            this.scene.add(obstacle);
+            this.scene.add(warning);
+            
+            this.obstacles.push({
+                mesh: obstacle,
+                warning: warning,
+                position: { x, y: 4, z }
+            });
+            
+            console.log(`장애물 ${i} 생성: (${x.toFixed(1)}, ${z.toFixed(1)})`);
+        }
+        
+        console.log(`✅ ${obstacleCount}개의 장애물 생성 완료`);
+    }
+
     /**
      * 드론들 생성
      */
