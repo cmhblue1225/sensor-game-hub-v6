@@ -12,9 +12,10 @@ class AcornBattleGame {
 
         // SessionSDK 초기화
         this.sdk = new SessionSDK({
+            gameId: 'acorn-battle',
             gameType: 'dual',
             serverUrl: window.location.origin,
-            debug: false
+            debug: true
         });
 
         // 게임 상태 관리
@@ -160,14 +161,12 @@ class AcornBattleGame {
             console.info('세션 코드 표시:', session.sessionCode);
         }
 
-        // QR 코드 생성 (약간의 지연을 두어 DOM이 준비되도록 함)
+        // QR 코드 생성 (tilt-maze와 동일한 방식)
         setTimeout(() => {
-            if (session.sensorUrl) {
-                this.generateQRCode(session.sensorUrl);
-            } else {
-                console.warn('센서 URL이 없어 QR 코드를 생성할 수 없습니다');
-                this.showQRFallback('');
-            }
+            // QR 코드 URL 생성 (tilt-maze와 동일한 방식)
+            const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+            console.info('QR URL 생성:', qrUrl);
+            this.generateQRCode(qrUrl);
         }, 100);
 
         // UI 업데이트
@@ -177,7 +176,7 @@ class AcornBattleGame {
     generateQRCode(url) {
         console.info('QR 코드 생성 시작:', url);
 
-        // 자체 QR 코드 생성기 사용
+        // QR 코드 생성 (tilt-maze와 동일한 방식)
         if (typeof QRCode !== 'undefined' && this.elements.qrCanvas) {
             try {
                 QRCode.toCanvas(this.elements.qrCanvas, url, {
@@ -190,7 +189,7 @@ class AcornBattleGame {
                     }
                 }, (error) => {
                     if (error) {
-                        console.error('자체 QR 코드 생성 실패:', error);
+                        console.error('QR 코드 생성 실패:', error);
                         this.showQRFallback(url);
                     } else {
                         console.info('QR 코드 생성 성공');
@@ -207,7 +206,7 @@ class AcornBattleGame {
                 this.showQRFallback(url);
             }
         } else {
-            console.warn('QR 코드 생성기를 사용할 수 없음, 폴백 사용');
+            console.warn('QRCode 라이브러리가 로드되지 않았습니다. 폴백 사용.');
             this.showQRFallback(url);
         }
     }
