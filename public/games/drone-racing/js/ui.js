@@ -215,16 +215,57 @@ class GameUI {
      */
     showCountdown(count) {
         const countdownElement = this.elements.countdown;
-        if (!countdownElement) return;
+        if (!countdownElement) {
+            console.error('❌ 카운트다운 요소를 찾을 수 없습니다');
+            return;
+        }
         
+        console.log(`⏰ 카운트다운 표시: ${count > 0 ? count : 'GO!'}`);
+        
+        // 카운트다운 텍스트 설정
         countdownElement.textContent = count > 0 ? count : 'GO!';
+        
+        // 표시 설정
         countdownElement.classList.remove('hidden');
+        countdownElement.style.display = 'block';
+        countdownElement.style.visibility = 'visible';
+        countdownElement.style.opacity = '1';
+        countdownElement.style.zIndex = '1000';
+        
+        // 색상 설정
+        if (count > 0) {
+            countdownElement.style.color = '#ffaa00'; // 노란색
+            countdownElement.style.textShadow = '0 0 20px #ffaa00';
+        } else {
+            countdownElement.style.color = '#00ff88'; // 초록색 (GO!)
+            countdownElement.style.textShadow = '0 0 20px #00ff88';
+        }
+        
+        // 애니메이션 효과 (CSS 애니메이션 재시작)
+        countdownElement.style.animation = 'none';
+        setTimeout(() => {
+            countdownElement.style.animation = 'pulse 1s ease-in-out';
+        }, 10);
         
         // GO! 표시 후 숨김
         if (count === 0) {
             setTimeout(() => {
-                countdownElement.classList.add('hidden');
-            }, 1000);
+                this.hideCountdown();
+            }, 1500); // 1.5초 후 숨김
+        }
+    }
+    
+    /**
+     * 카운트다운 숨김
+     */
+    hideCountdown() {
+        const countdownElement = this.elements.countdown;
+        if (countdownElement) {
+            countdownElement.classList.add('hidden');
+            countdownElement.style.display = 'none';
+            countdownElement.style.visibility = 'hidden';
+            countdownElement.style.opacity = '0';
+            console.log('⏰ 카운트다운 숨김 완료');
         }
     }
     

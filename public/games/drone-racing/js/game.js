@@ -68,7 +68,7 @@ class DroneRacingGame {
      * Three.js deprecated 경고 필터링
      */
     filterThreeJSWarnings() {
-        // 기존 console.warn을 백업
+        // 기존 console.warn과 console.error를 백업
         const originalWarn = console.warn;
         const originalError = console.error;
         
@@ -82,7 +82,8 @@ class DroneRacingGame {
                 message.includes('are deprecated') ||
                 message.includes('Please use ES Modules') ||
                 message.includes('r150+') ||
-                message.includes('r160')) {
+                message.includes('r160') ||
+                message.includes('threejs.org/docs')) {
                 return; // 경고 무시
             }
             
@@ -97,7 +98,9 @@ class DroneRacingGame {
             // Three.js deprecated 에러 메시지 필터링
             if (message.includes('Scripts "build/three.js"') ||
                 message.includes('Scripts "build/three.min.js"') ||
-                message.includes('are deprecated')) {
+                message.includes('are deprecated') ||
+                message.includes('Please use ES Modules') ||
+                message.includes('threejs.org/docs')) {
                 return; // 에러 무시
             }
             
@@ -984,30 +987,101 @@ class DroneRacingGame {
      * 드론들 생성
      */
     createDrones() {
-        // 플레이어 1 드론 (왼쪽 시작)
-        this.drones.player1 = new Drone('player1', this.scene, this.physics, { x: -15, y: 5, z: 0 });
+        console.log('🚁 드론 생성 시작...');
         
-        // 플레이어 2 드론 (오른쪽 시작)
-        this.drones.player2 = new Drone('player2', this.scene, this.physics, { x: 15, y: 5, z: 0 });
+        // 기존 드론이 있으면 제거
+        if (this.drones.player1) {
+            if (this.drones.player1.mesh) {
+                this.scene.remove(this.drones.player1.mesh);
+            }
+            this.drones.player1 = null;
+        }
+        
+        if (this.drones.player2) {
+            if (this.drones.player2.mesh) {
+                this.scene.remove(this.drones.player2.mesh);
+            }
+            this.drones.player2 = null;
+        }
+        
+        // 플레이어 1 드론 (왼쪽 시작) - 위치를 더 가깝게
+        this.drones.player1 = new Drone('player1', this.scene, this.physics, { x: -10, y: 3, z: 0 });
+        
+        // 플레이어 2 드론 (오른쪽 시작) - 위치를 더 가깝게
+        this.drones.player2 = new Drone('player2', this.scene, this.physics, { x: 10, y: 3, z: 0 });
+        
+        // 드론이 제대로 생성되었는지 확인 (Drone 클래스에서 이미 씬에 추가됨)
+        if (this.drones.player1 && this.drones.player1.mesh) {
+            console.log('✅ Player1 드론 메시 생성 완료:', this.drones.player1.mesh.position);
+            console.log('✅ Player1 드론 메시 씬 포함 여부:', this.scene.getObjectByName('player1') !== undefined);
+        } else {
+            console.error('❌ Player1 드론 메시 생성 실패');
+        }
+        
+        if (this.drones.player2 && this.drones.player2.mesh) {
+            console.log('✅ Player2 드론 메시 생성 완료:', this.drones.player2.mesh.position);
+            console.log('✅ Player2 드론 메시 씬 포함 여부:', this.scene.getObjectByName('player2') !== undefined);
+        } else {
+            console.error('❌ Player2 드론 메시 생성 실패');
+        }
         
         // 카메라가 드론을 따라가도록 설정
         this.setupCameraFollow();
         
         // 드론 이벤트 리스너 설정
         this.setupDroneEvents();
+        
+        console.log('🚁 드론 생성 완료. 씬 오브젝트 수:', this.scene.children.length);
+        console.log('🚁 씬 오브젝트 목록:', this.scene.children.map(child => child.name || child.type));
     }
     
     /**
      * 카메라 추적 설정
      */
     setupCameraFollow() {
-        // 플레이어 1 카메라 (드론 뒤쪽에서 추적)
-        this.cameras.player1.position.set(-15, 8, 10);
-        this.cameras.player1.lookAt(-15, 5, 0);
+        // 플레이어 1 카메라 (드론을 더 잘 볼 수 있도록 위치 조정)
+        this.cameras.player1.position.set(-10, 8, 10);
+        this.cameras.player1.lookAt(-10, 3, 0);
         
-        // 플레이어 2 카메라 (드론 뒤쪽에서 추적)
-        this.cameras.player2.position.set(15, 8, 10);
-        this.cameras.player2.lookAt(15, 5, 0);
+        // 플레이어 2 카메라 (드론을 더 잘 볼 수 있도록 위치 조정)
+        this.cameras.player2.position.set(10, 8, 10);
+        this.cameras.player2.lookAt(10, 3, 0);
+        
+        console.log('📷 카메라 추적 설정 완료');
+        console.log(`플레이어 1 카메라 위치: (${this.cameras.player1.position.x}, ${this.cameras.player1.position.y}, ${this.cameras.player1.position.z})`);
+        console.log(`플레이어 2 카메라 위치: (${this.cameras.player2.position.x}, ${this.cameras.player2.position.y}, ${this.cameras.player2.position.z})`);
+        
+        // 카메라가 드론을 실제로 추적하도록 업데이트 함수 설정
+        this.updateCameraTracking();
+    }
+    
+    /**
+     * 카메라 추적 업데이트
+     */
+    updateCameraTracking() {
+        if (!this.drones.player1 || !this.drones.player2) return;
+        
+        // 플레이어 1 카메라가 드론을 따라가도록
+        if (this.drones.player1.mesh) {
+            const drone1Pos = this.drones.player1.mesh.position;
+            this.cameras.player1.position.set(
+                drone1Pos.x - 8,
+                drone1Pos.y + 5,
+                drone1Pos.z + 8
+            );
+            this.cameras.player1.lookAt(drone1Pos);
+        }
+        
+        // 플레이어 2 카메라가 드론을 따라가도록
+        if (this.drones.player2.mesh) {
+            const drone2Pos = this.drones.player2.mesh.position;
+            this.cameras.player2.position.set(
+                drone2Pos.x + 8,
+                drone2Pos.y + 5,
+                drone2Pos.z + 8
+            );
+            this.cameras.player2.lookAt(drone2Pos);
+        }
     }
     
     /**
@@ -1027,32 +1101,51 @@ class DroneRacingGame {
     restartGame() {
         console.log('🔄 게임 재시작 (세션 유지)');
         
-        // 게임 상태 관리자를 통한 재시작
-        if (this.gameStateManager) {
-            this.gameStateManager.restart();
-        } else {
-            // 폴백: 직접 상태 초기화
-            this.gameState = 'waiting';
-            this.raceStartTime = 0;
-            this.isPaused = false;
+        // 중복 재시작 방지
+        if (this.isRestarting) {
+            console.log('⚠️ 이미 재시작 중입니다.');
+            return;
         }
         
-        // UI 초기화
-        document.getElementById('resultsPanel').classList.add('hidden');
-        document.getElementById('reconnectPanel').classList.add('hidden');
-        document.getElementById('gameHUD').classList.add('hidden');
-        document.getElementById('controlPanel').classList.add('hidden');
+        this.isRestarting = true;
         
-        // 드론 상태 리셋
-        this.resetDrones();
-        
-        // 센서가 연결되어 있으면 바로 게임 시작
-        const session = this.sdk.getSession();
-        if (session && this.sdk.isConnected()) {
-            // 연결된 센서 수 확인 후 게임 시작
-            setTimeout(() => {
-                this.startRace();
-            }, 500);
+        try {
+            // 게임 상태 관리자를 통한 재시작
+            if (this.gameStateManager) {
+                this.gameStateManager.restart();
+            } else {
+                // 폴백: 직접 상태 초기화
+                this.gameState = 'waiting';
+                this.raceStartTime = 0;
+                this.isPaused = false;
+            }
+            
+            // UI 초기화
+            document.getElementById('resultsPanel')?.classList.add('hidden');
+            document.getElementById('reconnectPanel')?.classList.add('hidden');
+            document.getElementById('gameHUD')?.classList.add('hidden');
+            document.getElementById('controlPanel')?.classList.add('hidden');
+            
+            // 드론 상태 리셋
+            this.resetDrones();
+            
+            // 센서가 연결되어 있으면 바로 게임 시작 (단, 무한 루프 방지)
+            const session = this.sdk.getSession();
+            if (session && this.sdk.isConnected()) {
+                // 연결된 센서 수 확인 후 게임 시작
+                setTimeout(() => {
+                    if (this.gameStateManager && 
+                        this.gameStateManager.currentState === this.gameStateManager.states.WAITING) {
+                        this.startRace();
+                    }
+                    this.isRestarting = false;
+                }, 1000); // 1초로 증가하여 안정성 확보
+            } else {
+                this.isRestarting = false;
+            }
+        } catch (error) {
+            console.error('게임 재시작 중 오류:', error);
+            this.isRestarting = false;
         }
     }
     
@@ -1691,6 +1784,9 @@ class DroneRacingGame {
             this.updateCollisionEffects();
         }
         
+        // 카메라 추적 업데이트 (항상 실행하여 드론이 항상 보이도록)
+        this.updateCameraTracking();
+        
         // 효과 시스템 업데이트
         if (this.effects) {
             this.effects.update(deltaTime);
@@ -1706,11 +1802,6 @@ class DroneRacingGame {
         if (this.ui && this.gameState === 'racing' && this.frameCount % 3 === 0) {
             this.updateUI();
             this.updateRealTimeRankings();
-        }
-        
-        // 카메라 추적 업데이트
-        if (this.gameState === 'racing') {
-            this.updateCameraFollow();
         }
         
         // 렌더링 (성능 최적화 적용)
@@ -1953,9 +2044,14 @@ class DroneRacingGame {
         
         const renderStart = performance.now();
         
-        // 성능 최적화: 렌더링 최적화 적용
-        if (this.performanceOptimizer) {
-            this.performanceOptimizer.optimizeRendering(this.scene, this.cameras.player1, this.renderer);
+        // 씬 오브젝트 수 확인 (디버깅용)
+        if (this.frameCount % 60 === 0) { // 1초마다 한 번
+            console.log(`🎬 렌더링 - 씬 오브젝트 수: ${this.scene.children.length}`);
+            console.log(`🎬 드론 메시 존재 여부: player1=${!!this.drones.player1?.mesh}, player2=${!!this.drones.player2?.mesh}`);
+        }
+        
+        // 성능 최적화: 렌더링 최적화 적용 (단, 드론 렌더링에 영향 주지 않도록)
+        if (this.performanceOptimizer && this.gameState === 'racing') {
             this.performanceOptimizer.optimizeSplitScreenRendering();
         }
         
@@ -1964,17 +2060,26 @@ class DroneRacingGame {
         const height = window.innerHeight;
         const halfWidth = width / 2;
         
-        // 렌더러 설정 최적화
+        // 렌더러 설정
         this.renderer.setScissorTest(true);
+        this.renderer.setClearColor(0x000011, 1); // 어두운 파란색 배경
         
-        // 왼쪽 화면 (플레이어 1)
+        // 왼쪽 화면 (플레이어 1) - 카메라 aspect ratio 확인
+        this.cameras.player1.aspect = halfWidth / height;
+        this.cameras.player1.updateProjectionMatrix();
+        
         this.renderer.setViewport(0, 0, halfWidth, height);
         this.renderer.setScissor(0, 0, halfWidth, height);
+        this.renderer.clear();
         this.renderer.render(this.scene, this.cameras.player1);
         
-        // 오른쪽 화면 (플레이어 2)
+        // 오른쪽 화면 (플레이어 2) - 카메라 aspect ratio 확인
+        this.cameras.player2.aspect = halfWidth / height;
+        this.cameras.player2.updateProjectionMatrix();
+        
         this.renderer.setViewport(halfWidth, 0, halfWidth, height);
         this.renderer.setScissor(halfWidth, 0, halfWidth, height);
+        this.renderer.clear();
         this.renderer.render(this.scene, this.cameras.player2);
         
         // 스크린 분할 해제

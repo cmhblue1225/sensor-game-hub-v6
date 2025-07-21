@@ -95,6 +95,12 @@ class GameStateManager {
     setState(newState, data = {}) {
         if (newState === this.currentState) return;
         
+        // 무한 루프 방지 검사
+        if (this.preventStateLoop) {
+            console.log(`⚠️ 상태 변경 차단됨 (무한 루프 방지): ${this.currentState} → ${newState}`);
+            return;
+        }
+        
         const oldState = this.currentState;
         this.previousState = oldState;
         this.currentState = newState;
@@ -192,12 +198,27 @@ class GameStateManager {
      * 경주 상태 처리
      */
     handleRacingState() {
+        // 이미 경주 중이면 중복 처리 방지
+        if (this.sessionInfo.raceStartTime) {
+            console.log('⚠️ 경주가 이미 시작되었습니다. 중복 처리 방지.');
+            return;
+        }
+        
         this.sessionInfo.raceStartTime = Date.now();
         
         // 모든 플레이어를 준비 상태로 설정
         Object.values(this.playerStates).forEach(player => {
             player.isReady = true;
         });
+        
+        console.log('🏁 경주 시작! 드론 조작이 활성화됩니다.');
+        
+        // 게임 루프에서 경주 로직 활성화
+        if (this.game) {
+            this.game.raceStartTime = Date.now();
+            this.game.raceFinished = false;
+            this.game.isPaused = false;
+        }
     }
     
     /**
@@ -239,10 +260,27 @@ class GameStateManager {
      * 카운트다운 시작
      */
     startCountdown() {
+        // 이미 카운트다운이 진행 중이면 중단
+        if (this.countdownState.isActive) {
+            console.log('⚠️ 카운트다운이 이미 진행 중입니다.');
+            return;
+        }
+        
+        this.countdownState.isActive = true;
+        this.countdownState.currentCount = 3;
+        
+        console.log('⏰ 카운트다운 시작: 3, 2, 1, GO!');
+        
         const countdown = () => {
-            if (!this.countdownState.isActive) return;
+            // 상태가 변경되었으면 카운트다운 중단
+            if (!this.countdownState.isActive || this.currentState !== this.states.COUNTDOWN) {
+                console.log('⚠️ 카운트다운 중단됨 (상태 변경)');
+                return;
+            }
             
             if (this.countdownState.currentCount > 0) {
+                console.log(`⏰ 카운트다운: ${this.countdownState.currentCount}`);
+                
                 // UI에 카운트다운 표시
                 if (this.game.ui) {
                     this.game.ui.showCountdown(this.countdownState.currentCount);
@@ -251,19 +289,29 @@ class GameStateManager {
                 this.countdownState.currentCount--;
                 setTimeout(countdown, 1000);
             } else {
+                console.log('🚀 GO! 경주 시작!');
+                
                 // GO! 표시
                 if (this.game.ui) {
                     this.game.ui.showCountdown(0);
                 }
                 
-                // 경주 시작
+                // 카운트다운 완료
+                this.countdownState.isActive = false;
+                
+                // 1초 후 경주 시작 (GO! 메시지 표시 시간)
                 setTimeout(() => {
-                    this.setState(this.states.RACING);
+                    // 상태가 여전히 countdown이고 게임이 활성 상태인 경우에만 racing으로 전환
+                    if (this.currentState === this.states.COUNTDOWN && this.game) {
+                        console.log('🏁 카운트다운 완료 → 경주 상태로 전환');
+                        this.setState(this.states.RACING);
+                    }
                 }, 1000);
             }
         };
         
-        countdown();
+        // 첫 번째 카운트다운 시작
+        setTimeout(countdown, 500); // 0.5초 후 시작
     }
     
     /**

@@ -58,12 +58,12 @@ class Drone {
      * 3D 드론 모델 생성
      */
     create3DModel() {
-        // 드론 본체 (메인 바디)
-        const bodyGeometry = new THREE.BoxGeometry(2, 0.4, 2);
+        // 드론 본체 (메인 바디) - 크기를 더 크게 하여 잘 보이도록
+        const bodyGeometry = new THREE.BoxGeometry(3, 0.6, 3);
         const bodyMaterial = new THREE.MeshLambertMaterial({ 
             color: this.playerId === 'player1' ? 0x00ff88 : 0xff0088,
-            transparent: true,
-            opacity: 0.9
+            transparent: false,
+            opacity: 1.0
         });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
         body.castShadow = true;
@@ -83,7 +83,41 @@ class Drone {
         this.mesh.position.copy(this.position);
         this.mesh.name = this.playerId;
         
+        // 드론이 더 잘 보이도록 스케일 조정
+        this.mesh.scale.set(1.2, 1.2, 1.2);
+        
+        // 씬에 추가하고 확인
         this.scene.add(this.mesh);
+        console.log(`✅ 드론 메시 씬에 추가됨: ${this.playerId}, 위치: (${this.position.x}, ${this.position.y}, ${this.position.z})`);
+        console.log(`✅ 드론 메시 스케일: (${this.mesh.scale.x}, ${this.mesh.scale.y}, ${this.mesh.scale.z})`);
+        
+        // 메시가 실제로 씬에 추가되었는지 확인
+        const foundMesh = this.scene.getObjectByName(this.playerId);
+        if (foundMesh) {
+            console.log(`✅ 드론 메시 씬에서 확인됨: ${this.playerId}`);
+            console.log(`✅ 씬 내 드론 위치: (${foundMesh.position.x}, ${foundMesh.position.y}, ${foundMesh.position.z})`);
+        } else {
+            console.error(`❌ 드론 메시 씬에서 찾을 수 없음: ${this.playerId}`);
+        }
+        
+        // 드론 메시가 카메라 시야에 있는지 확인
+        this.checkVisibility();
+    }
+    
+    /**
+     * 드론 가시성 확인
+     */
+    checkVisibility() {
+        if (!this.mesh) return;
+        
+        const position = this.mesh.position;
+        const distance = position.length();
+        
+        console.log(`🔍 드론 ${this.playerId} 가시성 체크:`);
+        console.log(`   위치: (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`);
+        console.log(`   원점으로부터 거리: ${distance.toFixed(2)}`);
+        console.log(`   메시 visible: ${this.mesh.visible}`);
+        console.log(`   메시 자식 수: ${this.mesh.children.length}`);
     }
     
     /**
