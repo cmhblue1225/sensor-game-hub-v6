@@ -139,10 +139,10 @@
                 QR 코드 생성 중...
             </div>
 
-            <div class="mass-waiting-list" id="massWaitingList">
+            <!-- <div class="mass-waiting-list" id="massWaitingList">
                 <div class="waiting-title">🎮 참가자 대기실 (0/8)</div>
                 <div id="massWaitingPlayers"></div>
-            </div>
+            </div> -->
 
             <div class="session-instructions">
                 📱 센서 클라이언트: <strong>/sensor.html</strong><br>
@@ -156,6 +156,12 @@
             </div>
         </div>
         
+        <!-- 대기실 참가자 목록 -->
+        <div class="ui-panel mass-waiting-list hidden" id="massWaitingList">
+            <div class="waiting-title">🎮 참가자 대기실 (0/8)</div>
+            <div id="massWaitingPlayers"></div>
+        </div>
+
         <!-- 상태 패널 -->
         <div class="ui-panel status-panel">
             <div class="status-item">

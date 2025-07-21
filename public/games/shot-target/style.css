@@ -718,6 +718,9 @@ body {
 }
 
 .mass-waiting-list {
+    position: fixed;
+    top: 20px;
+    left: 20px;
     margin: 1.5rem 0;
     padding: 1rem;
     background: var(--surface);
