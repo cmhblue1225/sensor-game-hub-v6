@@ -172,10 +172,10 @@ export class GamePage {
    */
    goBackToModeSelection() {
        // SDK 세션 정리
-       if (this.sdk) {
+       if (this.sdk && typeof this.sdk.cleanup === 'function') {
            this.sdk.cleanup();
-           this.sdk = null;
         }
+        this.sdk = null;
    
         // 모든 패널 숨기기
         this.elements.sessionPanel.classList.add('hidden');
