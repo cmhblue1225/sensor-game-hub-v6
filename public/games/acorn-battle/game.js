@@ -81,14 +81,14 @@ class AcornBattleGame {
         // 게임 루프 관련
         this.animationId = null;
         this.lastSensorUpdate = 0;
-        this.sensorThrottle = 16; // 60fps로 개선
+        this.sensorThrottle = 33; // 30fps로 안정화 (16ms → 33ms)
 
-        // 센서 데이터 스무딩을 위한 버퍼
+        // 센서 데이터 스무딩을 위한 버퍼 (버퍼 크기 증가)
         this.sensorBuffer = {
             sensor1: { beta: [], gamma: [] },
             sensor2: { beta: [], gamma: [] }
         };
-        this.bufferSize = 3; // 최근 3개 값의 평균 사용
+        this.bufferSize = 5; // 최근 5개 값의 평균 사용 (더 부드럽게)
 
         this.setupEvents();
         this.initializeGame();
@@ -407,8 +407,8 @@ class AcornBattleGame {
         const targetVelocityX = normalizedTiltX * ballSpeed * sensitivity;
         const targetVelocityY = normalizedTiltY * ballSpeed * sensitivity;
 
-        // 속도 보간으로 부드러운 움직임 (solo 게임 방식)
-        const acceleration = 0.2; // 가속도 (0.1 = 매우 부드럽게, 0.3 = 빠르게 반응)
+        // 속도 보간으로 부드러운 움직임 (안정성 향상)
+        const acceleration = 0.15; // 가속도 감소 (0.2 → 0.15, 더 부드럽게)
         player.velocity.x += (targetVelocityX - player.velocity.x) * acceleration;
         player.velocity.y += (targetVelocityY - player.velocity.y) * acceleration;
 
