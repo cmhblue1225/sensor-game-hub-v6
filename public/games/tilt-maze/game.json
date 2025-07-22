@@ -1,0 +1,29 @@
+{
+  "id": "tilt-maze",
+  "title": "Tilt Maze Adventure",
+  "description": "기울기로 미로를 탈출하는 퍼즐 게임<br>골드를 수집하고 출구를 찾으세요!",
+  "category": "solo",
+  "icon": "🧩",
+  "version": "1.0.0",
+  "author": "Sensor Game Hub Team",
+  "created": "2025-01-14T00:00:00Z",
+  "sensors": ["orientation"],
+  "maxPlayers": 1,
+  "difficulty": "medium",
+  "status": "active",
+  "featured": false,
+  "experimental": true,
+  "tags": ["maze", "puzzle", "tilt", "adventure", "collection"],
+  "instructions": [
+    "모바일을 기울여서 파란색 공을 굴리세요",
+    "노란색 골드를 모두 수집하세요",
+    "빨간색 벽에 부딪히지 마세요",
+    "초록색 출구에 도달하면 승리!"
+  ],
+  "controls": {
+    "tilt_left": "공을 왼쪽으로 굴리기",
+    "tilt_right": "공을 오른쪽으로 굴리기",
+    "tilt_up": "공을 위로 굴리기", 
+    "tilt_down": "공을 아래로 굴리기"
+  }
+}

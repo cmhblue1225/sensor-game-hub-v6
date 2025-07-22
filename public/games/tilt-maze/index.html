@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧩 Tilt Maze Adventure</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --border: #475569;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--background);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+        
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+        }
+        
+        .game-ui {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+        
+        .ui-panel {
+            position: absolute;
+            background: rgba(30, 41, 59, 0.9);
+            border: 1px solid var(--border);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            backdrop-filter: blur(12px);
+            pointer-events: all;
+        }
+        
+        .session-panel {
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            min-width: 400px;
+        }
+        
+        .session-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .session-code {
+            font-size: 3rem;
+            font-weight: 700;
+            font-family: 'Courier New', monospace;
+            color: var(--primary);
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 2px solid var(--primary);
+            border-radius: 0.75rem;
+            letter-spacing: 0.3em;
+        }
+        
+        .qr-container {
+            margin: 1.5rem 0;
+            padding: 1rem;
+            background: white;
+            border-radius: 0.75rem;
+            display: inline-block;
+        }
+        
+        .game-info-panel {
+            top: 1rem;
+            right: 1rem;
+            text-align: center;
+            min-width: 200px;
+        }
+        
+        .score {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--warning);
+            font-family: 'Courier New', monospace;
+            margin-bottom: 1rem;
+        }
+        
+        .game-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 0.75rem;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 0.5rem;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+        }
+        
+        .stat-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .control-panel {
+            bottom: 1rem;
+            left: 1rem;
+            display: flex;
+            gap: 1rem;
+        }
+        
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: var(--surface);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .status-panel {
+            top: 1rem;
+            left: 1rem;
+            min-width: 250px;
+        }
+        
+        .status-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--success);
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--error);
+        }
+        
+        .status-indicator.connected {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div class="game-ui">
+        <!-- 세션 대기 패널 -->
+        <div class="ui-panel session-panel fade-in" id="sessionPanel">
+            <div class="session-title">🧩 Tilt Maze Adventure</div>
+            <div style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.6;">
+                기울기로 미로를 탈출하는 퍼즐 게임!<br>
+                골드를 수집하고 출구를 찾으세요.
+            </div>
+            
+            <div class="session-code" id="sessionCode">----</div>
+            
+            <div class="qr-container" id="qrContainer">
+                <div style="color: #666; padding: 2rem;">QR 코드 생성 중...</div>
+            </div>
+            
+            <div style="color: var(--text-secondary); font-size: 0.9rem; margin-top: 1rem;">
+                📱 모바일로 QR 코드를 스캔하거나<br>
+                센서 클라이언트에서 세션 코드를 입력하세요
+            </div>
+        </div>
+        
+        <!-- 게임 상태 패널 -->
+        <div class="ui-panel status-panel hidden" id="statusPanel">
+            <div class="status-title">🎮 게임 상태</div>
+            <div class="connection-status">
+                <div class="status-indicator" id="sensorIndicator"></div>
+                <span>센서 연결</span>
+            </div>
+        </div>
+        
+        <!-- 게임 정보 패널 -->
+        <div class="ui-panel game-info-panel hidden" id="gameInfoPanel">
+            <div class="score" id="score">점수: 0</div>
+            <div class="game-stats">
+                <div class="stat-item">
+                    <div class="stat-label">골드</div>
+                    <div class="stat-value" id="goldCount">0/5</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">시간</div>
+                    <div class="stat-value" id="gameTime">0s</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 컨트롤 패널 -->
+        <div class="ui-panel control-panel hidden" id="controlPanel">
+            <button class="btn btn-secondary" onclick="game.resetGame()" id="resetBtn">🔄 재시작</button>
+            <button class="btn btn-primary" onclick="game.togglePause()" id="pauseBtn">⏸️ 일시정지</button>
+            <a href="/" class="btn btn-secondary">🏠 허브로</a>
+        </div>
+    </div>
+    
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- QR Code Generator -->
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- SessionSDK -->
+    <script src="/js/SessionSDK.js"></script>
+    
+    <script>
+        class TiltMazeGame {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                
+                // 캔버스 크기 설정
+                this.resizeCanvas();
+                window.addEventListener('resize', () => this.resizeCanvas());
+                
+                // SDK 초기화
+                this.sdk = new SessionSDK({
+                    gameId: 'tilt-maze',
+                    gameType: 'solo',
+                    debug: true
+                });
+                
+                // 게임 상태
+                this.gameState = 'waiting'; // waiting, playing, paused, completed
+                this.score = 0;
+                this.goldCollected = 0;
+                this.totalGold = 5;
+                this.startTime = 0;
+                
+                // 게임 객체들
+                this.player = { x: 50, y: 50, radius: 15, vx: 0, vy: 0 };
+                this.walls = [];
+                this.golds = [];
+                this.exit = { x: 0, y: 0, width: 40, height: 40 };
+                
+                // 센서 데이터
+                this.tiltX = 0;
+                this.tiltY = 0;
+                
+                this.setupEventListeners();
+                this.createMaze();
+                this.gameLoop();
+            }
+            
+            resizeCanvas() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            }
+            
+            setupEventListeners() {
+                // SDK 이벤트
+                this.sdk.on('connected', () => {
+                    console.log('✅ 서버 연결 완료, 세션 생성 중...');
+                    this.createSession();
+                });
+                
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;
+                    console.log('세션 생성됨:', session);
+                    this.displaySessionInfo(session);
+                });
+                
+                this.sdk.on('sensor-connected', (data) => {
+                    console.log('센서 연결됨:', data);
+                    this.onSensorConnected();
+                });
+                
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;
+                    this.processSensorData(data);
+                });
+                
+                this.sdk.on('game-ready', () => {
+                    console.log('게임 준비 완료');
+                    this.startGame();
+                });
+                
+                // 키보드 컨트롤 (테스트용)
+                window.addEventListener('keydown', (e) => {
+                    if (this.gameState !== 'playing') return;
+                    
+                    switch(e.key) {
+                        case 'ArrowLeft': this.tiltX = -30; break;
+                        case 'ArrowRight': this.tiltX = 30; break;
+                        case 'ArrowUp': this.tiltY = -30; break;
+                        case 'ArrowDown': this.tiltY = 30; break;
+                    }
+                });
+                
+                window.addEventListener('keyup', (e) => {
+                    if (e.key.startsWith('Arrow')) {
+                        this.tiltX = 0;
+                        this.tiltY = 0;
+                    }
+                });
+            }
+            
+            async createSession() {
+                try {
+                    await this.sdk.createSession();
+                } catch (error) {
+                    console.error('세션 생성 실패:', error);
+                }
+            }
+            
+            displaySessionInfo(session) {
+                document.getElementById('sessionCode').textContent = session.sessionCode;
+                
+                // QR 코드 생성
+                const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                
+                if (typeof QRCode !== 'undefined') {
+                    QRCode.toCanvas(document.createElement('canvas'), qrUrl, (error, canvas) => {
+                        if (!error) {
+                            canvas.style.width = '200px';
+                            canvas.style.height = '200px';
+                            document.getElementById('qrContainer').innerHTML = '';
+                            document.getElementById('qrContainer').appendChild(canvas);
+                        } else {
+                            console.error('QR 코드 생성 실패:', error);
+                            this.showQRCodeFallback(qrUrl);
+                        }
+                    });
+                } else {
+                    console.warn('QRCode 라이브러리가 로드되지 않았습니다. 폴백 사용.');
+                    this.showQRCodeFallback(qrUrl);
+                }
+            }
+            
+            showQRCodeFallback(qrUrl) {
+                // QR 코드 서비스 API 사용
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
+                const img = document.createElement('img');
+                img.src = qrApiUrl;
+                img.style.width = '200px';
+                img.style.height = '200px';
+                img.alt = 'QR Code';
+                
+                document.getElementById('qrContainer').innerHTML = '';
+                document.getElementById('qrContainer').appendChild(img);
+            }
+            
+            onSensorConnected() {
+                document.getElementById('sensorIndicator').classList.add('connected');
+                document.getElementById('statusPanel').classList.remove('hidden');
+            }
+            
+            processSensorData(data) {
+                if (this.gameState !== 'playing') return;
+                
+                const sensorData = data.data;
+                if (sensorData.orientation) {
+                    // 기울기 데이터 처리 (감도 조정)
+                    this.tiltX = (sensorData.orientation.gamma || 0) * 0.8;
+                    this.tiltY = (sensorData.orientation.beta || 0) * 0.8;
+                    
+                    // 범위 제한
+                    this.tiltX = Math.max(-45, Math.min(45, this.tiltX));
+                    this.tiltY = Math.max(-45, Math.min(45, this.tiltY));
+                }
+            }
+            
+            startGame() {
+                this.gameState = 'playing';
+                this.startTime = Date.now();
+                
+                // UI 전환
+                document.getElementById('sessionPanel').classList.add('hidden');
+                document.getElementById('gameInfoPanel').classList.remove('hidden');
+                document.getElementById('controlPanel').classList.remove('hidden');
+                
+                console.log('🎮 미로 게임 시작!');
+            }
+            
+            createMaze() {
+                const w = this.canvas.width || 800;
+                const h = this.canvas.height || 600;
+                
+                // 벽 생성 (간단한 미로)
+                this.walls = [
+                    // 외벽
+                    {x: 0, y: 0, width: w, height: 20},
+                    {x: 0, y: 0, width: 20, height: h},
+                    {x: w-20, y: 0, width: 20, height: h},
+                    {x: 0, y: h-20, width: w, height: 20},
+                    
+                    // 내부 벽
+                    {x: 100, y: 100, width: 200, height: 20},
+                    {x: 100, y: 200, width: 20, height: 150},
+                    {x: 300, y: 200, width: 150, height: 20},
+                    {x: 200, y: 300, width: 20, height: 100},
+                    {x: 400, y: 100, width: 20, height: 200},
+                    {x: 500, y: 250, width: 100, height: 20}
+                ];
+                
+                // 골드 배치
+                this.golds = [
+                    {x: 150, y: 150, collected: false},
+                    {x: 350, y: 250, collected: false},
+                    {x: 250, y: 350, collected: false},
+                    {x: 450, y: 150, collected: false},
+                    {x: 550, y: 300, collected: false}
+                ];
+                
+                // 출구 설정
+                this.exit = {x: w-80, y: h-80, width: 40, height: 40};
+            }
+            
+            update() {
+                if (this.gameState !== 'playing') return;
+                
+                // 물리 시뮬레이션
+                const gravity = 0.3;
+                const friction = 0.95;
+                
+                // 기울기를 가속도로 변환
+                this.player.vx += (this.tiltX * gravity) / 60;
+                this.player.vy += (this.tiltY * gravity) / 60;
+                
+                // 마찰력 적용
+                this.player.vx *= friction;
+                this.player.vy *= friction;
+                
+                // 위치 업데이트
+                this.player.x += this.player.vx;
+                this.player.y += this.player.vy;
+                
+                // 벽 충돌 검사
+                this.checkWallCollisions();
+                
+                // 골드 수집 검사
+                this.checkGoldCollection();
+                
+                // 출구 도달 검사
+                this.checkExitReached();
+                
+                // UI 업데이트
+                this.updateUI();
+            }
+            
+            checkWallCollisions() {
+                for (const wall of this.walls) {
+                    if (this.player.x + this.player.radius > wall.x &&
+                        this.player.x - this.player.radius < wall.x + wall.width &&
+                        this.player.y + this.player.radius > wall.y &&
+                        this.player.y - this.player.radius < wall.y + wall.height) {
+                        
+                        // 충돌 방향 계산 및 위치 보정
+                        const overlapX = Math.min(
+                            this.player.x + this.player.radius - wall.x,
+                            wall.x + wall.width - (this.player.x - this.player.radius)
+                        );
+                        const overlapY = Math.min(
+                            this.player.y + this.player.radius - wall.y,
+                            wall.y + wall.height - (this.player.y - this.player.radius)
+                        );
+                        
+                        if (overlapX < overlapY) {
+                            this.player.vx *= -0.5;
+                            if (this.player.x < wall.x + wall.width / 2) {
+                                this.player.x = wall.x - this.player.radius;
+                            } else {
+                                this.player.x = wall.x + wall.width + this.player.radius;
+                            }
+                        } else {
+                            this.player.vy *= -0.5;
+                            if (this.player.y < wall.y + wall.height / 2) {
+                                this.player.y = wall.y - this.player.radius;
+                            } else {
+                                this.player.y = wall.y + wall.height + this.player.radius;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            checkGoldCollection() {
+                for (const gold of this.golds) {
+                    if (!gold.collected) {
+                        const dx = this.player.x - gold.x;
+                        const dy = this.player.y - gold.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        
+                        if (distance < this.player.radius + 15) {
+                            gold.collected = true;
+                            this.goldCollected++;
+                            this.score += 100;
+                        }
+                    }
+                }
+            }
+            
+            checkExitReached() {
+                if (this.goldCollected >= this.totalGold) {
+                    if (this.player.x + this.player.radius > this.exit.x &&
+                        this.player.x - this.player.radius < this.exit.x + this.exit.width &&
+                        this.player.y + this.player.radius > this.exit.y &&
+                        this.player.y - this.player.radius < this.exit.y + this.exit.height) {
+                        
+                        this.completeGame();
+                    }
+                }
+            }
+            
+            completeGame() {
+                this.gameState = 'completed';
+                this.score += Math.max(0, 10000 - (Date.now() - this.startTime));
+                alert(`🎉 축하합니다! 미로를 탈출했습니다!\n최종 점수: ${this.score}`);
+            }
+            
+            updateUI() {
+                document.getElementById('score').textContent = `점수: ${this.score}`;
+                document.getElementById('goldCount').textContent = `${this.goldCollected}/${this.totalGold}`;
+                
+                if (this.startTime > 0) {
+                    const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                    document.getElementById('gameTime').textContent = `${elapsed}s`;
+                }
+            }
+            
+            render() {
+                const ctx = this.ctx;
+                
+                // 배경 지우기
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // 벽 그리기
+                ctx.fillStyle = '#ef4444';
+                for (const wall of this.walls) {
+                    ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+                }
+                
+                // 골드 그리기
+                ctx.fillStyle = '#f59e0b';
+                for (const gold of this.golds) {
+                    if (!gold.collected) {
+                        ctx.beginPath();
+                        ctx.arc(gold.x, gold.y, 15, 0, Math.PI * 2);
+                        ctx.fill();
+                        
+                        // 반짝임 효과
+                        ctx.fillStyle = '#fbbf24';
+                        ctx.beginPath();
+                        ctx.arc(gold.x - 5, gold.y - 5, 5, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.fillStyle = '#f59e0b';
+                    }
+                }
+                
+                // 출구 그리기
+                if (this.goldCollected >= this.totalGold) {
+                    ctx.fillStyle = '#10b981';
+                } else {
+                    ctx.fillStyle = '#6b7280';
+                }
+                ctx.fillRect(this.exit.x, this.exit.y, this.exit.width, this.exit.height);
+                
+                // 플레이어 그리기
+                ctx.fillStyle = '#3b82f6';
+                ctx.beginPath();
+                ctx.arc(this.player.x, this.player.y, this.player.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // 플레이어 하이라이트
+                ctx.fillStyle = '#60a5fa';
+                ctx.beginPath();
+                ctx.arc(this.player.x - 5, this.player.y - 5, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            gameLoop() {
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
+            }
+            
+            resetGame() {
+                this.player = { x: 50, y: 50, radius: 15, vx: 0, vy: 0 };
+                this.score = 0;
+                this.goldCollected = 0;
+                this.startTime = Date.now();
+                
+                for (const gold of this.golds) {
+                    gold.collected = false;
+                }
+                
+                if (this.gameState === 'completed') {
+                    this.gameState = 'playing';
+                }
+            }
+            
+            togglePause() {
+                if (this.gameState === 'playing') {
+                    this.gameState = 'paused';
+                    document.getElementById('pauseBtn').textContent = '▶️ 재개';
+                } else if (this.gameState === 'paused') {
+                    this.gameState = 'playing';
+                    document.getElementById('pauseBtn').textContent = '⏸️ 일시정지';
+                }
+            }
+        }
+        
+        // 게임 시작
+        const game = new TiltMazeGame();
+    </script>
+</body>
+</html>

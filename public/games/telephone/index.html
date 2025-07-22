@@ -1,0 +1,1750 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📞 Telephone - Sensor Game Hub</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --accent: #06b6d4;
+            --gold: #fbbf24;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--background), var(--surface));
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 파티클 배경 효과 */
+        .particles {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .particle {
+            position: absolute;
+            background: radial-gradient(circle, rgba(59, 130, 246, 0.6), transparent);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); opacity: 0.5; }
+            50% { transform: translateY(-20px) rotate(180deg); opacity: 1; }
+        }
+
+        /* 상단 UI */
+        .game-header {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            text-align: center;
+        }
+
+        .session-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 0.8rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .session-info {
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 1rem;
+            padding: 1.2rem;
+            display: inline-block;
+            max-width: 300px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .session-code {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 0.8rem;
+            letter-spacing: 0.2em;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+        }
+
+        .qr-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 0.8rem;
+        }
+
+        .qr-container canvas,
+        .qr-container img {
+            border-radius: 0.5rem;
+            background: white;
+            padding: 0.4rem;
+            width: 150px !important;
+            height: 150px !important;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .connection-status {
+            display: flex;
+            gap: 0.8rem;
+            justify-content: center;
+            margin-top: 0.8rem;
+        }
+
+        .sensor-status {
+            padding: 0.4rem 0.8rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+
+        .sensor-disconnected {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid var(--error);
+            color: var(--error);
+        }
+
+        .sensor-connected {
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid var(--success);
+            color: var(--success);
+            animation: pulse-success 2s infinite;
+        }
+
+        @keyframes pulse-success {
+            0%, 100% { box-shadow: 0 0 5px rgba(16, 185, 129, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(16, 185, 129, 0.6); }
+        }
+
+        /* 게임 영역 */
+        .game-area {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        .game-state {
+            text-align: center;
+            font-size: 3rem;
+            font-weight: bold;
+            padding: 2rem;
+            border-radius: 2rem;
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(12px);
+            border: 2px solid transparent;
+            min-width: 400px;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-state::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .game-state.shine::before {
+            left: 100%;
+        }
+
+        .state-waiting {
+            color: var(--text-secondary);
+            border-color: rgba(203, 213, 225, 0.3);
+        }
+
+        .state-ready {
+            color: var(--warning);
+            border-color: var(--warning);
+            animation: ready-pulse 1s infinite;
+            background: rgba(251, 191, 36, 0.1);
+        }
+
+        .state-countdown {
+            color: var(--accent);
+            border-color: var(--accent);
+            background: rgba(6, 182, 212, 0.1);
+            animation: countdown-tick 1s ease-in-out;
+        }
+
+        .state-listen {
+            color: var(--error);
+            border-color: var(--error);
+            background: rgba(239, 68, 68, 0.2);
+            animation: ring-shake 0.3s infinite;
+            box-shadow: 0 0 30px rgba(239, 68, 68, 0.5);
+        }
+
+        .state-result {
+            color: var(--success);
+            border-color: var(--success);
+            background: rgba(16, 185, 129, 0.2);
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.5);
+        }
+
+        .state-result.winner {
+            color: var(--gold);
+            border-color: var(--gold);
+            background: rgba(251, 191, 36, 0.2);
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.5);
+        }
+
+        @keyframes ready-pulse {
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.02); opacity: 0.9; }
+        }
+
+        @keyframes countdown-tick {
+            0% { transform: scale(1.05); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes ring-shake {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.02) rotate(-1deg); }
+            75% { transform: scale(1.02) rotate(1deg); }
+        }
+
+        /* 반응 시간 표시 */
+        .reaction-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 4rem;
+            font-weight: bold;
+            color: var(--accent);
+            text-shadow: 0 0 20px rgba(6, 182, 212, 0.8);
+            opacity: 0;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        .reaction-display.show {
+            animation: reaction-pop 1.5s ease-out;
+        }
+
+        @keyframes reaction-pop {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+
+        /* 플레이어 상태 */
+        .players-status {
+            position: absolute;
+            bottom: 150px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 3rem;
+            z-index: 10;
+        }
+
+        .player-card {
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(12px);
+            border: 2px solid rgba(59, 130, 246, 0.3);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            text-align: center;
+            min-width: 180px;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .player-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+            transform: translateX(-100%);
+            transition: transform 0.6s ease;
+        }
+
+        .player-card.winner {
+            border-color: var(--gold);
+            background: rgba(251, 191, 36, 0.2);
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.3);
+            transform: scale(1.05);
+        }
+
+        .player-card.winner::before {
+            transform: translateX(100%);
+        }
+
+        .player-card.loser {
+            border-color: var(--error);
+            background: rgba(239, 68, 68, 0.1);
+            opacity: 0.7;
+        }
+
+        .player-card.lifting {
+            border-color: var(--accent);
+            background: rgba(6, 182, 212, 0.2);
+            animation: lift-glow 0.5s ease-out;
+        }
+
+        @keyframes lift-glow {
+            0% { box-shadow: 0 0 10px rgba(6, 182, 212, 0.3); }
+            100% { box-shadow: 0 0 30px rgba(6, 182, 212, 0.8); }
+        }
+
+        .player-name {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .player-score {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: var(--primary);
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+            margin-bottom: 0.5rem;
+        }
+
+        .player-reaction-time {
+            font-size: 1rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .player-stats {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            opacity: 0.8;
+        }
+
+        /* 게임 모드 선택 */
+        .game-modes {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 1rem;
+        }
+
+        .mode-btn {
+            background: rgba(30, 41, 59, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 0.5rem;
+            padding: 0.5rem 1rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+        }
+
+        .mode-btn.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .mode-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* 컨트롤 패널 */
+        .control-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 1rem;
+            z-index: 100;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .control-btn {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .control-btn:hover::before {
+            left: 100%;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .control-btn.restart {
+            background: linear-gradient(135deg, var(--success), #059669);
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+        }
+
+        .control-btn.restart:hover {
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .control-btn.home {
+            background: linear-gradient(135deg, var(--warning), #d97706);
+            box-shadow: 0 4px 16px rgba(251, 191, 36, 0.3);
+        }
+
+        .control-btn.home:hover {
+            box-shadow: 0 8px 25px rgba(251, 191, 36, 0.4);
+        }
+
+        .control-btn.settings {
+            background: linear-gradient(135deg, #6b7280, #4b5563);
+            box-shadow: 0 4px 16px rgba(107, 114, 128, 0.3);
+        }
+
+        /* 설정 패널 */
+        .settings-panel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(30, 41, 59, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 1rem;
+            padding: 2rem;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            min-width: 300px;
+        }
+
+        .settings-panel h3 {
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .setting-row label {
+            color: var(--text-primary);
+            font-size: 0.9rem;
+        }
+
+        .setting-row input[type="range"] {
+            width: 120px;
+        }
+
+        .setting-row span {
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            min-width: 40px;
+            text-align: right;
+        }
+
+        /* 통계 패널 */
+        .stats-panel {
+            position: absolute;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            z-index: 50;
+            min-width: 200px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .stats-panel.visible {
+            opacity: 1;
+        }
+
+        .stats-panel h4 {
+            color: var(--primary);
+            margin-bottom: 1rem;
+            text-align: center;
+            font-size: 1rem;
+        }
+
+        .stat-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .stat-item .label {
+            color: var(--text-secondary);
+        }
+
+        .stat-item .value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        /* 로딩 애니메이션 */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(15, 23, 42, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(5px);
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 3px solid rgba(59, 130, 246, 0.3);
+            border-top: 3px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 숨김 상태 */
+        .hidden {
+            display: none !important;
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .session-title {
+                font-size: 1.5rem;
+            }
+            
+            .session-code {
+                font-size: 1.8rem;
+            }
+
+            .session-info {
+                max-width: 280px;
+                padding: 1rem;
+            }
+
+            .qr-container canvas,
+            .qr-container img {
+                width: 120px !important;
+                height: 120px !important;
+            }
+            
+            .game-state {
+                font-size: 2rem;
+                min-width: 300px;
+                padding: 1.5rem;
+            }
+            
+            .players-status {
+                flex-direction: column;
+                gap: 1rem;
+                bottom: 140px;
+            }
+            
+            .player-card {
+                min-width: 150px;
+                padding: 1rem;
+            }
+            
+            .control-panel {
+                flex-wrap: wrap;
+                justify-content: center;
+                bottom: 10px;
+            }
+
+            .control-btn {
+                padding: 0.6rem 1.2rem;
+                font-size: 0.9rem;
+            }
+
+            .stats-panel {
+                right: 10px;
+                min-width: 180px;
+                padding: 1rem;
+            }
+
+            .settings-panel {
+                min-width: 280px;
+                padding: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .players-status {
+                bottom: 120px;
+            }
+
+            .game-state {
+                font-size: 1.5rem;
+                min-width: 250px;
+                padding: 1rem;
+            }
+
+            .stats-panel {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- 파티클 배경 -->
+        <div class="particles" id="particles"></div>
+
+        <!-- 로딩 오버레이 -->
+        <div class="loading-overlay hidden" id="loadingOverlay">
+            <div class="loading-spinner"></div>
+        </div>
+
+        <!-- 반응 시간 표시 -->
+        <div class="reaction-display" id="reactionDisplay">0ms</div>
+
+        <!-- 상단 세션 정보 -->
+        <div class="game-header">
+            <div class="session-title">📞 Telephone</div>
+            <div class="session-info">
+                <div class="session-code" id="sessionCode">----</div>
+                <div class="qr-container" id="qrContainer">
+                    <!-- QR 코드가 여기에 생성됩니다 -->
+                </div>
+                <div class="connection-status">
+                    <div class="sensor-status sensor-disconnected" id="sensor1Status">
+                        📱 Player 1: 대기중
+                    </div>
+                    <div class="sensor-status sensor-disconnected" id="sensor2Status">
+                        📱 Player 2: 대기중
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 게임 영역 -->
+        <div class="game-area">
+            <div class="game-state state-waiting" id="gameState">
+                두 명의 플레이어 연결을 기다리는 중...
+            </div>
+        </div>
+
+        <!-- 플레이어 상태 -->
+        <div class="players-status" id="playersStatus">
+            <div class="player-card" id="player1Card">
+                <div class="player-name">Player 1</div>
+                <div class="player-score" id="player1Score">0</div>
+                <div class="player-reaction-time" id="player1Time">-</div>
+                <div class="player-stats" id="player1Stats">
+                    <div>최고: <span id="player1Best">-</span></div>
+                    <div>평균: <span id="player1Avg">-</span></div>
+                </div>
+            </div>
+            <div class="player-card" id="player2Card">
+                <div class="player-name">Player 2</div>
+                <div class="player-score" id="player2Score">0</div>
+                <div class="player-reaction-time" id="player2Time">-</div>
+                <div class="player-stats" id="player2Stats">
+                    <div>최고: <span id="player2Best">-</span></div>
+                    <div>평균: <span id="player2Avg">-</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 통계 패널 -->
+        <div class="stats-panel" id="statsPanel">
+            <h4>📊 게임 통계</h4>
+            <div class="stat-item">
+                <span class="label">총 라운드:</span>
+                <span class="value" id="totalRounds">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="label">평균 반응시간:</span>
+                <span class="value" id="avgReactionTime">-</span>
+            </div>
+            <div class="stat-item">
+                <span class="label">최고 기록:</span>
+                <span class="value" id="bestTime">-</span>
+            </div>
+            <div class="stat-item">
+                <span class="label">게임 시간:</span>
+                <span class="value" id="gameTime">00:00</span>
+            </div>
+        </div>
+
+        <!-- 설정 패널 -->
+        <div class="settings-panel hidden" id="settingsPanel">
+            <h3>⚙️ 게임 설정</h3>
+            
+            <div class="game-modes">
+                <div class="mode-btn active" data-mode="normal">일반</div>
+                <div class="mode-btn" data-mode="hard">어려움</div>
+                <div class="mode-btn" data-mode="extreme">극한</div>
+            </div>
+
+            <div class="setting-row">
+                <label>대기시간 (초):</label>
+                <input type="range" id="waitTimeSlider" min="2" max="10" value="5" step="0.5">
+                <span id="waitTimeValue">5.0s</span>
+            </div>
+
+            <div class="setting-row">
+                <label>감도:</label>
+                <input type="range" id="sensitivitySlider" min="1" max="10" value="5">
+                <span id="sensitivityValue">5</span>
+            </div>
+
+            <div class="setting-row">
+                <label>음량:</label>
+                <input type="range" id="volumeSlider" min="0" max="100" value="70">
+                <span id="volumeValue">70%</span>
+            </div>
+
+            <div class="setting-row">
+                <label>진동:</label>
+                <input type="checkbox" id="vibrationCheck" checked>
+                <span>활성화</span>
+            </div>
+
+            <div style="text-align: center; margin-top: 1.5rem;">
+                <button class="control-btn" onclick="closeSettings()">닫기</button>
+            </div>
+        </div>
+
+        <!-- 컨트롤 패널 -->
+        <div class="control-panel">
+            <button class="control-btn restart" id="restartBtn" onclick="restartGame()">
+                🔄 다시 시작
+            </button>
+            <button class="control-btn" id="startGameBtn" onclick="startNewRound()" disabled>
+                🎮 게임 시작
+            </button>
+            <button class="control-btn settings" onclick="toggleSettings()">
+                ⚙️ 설정
+            </button>
+            <button class="control-btn" onclick="toggleStats()">
+                📊 통계
+            </button>
+            <a href="/" class="control-btn home">🏠 허브로</a>
+        </div>
+    </div>
+
+    <!-- 오디오 요소들 -->
+    <audio id="ringtoneSingle" preload="auto">
+        <source src="ringtone.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="ringtoneLoop" preload="auto" loop>
+        <source src="ringtone.mp3" type="audio/mpeg">
+    </audio>
+
+    <audio id="successSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRvgWAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YdQWAACb/7KDwQJvAI8Ig7l7fHE8hAGBAoYDfXl8fHuAE4J8gIGCfoIEhARCfYB8hn6BhHt7gImFfHmA" type="audio/wav">
+    </audio>
+
+    <audio id="failSound" preload="auto">
+        <source src="data:audio/wav;base64,UklGRvoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+T9u2kbDiyS3uS9biMGKo7A8tJ9KwYl" type="audio/wav">
+    </audio>
+
+    <!-- Socket.IO 및 SDK 로드 -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/SessionSDK.js"></script>
+    <!-- QR 코드 라이브러리 -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+
+    <script>
+        class TelephoneGamePro {
+            constructor() {
+                // SDK 초기화
+                this.sdk = new SessionSDK({
+                    gameId: 'telephone',
+                    gameType: 'dual',
+                    debug: true
+                });
+
+                // 게임 상태
+                this.gameState = 'waiting';
+                this.connectedSensors = new Map();
+                this.session = null;
+                this.gameStartTime = 0;
+                this.sessionStartTime = Date.now();
+                this.reactionTimes = new Map();
+                this.scores = { player1: 0, player2: 0 };
+                this.playerStats = {
+                    player1: { times: [], best: null },
+                    player2: { times: [], best: null }
+                };
+                this.roundWinner = null;
+                this.gameTimer = null;
+                this.bellTimeout = null;
+                this.countdownInterval = null;
+                this.statsInterval = null;
+                this.totalRounds = 0;
+
+                // 게임 설정
+                this.settings = {
+                    mode: 'normal', // normal, hard, extreme
+                    waitTime: { min: 2, max: 8 }, // 초
+                    sensitivity: 5, // 1-10
+                    volume: 0.7, // 0-1
+                    vibration: true
+                };
+
+                // 모드별 설정
+                this.modeSettings = {
+                    normal: { waitTime: { min: 2, max: 8 }, sensitivity: 5 },
+                    hard: { waitTime: { min: 1, max: 6 }, sensitivity: 7 },
+                    extreme: { waitTime: { min: 0.5, max: 4 }, sensitivity: 9 }
+                };
+
+                // DOM 요소들
+                this.elements = {
+                    sessionCode: document.getElementById('sessionCode'),
+                    qrContainer: document.getElementById('qrContainer'),
+                    sensor1Status: document.getElementById('sensor1Status'),
+                    sensor2Status: document.getElementById('sensor2Status'),
+                    gameState: document.getElementById('gameState'),
+                    reactionDisplay: document.getElementById('reactionDisplay'),
+                    playersStatus: document.getElementById('playersStatus'),
+                    player1Card: document.getElementById('player1Card'),
+                    player2Card: document.getElementById('player2Card'),
+                    player1Score: document.getElementById('player1Score'),
+                    player2Score: document.getElementById('player2Score'),
+                    player1Time: document.getElementById('player1Time'),
+                    player2Time: document.getElementById('player2Time'),
+                    player1Stats: document.getElementById('player1Stats'),
+                    player2Stats: document.getElementById('player2Stats'),
+                    player1Best: document.getElementById('player1Best'),
+                    player1Avg: document.getElementById('player1Avg'),
+                    player2Best: document.getElementById('player2Best'),
+                    player2Avg: document.getElementById('player2Avg'),
+                    startGameBtn: document.getElementById('startGameBtn'),
+                    restartBtn: document.getElementById('restartBtn'),
+                    settingsPanel: document.getElementById('settingsPanel'),
+                    statsPanel: document.getElementById('statsPanel'),
+                    loadingOverlay: document.getElementById('loadingOverlay'),
+                    particles: document.getElementById('particles'),
+                    // 오디오
+                    ringtoneSingle: document.getElementById('ringtoneSingle'),
+                    ringtoneLoop: document.getElementById('ringtoneLoop'),
+                    successSound: document.getElementById('successSound'),
+                    failSound: document.getElementById('failSound'),
+                    // 설정 컨트롤
+                    waitTimeSlider: document.getElementById('waitTimeSlider'),
+                    waitTimeValue: document.getElementById('waitTimeValue'),
+                    sensitivitySlider: document.getElementById('sensitivitySlider'),
+                    sensitivityValue: document.getElementById('sensitivityValue'),
+                    volumeSlider: document.getElementById('volumeSlider'),
+                    volumeValue: document.getElementById('volumeValue'),
+                    vibrationCheck: document.getElementById('vibrationCheck'),
+                    // 통계
+                    totalRounds: document.getElementById('totalRounds'),
+                    avgReactionTime: document.getElementById('avgReactionTime'),
+                    bestTime: document.getElementById('bestTime'),
+                    gameTime: document.getElementById('gameTime')
+                };
+
+                this.initializeGame();
+                this.setupEvents();
+                this.createParticles();
+                this.startStatsUpdate();
+                console.log('📞 Telephone Game Pro 초기화 완료');
+            }
+
+            initializeGame() {
+                // 오디오 볼륨 설정
+                this.updateAudioVolume();
+                
+                // 설정 UI 초기화
+                this.initializeSettings();
+                
+                // 로딩 표시
+                this.showLoading(true);
+                
+                setTimeout(() => {
+                    this.showLoading(false);
+                }, 1000);
+            }
+
+            initializeSettings() {
+                // 모드 버튼 이벤트
+                document.querySelectorAll('.mode-btn').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        this.settings.mode = e.target.dataset.mode;
+                        this.applyModeSettings();
+                    });
+                });
+
+                // 슬라이더 이벤트
+                this.elements.waitTimeSlider.addEventListener('input', (e) => {
+                    const value = parseFloat(e.target.value);
+                    this.elements.waitTimeValue.textContent = value.toFixed(1) + 's';
+                    this.settings.waitTime.max = value * 2;
+                    this.settings.waitTime.min = Math.max(0.5, value - 2);
+                });
+
+                this.elements.sensitivitySlider.addEventListener('input', (e) => {
+                    const value = parseInt(e.target.value);
+                    this.elements.sensitivityValue.textContent = value;
+                    this.settings.sensitivity = value;
+                });
+
+                this.elements.volumeSlider.addEventListener('input', (e) => {
+                    const value = parseInt(e.target.value);
+                    this.elements.volumeValue.textContent = value + '%';
+                    this.settings.volume = value / 100;
+                    this.updateAudioVolume();
+                });
+
+                this.elements.vibrationCheck.addEventListener('change', (e) => {
+                    this.settings.vibration = e.target.checked;
+                });
+            }
+
+            applyModeSettings() {
+                const modeConfig = this.modeSettings[this.settings.mode];
+                this.settings.waitTime = { ...modeConfig.waitTime };
+                this.settings.sensitivity = modeConfig.sensitivity;
+                
+                // UI 업데이트
+                this.elements.sensitivitySlider.value = this.settings.sensitivity;
+                this.elements.sensitivityValue.textContent = this.settings.sensitivity;
+            }
+
+            updateAudioVolume() {
+                const volume = this.settings.volume;
+                this.elements.ringtoneSingle.volume = volume;
+                this.elements.ringtoneLoop.volume = volume;
+                this.elements.successSound.volume = volume * 0.8;
+                this.elements.failSound.volume = volume * 0.6;
+            }
+
+            createParticles() {
+                const particleCount = 20;
+                
+                for (let i = 0; i < particleCount; i++) {
+                    const particle = document.createElement('div');
+                    particle.className = 'particle';
+                    
+                    // 랜덤 크기와 위치
+                    const size = Math.random() * 4 + 2;
+                    particle.style.width = size + 'px';
+                    particle.style.height = size + 'px';
+                    particle.style.left = Math.random() * 100 + '%';
+                    particle.style.top = Math.random() * 100 + '%';
+                    particle.style.animationDelay = Math.random() * 6 + 's';
+                    particle.style.animationDuration = (Math.random() * 3 + 3) + 's';
+                    
+                    this.elements.particles.appendChild(particle);
+                }
+            }
+
+            setupEvents() {
+                // SDK 이벤트 (중요: CustomEvent 처리 패턴!)
+                this.sdk.on('connected', () => {
+                    console.log('✅ 서버 연결 완료, 세션 생성 중...');
+                    this.createSession();
+                });
+
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;
+                    console.log('🎮 세션 생성됨:', session);
+                    this.session = session;
+                    this.displaySessionInfo(session);
+                });
+
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;
+                    console.log('📱 센서 연결됨:', data);
+                    this.handleSensorConnected(data);
+                });
+
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;
+                    this.processSensorData(data);
+                });
+
+                this.sdk.on('sensor-disconnected', (event) => {
+                    const data = event.detail || event;
+                    console.log('📱 센서 연결 해제:', data);
+                    this.handleSensorDisconnected(data);
+                });
+
+                this.sdk.on('game-ready', (event) => {
+                    const data = event.detail || event;
+                    console.log('🎮 게임 준비 완료');
+                    this.handleGameReady();
+                });
+
+                // 키보드 이벤트
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'r' || e.key === 'R') {
+                        this.restartGame();
+                    } else if (e.key === ' ') {
+                        e.preventDefault();
+                        if (this.gameState === 'ready') {
+                            this.startNewRound();
+                        }
+                    } else if (e.key === '1') {
+                        this.simulateSensorLift('sensor1');
+                    } else if (e.key === '2') {
+                        this.simulateSensorLift('sensor2');
+                    } else if (e.key === 's' || e.key === 'S') {
+                        this.toggleSettings();
+                    } else if (e.key === 'Escape') {
+                        this.closeSettings();
+                    }
+                });
+
+                // 터치 이벤트 (모바일 지원)
+                document.addEventListener('touchstart', (e) => {
+                    if (this.gameState === 'ready' && e.touches.length === 1) {
+                        this.startNewRound();
+                    }
+                });
+            }
+
+            async createSession() {
+                try {
+                    await this.sdk.createSession();
+                } catch (error) {
+                    console.error('❌ 세션 생성 실패:', error);
+                    this.elements.gameState.textContent = '세션 생성 실패. 새로고침해주세요.';
+                    this.playFailSound();
+                }
+            }
+
+            displaySessionInfo(session) {
+                this.elements.sessionCode.textContent = session.sessionCode;
+                
+                // Shine 효과
+                this.elements.gameState.classList.add('shine');
+                setTimeout(() => {
+                    this.elements.gameState.classList.remove('shine');
+                }, 500);
+                
+                // QR 코드 생성 (폴백 처리 포함)
+                const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                
+                if (typeof QRCode !== 'undefined') {
+                    QRCode.toCanvas(document.createElement('canvas'), qrUrl, (error, canvas) => {
+                        if (!error) {
+                            canvas.style.width = '150px';
+                            canvas.style.height = '150px';
+                            this.elements.qrContainer.innerHTML = '';
+                            this.elements.qrContainer.appendChild(canvas);
+                        } else {
+                            this.showQRCodeFallback(qrUrl);
+                        }
+                    });
+                } else {
+                    this.showQRCodeFallback(qrUrl);
+                }
+            }
+
+            showQRCodeFallback(qrUrl) {
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrUrl)}`;
+                const img = document.createElement('img');
+                img.src = qrApiUrl;
+                img.style.width = '150px';
+                img.style.height = '150px';
+                this.elements.qrContainer.innerHTML = '';
+                this.elements.qrContainer.appendChild(img);
+            }
+
+            handleSensorConnected(data) {
+                const sensorId = data.sensorId;
+                this.connectedSensors.set(sensorId, {
+                    id: sensorId,
+                    connected: true,
+                    lastActivity: Date.now(),
+                    isLifted: false,
+                    baselineZ: null,
+                    baselineBeta: null,
+                    baselineGamma: null,
+                    reactionTimes: []
+                });
+
+                this.updateSensorStatus();
+                this.playSuccessSound();
+                
+                if (this.connectedSensors.size === 2) {
+                    this.setGameState('ready');
+                }
+            }
+
+            handleSensorDisconnected(data) {
+                const sensorId = data.sensorId;
+                this.connectedSensors.delete(sensorId);
+                this.updateSensorStatus();
+                
+                if (this.connectedSensors.size < 2) {
+                    this.setGameState('waiting');
+                    this.elements.startGameBtn.disabled = true;
+                }
+            }
+
+            updateSensorStatus() {
+                const sensors = Array.from(this.connectedSensors.keys()).sort();
+                
+                // Sensor 1 상태
+                const sensor1 = sensors[0];
+                if (sensor1) {
+                    this.elements.sensor1Status.textContent = '📱 Player 1: 연결됨';
+                    this.elements.sensor1Status.className = 'sensor-status sensor-connected';
+                } else {
+                    this.elements.sensor1Status.textContent = '📱 Player 1: 대기중';
+                    this.elements.sensor1Status.className = 'sensor-status sensor-disconnected';
+                }
+
+                // Sensor 2 상태  
+                const sensor2 = sensors[1];
+                if (sensor2) {
+                    this.elements.sensor2Status.textContent = '📱 Player 2: 연결됨';
+                    this.elements.sensor2Status.className = 'sensor-status sensor-connected';
+                } else {
+                    this.elements.sensor2Status.textContent = '📱 Player 2: 대기중';
+                    this.elements.sensor2Status.className = 'sensor-status sensor-disconnected';
+                }
+            }
+
+            handleGameReady() {
+                this.setGameState('ready');
+                this.playSuccessSound();
+            }
+
+            setGameState(newState) {
+                this.gameState = newState;
+                const stateElement = this.elements.gameState;
+                
+                // 모든 상태 클래스 제거
+                stateElement.className = 'game-state';
+                
+                switch (newState) {
+                    case 'waiting':
+                        stateElement.classList.add('state-waiting');
+                        stateElement.textContent = this.connectedSensors.size === 0 
+                            ? '두 명의 플레이어 연결을 기다리는 중...'
+                            : `${this.connectedSensors.size}/2 플레이어 연결됨`;
+                        this.elements.startGameBtn.disabled = true;
+                        break;
+                        
+                    case 'ready':
+                        stateElement.classList.add('state-ready');
+                        stateElement.textContent = '🎮 준비 완료! 게임을 시작하세요';
+                        this.elements.startGameBtn.disabled = false;
+                        break;
+                        
+                    case 'countdown':
+                        stateElement.classList.add('state-countdown');
+                        break;
+                        
+                    case 'listening':
+                        stateElement.classList.add('state-listen');
+                        stateElement.textContent = '📞 링링! 빨리 들어 올리세요!';
+                        this.playRingtone();
+                        this.vibrateIfSupported();
+                        break;
+                        
+                    case 'result':
+                        this.showRoundResult();
+                        break;
+                }
+            }
+
+            startNewRound() {
+                if (this.connectedSensors.size < 2) {
+                    alert('두 명의 플레이어가 모두 연결되어야 합니다!');
+                    return;
+                }
+
+                this.showLoading(true);
+                
+                // 게임 상태 초기화
+                this.reactionTimes.clear();
+                this.roundWinner = null;
+                this.gameStartTime = 0;
+                
+                // 센서 상태 초기화
+                this.connectedSensors.forEach(sensor => {
+                    sensor.isLifted = false;
+                    sensor.baselineZ = null;
+                    sensor.baselineBeta = null;
+                    sensor.baselineGamma = null;
+                });
+
+                // 플레이어 카드 초기화
+                this.elements.player1Card.className = 'player-card';
+                this.elements.player2Card.className = 'player-card';
+                this.elements.player1Time.textContent = '-';
+                this.elements.player2Time.textContent = '-';
+
+                this.elements.startGameBtn.disabled = true;
+                
+                setTimeout(() => {
+                    this.showLoading(false);
+                    this.startCountdown();
+                }, 800);
+
+                console.log('🎮 새 라운드 시작');
+            }
+
+            startCountdown() {
+                let countdown = 3;
+                const stateElement = this.elements.gameState;
+                
+                stateElement.classList.add('state-countdown');
+                
+                const updateCountdown = () => {
+                    stateElement.textContent = countdown > 0 ? countdown : '기기를 평평한 곳에 놓으세요...';
+                    
+                    if (countdown > 0) {
+                        stateElement.classList.add('shine');
+                        setTimeout(() => stateElement.classList.remove('shine'), 200);
+                        countdown--;
+                        setTimeout(updateCountdown, 1000);
+                    } else {
+                        // 랜덤 대기 시간 후 벨 울리기
+                        const waitTime = (this.settings.waitTime.min + 
+                            Math.random() * (this.settings.waitTime.max - this.settings.waitTime.min)) * 1000;
+                        
+                        this.bellTimeout = setTimeout(() => {
+                            this.gameStartTime = Date.now();
+                            this.setGameState('listening');
+                        }, waitTime);
+                    }
+                };
+                
+                updateCountdown();
+            }
+
+            processSensorData(sensorData) {
+                if (this.gameState !== 'listening') return;
+
+                const sensorId = sensorData.sensorId;
+                const sensor = this.connectedSensors.get(sensorId);
+                
+                if (!sensor || this.reactionTimes.has(sensorId)) return;
+
+                const { acceleration, orientation } = sensorData.data;
+                if (!acceleration || !orientation) return;
+
+                // 초기 베이스라인 설정 (핸드폰이 평평한 곳에 놓인 상태)
+                if (sensor.baselineZ === null) {
+                    sensor.baselineZ = acceleration.z;
+                    sensor.baselineBeta = orientation.beta || 0;
+                    sensor.baselineGamma = orientation.gamma || 0;
+                    return;
+                }
+
+                // 현재 방향과 가속도 계산
+                const zDiff = Math.abs(acceleration.z - sensor.baselineZ);
+                const betaDiff = Math.abs((orientation.beta || 0) - sensor.baselineBeta);
+                const gammaDiff = Math.abs((orientation.gamma || 0) - sensor.baselineGamma);
+                
+                // 총 가속도 변화량
+                const totalAccel = Math.sqrt(
+                    acceleration.x ** 2 + 
+                    acceleration.y ** 2 + 
+                    acceleration.z ** 2
+                );
+
+                // 머리 위로 들었을 때의 특징적인 변화 감지
+                // 1. Z축 가속도 변화 (중력 방향 변화)
+                // 2. Beta 각도 변화 (앞뒤 기울기 - 머리 위로 들 때 크게 변함)
+                // 3. 총 가속도 변화 (들어 올리는 동작)
+                
+                // 감도에 따른 임계값 조정 (더 엄격하게)
+                const sensitivity = this.settings.sensitivity;
+                const baseZThreshold = 6; // 기본 Z축 변화 임계값
+                const baseBetaThreshold = 30; // 기본 베타 각도 변화 임계값 (도)
+                const baseAccelThreshold = 15; // 기본 총 가속도 임계값
+                
+                // 감도가 높을수록 더 민감하게, 낮을수록 더 둔감하게
+                const zThreshold = baseZThreshold - (sensitivity - 5) * 0.8;
+                const betaThreshold = baseBetaThreshold - (sensitivity - 5) * 3;
+                const accelThreshold = baseAccelThreshold - (sensitivity - 5) * 1.5;
+
+                // 머리 위로 확실히 들었는지 판단하는 복합 조건
+                const isZChangeSignificant = zDiff > Math.max(3, zThreshold);
+                const isBetaChangeSignificant = betaDiff > Math.max(20, betaThreshold);
+                const isAccelChangeSignificant = totalAccel > Math.max(12, accelThreshold);
+                
+                // 세 조건 중 최소 2개 이상 만족해야 함 (더 엄격한 판정)
+                const conditionCount = [isZChangeSignificant, isBetaChangeSignificant, isAccelChangeSignificant]
+                    .filter(condition => condition).length;
+
+                // 디버그 로그 (개발용)
+                if (window.location.search.includes('debug')) {
+                    console.log(`센서 ${sensorId}:`, {
+                        zDiff: zDiff.toFixed(2),
+                        betaDiff: betaDiff.toFixed(2),
+                        totalAccel: totalAccel.toFixed(2),
+                        conditions: conditionCount,
+                        thresholds: { zThreshold: zThreshold.toFixed(2), betaThreshold: betaThreshold.toFixed(2), accelThreshold: accelThreshold.toFixed(2) }
+                    });
+                }
+
+                // 최소 2개 조건 만족 + 추가 안전장치
+                if (conditionCount >= 2 && totalAccel > 10) {
+                    this.handleSensorLift(sensorId);
+                }
+            }
+
+            handleSensorLift(sensorId) {
+                if (this.gameState !== 'listening' || this.reactionTimes.has(sensorId)) {
+                    return;
+                }
+
+                const reactionTime = Date.now() - this.gameStartTime;
+                this.reactionTimes.set(sensorId, reactionTime);
+                
+                // 반응 시간 표시 애니메이션
+                this.showReactionTime(reactionTime);
+                
+                // 플레이어 카드 lifting 효과
+                const sensors = Array.from(this.connectedSensors.keys()).sort();
+                const playerIndex = sensors.indexOf(sensorId);
+                const playerCard = playerIndex === 0 ? this.elements.player1Card : this.elements.player2Card;
+                playerCard.classList.add('lifting');
+                
+                console.log(`📱 ${sensorId} 반응 시간: ${reactionTime}ms`);
+
+                // 첫 번째로 반응한 플레이어가 승자
+                if (!this.roundWinner) {
+                    this.roundWinner = sensorId;
+                    this.updateScore(sensorId);
+                    this.playSuccessSound();
+                    
+                    // 벨소리 중지
+                    this.stopRingtone();
+                    
+                    // 모든 센서의 반응을 기다리거나 1초 후 결과 표시
+                    setTimeout(() => {
+                        this.setGameState('result');
+                        this.totalRounds++;
+                        this.updateStatistics();
+                    }, 1000);
+                } else {
+                    // 두 번째 플레이어
+                    this.playFailSound();
+                }
+            }
+
+            showReactionTime(time) {
+                const display = this.elements.reactionDisplay;
+                display.textContent = `${time}ms`;
+                display.classList.add('show');
+                
+                setTimeout(() => {
+                    display.classList.remove('show');
+                }, 1500);
+            }
+
+            simulateSensorLift(sensorId) {
+                if (this.gameState === 'listening') {
+                    this.handleSensorLift(sensorId);
+                }
+            }
+
+            updateScore(winningSensorId) {
+                const sensors = Array.from(this.connectedSensors.keys()).sort();
+                const winnerIndex = sensors.indexOf(winningSensorId);
+                
+                if (winnerIndex === 0) {
+                    this.scores.player1++;
+                    this.elements.player1Score.textContent = this.scores.player1;
+                } else if (winnerIndex === 1) {
+                    this.scores.player2++;
+                    this.elements.player2Score.textContent = this.scores.player2;
+                }
+            }
+
+            updatePlayerStats(sensorId, reactionTime) {
+                const sensors = Array.from(this.connectedSensors.keys()).sort();
+                const playerKey = sensors.indexOf(sensorId) === 0 ? 'player1' : 'player2';
+                
+                this.playerStats[playerKey].times.push(reactionTime);
+                
+                // 최고 기록 업데이트
+                if (!this.playerStats[playerKey].best || reactionTime < this.playerStats[playerKey].best) {
+                    this.playerStats[playerKey].best = reactionTime;
+                }
+                
+                // 평균 계산
+                const times = this.playerStats[playerKey].times;
+                const average = times.reduce((sum, time) => sum + time, 0) / times.length;
+                
+                // UI 업데이트
+                const bestElement = playerKey === 'player1' ? this.elements.player1Best : this.elements.player2Best;
+                const avgElement = playerKey === 'player1' ? this.elements.player1Avg : this.elements.player2Avg;
+                
+                bestElement.textContent = `${this.playerStats[playerKey].best}ms`;
+                avgElement.textContent = `${Math.round(average)}ms`;
+            }
+
+            showRoundResult() {
+                if (!this.roundWinner) return;
+
+                this.stopRingtone();
+                const sensors = Array.from(this.connectedSensors.keys()).sort();
+                const winnerIndex = sensors.indexOf(this.roundWinner);
+                
+                // 반응 시간 표시 및 통계 업데이트
+                sensors.forEach((sensorId, index) => {
+                    const reactionTime = this.reactionTimes.get(sensorId);
+                    const timeElement = index === 0 ? this.elements.player1Time : this.elements.player2Time;
+                    const cardElement = index === 0 ? this.elements.player1Card : this.elements.player2Card;
+                    
+                    // lifting 클래스 제거
+                    cardElement.classList.remove('lifting');
+                    
+                    if (reactionTime) {
+                        timeElement.textContent = `${reactionTime}ms`;
+                        this.updatePlayerStats(sensorId, reactionTime);
+                        
+                        if (sensorId === this.roundWinner) {
+                            cardElement.className = 'player-card winner';
+                        } else {
+                            cardElement.className = 'player-card loser';
+                        }
+                    } else {
+                        timeElement.textContent = '반응 없음';
+                        cardElement.className = 'player-card loser';
+                    }
+                });
+
+                // 결과 메시지
+                const winnerText = winnerIndex === 0 ? 'Player 1' : 'Player 2';
+                const winnerTime = this.reactionTimes.get(this.roundWinner);
+                
+                this.elements.gameState.className = 'game-state state-result';
+                if (winnerTime < 300) { // 300ms 이하면 골드
+                    this.elements.gameState.classList.add('winner');
+                }
+                this.elements.gameState.textContent = `🏆 ${winnerText} 승리! (${winnerTime}ms)`;
+                
+                // 우승 효과
+                if (winnerTime < 200) {
+                    this.elements.gameState.textContent = `⚡ ${winnerText} 번개 승리! (${winnerTime}ms)`;
+                }
+                
+                // 게임 시작 버튼 다시 활성화
+                setTimeout(() => {
+                    this.elements.startGameBtn.disabled = false;
+                    this.setGameState('ready');
+                }, 3000);
+            }
+
+            updateStatistics() {
+                this.elements.totalRounds.textContent = this.totalRounds;
+                
+                // 전체 평균 반응시간 계산
+                const allTimes = [
+                    ...this.playerStats.player1.times,
+                    ...this.playerStats.player2.times
+                ];
+                
+                if (allTimes.length > 0) {
+                    const avgTime = allTimes.reduce((sum, time) => sum + time, 0) / allTimes.length;
+                    this.elements.avgReactionTime.textContent = `${Math.round(avgTime)}ms`;
+                    
+                    const bestTime = Math.min(...allTimes);
+                    this.elements.bestTime.textContent = `${bestTime}ms`;
+                }
+            }
+
+            startStatsUpdate() {
+                this.statsInterval = setInterval(() => {
+                    const elapsed = Math.floor((Date.now() - this.sessionStartTime) / 1000);
+                    const minutes = Math.floor(elapsed / 60);
+                    const seconds = elapsed % 60;
+                    this.elements.gameTime.textContent = 
+                        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                }, 1000);
+            }
+
+            // 오디오 관련 메서드
+            playRingtone() {
+                try {
+                    this.elements.ringtoneLoop.currentTime = 0;
+                    this.elements.ringtoneLoop.play().catch(e => {
+                        console.log('링톤 재생 실패:', e);
+                    });
+                } catch (error) {
+                    console.log('링톤 재생 오류:', error);
+                }
+            }
+
+            stopRingtone() {
+                try {
+                    this.elements.ringtoneLoop.pause();
+                    this.elements.ringtoneLoop.currentTime = 0;
+                } catch (error) {
+                    console.log('링톤 정지 오류:', error);
+                }
+            }
+
+            playSuccessSound() {
+                try {
+                    this.elements.successSound.currentTime = 0;
+                    this.elements.successSound.play().catch(e => {
+                        console.log('성공음 재생 실패:', e);
+                    });
+                } catch (error) {
+                    console.log('성공음 재생 오류:', error);
+                }
+            }
+
+            playFailSound() {
+                try {
+                    this.elements.failSound.currentTime = 0;
+                    this.elements.failSound.play().catch(e => {
+                        console.log('실패음 재생 실패:', e);
+                    });
+                } catch (error) {
+                    console.log('실패음 재생 오류:', error);
+                }
+            }
+
+            vibrateIfSupported() {
+                if (this.settings.vibration && navigator.vibrate) {
+                    navigator.vibrate([100, 50, 100, 50, 200]);
+                }
+            }
+
+            // UI 제어 메서드
+            showLoading(show) {
+                if (show) {
+                    this.elements.loadingOverlay.classList.remove('hidden');
+                } else {
+                    this.elements.loadingOverlay.classList.add('hidden');
+                }
+            }
+
+            toggleSettings() {
+                const panel = this.elements.settingsPanel;
+                if (panel.classList.contains('hidden')) {
+                    panel.classList.remove('hidden');
+                } else {
+                    panel.classList.add('hidden');
+                }
+            }
+
+            closeSettings() {
+                this.elements.settingsPanel.classList.add('hidden');
+            }
+
+            toggleStats() {
+                const panel = this.elements.statsPanel;
+                panel.classList.toggle('visible');
+            }
+
+            // 세션 유지하면서 게임 재시작
+            restartGame() {
+                // 타이머 정리
+                if (this.bellTimeout) {
+                    clearTimeout(this.bellTimeout);
+                    this.bellTimeout = null;
+                }
+                
+                if (this.gameTimer) {
+                    clearTimeout(this.gameTimer);
+                    this.gameTimer = null;
+                }
+
+                if (this.countdownInterval) {
+                    clearInterval(this.countdownInterval);
+                    this.countdownInterval = null;
+                }
+
+                // 오디오 정지
+                this.stopRingtone();
+
+                // 게임 상태 초기화 (세션과 센서 연결은 유지)
+                this.reactionTimes.clear();
+                this.roundWinner = null;
+                this.gameStartTime = 0;
+                
+                // 센서 상태 초기화
+                this.connectedSensors.forEach(sensor => {
+                    sensor.isLifted = false;
+                    sensor.baselineZ = null;
+                    sensor.baselineBeta = null;
+                    sensor.baselineGamma = null;
+                });
+
+                // UI 초기화
+                this.elements.player1Card.className = 'player-card';
+                this.elements.player2Card.className = 'player-card';
+                this.elements.player1Time.textContent = '-';
+                this.elements.player2Time.textContent = '-';
+
+                // 연결된 센서가 있으면 ready 상태로, 없으면 waiting 상태로
+                if (this.connectedSensors.size === 2) {
+                    this.setGameState('ready');
+                } else {
+                    this.setGameState('waiting');
+                }
+
+                console.log('🔄 게임 재시작 (세션 유지)');
+            }
+
+            // 소멸자
+            destroy() {
+                if (this.statsInterval) {
+                    clearInterval(this.statsInterval);
+                }
+                
+                if (this.bellTimeout) {
+                    clearTimeout(this.bellTimeout);
+                }
+                
+                if (this.gameTimer) {
+                    clearTimeout(this.gameTimer);
+                }
+
+                this.stopRingtone();
+            }
+        }
+
+        // 전역 함수들
+        function startNewRound() {
+            if (window.telephoneGame) {
+                window.telephoneGame.startNewRound();
+            }
+        }
+
+        function restartGame() {
+            if (window.telephoneGame) {
+                window.telephoneGame.restartGame();
+            }
+        }
+
+        function toggleSettings() {
+            if (window.telephoneGame) {
+                window.telephoneGame.toggleSettings();
+            }
+        }
+
+        function closeSettings() {
+            if (window.telephoneGame) {
+                window.telephoneGame.closeSettings();
+            }
+        }
+
+        function toggleStats() {
+            if (window.telephoneGame) {
+                window.telephoneGame.toggleStats();
+            }
+        }
+
+        // 페이지 언로드 시 정리
+        window.addEventListener('beforeunload', () => {
+            if (window.telephoneGame) {
+                window.telephoneGame.destroy();
+            }
+        });
+
+        // 게임 시작
+        window.telephoneGame = new TelephoneGamePro();
+        
+        console.log('📞 Telephone Game Pro 로드 완료!');
+        console.log('🎮 키보드 테스트: 스페이스바(게임시작), 1/2(센서시뮬레이션), R(재시작), S(설정)');
+    </script>
+</body>
+</html>

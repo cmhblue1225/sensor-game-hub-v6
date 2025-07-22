@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎂 케이크 배달 게임 - 상용 버전</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --secondary: #8b5cf6;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --background: #0f172a;
+            --surface: #1e293b;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: var(--background);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            touch-action: none;
+        }
+        
+        .game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: linear-gradient(to bottom, #87CEEB, #1e293b);
+        }
+        
+        .game-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .session-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .session-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .session-code {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+            color: var(--primary);
+        }
+        
+        .qr-container {
+            display: flex;
+            justify-content: center;
+            margin: 10px 0;
+        }
+        
+        .connection-status {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+        
+        .game-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(30, 41, 59, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .score {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .timer {
+            font-size: 1.2rem;
+        }
+        
+        .level {
+            font-size: 1.2rem;
+            margin-top: 5px;
+        }
+        
+        .control-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            pointer-events: auto;
+        }
+        
+        button, a {
+            padding: 12px 24px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        button:hover, a:hover {
+            background: #2563eb;
+            transform: translateY(-2px);
+        }
+        
+        button:active, a:active {
+            transform: translateY(1px);
+        }
+        
+        .loading-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: var(--background);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .loading-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(59, 130, 246, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+        }
+        
+        .loading-progress {
+            margin-top: 20px;
+            width: 300px;
+            height: 10px;
+            background: rgba(59, 130, 246, 0.2);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        
+        .loading-progress-bar {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+        
+        .effects-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        .debug-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(30, 41, 59, 0.9);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            pointer-events: auto;
+            max-width: 300px;
+            display: none;
+        }
+        
+        .debug-panel.show {
+            display: block;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* 모바일 최적화 */
+        @media (max-width: 768px) {
+            .session-panel {
+                top: 10px;
+                right: 10px;
+                padding: 10px;
+                max-width: calc(100vw - 20px);
+            }
+            
+            .game-info {
+                top: 10px;
+                left: 10px;
+                padding: 10px;
+                max-width: calc(50vw - 15px);
+            }
+            
+            .control-panel {
+                bottom: 10px;
+                flex-wrap: wrap;
+                max-width: calc(100vw - 20px);
+            }
+            
+            button, a {
+                padding: 12px 16px;
+                font-size: 0.9rem;
+                min-width: 44px;
+                min-height: 44px;
+                flex: 1;
+                max-width: 120px;
+            }
+            
+            .debug-panel {
+                bottom: 80px;
+                right: 10px;
+                font-size: 0.7rem;
+                max-width: calc(100vw - 20px);
+            }
+            
+            .session-title {
+                font-size: 1rem;
+            }
+            
+            .session-code {
+                font-size: 1.3rem;
+            }
+            
+            .qr-container canvas,
+            .qr-container img {
+                max-width: 120px;
+                max-height: 120px;
+            }
+        }
+        
+        /* 작은 화면 최적화 */
+        @media (max-width: 480px) {
+            .session-panel {
+                padding: 8px;
+                font-size: 0.85rem;
+            }
+            
+            .game-info {
+                padding: 8px;
+                font-size: 0.85rem;
+            }
+            
+            .score, .timer, .level {
+                font-size: 1rem;
+                margin: 2px 0;
+            }
+            
+            button, a {
+                padding: 10px 12px;
+                font-size: 0.8rem;
+                min-width: 40px;
+                min-height: 40px;
+            }
+            
+            .control-panel {
+                gap: 6px;
+            }
+            
+            .qr-container canvas,
+            .qr-container img {
+                max-width: 100px;
+                max-height: 100px;
+            }
+        }
+        
+        /* 가로 모드 최적화 */
+        @media (orientation: landscape) and (max-height: 500px) {
+            .session-panel,
+            .game-info {
+                padding: 6px;
+                font-size: 0.8rem;
+            }
+            
+            .session-title {
+                font-size: 0.9rem;
+                margin-bottom: 5px;
+            }
+            
+            .session-code {
+                font-size: 1.1rem;
+                margin: 5px 0;
+            }
+            
+            .score, .timer, .level {
+                font-size: 0.9rem;
+                margin: 1px 0;
+            }
+            
+            .control-panel {
+                bottom: 5px;
+                gap: 5px;
+            }
+            
+            button, a {
+                padding: 8px 12px;
+                font-size: 0.75rem;
+            }
+            
+            .qr-container canvas,
+            .qr-container img {
+                max-width: 80px;
+                max-height: 80px;
+            }
+        }
+        
+        /* 터치 최적화 */
+        @media (hover: none) and (pointer: coarse) {
+            button, a {
+                min-width: 48px;
+                min-height: 48px;
+                touch-action: manipulation;
+            }
+            
+            .session-panel,
+            .game-info {
+                touch-action: none;
+            }
+        }
+        
+        /* 고대비 모드 지원 */
+        @media (prefers-contrast: high) {
+            :root {
+                --primary: #0066cc;
+                --background: #000000;
+                --text-primary: #ffffff;
+                --surface: #333333;
+            }
+            
+            .session-panel,
+            .game-info {
+                border: 2px solid var(--text-primary);
+                background: var(--background);
+            }
+            
+            button, a {
+                border: 2px solid var(--text-primary);
+                background: var(--primary);
+            }
+        }
+        
+        /* 애니메이션 감소 모드 지원 */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+            
+            .loading-spinner {
+                animation: none;
+            }
+        }
+        
+        /* 다크 모드 지원 */
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --background: #000000;
+                --surface: #1a1a1a;
+                --text-primary: #ffffff;
+                --text-secondary: #cccccc;
+            }
+        }
+        
+        /* 라이트 모드 지원 */
+        @media (prefers-color-scheme: light) {
+            :root {
+                --background: #f8fafc;
+                --surface: #ffffff;
+                --text-primary: #1e293b;
+                --text-secondary: #64748b;
+            }
+            
+            #gameCanvas {
+                background: linear-gradient(to bottom, #87CEEB, #f8fafc);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div class="effects-container" id="effectsContainer"></div>
+        
+        <div class="game-ui">
+            <div class="session-panel">
+                <div class="session-title">🎂 케이크 배달 게임</div>
+                <div class="session-code" id="sessionCode">-</div>
+                <div class="qr-container" id="qrContainer"></div>
+                <div class="connection-status" id="connectionStatus">연결 대기중...</div>
+            </div>
+            
+            <div class="game-info">
+                <div class="score" id="scoreDisplay">점수: 0</div>
+                <div class="timer" id="timerDisplay">시간: 60초</div>
+                <div class="level" id="levelDisplay">레벨: 1</div>
+            </div>
+            
+            <div class="control-panel">
+                <button id="restartButton">🔄 재시작</button>
+                <button id="pauseButton">⏸️ 일시정지</button>
+                <button id="accessibilityButton" onclick="toggleAccessibilityMenu()">♿ 접근성</button>
+                <button id="debugButton" onclick="toggleDebug()">🔧 디버그</button>
+                <a href="/">🏠 허브로</a>
+            </div>
+        </div>
+        
+        <div class="debug-panel" id="debugPanel">
+            <div><strong>디버그 정보</strong></div>
+            <div id="debugInfo">로딩 중...</div>
+        </div>
+        
+        <div class="loading-screen" id="loadingScreen">
+            <div class="loading-title">케이크 배달 게임 로딩 중...</div>
+            <div class="loading-spinner"></div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loadingProgressBar"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 필수 라이브러리 로드 -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/SessionSDK.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- Three.js 및 물리 엔진은 동적으로 로드됩니다 -->
+    
+    <!-- 그래픽 시스템 -->
+    <script src="js/graphics/GLBModelManager.js"></script>
+    <script src="js/graphics/PBRMaterialSystem.js"></script>
+    <script src="js/graphics/AdvancedLightingSystem.js"></script>
+    <script src="js/graphics/CharacterAnimationSystem.js"></script>
+    <script src="js/graphics/ParticleSystem.js"></script>
+    <script src="js/graphics/AdvancedParticleSystem.js"></script>
+    <script src="js/graphics/PostProcessingSystem.js"></script>
+    
+    <!-- 물리 시스템 -->
+    <script src="js/physics/PhysicsWorldManager.js"></script>
+    <script src="js/physics/CakePhysicsSystem.js"></script>
+    <script src="js/physics/CollisionDetectionSystem.js"></script>
+    <script src="js/physics/EnvironmentalPhysics.js"></script>
+    
+    <!-- 입력 시스템 -->
+    <script src="js/input/SensorSmoothingSystem.js"></script>
+    <script src="js/input/SensorPredictionSystem.js"></script>
+    
+    <!-- UI 시스템 -->
+    <script src="js/ui/MobileTouchInterface.js"></script>
+    <script src="js/ui/AccessibilitySystem.js"></script>
+    
+    <!-- 오디오 시스템 -->
+    <script src="js/audio/AdaptiveMusicSystem.js"></script>
+    <script src="js/audio/SpatialAudioSystem.js"></script>
+    
+    <!-- 튜토리얼 시스템 -->
+    <script src="js/tutorial/InteractiveTutorialManager.js"></script>
+    
+    <!-- 성능 최적화 시스템 -->
+    <script src="js/performance/LODSystem.js"></script>
+    <script src="js/performance/ObjectPoolingSystem.js"></script>
+    <script src="js/performance/MemoryManager.js"></script>
+    <script src="js/performance/NetworkOptimizer.js"></script>
+    
+    <!-- 코어 시스템 -->
+    <script src="js/core/ErrorHandlingSystem.js"></script>
+    <script src="js/core/SaveSystem.js"></script>
+    <script src="js/core/AdaptiveDifficultySystem.js"></script>
+    <script src="js/core/MultiplayerBalancingSystem.js"></script>
+    
+    <!-- 성능 모니터링 -->
+    <script src="js/performance/PerformanceMonitor.js"></script>
+    <script src="js/performance/ErrorReporter.js"></script>
+    
+    <!-- 게임 엔진 -->
+    <script src="js/core/GameEngine.js"></script>
+    <script src="js/CakeDeliveryGame.js"></script>
+    
+    <script>
+        // 디버그 패널 토글
+        function toggleDebug() {
+            const debugPanel = document.getElementById('debugPanel');
+            debugPanel.classList.toggle('show');
+            
+            if (debugPanel.classList.contains('show')) {
+                startDebugUpdates();
+            } else {
+                stopDebugUpdates();
+            }
+        }
+        
+        let debugInterval = null;
+        
+        function startDebugUpdates() {
+            debugInterval = setInterval(updateDebugInfo, 1000);
+        }
+        
+        function stopDebugUpdates() {
+            if (debugInterval) {
+                clearInterval(debugInterval);
+                debugInterval = null;
+            }
+        }
+        
+        function updateDebugInfo() {
+            const debugInfo = document.getElementById('debugInfo');
+            if (!debugInfo || !game) return;
+            
+            const info = [];
+            
+            // 게임 상태
+            info.push(`게임 상태: ${game.gameState}`);
+            info.push(`점수: ${game.score}`);
+            info.push(`레벨: ${game.level}`);
+            
+            // 게임 엔진 정보
+            if (game.gameEngine) {
+                info.push(`엔진 상태: ${game.gameEngine.gameState}`);
+                
+                // 물리 정보
+                if (game.gameEngine.physicsManager) {
+                    const physicsDebug = game.gameEngine.physicsManager.getDebugInfo();
+                    info.push(`물리 바디: ${physicsDebug.bodyCount}`);
+                    info.push(`중력: ${physicsDebug.gravity}`);
+                }
+                
+                // 센서 정보
+                if (game.gameEngine.sensorSmoothing) {
+                    const sensorDebug = game.gameEngine.sensorSmoothing.getDebugInfo();
+                    info.push(`센서 품질: ${(sensorDebug.quality.overallQuality * 100).toFixed(1)}%`);
+                }
+                
+                // 메모리 정보
+                if (performance.memory) {
+                    const memMB = Math.round(performance.memory.usedJSHeapSize / 1048576);
+                    info.push(`메모리: ${memMB}MB`);
+                }
+            }
+            
+            debugInfo.innerHTML = info.join('<br>');
+        }
+        
+        // 접근성 메뉴 토글
+        function toggleAccessibilityMenu() {
+            if (game && game.accessibilitySystem) {
+                const menu = document.getElementById('accessibility-menu');
+                if (menu && menu.getAttribute('aria-hidden') === 'false') {
+                    game.accessibilitySystem.closeAccessibilityMenu();
+                } else {
+                    game.accessibilitySystem.showAccessibilityMenu();
+                }
+            }
+        }
+        
+        // 키보드 단축키
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'F1':
+                    e.preventDefault();
+                    if (game && game.accessibilitySystem) {
+                        game.accessibilitySystem.showAccessibilityHelp();
+                    } else {
+                        toggleDebug();
+                    }
+                    break;
+                case 'F5':
+                    e.preventDefault();
+                    if (game) game.restartGame();
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    if (game) game.togglePause();
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    if (game && game.accessibilitySystem) {
+                        game.accessibilitySystem.closeAccessibilityMenu();
+                    }
+                    break;
+            }
+        });
+        
+        // 성능 모니터링
+        let frameCount = 0;
+        let lastTime = performance.now();
+        
+        function monitorPerformance() {
+            frameCount++;
+            const currentTime = performance.now();
+            
+            if (currentTime - lastTime >= 1000) {
+                const fps = Math.round(frameCount * 1000 / (currentTime - lastTime));
+                console.log(`FPS: ${fps}`);
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            
+            requestAnimationFrame(monitorPerformance);
+        }
+        
+        // 성능 모니터링 시작
+        monitorPerformance();
+        
+        // 오류 처리
+        window.addEventListener('error', (event) => {
+            console.error('전역 오류:', event.error);
+        });
+        
+        window.addEventListener('unhandledrejection', (event) => {
+            console.error('처리되지 않은 Promise 거부:', event.reason);
+        });
+        
+        // 라이브러리 로더 클래스
+        class LibraryLoader {
+            constructor() {
+                this.libraries = [
+                    { 
+                        name: 'THREE', 
+                        url: 'libs/three.min.js', 
+                        fallback: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+                        check: () => typeof THREE !== 'undefined'
+                    },
+                    { 
+                        name: 'CANNON', 
+                        url: 'libs/cannon.min.js', 
+                        fallback: 'https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.20.0/cannon.min.js',
+                        check: () => typeof CANNON !== 'undefined'
+                    }
+                ];
+                this.loadedLibraries = new Set();
+            }
+            
+            async loadScript(url) {
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
+                    document.head.appendChild(script);
+                });
+            }
+            
+            async loadLibrary(library) {
+                console.log(`📦 라이브러리 로드 시도: ${library.name}`);
+                
+                try {
+                    // 로컬 라이브러리 시도
+                    await this.loadScript(library.url);
+                    
+                    // 로드 확인
+                    if (library.check()) {
+                        console.log(`✅ ${library.name} 로컬 로드 성공`);
+                        this.loadedLibraries.add(library.name);
+                        return { success: true, source: 'local' };
+                    } else {
+                        throw new Error(`Library ${library.name} not found after loading`);
+                    }
+                } catch (error) {
+                    console.warn(`⚠️ ${library.name} 로컬 로드 실패:`, error.message);
+                    
+                    if (library.fallback) {
+                        try {
+                            console.log(`🔄 ${library.name} CDN 폴백 시도...`);
+                            await this.loadScript(library.fallback);
+                            
+                            if (library.check()) {
+                                console.log(`✅ ${library.name} CDN 로드 성공`);
+                                this.loadedLibraries.add(library.name);
+                                return { success: true, source: 'cdn' };
+                            } else {
+                                throw new Error(`Library ${library.name} not found after CDN loading`);
+                            }
+                        } catch (fallbackError) {
+                            console.error(`❌ ${library.name} CDN 로드 실패:`, fallbackError.message);
+                            return { success: false, error: fallbackError };
+                        }
+                    }
+                    
+                    return { success: false, error };
+                }
+            }
+            
+            async loadAllLibraries() {
+                const results = [];
+                
+                for (const library of this.libraries) {
+                    const result = await this.loadLibrary(library);
+                    results.push({ library: library.name, ...result });
+                    
+                    if (!result.success) {
+                        throw new Error(`Critical library ${library.name} failed to load`);
+                    }
+                }
+                
+                return results;
+            }
+            
+            checkDependencies() {
+                const missing = [];
+                
+                if (typeof THREE === 'undefined') missing.push('THREE.js');
+                if (typeof CANNON === 'undefined') missing.push('CANNON.js');
+                
+                return missing;
+            }
+        }
+        
+        // 오류 복구 시스템
+        class ErrorRecoverySystem {
+            constructor() {
+                this.retryAttempts = 3;
+                this.retryDelay = 2000;
+            }
+            
+            showErrorMessage(title, message, canRetry = true) {
+                const loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    loadingScreen.innerHTML = `
+                        <div class="loading-title" style="color: var(--error);">${title}</div>
+                        <p style="color: var(--text-secondary); text-align: center; margin: 20px; max-width: 400px;">
+                            ${message}
+                        </p>
+                        ${canRetry ? `
+                            <button onclick="location.reload()" style="margin-top: 20px; margin-right: 10px;">
+                                🔄 다시 시도
+                            </button>
+                            <button onclick="window.history.back()" style="margin-top: 20px;">
+                                ← 뒤로 가기
+                            </button>
+                        ` : ''}
+                    `;
+                }
+            }
+            
+            async retryWithDelay(fn, attempts = this.retryAttempts) {
+                for (let i = 0; i < attempts; i++) {
+                    try {
+                        return await fn();
+                    } catch (error) {
+                        console.warn(`재시도 ${i + 1}/${attempts} 실패:`, error.message);
+                        
+                        if (i < attempts - 1) {
+                            await new Promise(resolve => setTimeout(resolve, this.retryDelay));
+                        } else {
+                            throw error;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 게임 초기화 관리자
+        class GameInitializationManager {
+            constructor() {
+                this.libraryLoader = new LibraryLoader();
+                this.errorRecovery = new ErrorRecoverySystem();
+                this.initSteps = [
+                    { name: '라이브러리 로드', progress: 30 },
+                    { name: '의존성 검증', progress: 50 },
+                    { name: '게임 엔진 초기화', progress: 80 },
+                    { name: '게임 시작', progress: 100 }
+                ];
+                this.currentStep = 0;
+            }
+            
+            updateProgress(step, progress) {
+                const progressBar = document.getElementById('loadingProgressBar');
+                const loadingTitle = document.querySelector('.loading-title');
+                
+                if (progressBar) {
+                    progressBar.style.width = `${progress}%`;
+                }
+                
+                if (loadingTitle && step) {
+                    loadingTitle.textContent = `${step}...`;
+                }
+            }
+            
+            async initialize() {
+                try {
+                    // 1단계: 라이브러리 로드
+                    this.updateProgress('필수 라이브러리 로드 중', 30);
+                    const libraryResults = await this.libraryLoader.loadAllLibraries();
+                    console.log('📦 라이브러리 로드 결과:', libraryResults);
+                    
+                    // 2단계: 의존성 검증
+                    this.updateProgress('의존성 검증 중', 50);
+                    const missingDeps = this.libraryLoader.checkDependencies();
+                    if (missingDeps.length > 0) {
+                        throw new Error(`필수 라이브러리 누락: ${missingDeps.join(', ')}`);
+                    }
+                    
+                    // 3단계: 게임 엔진 초기화
+                    this.updateProgress('게임 엔진 초기화 중', 80);
+                    const game = new CakeDeliveryGame();
+                    await game.init();
+                    
+                    // 4단계: 게임 시작
+                    this.updateProgress('게임 시작', 100);
+                    
+                    // 로딩 화면 숨기기
+                    setTimeout(() => {
+                        const loadingScreen = document.getElementById('loadingScreen');
+                        if (loadingScreen) {
+                            loadingScreen.style.display = 'none';
+                        }
+                    }, 500);
+                    
+                    console.log('✅ 게임 초기화 완료!');
+                    return game;
+                    
+                } catch (error) {
+                    console.error('❌ 게임 초기화 실패:', error);
+                    
+                    // 오류 메시지 표시
+                    this.errorRecovery.showErrorMessage(
+                        '게임 로드 실패',
+                        `게임을 로드하는 중 오류가 발생했습니다: ${error.message}`,
+                        true
+                    );
+                    
+                    throw error;
+                }
+            }
+        }
+        
+        // 게임 인스턴스 및 초기화 관리자
+        let game = null;
+        let initManager = null;
+        
+        // 페이지 로드 완료 후 게임 초기화
+        window.addEventListener('load', async () => {
+            try {
+                console.log('🎂 케이크 배달 게임 초기화 시작...');
+                
+                initManager = new GameInitializationManager();
+                game = await initManager.initialize();
+                
+            } catch (error) {
+                console.error('❌ 최종 초기화 실패:', error);
+                // 오류는 이미 GameInitializationManager에서 처리됨
+            }
+        });
+        
+        // 전역 함수들 (HTML에서 호출)
+        function resetGame() {
+            if (game) {
+                game.restartGame();
+            }
+        }
+        
+        function togglePause() {
+            if (game) {
+                game.togglePause();
+            }
+        }
+        
+        // 컨트롤 버튼 이벤트 리스너
+        document.addEventListener('DOMContentLoaded', () => {
+            // 재시작 버튼
+            const restartButton = document.getElementById('restartButton');
+            if (restartButton) {
+                restartButton.addEventListener('click', () => {
+                    if (game) game.restartGame();
+                });
+            }
+            
+            // 일시정지 버튼
+            const pauseButton = document.getElementById('pauseButton');
+            if (pauseButton) {
+                pauseButton.addEventListener('click', () => {
+                    if (game) game.togglePause();
+                });
+            }
+        });
+    </script>
+</body>
+</html>
