@@ -385,48 +385,27 @@ class AcornBattleGame {
             console.log(`${data.sensorId} 무적 상태 해제`);
         }
 
-        // 센서 데이터 스무딩 처리
+        // 장애물처럼 단순하고 부드러운 움직임 구현
         const { beta, gamma } = data.data.orientation;
-        const smoothedData = this.smoothSensorData(data.sensorId, beta, gamma);
-
-        // 데드존 적용 (미세한 움직임 무시) - 민감도 향상
-        const deadZone = 2; // 2도 이하의 기울기는 무시 (더욱 민감하게)
-        const filteredBeta = Math.abs(smoothedData.beta) > deadZone ? smoothedData.beta : 0;
-        const filteredGamma = Math.abs(smoothedData.gamma) > deadZone ? smoothedData.gamma : 0;
-
-        // 민감도 향상된 이동 계산
-        const maxTilt = 35; // 최대 기울기 각도 감소 (더 민감하게)
-        const sensitivity = 0.6; // 감도 대폭 증가 (0.4 → 0.6)
-        const ballSpeed = 8; // 기본 속도 증가 (6 → 8)
         
-        // 기울기 정규화 (-1 ~ 1)
-        const normalizedTiltX = Math.max(-1, Math.min(1, filteredGamma / maxTilt));
-        const normalizedTiltY = Math.max(-1, Math.min(1, filteredBeta / maxTilt));
+        // 간단한 데드존만 적용
+        const deadZone = 5;
+        const filteredBeta = Math.abs(beta) > deadZone ? beta : 0;
+        const filteredGamma = Math.abs(gamma) > deadZone ? gamma : 0;
+
+        // 장애물과 비슷한 속도 범위로 직접 변환
+        const maxTilt = 45;
+        const maxSpeed = 4; // 장애물과 비슷한 속도
         
-        // 목표 속도 계산
-        const targetVelocityX = normalizedTiltX * ballSpeed * sensitivity;
-        const targetVelocityY = normalizedTiltY * ballSpeed * sensitivity;
+        // 직접 속도 계산 (장애물처럼 단순하게)
+        player.velocity.x = (filteredGamma / maxTilt) * maxSpeed;
+        player.velocity.y = (filteredBeta / maxTilt) * maxSpeed;
 
-        // 속도 보간으로 부드러운 움직임 (안정성 향상)
-        const acceleration = 0.15; // 가속도 감소 (0.2 → 0.15, 더 부드럽게)
-        player.velocity.x += (targetVelocityX - player.velocity.x) * acceleration;
-        player.velocity.y += (targetVelocityY - player.velocity.y) * acceleration;
-
-        // 최대 속도 제한 (solo 게임 방식)
-        const maxSpeed = ballSpeed * 1.5;
-        player.velocity.x = Math.max(-maxSpeed, Math.min(maxSpeed, player.velocity.x));
-        player.velocity.y = Math.max(-maxSpeed, Math.min(maxSpeed, player.velocity.y));
-
-        // 마찰 적용 (solo 게임 방식)
-        const friction = 0.98; // 마찰 계수
-        player.velocity.x *= friction;
-        player.velocity.y *= friction;
-
-        // 위치 업데이트
+        // 장애물처럼 단순한 위치 업데이트
         player.position.x += player.velocity.x;
         player.position.y += player.velocity.y;
 
-        // 맵 경계 제한 및 반사 (solo 게임 방식)
+        // 장애물처럼 단순한 경계 처리
         this.constrainPlayerToMapWithBounce(player);
     }
 
