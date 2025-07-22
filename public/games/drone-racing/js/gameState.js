@@ -257,13 +257,19 @@ class GameStateManager {
     }
     
     /**
-     * 카운트다운 시작
+     * 카운트다운 시작 (중복 실행 방지)
      */
     startCountdown() {
-        // 이미 카운트다운이 진행 중이면 중단
+        // 이미 카운트다운이 진행 중이면 중복 실행 방지
         if (this.countdownState.isActive) {
-            console.log('⚠️ 카운트다운이 이미 진행 중입니다.');
+            console.warn('⚠️ 카운트다운이 이미 진행 중입니다. 중복 실행을 방지합니다.');
             return;
+        }
+        
+        // 기존 타이머가 있으면 정리
+        if (this.countdownTimer) {
+            clearTimeout(this.countdownTimer);
+            this.countdownTimer = null;
         }
         
         this.countdownState.isActive = true;
@@ -284,29 +290,60 @@ class GameStateManager {
                 // UI에 카운트다운 표시
                 if (this.game.ui) {
                     this.game.ui.showCountdown(this.countdownState.currentCount);
+                } else {
+                    // UI가 없으면 직접 표시
+                    const countdownElement = document.getElementById('countdown');
+                    if (countdownElement) {
+                        countdownElement.textContent = this.countdownState.currentCount;
+                        countdownElement.classList.remove('hidden');
+                        countdownElement.style.display = 'block';
+                        countdownElement.style.visibility = 'visible';
+                        countdownElement.style.opacity = '1';
+                    }
                 }
                 
                 this.countdownState.currentCount--;
-                setTimeout(countdown, 1000);
+                this.countdownTimer = setTimeout(countdown, 1000);
             } else {
                 console.log('🚀 GO! 경주 시작!');
                 
                 // GO! 표시
                 if (this.game.ui) {
                     this.game.ui.showCountdown(0);
+                } else {
+                    // UI가 없으면 직접 표시
+                    const countdownElement = document.getElementById('countdown');
+                    if (countdownElement) {
+                        countdownElement.textContent = 'GO!';
+                        countdownElement.style.color = '#00ff88';
+                        countdownElement.style.textShadow = '0 0 30px #00ff88, 0 0 60px #00ff88';
+                    }
                 }
                 
                 // 카운트다운 완료
                 this.countdownState.isActive = false;
                 
-                // 1초 후 경주 시작 (GO! 메시지 표시 시간)
+                // 1.5초 후 경주 시작 (GO! 메시지 표시 시간)
                 setTimeout(() => {
                     // 상태가 여전히 countdown이고 게임이 활성 상태인 경우에만 racing으로 전환
                     if (this.currentState === this.states.COUNTDOWN && this.game) {
                         console.log('🏁 카운트다운 완료 → 경주 상태로 전환');
+                        
+                        // 카운트다운 요소 숨기기
+                        const countdownElement = document.getElementById('countdown');
+                        if (countdownElement) {
+                            countdownElement.classList.add('hidden');
+                            countdownElement.style.display = 'none';
+                        }
+                        
+                        // 게임 상태를 racing으로 변경
                         this.setState(this.states.RACING);
+                        
+                        // 게임 시작 시간 설정
+                        this.game.raceStartTime = Date.now();
+                        console.log('🚁 경주 시작!');
                     }
-                }, 1000);
+                }, 1500);
             }
         };
         
