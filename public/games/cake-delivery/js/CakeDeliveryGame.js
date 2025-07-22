@@ -1525,31 +1525,43 @@ class CakeDeliveryGame {
      * 성능 모니터링 시스템 설정
      */
     setupPerformanceMonitoring() {
-        // 성능 모니터링 시작
-        this.performanceMonitor.start();
-        
-        // 성능 업데이트 이벤트 리스너
-        this.performanceMonitor.addEventListener('onPerformanceUpdate', (data) => {
-            // 성능 데이터를 UI에 반영 (선택적)
-            this.updatePerformanceUI(data.metrics);
-        });
-        
-        // 성능 알림 이벤트 리스너
-        this.performanceMonitor.addEventListener('onAlert', (alert) => {
-            console.warn(`⚠️ 성능 알림: ${alert.message}`);
-            
-            // 심각한 성능 문제의 경우 사용자에게 알림
-            if (alert.severity === 'warning') {
-                this.showErrorNotification('성능 경고', alert.message);
+        try {
+            // 안전성 검사
+            if (!this.performanceMonitor) {
+                console.warn('⚠️ PerformanceMonitor가 초기화되지 않았습니다.');
+                return;
             }
-        });
-        
-        // 자동 최적화 이벤트 리스너
-        this.performanceMonitor.addEventListener('onOptimization', (data) => {
-            console.log('🔧 성능 자동 최적화:', data.suggestions);
-        });
-        
-        console.log('✅ 성능 모니터링 시스템 설정 완료');
+            
+            // 성능 모니터링 시작 (올바른 메소드명 사용)
+            this.performanceMonitor.startMonitoring();
+            
+            // 성능 업데이트 이벤트 리스너
+            this.performanceMonitor.addEventListener('onPerformanceUpdate', (data) => {
+                // 성능 데이터를 UI에 반영 (선택적)
+                this.updatePerformanceUI(data.metrics);
+            });
+            
+            // 성능 알림 이벤트 리스너
+            this.performanceMonitor.addEventListener('onAlert', (alert) => {
+                console.warn(`⚠️ 성능 알림: ${alert.message}`);
+                
+                // 심각한 성능 문제의 경우 사용자에게 알림
+                if (alert.severity === 'warning') {
+                    this.showErrorNotification('성능 경고', alert.message);
+                }
+            });
+            
+            // 자동 최적화 이벤트 리스너
+            this.performanceMonitor.addEventListener('onOptimization', (data) => {
+                console.log('🔧 성능 자동 최적화:', data.suggestions);
+            });
+            
+            console.log('✅ 성능 모니터링 시스템 설정 완료');
+            
+        } catch (error) {
+            console.error('❌ 성능 모니터링 시스템 설정 실패:', error);
+            // 성능 모니터링 실패해도 게임은 계속 진행
+        }
     }
     
     /**
