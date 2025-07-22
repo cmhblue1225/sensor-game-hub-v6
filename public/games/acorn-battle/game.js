@@ -45,7 +45,12 @@ class AcornBattleGame {
             startTime: null,
             timeRemaining: 60,
             acorns: [],
-            obstacles: []
+            obstacles: [],
+            // 점수 구역에 저장된 도토리들
+            scoreZoneAcorns: {
+                sensor1: [], // 플레이어 1 구역의 도토리들
+                sensor2: []  // 플레이어 2 구역의 도토리들
+            }
         };
 
         // UI 요소 참조
@@ -450,12 +455,18 @@ class AcornBattleGame {
 
         // 플레이어 상태 초기화
         this.gameState.players.sensor1.score = 0;
+        this.gameState.players.sensor1.carriedAcorns = 0;
         this.gameState.players.sensor1.stunned = false;
         this.gameState.players.sensor1.invulnerable = false;
 
         this.gameState.players.sensor2.score = 0;
+        this.gameState.players.sensor2.carriedAcorns = 0;
         this.gameState.players.sensor2.stunned = false;
         this.gameState.players.sensor2.invulnerable = false;
+
+        // 점수 구역 도토리 초기화
+        this.gameState.scoreZoneAcorns.sensor1 = [];
+        this.gameState.scoreZoneAcorns.sensor2 = [];
 
         // 간단한 도토리 생성 (8개)
         this.gameState.acorns = [];
@@ -563,9 +574,8 @@ class AcornBattleGame {
 
     checkScoreZones(player, playerIndex) {
         const sensorId = playerIndex === 0 ? 'sensor1' : 'sensor2';
+        const enemySensorId = playerIndex === 0 ? 'sensor2' : 'sensor1';
         const carriedAcorns = player.carriedAcorns || 0;
-
-        if (carriedAcorns === 0) return;
 
         // 자신의 점수 구역 (왼쪽 = sensor1, 오른쪽 = sensor2)
         const ownZone = playerIndex === 0 ?
@@ -577,22 +587,38 @@ class AcornBattleGame {
             { x: this.canvas.width - 100, y: 0, width: 100, height: this.canvas.height } :
             { x: 0, y: 0, width: 100, height: this.canvas.height };
 
-        // 자신의 점수 구역에서 점수 저장
-        if (this.isInZone(player.position, ownZone)) {
+        // 자신의 점수 구역에서 도토리 저장
+        if (this.isInZone(player.position, ownZone) && carriedAcorns > 0) {
+            // 들고 있는 도토리를 구역에 저장
+            for (let i = 0; i < carriedAcorns; i++) {
+                this.gameState.scoreZoneAcorns[sensorId].push({
+                    position: {
+                        x: ownZone.x + 20 + (this.gameState.scoreZoneAcorns[sensorId].length % 4) * 20,
+                        y: 60 + Math.floor(this.gameState.scoreZoneAcorns[sensorId].length / 4) * 20
+                    },
+                    radius: 8
+                });
+            }
+            
+            // 점수 업데이트
             player.score += carriedAcorns;
             player.carriedAcorns = 0;
-            console.log(`플레이어 ${playerIndex + 1} 점수 저장! 현재 점수: ${player.score}`);
+            console.log(`플레이어 ${playerIndex + 1} 도토리 ${carriedAcorns}개 저장! 현재 점수: ${player.score}`);
         }
 
         // 상대방 점수 구역에서 도토리 훔치기
-        if (this.isInZone(player.position, enemyZone)) {
-            const enemyPlayer = playerIndex === 0 ? this.gameState.players.sensor2 : this.gameState.players.sensor1;
-            if (enemyPlayer.score > 0) {
-                const stolenAcorns = Math.min(carriedAcorns, enemyPlayer.score);
-                enemyPlayer.score -= stolenAcorns;
-                player.carriedAcorns = Math.max(0, carriedAcorns - stolenAcorns);
-                player.score += stolenAcorns;
-                console.log(`플레이어 ${playerIndex + 1}이 ${stolenAcorns}개 도토리 훔침!`);
+        if (this.isInZone(player.position, enemyZone) && carriedAcorns === 0) {
+            const enemyAcorns = this.gameState.scoreZoneAcorns[enemySensorId];
+            if (enemyAcorns.length > 0) {
+                // 가장 최근에 저장된 도토리 하나를 훔침
+                const stolenAcorn = enemyAcorns.pop();
+                player.carriedAcorns = 1;
+                
+                // 상대방 점수 감소
+                const enemyPlayer = playerIndex === 0 ? this.gameState.players.sensor2 : this.gameState.players.sensor1;
+                enemyPlayer.score = Math.max(0, enemyPlayer.score - 1);
+                
+                console.log(`플레이어 ${playerIndex + 1}이 도토리 1개 훔침! 상대방 점수: ${enemyPlayer.score}`);
             }
         }
     }
@@ -718,6 +744,25 @@ class AcornBattleGame {
         this.ctx.textAlign = 'center';
         this.ctx.fillText('P1 구역', 50, 30);
         this.ctx.fillText('P2 구역', this.canvas.width - 50, 30);
+
+        // 플레이어 1 구역에 저장된 도토리들 렌더링
+        this.ctx.fillStyle = '#8B4513';
+        this.ctx.strokeStyle = '#654321';
+        this.ctx.lineWidth = 1;
+        this.gameState.scoreZoneAcorns.sensor1.forEach(acorn => {
+            this.ctx.beginPath();
+            this.ctx.arc(acorn.position.x, acorn.position.y, acorn.radius, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.stroke();
+        });
+
+        // 플레이어 2 구역에 저장된 도토리들 렌더링
+        this.gameState.scoreZoneAcorns.sensor2.forEach(acorn => {
+            this.ctx.beginPath();
+            this.ctx.arc(acorn.position.x, acorn.position.y, acorn.radius, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.stroke();
+        });
     }
 
     renderAcorns() {
