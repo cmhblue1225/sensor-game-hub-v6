@@ -17,35 +17,35 @@ class AdaptiveMusicSystem {
         this.targetIntensity = 0;
         this.transitionSpeed = 0.02;
         
-        // 게임 상태별 음악 설정
+        // 게임 상태별 음악 설정 (실제 존재하는 파일들만 사용)
         this.musicConfig = {
             menu: {
                 intensity: 0.2,
-                layers: ['ambient'],
+                layers: ['bgm'],
                 tempo: 1.0,
                 volume: 0.6
             },
             playing: {
                 intensity: 0.5,
-                layers: ['ambient', 'rhythm'],
+                layers: ['bgm'],
                 tempo: 1.0,
                 volume: 0.8
             },
             tension: {
                 intensity: 0.8,
-                layers: ['ambient', 'rhythm', 'tension'],
+                layers: ['bgm'],
                 tempo: 1.2,
                 volume: 0.9
             },
             success: {
                 intensity: 1.0,
-                layers: ['ambient', 'rhythm', 'celebration'],
+                layers: ['success'],
                 tempo: 1.1,
                 volume: 1.0
             },
             failure: {
                 intensity: 0.1,
-                layers: ['ambient'],
+                layers: ['fail'],
                 tempo: 0.8,
                 volume: 0.4
             }
@@ -105,7 +105,7 @@ class AdaptiveMusicSystem {
     }
     
     /**
-     * 음악 레이어 로드
+     * 음악 레이어 로드 (실제 존재하는 파일들만 사용)
      */
     async loadMusicLayers() {
         if (!this.isInitialized) {
@@ -115,12 +115,11 @@ class AdaptiveMusicSystem {
         try {
             console.log('🎼 음악 레이어 로딩 시작...');
             
-            // 음악 파일 경로 정의
+            // 실제 존재하는 음악 파일 경로 정의
             const musicFiles = {
-                ambient: '/games/cake-delivery/assets/music/ambient.mp3',
-                rhythm: '/games/cake-delivery/assets/music/rhythm.mp3',
-                tension: '/games/cake-delivery/assets/music/tension.mp3',
-                celebration: '/games/cake-delivery/assets/music/celebration.mp3'
+                bgm: '/games/cake-delivery/assets/bgm.mp3',
+                success: '/games/cake-delivery/assets/success.mp3',
+                fail: '/games/cake-delivery/assets/fail.mp3'
             };
             
             // 각 레이어 로드
@@ -140,8 +139,8 @@ class AdaptiveMusicSystem {
                 } catch (error) {
                     console.warn(`⚠️ 음악 레이어 로드 실패: ${layerName}`, error);
                     
-                    // 폴백: 기본 BGM 사용
-                    await this.loadFallbackMusic(layerName);
+                    // 폴백: HTML5 Audio 사용
+                    await this.createFallbackLayer(layerName);
                 }
             });
             
@@ -152,6 +151,25 @@ class AdaptiveMusicSystem {
             console.error('❌ 음악 레이어 로딩 실패:', error);
             // 완전 폴백: 기존 BGM 시스템 사용
             await this.setupFallbackSystem();
+        }
+    }
+    
+    /**
+     * 폴백 레이어 생성
+     * @param {string} layerName - 레이어 이름
+     */
+    async createFallbackLayer(layerName) {
+        try {
+            // 게인 노드만 생성 (무음)
+            const layerGain = this.audioContext.createGain();
+            layerGain.connect(this.analyser);
+            layerGain.gain.value = 0;
+            this.layerGains.set(layerName, layerGain);
+            
+            console.log(`✅ 폴백 레이어 생성: ${layerName}`);
+            
+        } catch (error) {
+            console.error(`❌ 폴백 레이어 생성 실패: ${layerName}`, error);
         }
     }
     

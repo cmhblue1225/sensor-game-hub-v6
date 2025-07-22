@@ -664,6 +664,13 @@
         });
         
         window.addEventListener('unhandledrejection', (event) => {
+            // 오디오 관련 오류는 무시 (폴백 시스템이 처리함)
+            if (event.reason && event.reason.name === 'EncodingError') {
+                console.warn('오디오 디코딩 오류 (폴백 시스템 사용):', event.reason.message);
+                event.preventDefault(); // 오류 무시
+                return;
+            }
+            
             console.error('처리되지 않은 Promise 거부:', event.reason);
         });
         

@@ -18,98 +18,55 @@ class SpatialAudioSystem {
         // 오디오 버퍼들
         this.audioBuffers = new Map();
         
-        // 효과음 설정
+        // 효과음 설정 (실제 존재하는 파일들만 사용)
         this.soundEffects = {
-            // 케이크 관련 사운드
+            // 케이크 관련 사운드 (실제 파일 사용)
             cake: {
-                wobble: {
-                    files: ['cake_wobble_1.mp3', 'cake_wobble_2.mp3', 'cake_wobble_3.mp3'],
-                    volume: 0.6,
-                    pitch: 1.0,
-                    spatial: true
-                },
-                collision: {
-                    files: ['cake_collision_1.mp3', 'cake_collision_2.mp3'],
-                    volume: 0.8,
-                    pitch: 1.0,
-                    spatial: true
-                },
                 success: {
-                    files: ['cake_success.mp3'],
+                    files: ['success.mp3'],
                     volume: 1.0,
                     pitch: 1.0,
                     spatial: false
                 },
                 failure: {
-                    files: ['cake_failure.mp3'],
+                    files: ['fail.mp3'],
                     volume: 0.9,
                     pitch: 1.0,
                     spatial: false
                 }
             },
             
-            // 캐릭터 관련 사운드
-            character: {
-                footsteps: {
-                    files: ['footstep_1.mp3', 'footstep_2.mp3', 'footstep_3.mp3', 'footstep_4.mp3'],
-                    volume: 0.4,
-                    pitch: 1.0,
-                    spatial: true
-                },
-                breathing: {
-                    files: ['breathing_normal.mp3', 'breathing_heavy.mp3'],
-                    volume: 0.3,
-                    pitch: 1.0,
-                    spatial: true
-                }
-            },
-            
-            // 환경 사운드
-            environment: {
-                wind: {
-                    files: ['wind_light.mp3', 'wind_strong.mp3'],
-                    volume: 0.2,
-                    pitch: 1.0,
-                    spatial: false,
-                    loop: true
-                },
-                traffic: {
-                    files: ['traffic_distant.mp3'],
-                    volume: 0.1,
-                    pitch: 1.0,
-                    spatial: false,
-                    loop: true
-                },
-                birds: {
-                    files: ['birds_ambient.mp3'],
-                    volume: 0.15,
-                    pitch: 1.0,
-                    spatial: false,
-                    loop: true
-                }
-            },
-            
-            // UI 사운드
+            // UI 사운드 (실제 파일 사용)
             ui: {
-                button_click: {
-                    files: ['ui_click.mp3'],
-                    volume: 0.5,
+                success: {
+                    files: ['success.mp3'],
+                    volume: 0.8,
                     pitch: 1.0,
                     spatial: false
                 },
-                menu_hover: {
-                    files: ['ui_hover.mp3'],
-                    volume: 0.3,
-                    pitch: 1.0,
-                    spatial: false
-                },
-                notification: {
-                    files: ['ui_notification.mp3'],
+                fail: {
+                    files: ['fail.mp3'],
                     volume: 0.7,
                     pitch: 1.0,
                     spatial: false
+                },
+                bgm: {
+                    files: ['bgm.mp3'],
+                    volume: 0.5,
+                    pitch: 1.0,
+                    spatial: false,
+                    loop: true
                 }
             }
+        };
+        
+        // 기본 사운드 설정 (폴백용)
+        this.fallbackSounds = {
+            click: { frequency: 800, duration: 0.1 },
+            hover: { frequency: 600, duration: 0.05 },
+            success: { frequency: 1000, duration: 0.3 },
+            fail: { frequency: 200, duration: 0.5 },
+            wobble: { frequency: 100, duration: 0.2 }
         };
         
         // 공간 오디오 설정
@@ -256,7 +213,7 @@ class SpatialAudioSystem {
     }
     
     /**
-     * 사운드 효과 로드
+     * 사운드 효과 로드 (실제 존재하는 파일들만 사용)
      */
     async loadSoundEffects() {
         if (!this.isInitialized) {
@@ -266,37 +223,50 @@ class SpatialAudioSystem {
         try {
             console.log('🎵 사운드 효과 로딩 시작...');
             
-            const loadPromises = [];
+            // 실제 존재하는 사운드 파일들만 로드
+            const existingSounds = {
+                'ui_success': '/games/cake-delivery/assets/success.mp3',
+                'ui_fail': '/games/cake-delivery/assets/fail.mp3',
+                'bgm': '/games/cake-delivery/assets/bgm.mp3'
+            };
             
-            // 모든 사운드 효과 파일 로드
-            Object.entries(this.soundEffects).forEach(([category, sounds]) => {
-                Object.entries(sounds).forEach(([soundName, config]) => {
-                    config.files.forEach((fileName, index) => {
-                        const soundKey = `${category}_${soundName}_${index}`;
-                        const filePath = `/games/cake-delivery/assets/sounds/${fileName}`;
-                        
-                        const loadPromise = this.loadAudioFile(filePath, soundKey)
-                            .catch(error => {
-                                console.warn(`⚠️ 사운드 로드 실패: ${soundKey}`, error);
-                                // 폴백: 기본 사운드 생성
-                                return this.createFallbackSound(soundKey, config);
-                            });
-                        
-                        loadPromises.push(loadPromise);
-                    });
-                });
-            });
+            // 각 파일을 개별적으로 로드하고 실패 시 폴백 생성
+            for (const [soundKey, filePath] of Object.entries(existingSounds)) {
+                try {
+                    await this.loadAudioFile(filePath, soundKey);
+                    console.log(`✅ 사운드 로드 완료: ${soundKey}`);
+                } catch (error) {
+                    console.warn(`⚠️ 사운드 로드 실패: ${soundKey}, 폴백 사운드 생성`);
+                    // 폴백: 기본 사운드 생성
+                    this.createFallbackSound(soundKey, { volume: 0.5, pitch: 1.0 });
+                }
+            }
             
-            await Promise.all(loadPromises);
             console.log('🎵 사운드 효과 로딩 완료');
             
         } catch (error) {
             console.error('❌ 사운드 효과 로딩 실패:', error);
+            // 모든 사운드를 폴백으로 생성
+            this.createAllFallbackSounds();
         }
     }
     
     /**
-     * 오디오 파일 로드
+     * 모든 폴백 사운드 생성
+     */
+    createAllFallbackSounds() {
+        console.log('🔄 모든 폴백 사운드 생성 중...');
+        
+        const fallbackSounds = ['ui_success', 'ui_fail', 'bgm'];
+        fallbackSounds.forEach(soundKey => {
+            this.createFallbackSound(soundKey, { volume: 0.5, pitch: 1.0 });
+        });
+        
+        console.log('✅ 모든 폴백 사운드 생성 완료');
+    }
+    
+    /**
+     * 오디오 파일 로드 (안전한 버전)
      * @param {string} filePath - 파일 경로
      * @param {string} soundKey - 사운드 키
      * @returns {Promise<AudioBuffer>}
@@ -308,18 +278,38 @@ class SpatialAudioSystem {
             request.responseType = 'arraybuffer';
             
             request.onload = () => {
-                this.audioContext.decodeAudioData(
-                    request.response,
-                    (audioBuffer) => {
-                        this.audioBuffers.set(soundKey, audioBuffer);
-                        console.log(`✅ 사운드 로드 완료: ${soundKey}`);
-                        resolve(audioBuffer);
-                    },
-                    (error) => reject(error)
-                );
+                if (request.status === 200) {
+                    try {
+                        this.audioContext.decodeAudioData(
+                            request.response,
+                            (audioBuffer) => {
+                                this.audioBuffers.set(soundKey, audioBuffer);
+                                console.log(`✅ 사운드 로드 완료: ${soundKey}`);
+                                resolve(audioBuffer);
+                            },
+                            (error) => {
+                                console.warn(`⚠️ 오디오 디코딩 실패: ${soundKey}`, error);
+                                reject(new Error(`Audio decoding failed for ${soundKey}: ${error.message}`));
+                            }
+                        );
+                    } catch (error) {
+                        console.warn(`⚠️ 오디오 처리 실패: ${soundKey}`, error);
+                        reject(new Error(`Audio processing failed for ${soundKey}: ${error.message}`));
+                    }
+                } else {
+                    reject(new Error(`HTTP ${request.status}: Failed to load ${filePath}`));
+                }
             };
             
-            request.onerror = () => reject(new Error(`Failed to load ${filePath}`));
+            request.onerror = () => {
+                reject(new Error(`Network error loading ${filePath}`));
+            };
+            
+            request.ontimeout = () => {
+                reject(new Error(`Timeout loading ${filePath}`));
+            };
+            
+            request.timeout = 10000; // 10초 타임아웃
             request.send();
         });
     }
