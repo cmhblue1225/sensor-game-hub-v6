@@ -22,14 +22,19 @@ export class SensorManager {
         };
 
         this.massCompetitiveCrosshair = {
-            smoothing: 0.18,
+            smoothing: 0.35, // 더 높은 기본 스무딩
             adaptiveSmoothing: true,
-            lastSmoothingValue: 0.18,
-            smoothingTransition: 0.05,
+            lastSmoothingValue: 0.35,
+            smoothingTransition: 0.08,
             lastUpdateTime: 0,
-            throttleTime: 33, // 30fps throttling
+            throttleTime: 16, // 60fps로 증가
             lastPosition: { x: 0, y: 0 },
-            velocity: { x: 0, y: 0 }
+            velocity: { x: 0, y: 0 },
+            // 노이즈 필터링을 위한 이동 평균
+            sensorHistory: [],
+            historySize: 3,
+            // 예측적 보간
+            predictiveSmoothing: 0.15
         };
     }
 
@@ -71,18 +76,58 @@ export class SensorManager {
                 const player = massPlayers.get(sensorId);
                 if (player) {
                     const now = Date.now();
-                    player.tilt.x = sensorData.orientation.beta || 0;
-                    player.tilt.y = sensorData.orientation.gamma || 0;
+                    const rawTiltX = sensorData.orientation.beta || 0;
+                    const rawTiltY = sensorData.orientation.gamma || 0;
 
                     if (sensorId === myPlayerId) {
+                        // 대규모 경쟁 모드에서만 노이즈 필터링 적용
+                        const filteredTilt = this.applySensorNoiseFilter(rawTiltX, rawTiltY);
+                        player.tilt.x = filteredTilt.x;
+                        player.tilt.y = filteredTilt.y;
+                        
                         this.sensorData.sensor1.tilt.x = player.tilt.x;
                         this.sensorData.sensor1.tilt.y = player.tilt.y;
+                    } else {
+                        player.tilt.x = rawTiltX;
+                        player.tilt.y = rawTiltY;
                     }
 
                     player.lastActivity = now;
                 }
             }
         }
+    }
+
+    // 대규모 경쟁 모드 전용 센서 노이즈 필터링
+    applySensorNoiseFilter(tiltX, tiltY) {
+        const config = this.massCompetitiveCrosshair;
+        
+        // 센서 히스토리에 새 데이터 추가
+        config.sensorHistory.push({ x: tiltX, y: tiltY });
+        
+        // 히스토리 크기 제한
+        if (config.sensorHistory.length > config.historySize) {
+            config.sensorHistory.shift();
+        }
+        
+        // 이동 평균으로 노이즈 필터링
+        if (config.sensorHistory.length === 1) {
+            return { x: tiltX, y: tiltY };
+        }
+        
+        let avgX = 0, avgY = 0;
+        const weights = [0.5, 0.3, 0.2]; // 최신 데이터에 더 높은 가중치
+        let totalWeight = 0;
+        
+        for (let i = 0; i < config.sensorHistory.length; i++) {
+            const weight = weights[config.sensorHistory.length - 1 - i] || 0.1;
+            avgX += config.sensorHistory[i].x * weight;
+            avgY += config.sensorHistory[i].y * weight;
+            totalWeight += weight;
+        }
+        
+        // 가중치 정규화
+        return { x: avgX / totalWeight, y: avgY / totalWeight };
     }
 
     applySensorMovement(gameMode, canvasWidth, canvasHeight) {
@@ -153,33 +198,58 @@ export class SensorManager {
 
     updateCrosshairPosition(gameMode) {
         if (gameMode === 'mass-competitive') {
-            // 대규모 경쟁 모드에서만 적응형 스무딩 적용
+            // 대규모 경쟁 모드에서만 고급 스무딩 적용
             const massConfig = this.massCompetitiveCrosshair;
             
-            // 이동 거리 계산
+            // 이전 속도 계산
+            const prevVelX = massConfig.velocity.x;
+            const prevVelY = massConfig.velocity.y;
+            
+            // 목표 위치까지의 거리와 방향
             const deltaX = this.crosshair.targetX - this.crosshair.x;
             const deltaY = this.crosshair.targetY - this.crosshair.y;
             const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
             
-            // 속도 기반 적응형 스무딩
+            // 예측적 보간: 이전 움직임 트렌드를 고려한 예측 위치
+            const predictedX = this.crosshair.targetX + (prevVelX * massConfig.predictiveSmoothing);
+            const predictedY = this.crosshair.targetY + (prevVelY * massConfig.predictiveSmoothing);
+            
+            // 예측 위치로의 델타 계산
+            const predictedDeltaX = predictedX - this.crosshair.x;
+            const predictedDeltaY = predictedY - this.crosshair.y;
+            
+            // 거리 기반 적응형 스무딩
             let adaptiveSmoothing = massConfig.smoothing;
-            if (distance > 50) {
+            if (distance > 80) {
                 // 큰 움직임: 더 빠른 반응
-                adaptiveSmoothing = Math.min(0.35, massConfig.smoothing + (distance / 300));
-            } else if (distance < 10) {
+                adaptiveSmoothing = Math.min(0.65, massConfig.smoothing + (distance / 200));
+            } else if (distance > 30) {
+                // 중간 움직임: 기본 반응
+                adaptiveSmoothing = massConfig.smoothing;
+            } else {
                 // 작은 움직임: 더 부드러운 움직임
-                adaptiveSmoothing = Math.max(0.1, massConfig.smoothing - 0.05);
+                adaptiveSmoothing = Math.max(0.2, massConfig.smoothing - 0.1);
             }
             
-            // 스무딩 전환 적용
+            // 부드러운 스무딩 전환
             massConfig.lastSmoothingValue += (adaptiveSmoothing - massConfig.lastSmoothingValue) * massConfig.smoothingTransition;
             
-            this.crosshair.x += deltaX * massConfig.lastSmoothingValue;
-            this.crosshair.y += deltaY * massConfig.lastSmoothingValue;
+            // 예측적 움직임과 일반 움직임의 가중 평균
+            const finalDeltaX = (deltaX * 0.7) + (predictedDeltaX * 0.3);
+            const finalDeltaY = (deltaY * 0.7) + (predictedDeltaY * 0.3);
             
-            // 속도 추적 (다음 프레임용)
-            massConfig.velocity.x = this.crosshair.x - massConfig.lastPosition.x;
-            massConfig.velocity.y = this.crosshair.y - massConfig.lastPosition.y;
+            // 위치 업데이트
+            this.crosshair.x += finalDeltaX * massConfig.lastSmoothingValue;
+            this.crosshair.y += finalDeltaY * massConfig.lastSmoothingValue;
+            
+            // 속도 추적 업데이트
+            const newVelX = this.crosshair.x - massConfig.lastPosition.x;
+            const newVelY = this.crosshair.y - massConfig.lastPosition.y;
+            
+            // 속도 스무딩 (갑작스러운 변화 방지)
+            massConfig.velocity.x = (massConfig.velocity.x * 0.7) + (newVelX * 0.3);
+            massConfig.velocity.y = (massConfig.velocity.y * 0.7) + (newVelY * 0.3);
+            
             massConfig.lastPosition.x = this.crosshair.x;
             massConfig.lastPosition.y = this.crosshair.y;
         } else {
@@ -211,5 +281,12 @@ export class SensorManager {
         this.sensorData.sensor1 = { tilt: { x: 0, y: 0 } };
         this.sensorData.sensor2 = { tilt: { x: 0, y: 0 } };
         this.initializeCrosshair(canvasWidth, canvasHeight);
+        
+        // 대규모 경쟁 모드 관련 변수 초기화
+        this.massCompetitiveCrosshair.lastUpdateTime = 0;
+        this.massCompetitiveCrosshair.sensorHistory = [];
+        this.massCompetitiveCrosshair.velocity = { x: 0, y: 0 };
+        this.massCompetitiveCrosshair.lastPosition = { x: canvasWidth / 2, y: canvasHeight / 2 };
+        this.massCompetitiveCrosshair.lastSmoothingValue = this.massCompetitiveCrosshair.smoothing;
     }
 }
