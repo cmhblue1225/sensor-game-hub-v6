@@ -226,43 +226,52 @@ class AcornBattleGame {
             // 세션 코드 추출 (URL에서)
             const sessionCode = this.extractSessionCode(url);
 
-            // 외부 QR API를 사용하여 실제 QR 코드 생성
-            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
+            // 외부 QR API를 사용하여 실제 QR 코드 생성 (200x200 크기)
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`;
 
             qrContainer.innerHTML = `
-                <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
-                    <div style="margin-bottom: 10px;">
+                <div style="text-align: center; padding: 25px; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                    <div style="margin-bottom: 20px;">
+                        <div style="font-size: 20px; font-weight: bold; color: #1e293b; margin-bottom: 12px;">📱 QR 코드로 연결하세요</div>
+                        <div style="font-size: 14px; color: #64748b; margin-bottom: 20px;">
+                            모바일 카메라로 아래 QR 코드를 스캔하면 바로 연결됩니다
+                        </div>
+                    </div>
+                    
+                    <div style="display: inline-block; padding: 15px; background: white; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 20px;">
                         <img src="${qrApiUrl}" 
-                             style="width: 150px; height: 150px; border: 2px solid #e2e8f0; border-radius: 8px;" 
+                             style="width: 200px; height: 200px; border-radius: 8px;" 
                              alt="QR Code" 
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                        <div style="display: none; padding: 20px; color: #64748b; font-size: 14px;">
+                        <div style="display: none; padding: 40px; color: #64748b; font-size: 16px;">
                             QR 코드 로딩 실패
                         </div>
                     </div>
-                    <div style="font-size: 12px; color: #64748b; margin-bottom: 15px;">
-                        📱 모바일 카메라로 QR 코드를 스캔하세요
+                    
+                    <div style="font-size: 16px; color: #3b82f6; font-weight: 600; margin-bottom: 15px;">
+                        🎯 가장 빠르고 쉬운 연결 방법입니다!
                     </div>
                 </div>
                 
-                <div style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 8px;">
-                    <div style="margin-bottom: 15px;">
-                        <div style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 8px;">📱 다른 연결 방법</div>
-                        <div style="font-size: 14px; color: #64748b;">QR 코드가 작동하지 않는 경우 아래 방법을 사용하세요</div>
-                    </div>
+                <details style="margin-top: 15px; cursor: pointer;">
+                    <summary style="padding: 12px; background: #f1f5f9; border-radius: 8px; font-size: 14px; font-weight: 600; color: #64748b; outline: none; user-select: none;">
+                        ⚙️ 다른 연결 방법 (QR 코드가 작동하지 않는 경우)
+                    </summary>
                     
-                    <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <div style="font-size: 16px; font-weight: bold; color: #3b82f6; margin-bottom: 8px;">방법 1: 세션 코드 입력</div>
-                        <div style="font-size: 24px; font-weight: bold; color: #1e293b; letter-spacing: 2px; font-family: monospace; background: #f1f5f9; padding: 8px; border-radius: 4px;">${sessionCode}</div>
-                        <div style="font-size: 12px; color: #64748b; margin-top: 5px;">센서 게임 앱에서 위 코드를 입력하세요</div>
+                    <div style="margin-top: 10px; padding: 15px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 8px;">
+                        <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <div style="font-size: 14px; font-weight: bold; color: #3b82f6; margin-bottom: 8px;">방법 1: 세션 코드 입력</div>
+                            <div style="font-size: 20px; font-weight: bold; color: #1e293b; letter-spacing: 2px; font-family: monospace; background: #f1f5f9; padding: 8px; border-radius: 4px;">${sessionCode}</div>
+                            <div style="font-size: 11px; color: #64748b; margin-top: 5px;">센서 게임 앱에서 위 코드를 입력하세요</div>
+                        </div>
+                        
+                        <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <div style="font-size: 14px; font-weight: bold; color: #10b981; margin-bottom: 8px;">방법 2: 직접 접속</div>
+                            <div style="font-size: 10px; color: #64748b; margin-bottom: 6px;">모바일 브라우저에서 아래 주소로 접속:</div>
+                            <div style="font-size: 10px; color: #6366f1; word-break: break-all; background: #f1f5f9; padding: 6px; border-radius: 4px;">${url}</div>
+                        </div>
                     </div>
-                    
-                    <div style="background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-                        <div style="font-size: 16px; font-weight: bold; color: #10b981; margin-bottom: 8px;">방법 2: 직접 접속</div>
-                        <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">모바일 브라우저에서 아래 주소로 접속:</div>
-                        <div style="font-size: 11px; color: #6366f1; word-break: break-all; background: #f1f5f9; padding: 6px; border-radius: 4px;">${url}</div>
-                    </div>
-                </div>
+                </details>
             `;
         }
 
