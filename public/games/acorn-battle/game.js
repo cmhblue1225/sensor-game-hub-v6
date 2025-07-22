@@ -81,7 +81,7 @@ class AcornBattleGame {
         // 게임 루프 관련
         this.animationId = null;
         this.lastSensorUpdate = 0;
-        this.sensorThrottle = 33; // 30fps로 안정화 (16ms → 33ms)
+        this.sensorThrottle = 25; // 40fps로 향상 (33ms → 25ms)
 
         // 센서 데이터 스무딩을 위한 버퍼 (버퍼 크기 증가)
         this.sensorBuffer = {
@@ -388,14 +388,14 @@ class AcornBattleGame {
         // 장애물처럼 단순하고 부드러운 움직임 구현
         const { beta, gamma } = data.data.orientation;
         
-        // 간단한 데드존만 적용
-        const deadZone = 5;
+        // 더 민감한 데드존 적용
+        const deadZone = 3; // 5 → 3 (더 민감하게)
         const filteredBeta = Math.abs(beta) > deadZone ? beta : 0;
         const filteredGamma = Math.abs(gamma) > deadZone ? gamma : 0;
 
-        // 장애물과 비슷한 속도 범위로 직접 변환
-        const maxTilt = 45;
-        const maxSpeed = 4; // 장애물과 비슷한 속도
+        // 더 빠르고 민감한 속도 설정
+        const maxTilt = 30; // 45 → 30 (작은 움직임도 큰 반응)
+        const maxSpeed = 6; // 4 → 6 (50% 빨라짐)
         
         // 직접 속도 계산 (장애물처럼 단순하게)
         player.velocity.x = (filteredGamma / maxTilt) * maxSpeed;
