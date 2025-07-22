@@ -304,12 +304,12 @@ body {
 
 /* 모드 선택 화면에서만 보이는 버튼 */
 .mode-selection-only {
-    display: none;
+    display: none !important;
 }
 
-/* 모드 선택 패널이 표시될 때만 허브로 버튼 표시 */
-#modeSelectionPanel:not(.hidden) ~ * .mode-selection-only {
-    display: inline-flex;
+/* JavaScript에서 명시적으로 표시할 때 우선순위 */
+.mode-selection-only.show {
+    display: inline-flex !important;
 }
 
 /* HUD 요소 (게임 중) */

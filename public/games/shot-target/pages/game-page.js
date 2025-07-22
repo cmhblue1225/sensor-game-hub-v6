@@ -113,6 +113,11 @@ export class GamePage {
         this.setupKeyboardControls();
         this.startGameLoop();
         this.waitingRoomWidget.updateGameStatus('게임 모드를 선택하세요');
+        
+        // 초기 모드 선택 화면에서 허브로 버튼 표시
+        if (this.elements.backToHubBtn) {
+            this.elements.backToHubBtn.classList.add('show');
+        }
     }
     /**
     * 게임 상태에 따라 컨트롤 패널의 버튼을 동적으로 렌더링합니다.
@@ -189,7 +194,7 @@ export class GamePage {
 
         // 허브로 버튼 숨기기
         if (this.elements.backToHubBtn) {
-            this.elements.backToHubBtn.style.display = 'none';
+            this.elements.backToHubBtn.classList.remove('show');
         }
 
         if (this.massWaitingRoomWidget) {
@@ -214,7 +219,7 @@ export class GamePage {
 
         // 허브로 버튼 표시
         if (this.elements.backToHubBtn) {
-            this.elements.backToHubBtn.style.display = 'inline-flex';
+            this.elements.backToHubBtn.classList.add('show');
         }
 
         // 컨트롤 패널의 다른 버튼들 제거 (허브로 버튼은 유지)
