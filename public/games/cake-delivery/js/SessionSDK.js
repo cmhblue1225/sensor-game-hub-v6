@@ -105,22 +105,22 @@ class SessionSDK {
                 gameType: this.options.gameType
             };
             
-            this.socket.emit('create-session', sessionData);
-            
-            // 세션 생성 응답 대기
             return new Promise((resolve, reject) => {
                 const timeout = setTimeout(() => {
                     reject(new Error('세션 생성 시간 초과'));
                 }, 5000);
                 
-                const handler = (session) => {
+                this.socket.emit('create-session', sessionData, (response) => {
                     clearTimeout(timeout);
-                    this.off('session-created', handler);
-                    this.session = session;
-                    resolve(session);
-                };
-                
-                this.on('session-created', handler);
+                    
+                    if (response.success) {
+                        this.session = response.session;
+                        this.emit('session-created', response.session);
+                        resolve(response.session);
+                    } else {
+                        reject(new Error(response.error || '세션 생성 실패'));
+                    }
+                });
             });
             
         } catch (error) {
