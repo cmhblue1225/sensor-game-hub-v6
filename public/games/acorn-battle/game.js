@@ -444,9 +444,9 @@ class AcornBattleGame {
     }
 
     initializeGameEntities() {
-        // 플레이어 위치 초기화
-        this.gameState.players.sensor1.position = { x: 100, y: 300 };
-        this.gameState.players.sensor2.position = { x: 700, y: 300 };
+        // 플레이어 위치 초기화 (새로운 캔버스 크기에 맞게)
+        this.gameState.players.sensor1.position = { x: 150, y: 400 };
+        this.gameState.players.sensor2.position = { x: 1050, y: 400 };
 
         // 플레이어 상태 초기화
         this.gameState.players.sensor1.score = 0;
@@ -682,6 +682,9 @@ class AcornBattleGame {
 
         // 플레이어 보유 도토리 표시
         this.renderCarriedAcorns();
+
+        // 게임 내 UI 렌더링 (점수, 타이머)
+        this.renderGameUI();
     }
 
     renderBackground() {
@@ -1005,10 +1008,15 @@ class AcornBattleGame {
         // 네트워크 상태 체크
         this.checkNetworkStatus();
 
-        // 캔버스 크기 설정
+        // 캔버스 크기 설정 (확대)
         if (this.canvas) {
-            this.canvas.width = 800;
-            this.canvas.height = 600;
+            this.canvas.width = 1200;
+            this.canvas.height = 800;
+            
+            // 캔버스를 전체 화면으로 표시
+            this.canvas.style.width = '100vw';
+            this.canvas.style.height = '100vh';
+            this.canvas.style.objectFit = 'contain';
         }
 
         // SDK 연결 시작
@@ -1113,5 +1121,272 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('beforeunload', () => {
     if (window.acornBattleGame) {
         window.acornBattleGame.cleanup();
+    }
+});.carrie
+dAcorns}`, player1.position.x, player1.position.y - 30);
+        }
+
+        // 플레이어 2 보유 도토리 표시
+        const player2 = this.gameState.players.sensor2;
+        if (player2.carriedAcorns > 0) {
+            this.ctx.fillStyle = '#FFD700';
+            this.ctx.font = 'bold 12px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(`🌰${player2.carriedAcorns}`, player2.position.x, player2.position.y - 30);
+        }
+    }
+
+    renderGameUI() {
+        // 게임 내 점수 및 타이머 표시
+        if (this.gameState.phase === 'playing') {
+            // 반투명 배경
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(this.canvas.width / 2 - 200, 10, 400, 80);
+            this.ctx.strokeStyle = '#FFFFFF';
+            this.ctx.lineWidth = 2;
+            this.ctx.strokeRect(this.canvas.width / 2 - 200, 10, 400, 80);
+
+            // 게임 제목
+            this.ctx.fillStyle = '#FFFFFF';
+            this.ctx.font = 'bold 20px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText('🏆 Acorn Battle', this.canvas.width / 2, 35);
+
+            // 타이머
+            const minutes = Math.floor(this.gameState.timeRemaining / 60);
+            const seconds = Math.floor(this.gameState.timeRemaining % 60);
+            const timeString = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            
+            this.ctx.fillStyle = this.gameState.timeRemaining <= 10 ? '#FF4444' : '#FFFFFF';
+            this.ctx.font = 'bold 16px Arial';
+            this.ctx.fillText(`⏰ ${timeString}`, this.canvas.width / 2, 55);
+
+            // 플레이어 점수
+            this.ctx.font = 'bold 14px Arial';
+            this.ctx.textAlign = 'left';
+            
+            // 플레이어 1 점수 (왼쪽)
+            this.ctx.fillStyle = '#3B82F6';
+            this.ctx.fillText(`P1: ${this.gameState.players.sensor1.score}`, this.canvas.width / 2 - 180, 75);
+            
+            // 플레이어 2 점수 (오른쪽)
+            this.ctx.fillStyle = '#EF4444';
+            this.ctx.textAlign = 'right';
+            this.ctx.fillText(`P2: ${this.gameState.players.sensor2.score}`, this.canvas.width / 2 + 180, 75);
+        }
+    }
+
+    updateTimer() {
+        if (this.gameState.phase !== 'playing' || !this.gameState.startTime) return;
+
+        const elapsed = (Date.now() - this.gameState.startTime) / 1000;
+        this.gameState.timeRemaining = Math.max(0, 60 - elapsed);
+
+        // 게임 종료 체크
+        if (this.gameState.timeRemaining <= 0) {
+            this.endGame();
+        }
+    }
+
+    updateScoreUI() {
+        // 기존 HTML UI 업데이트 (있는 경우에만)
+        if (this.elements.player1Score) {
+            this.elements.player1Score.textContent = this.gameState.players.sensor1.score;
+        }
+        if (this.elements.player2Score) {
+            this.elements.player2Score.textContent = this.gameState.players.sensor2.score;
+        }
+    }
+
+    updateUI() {
+        this.updateScoreUI();
+    }
+
+    endGame() {
+        this.gameState.phase = 'ended';
+        
+        // 게임 루프 중지
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+
+        // 승부 판정
+        const player1Score = this.gameState.players.sensor1.score;
+        const player2Score = this.gameState.players.sensor2.score;
+        
+        let resultTitle = '';
+        if (player1Score > player2Score) {
+            resultTitle = '🎉 플레이어 1 승리!';
+        } else if (player2Score > player1Score) {
+            resultTitle = '🎉 플레이어 2 승리!';
+        } else {
+            resultTitle = '🤝 무승부!';
+        }
+
+        // 결과 모달 표시
+        if (this.elements.resultModal) {
+            if (this.elements.resultTitle) {
+                this.elements.resultTitle.textContent = resultTitle;
+            }
+            if (this.elements.finalScoreP1) {
+                this.elements.finalScoreP1.textContent = player1Score;
+            }
+            if (this.elements.finalScoreP2) {
+                this.elements.finalScoreP2.textContent = player2Score;
+            }
+            this.elements.resultModal.style.display = 'flex';
+        }
+
+        console.log('게임 종료:', resultTitle);
+    }
+
+    pauseGame() {
+        if (this.gameState.phase === 'playing') {
+            this.gameState.phase = 'paused';
+            this.updateOverlay('게임 일시정지', '플레이어 재연결을 기다리는 중...');
+            if (this.elements.gameOverlay) {
+                this.elements.gameOverlay.style.display = 'flex';
+            }
+        }
+    }
+
+    resumeGame() {
+        if (this.gameState.phase === 'paused') {
+            this.gameState.phase = 'playing';
+            if (this.elements.gameOverlay) {
+                this.elements.gameOverlay.style.display = 'none';
+            }
+        }
+    }
+
+    togglePause() {
+        if (this.gameState.phase === 'playing') {
+            this.pauseGame();
+        } else if (this.gameState.phase === 'paused') {
+            this.resumeGame();
+        }
+    }
+
+    restartGame() {
+        // 게임 상태 초기화
+        this.gameState.phase = 'ready';
+        this.gameState.startTime = null;
+        this.gameState.timeRemaining = 60;
+
+        // 플레이어 상태 초기화
+        this.gameState.players.sensor1.score = 0;
+        this.gameState.players.sensor1.carriedAcorns = 0;
+        this.gameState.players.sensor1.stunned = false;
+        this.gameState.players.sensor1.invulnerable = false;
+
+        this.gameState.players.sensor2.score = 0;
+        this.gameState.players.sensor2.carriedAcorns = 0;
+        this.gameState.players.sensor2.stunned = false;
+        this.gameState.players.sensor2.invulnerable = false;
+
+        // UI 초기화
+        if (this.elements.resultModal) {
+            this.elements.resultModal.style.display = 'none';
+        }
+        if (this.elements.gameOverlay) {
+            this.elements.gameOverlay.style.display = 'flex';
+        }
+
+        // 게임 루프 중지
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+
+        this.updateOverlay('게임 준비 완료!', '게임 시작 버튼을 클릭하세요');
+        this.updateScoreUI();
+
+        console.log('게임 재시작 준비 완료');
+    }
+
+    showError(message) {
+        console.error('게임 오류:', message);
+        this.updateOverlay('오류 발생', message);
+        if (this.elements.gameOverlay) {
+            this.elements.gameOverlay.style.display = 'flex';
+        }
+    }
+
+    cleanup() {
+        // 게임 루프 정리
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+        }
+
+        // SDK 정리
+        if (this.sdk) {
+            try {
+                this.sdk.disconnect();
+            } catch (error) {
+                console.warn('SDK 정리 중 오류:', error);
+            }
+        }
+
+        console.log('게임 정리 완료');
+    }
+
+    checkNetworkStatus() {
+        // 온라인/오프라인 상태 체크
+        if (!navigator.onLine) {
+            console.warn('오프라인 상태 감지됨');
+            this.showError('인터넷 연결을 확인해주세요');
+        }
+
+        // 네트워크 상태 변화 감지
+        window.addEventListener('online', () => {
+            console.info('온라인 상태로 변경됨');
+        });
+
+        window.addEventListener('offline', () => {
+            console.warn('오프라인 상태로 변경됨');
+            this.showError('인터넷 연결이 끊어졌습니다');
+        });
+    }
+
+    initializeGame() {
+        // 네트워크 상태 체크
+        this.checkNetworkStatus();
+
+        // 캔버스 크기 설정 (확대)
+        if (this.canvas) {
+            this.canvas.width = 1200;
+            this.canvas.height = 800;
+            
+            // 캔버스를 전체 화면으로 표시
+            this.canvas.style.width = '100vw';
+            this.canvas.style.height = '100vh';
+            this.canvas.style.objectFit = 'contain';
+        }
+
+        // SDK 연결 시작
+        try {
+            console.log('SDK 연결 시작...');
+            this.sdk.connect();
+        } catch (error) {
+            console.error('SDK 연결 실패:', error);
+            this.showError('서버 연결에 실패했습니다. 페이지를 새로고침해주세요.');
+        }
+
+        console.log('게임 초기화 완료');
+    }
+}
+
+// 게임 초기화
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('도토리 배틀 게임 로딩 시작');
+    
+    try {
+        const game = new AcornBattleGame();
+        console.log('도토리 배틀 게임 로딩 완료');
+        
+        // 전역 참조 (디버깅용)
+        window.acornBattleGame = game;
+    } catch (error) {
+        console.error('게임 초기화 실패:', error);
+        alert('게임을 시작할 수 없습니다. 페이지를 새로고침해주세요.');
     }
 });

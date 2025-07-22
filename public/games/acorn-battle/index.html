@@ -25,29 +25,8 @@
 
 <body>
     <div class="game-container">
-        <!-- 게임 헤더 -->
-        <header class="game-header">
-            <div class="timer-section">
-                <span class="timer-label">시간</span>
-                <span class="timer-display" id="timer">1:00</span>
-            </div>
-            <div class="title-section">
-                <h1>🏆 Acorn Battle</h1>
-            </div>
-            <div class="score-section">
-                <div class="player-score">
-                    <span class="player-label">P1</span>
-                    <span class="score-display" id="player1-score">0</span>
-                </div>
-                <div class="player-score">
-                    <span class="player-label">P2</span>
-                    <span class="score-display" id="player2-score">0</span>
-                </div>
-            </div>
-        </header>
-
-        <!-- 세션 정보 패널 -->
-        <div class="session-panel" id="session-panel">
+        <!-- 세션 정보 오버레이 -->
+        <div class="session-overlay" id="session-panel">
             <div class="session-info">
                 <h3>게임 세션</h3>
                 <div class="session-code">
@@ -159,7 +138,7 @@
 
         <!-- 게임 캔버스 -->
         <div class="game-canvas-container">
-            <canvas id="game-canvas" width="800" height="600"></canvas>
+            <canvas id="game-canvas" width="1200" height="800"></canvas>
             <div class="game-overlay" id="game-overlay">
                 <div class="overlay-content">
                     <h2 id="overlay-title">플레이어를 기다리는 중...</h2>
