@@ -177,28 +177,30 @@ class AcornBattleGame {
         console.info('QR 코드 생성 시작:', url);
 
         // QR 코드 생성 (tilt-maze와 동일한 방식)
-        if (typeof QRCode !== 'undefined' && this.elements.qrCanvas) {
+        if (typeof QRCode !== 'undefined') {
             try {
-                QRCode.toCanvas(this.elements.qrCanvas, url, {
-                    width: 150,
-                    height: 150,
-                    margin: 2,
-                    color: {
-                        dark: '#000000',
-                        light: '#FFFFFF'
-                    }
-                }, (error) => {
-                    if (error) {
-                        console.error('QR 코드 생성 실패:', error);
-                        this.showQRFallback(url);
-                    } else {
-                        console.info('QR 코드 생성 성공');
-                        if (this.elements.qrCanvas) {
-                            this.elements.qrCanvas.style.display = 'block';
+                // 새 캔버스 생성 (tilt-maze 방식)
+                QRCode.toCanvas(document.createElement('canvas'), url, (error, canvas) => {
+                    if (!error) {
+                        canvas.style.width = '150px';
+                        canvas.style.height = '150px';
+                        
+                        // QR 컨테이너에 캔버스 추가
+                        const qrContainer = document.querySelector('.qr-container');
+                        if (qrContainer) {
+                            qrContainer.innerHTML = '';
+                            qrContainer.appendChild(canvas);
                         }
+                        
+                        console.info('QR 코드 생성 성공');
+                        
+                        // 폴백 숨기기
                         if (this.elements.qrFallback) {
                             this.elements.qrFallback.style.display = 'none';
                         }
+                    } else {
+                        console.error('QR 코드 생성 실패:', error);
+                        this.showQRFallback(url);
                     }
                 });
             } catch (error) {
