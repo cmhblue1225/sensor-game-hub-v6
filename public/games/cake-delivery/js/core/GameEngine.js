@@ -600,6 +600,7 @@ class GameEngine {
         this.physicsManager.linkMeshToBody(cakeGroup, cakeBody);
         
         console.log(`🎂 케이크 생성 완료: ${this.cakeType}`);
+    }
     
     /**
      * 캐릭터 생성

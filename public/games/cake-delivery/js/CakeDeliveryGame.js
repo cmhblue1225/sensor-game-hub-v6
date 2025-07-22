@@ -1232,9 +1232,6 @@ class CakeDeliveryGame {
             console.warn('플레이어 설정 로드 실패:', error);
             return {};
         }
-    }n('플레이어 설정 로드 실패:', error);
-            return {};
-        }
     }
     
     /**

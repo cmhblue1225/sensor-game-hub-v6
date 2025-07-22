@@ -1,94 +1,64 @@
 /**
  * 멀티플레이어 밸런싱 시스템
- * 4인 협동 모드에서 플레이어 수에 따른 동적 난이도 조절과 협동 플레이 메커니즘을 제공합니다.
+ * 다중 플레이어 게임의 균형을 조절합니다.
  */
 class MultiplayerBalancingSystem {
     constructor() {
-        // 플레이어 설정
-        this.maxPlayers = 4;
-        this.minPlayers = 1;
-        this.currentPlayerCount = 0;
-        
-        // 플레이어 데이터
-        this.players = new Map(); // playerId -> playerData
-        
-        // 밸런싱 설정
-        this.balancingConfig = {
-            // 플레이어 수별 난이도 조절
-            playerCountMultipliers: {
-                1: { difficulty: 1.0, cooperation: 0.0, timeLimit: 1.0, cakeStability: 1.0 },
-                2: { difficulty: 1.2, cooperation: 0.3, timeLimit: 1.1, cakeStability: 0.9 },
-                3: { difficulty: 1.4, cooperation: 0.5, timeLimit: 1.2, cakeStability: 0.8 },
-                4: { difficulty: 1.6, cooperation: 0.7, timeLimit: 1.3, cakeStability: 0.7 }
-            },
-            
-            // 협동 메커니즘 설정
-            cooperationMechanics: {
-                sharedCakeControl: true,    // 공유 케이크 제어
-                balanceAssistance: true,    // 균형 보조
-                communicationBonus: true,   // 소통 보너스
-                reviveSystem: true,         // 부활 시스템
-                sharedLives: false          // 공유 생명력
-            },
-            
-            // 역할 분담 시스템
-            roleSystem: {
-                enabled: true,
-                roles: ['leader', 'supporter', 'stabilizer', 'navigator'],
-                autoAssign: true,
-                roleRotation: true
-            },
-            
-            // 점수 시스템
-            scoreSystem: {
-                individualScore: true,      // 개인 점수
-                teamScore: true,           // 팀 점수
-                cooperationBonus: 0.2,     // 협동 보너스 (20%)
-                leadershipBonus: 0.1,      // 리더십 보너스 (10%)
-                consistencyBonus: 0.15     // 일관성 보너스 (15%)
-            }
-        };
-        
-        // 게임 상태
         this.gameState = {
             isMultiplayer: false,
-            gameMode: 'solo', // 'solo', 'coop', 'competitive'
-            currentRound: 1,
-            totalRounds: 3,
-            teamScore: 0,
-            cooperationLevel: 0.0, // 0-1 범위의 협동 수준
-            communicationScore: 0.0,
-            balanceHistory: []
+            playerCount: 1,
+            gameMode: 'solo'
         };
         
-        // 협동 메트릭
-        this.cooperationMetrics = {
-            synchronizedActions: 0,     // 동기화된 행동 횟수
-            mutualAssistance: 0,        // 상호 지원 횟수
-            communicationEvents: 0,     // 소통 이벤트 횟수
-            balanceRecoveries: 0,       // 균형 복구 횟수
-            sharedDecisions: 0          // 공유 결정 횟수
+        this.players = new Map();
+        
+        this.balanceSettings = {
+            solo: { difficultyMultiplier: 1.0, scoreMultiplier: 1.0 },
+            coop: { difficultyMultiplier: 1.2, scoreMultiplier: 1.1 },
+            competitive: { difficultyMultiplier: 1.1, scoreMultiplier: 1.0 }
         };
         
-        // 이벤트 리스너
-        this.eventListeners = {
-            onPlayerJoin: [],
-            onPlayerLeave: [],
-            onRoleAssign: [],
-            onCooperationEvent: [],
-            onBalanceChange: []
-        };
-        
-        this.init();
-    }
-    
-    /**
-     * 시스템 초기화
-     */
-    init() {
         console.log('✅ 멀티플레이어 밸런싱 시스템 초기화 완료');
     }
     
     /**
      * 플레이어 추가
-     */\n    addPlayer(playerId, playerData = {}) {\n        if (this.players.size >= this.maxPlayers) {\n            console.warn(`최대 플레이어 수 초과: ${this.maxPlayers}`);\n            return false;\n        }\n        \n        const player = {\n            id: playerId,\n            name: playerData.name || `Player ${this.players.size + 1}`,\n            joinTime: Date.now(),\n            role: null,\n            score: 0,\n            contributions: {\n                balanceAssists: 0,\n                communicationEvents: 0,\n                leadershipActions: 0,\n                supportActions: 0\n            },\n            performance: {\n                accuracy: 0.5,\n                consistency: 0.5,\n                cooperation: 0.5,\n                leadership: 0.5\n            },\n            status: 'active', // 'active', 'inactive', 'disconnected'\n            lastActivity: Date.now()\n        };\n        \n        this.players.set(playerId, player);\n        this.currentPlayerCount = this.players.size;\n        \n        // 게임 모드 업데이트\n        this.updateGameMode();\n        \n        // 역할 할당\n        if (this.balancingConfig.roleSystem.enabled && this.balancingConfig.roleSystem.autoAssign) {\n            this.assignRole(playerId);\n        }\n        \n        // 밸런싱 재계산\n        this.recalculateBalance();\n        \n        // 이벤트 발생\n        this.triggerEvent('onPlayerJoin', { playerId, player, playerCount: this.currentPlayerCount });\n        \n        console.log(`👥 플레이어 추가: ${player.name} (총 ${this.currentPlayerCount}명)`);\n        return true;\n    }\n    \n    /**\n     * 플레이어 제거\n     */\n    removePlayer(playerId) {\n        const player = this.players.get(playerId);\n        if (!player) {\n            console.warn(`존재하지 않는 플레이어: ${playerId}`);\n            return false;\n        }\n        \n        this.players.delete(playerId);\n        this.currentPlayerCount = this.players.size;\n        \n        // 게임 모드 업데이트\n        this.updateGameMode();\n        \n        // 역할 재할당\n        if (this.balancingConfig.roleSystem.enabled) {\n            this.reassignRoles();\n        }\n        \n        // 밸런싱 재계산\n        this.recalculateBalance();\n        \n        // 이벤트 발생\n        this.triggerEvent('onPlayerLeave', { playerId, player, playerCount: this.currentPlayerCount });\n        \n        console.log(`👥 플레이어 제거: ${player.name} (총 ${this.currentPlayerCount}명)`);\n        return true;\n    }\n    \n    /**\n     * 게임 모드 업데이트\n     */\n    updateGameMode() {\n        if (this.currentPlayerCount <= 1) {\n            this.gameState.gameMode = 'solo';\n            this.gameState.isMultiplayer = false;\n        } else {\n            this.gameState.gameMode = 'coop';\n            this.gameState.isMultiplayer = true;\n        }\n    }\n    \n    /**\n     * 역할 할당\n     */\n    assignRole(playerId) {\n        const player = this.players.get(playerId);\n        if (!player) return false;\n        \n        const availableRoles = this.getAvailableRoles();\n        if (availableRoles.length === 0) {\n            console.warn('할당 가능한 역할이 없습니다.');\n            return false;\n        }\n        \n        // 플레이어 성향에 따른 역할 선택\n        const bestRole = this.selectBestRole(player, availableRoles);\n        player.role = bestRole;\n        \n        // 이벤트 발생\n        this.triggerEvent('onRoleAssign', { playerId, role: bestRole, player });\n        \n        console.log(`🎭 역할 할당: ${player.name} → ${bestRole}`);\n        return true;\n    }\n    \n    /**\n     * 사용 가능한 역할 목록 가져오기\n     */\n    getAvailableRoles() {\n        const allRoles = this.balancingConfig.roleSystem.roles;\n        const assignedRoles = Array.from(this.players.values()).map(p => p.role).filter(r => r);\n        \n        return allRoles.filter(role => !assignedRoles.includes(role));\n    }\n    \n    /**\n     * 최적 역할 선택\n     */\n    selectBestRole(player, availableRoles) {\n        // 플레이어 성과에 따른 역할 점수 계산\n        const roleScores = {};\n        \n        availableRoles.forEach(role => {\n            switch (role) {\n                case 'leader':\n                    roleScores[role] = player.performance.leadership * 0.6 + \n                                      player.performance.cooperation * 0.4;\n                    break;\n                case 'supporter':\n                    roleScores[role] = player.performance.cooperation * 0.7 + \n                                      player.performance.consistency * 0.3;\n                    break;\n                case 'stabilizer':\n                    roleScores[role] = player.performance.consistency * 0.6 + \n                                      player.performance.accuracy * 0.4;\n                    break;\n                case 'navigator':\n                    roleScores[role] = player.performance.accuracy * 0.6 + \n                                      player.performance.leadership * 0.4;\n                    break;\n                default:\n                    roleScores[role] = 0.5;\n            }\n        });\n        \n        // 가장 높은 점수의 역할 선택\n        return Object.keys(roleScores).reduce((a, b) => roleScores[a] > roleScores[b] ? a : b);\n    }\n    \n    /**\n     * 역할 재할당\n     */\n    reassignRoles() {\n        // 모든 플레이어의 역할 초기화\n        this.players.forEach(player => {\n            player.role = null;\n        });\n        \n        // 역할 재할당\n        this.players.forEach((player, playerId) => {\n            this.assignRole(playerId);\n        });\n    }\n    \n    /**\n     * 밸런싱 재계산\n     */\n    recalculateBalance() {\n        const playerCount = this.currentPlayerCount;\n        const multipliers = this.balancingConfig.playerCountMultipliers[playerCount] || \n                           this.balancingConfig.playerCountMultipliers[1];\n        \n        // 밸런싱 설정 업데이트\n        this.currentBalance = {\n            difficultyMultiplier: multipliers.difficulty,\n            cooperationLevel: multipliers.cooperation,\n            timeLimitMultiplier: multipliers.timeLimit,\n            cakeStabilityMultiplier: multipliers.cakeStability,\n            playerCount: playerCount\n        };\n        \n        // 밸런싱 히스토리 업데이트\n        this.gameState.balanceHistory.push({\n            timestamp: Date.now(),\n            playerCount: playerCount,\n            balance: { ...this.currentBalance }\n        });\n        \n        // 이벤트 발생\n        this.triggerEvent('onBalanceChange', { \n            playerCount, \n            balance: this.currentBalance \n        });\n        \n        console.log(`⚖️ 밸런싱 재계산 완료 (${playerCount}명): 난이도 ${multipliers.difficulty}x`);\n    }\n    \n    /**\n     * 협동 이벤트 기록\n     */\n    recordCooperationEvent(eventType, playerId, data = {}) {\n        const player = this.players.get(playerId);\n        if (!player) return;\n        \n        // 협동 메트릭 업데이트\n        switch (eventType) {\n            case 'synchronized_action':\n                this.cooperationMetrics.synchronizedActions++;\n                player.contributions.supportActions++;\n                break;\n            case 'mutual_assistance':\n                this.cooperationMetrics.mutualAssistance++;\n                player.contributions.balanceAssists++;\n                break;\n            case 'communication':\n                this.cooperationMetrics.communicationEvents++;\n                player.contributions.communicationEvents++;\n                break;\n            case 'balance_recovery':\n                this.cooperationMetrics.balanceRecoveries++;\n                player.contributions.balanceAssists++;\n                break;\n            case 'shared_decision':\n                this.cooperationMetrics.sharedDecisions++;\n                player.contributions.leadershipActions++;\n                break;\n        }\n        \n        // 협동 수준 계산\n        this.calculateCooperationLevel();\n        \n        // 플레이어 성과 업데이트\n        this.updatePlayerPerformance(playerId, eventType, data);\n        \n        // 이벤트 발생\n        this.triggerEvent('onCooperationEvent', {\n            eventType,\n            playerId,\n            player,\n            data,\n            cooperationLevel: this.gameState.cooperationLevel\n        });\n        \n        console.log(`🤝 협동 이벤트: ${eventType} by ${player.name}`);\n    }\n    \n    /**\n     * 협동 수준 계산\n     */\n    calculateCooperationLevel() {\n        if (this.currentPlayerCount <= 1) {\n            this.gameState.cooperationLevel = 0.0;\n            return;\n        }\n        \n        const totalEvents = Object.values(this.cooperationMetrics).reduce((sum, count) => sum + count, 0);\n        const expectedEvents = this.currentPlayerCount * 10; // 플레이어당 예상 이벤트 수\n        \n        // 협동 수준 계산 (0-1 범위)\n        this.gameState.cooperationLevel = Math.min(1.0, totalEvents / expectedEvents);\n        \n        // 소통 점수 계산\n        this.gameState.communicationScore = Math.min(1.0, \n            this.cooperationMetrics.communicationEvents / (this.currentPlayerCount * 5)\n        );\n    }\n    \n    /**\n     * 플레이어 성과 업데이트\n     */\n    updatePlayerPerformance(playerId, eventType, data) {\n        const player = this.players.get(playerId);\n        if (!player) return;\n        \n        const performanceUpdate = 0.05; // 성과 업데이트 크기\n        \n        switch (eventType) {\n            case 'synchronized_action':\n                player.performance.cooperation = Math.min(1.0, \n                    player.performance.cooperation + performanceUpdate);\n                break;\n            case 'mutual_assistance':\n                player.performance.cooperation = Math.min(1.0, \n                    player.performance.cooperation + performanceUpdate);\n                player.performance.leadership = Math.min(1.0, \n                    player.performance.leadership + performanceUpdate * 0.5);\n                break;\n            case 'communication':\n                player.performance.cooperation = Math.min(1.0, \n                    player.performance.cooperation + performanceUpdate);\n                break;\n            case 'balance_recovery':\n                player.performance.accuracy = Math.min(1.0, \n                    player.performance.accuracy + performanceUpdate);\n                player.performance.consistency = Math.min(1.0, \n                    player.performance.consistency + performanceUpdate * 0.5);\n                break;\n            case 'shared_decision':\n                player.performance.leadership = Math.min(1.0, \n                    player.performance.leadership + performanceUpdate);\n                break;\n        }\n        \n        player.lastActivity = Date.now();\n    }\n    \n    /**\n     * 팀 점수 계산\n     */\n    calculateTeamScore() {\n        let teamScore = 0;\n        let individualScores = 0;\n        \n        // 개인 점수 합계\n        this.players.forEach(player => {\n            individualScores += player.score;\n        });\n        \n        teamScore = individualScores;\n        \n        // 협동 보너스\n        if (this.balancingConfig.scoreSystem.cooperationBonus > 0) {\n            const cooperationBonus = individualScores * \n                this.balancingConfig.scoreSystem.cooperationBonus * \n                this.gameState.cooperationLevel;\n            teamScore += cooperationBonus;\n        }\n        \n        // 리더십 보너스\n        if (this.balancingConfig.scoreSystem.leadershipBonus > 0) {\n            const leaderPlayer = Array.from(this.players.values()).find(p => p.role === 'leader');\n            if (leaderPlayer) {\n                const leadershipBonus = individualScores * \n                    this.balancingConfig.scoreSystem.leadershipBonus * \n                    leaderPlayer.performance.leadership;\n                teamScore += leadershipBonus;\n            }\n        }\n        \n        // 일관성 보너스\n        if (this.balancingConfig.scoreSystem.consistencyBonus > 0) {\n            const avgConsistency = Array.from(this.players.values())\n                .reduce((sum, p) => sum + p.performance.consistency, 0) / this.players.size;\n            const consistencyBonus = individualScores * \n                this.balancingConfig.scoreSystem.consistencyBonus * \n                avgConsistency;\n            teamScore += consistencyBonus;\n        }\n        \n        this.gameState.teamScore = Math.round(teamScore);\n        return this.gameState.teamScore;\n    }\n    \n    /**\n     * 플레이어 점수 업데이트\n     */\n    updatePlayerScore(playerId, scoreChange) {\n        const player = this.players.get(playerId);\n        if (!player) return false;\n        \n        player.score += scoreChange;\n        player.score = Math.max(0, player.score);\n        \n        // 팀 점수 재계산\n        this.calculateTeamScore();\n        \n        return true;\n    }\n    \n    /**\n     * 현재 밸런싱 설정 가져오기\n     */\n    getCurrentBalance() {\n        return {\n            ...this.currentBalance,\n            cooperationLevel: this.gameState.cooperationLevel,\n            communicationScore: this.gameState.communicationScore,\n            teamScore: this.gameState.teamScore\n        };\n    }\n    \n    /**\n     * 플레이어 목록 가져오기\n     */\n    getPlayers() {\n        return Array.from(this.players.values());\n    }\n    \n    /**\n     * 플레이어 정보 가져오기\n     */\n    getPlayer(playerId) {\n        return this.players.get(playerId);\n    }\n    \n    /**\n     * 게임 상태 가져오기\n     */\n    getGameState() {\n        return {\n            ...this.gameState,\n            playerCount: this.currentPlayerCount,\n            players: this.getPlayers()\n        };\n    }\n    \n    /**\n     * 협동 메트릭 가져오기\n     */\n    getCooperationMetrics() {\n        return {\n            ...this.cooperationMetrics,\n            cooperationLevel: this.gameState.cooperationLevel,\n            communicationScore: this.gameState.communicationScore\n        };\n    }\n    \n    /**\n     * 라운드 시작\n     */\n    startRound(roundNumber) {\n        this.gameState.currentRound = roundNumber;\n        \n        // 협동 메트릭 초기화\n        this.cooperationMetrics = {\n            synchronizedActions: 0,\n            mutualAssistance: 0,\n            communicationEvents: 0,\n            balanceRecoveries: 0,\n            sharedDecisions: 0\n        };\n        \n        // 플레이어 활동 시간 업데이트\n        this.players.forEach(player => {\n            player.lastActivity = Date.now();\n        });\n        \n        console.log(`🎮 라운드 ${roundNumber} 시작 (${this.currentPlayerCount}명)`);\n    }\n    \n    /**\n     * 라운드 종료\n     */\n    endRound() {\n        // 팀 점수 계산\n        this.calculateTeamScore();\n        \n        // 역할 순환 (설정된 경우)\n        if (this.balancingConfig.roleSystem.roleRotation && this.currentPlayerCount > 1) {\n            this.rotateRoles();\n        }\n        \n        console.log(`🏁 라운드 ${this.gameState.currentRound} 종료 - 팀 점수: ${this.gameState.teamScore}`);\n    }\n    \n    /**\n     * 역할 순환\n     */\n    rotateRoles() {\n        const players = Array.from(this.players.values());\n        const roles = players.map(p => p.role).filter(r => r);\n        \n        if (roles.length <= 1) return;\n        \n        // 역할 순환\n        const rotatedRoles = [roles[roles.length - 1], ...roles.slice(0, -1)];\n        \n        players.forEach((player, index) => {\n            if (index < rotatedRoles.length) {\n                player.role = rotatedRoles[index];\n                this.triggerEvent('onRoleAssign', { \n                    playerId: player.id, \n                    role: player.role, \n                    player \n                });\n            }\n        });\n        \n        console.log('🔄 역할 순환 완료');\n    }\n    \n    /**\n     * 플레이어 상태 업데이트\n     */\n    updatePlayerStatus(playerId, status) {\n        const player = this.players.get(playerId);\n        if (!player) return false;\n        \n        player.status = status;\n        player.lastActivity = Date.now();\n        \n        // 비활성 플레이어 처리\n        if (status === 'inactive' || status === 'disconnected') {\n            this.handleInactivePlayer(playerId);\n        }\n        \n        return true;\n    }\n    \n    /**\n     * 비활성 플레이어 처리\n     */\n    handleInactivePlayer(playerId) {\n        const player = this.players.get(playerId);\n        if (!player) return;\n        \n        console.log(`⚠️ 비활성 플레이어: ${player.name}`);\n        \n        // 역할 재할당 (필요한 경우)\n        if (player.role && this.balancingConfig.roleSystem.enabled) {\n            player.role = null;\n            this.reassignRoles();\n        }\n        \n        // 밸런싱 재계산 (플레이어가 완전히 제거되지 않은 경우)\n        if (player.status !== 'disconnected') {\n            this.recalculateBalance();\n        }\n    }\n    \n    /**\n     * 설정 업데이트\n     */\n    updateConfig(newConfig) {\n        this.balancingConfig = { ...this.balancingConfig, ...newConfig };\n        \n        // 설정 변경에 따른 재계산\n        this.recalculateBalance();\n        \n        if (this.balancingConfig.roleSystem.enabled) {\n            this.reassignRoles();\n        }\n        \n        console.log('⚙️ 멀티플레이어 밸런싱 설정 업데이트');\n    }\n    \n    /**\n     * 이벤트 리스너 등록\n     */\n    addEventListener(eventType, callback) {\n        if (this.eventListeners[eventType] && typeof callback === 'function') {\n            this.eventListeners[eventType].push(callback);\n        }\n    }\n    \n    /**\n     * 이벤트 리스너 제거\n     */\n    removeEventListener(eventType, callback) {\n        if (this.eventListeners[eventType]) {\n            this.eventListeners[eventType] = this.eventListeners[eventType]\n                .filter(listener => listener !== callback);\n        }\n    }\n    \n    /**\n     * 이벤트 발생\n     */\n    triggerEvent(eventType, data) {\n        if (this.eventListeners[eventType]) {\n            this.eventListeners[eventType].forEach(callback => {\n                try {\n                    callback(data);\n                } catch (error) {\n                    console.error(`이벤트 리스너 실행 오류 (${eventType}):`, error);\n                }\n            });\n        }\n    }\n    \n    /**\n     * 시스템 리셋\n     */\n    reset() {\n        this.players.clear();\n        this.currentPlayerCount = 0;\n        \n        this.gameState = {\n            isMultiplayer: false,\n            gameMode: 'solo',\n            currentRound: 1,\n            totalRounds: 3,\n            teamScore: 0,\n            cooperationLevel: 0.0,\n            communicationScore: 0.0,\n            balanceHistory: []\n        };\n        \n        this.cooperationMetrics = {\n            synchronizedActions: 0,\n            mutualAssistance: 0,\n            communicationEvents: 0,\n            balanceRecoveries: 0,\n            sharedDecisions: 0\n        };\n        \n        this.updateGameMode();\n        this.recalculateBalance();\n        \n        console.log('🔄 멀티플레이어 밸런싱 시스템 리셋 완료');\n    }\n    \n    /**\n     * 시스템 정리\n     */\n    dispose() {\n        this.reset();\n        \n        this.eventListeners = {\n            onPlayerJoin: [],\n            onPlayerLeave: [],\n            onRoleAssign: [],\n            onCooperationEvent: [],\n            onBalanceChange: []\n        };\n        \n        console.log('🧹 멀티플레이어 밸런싱 시스템 정리 완료');\n    }\n}
+     */
+    addPlayer(playerId, playerData) {
+        this.players.set(playerId, playerData);
+        this.updateGameState();
+        console.log(`👤 플레이어 추가: ${playerId}`);
+    }
+    
+    /**
+     * 플레이어 제거
+     */
+    removePlayer(playerId) {
+        this.players.delete(playerId);
+        this.updateGameState();
+        console.log(`👤 플레이어 제거: ${playerId}`);
+    }
+    
+    /**
+     * 게임 상태 업데이트
+     */
+    updateGameState() {
+        this.gameState.playerCount = this.players.size;
+        this.gameState.isMultiplayer = this.players.size > 1;
+        
+        if (this.players.size === 1) {
+            this.gameState.gameMode = 'solo';
+        } else if (this.players.size <= 4) {
+            this.gameState.gameMode = 'coop';
+        } else {
+            this.gameState.gameMode = 'competitive';
+        }
+    }
+    
+    /**
+     * 현재 밸런스 가져오기
+     */
+    getCurrentBalance() {
+        return this.balanceSettings[this.gameState.gameMode];
+    }
+}

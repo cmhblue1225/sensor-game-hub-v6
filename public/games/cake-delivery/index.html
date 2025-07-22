@@ -475,13 +475,11 @@
     
     <!-- 필수 라이브러리 로드 -->
     <script src="/socket.io/socket.io.js"></script>
-    <script src="/js/SessionSDK.js"></script>
+    <script src="js/SessionSDK.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     
     <!-- Three.js 및 물리 엔진 로드 -->
-    <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/loaders/GLTFLoader.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/controls/OrbitControls.js"></script>
+    <script src="/libs/three.min.js"></script>
     <script src="/libs/cannon.min.js"></script>
     
     <!-- 그래픽 시스템 -->
@@ -490,6 +488,8 @@
     <script src="js/graphics/AdvancedLightingSystem.js"></script>
     <script src="js/graphics/CharacterAnimationSystem.js"></script>
     <script src="js/graphics/ParticleSystem.js"></script>
+    <script src="js/graphics/AdvancedParticleSystem.js"></script>
+    <script src="js/graphics/PostProcessingSystem.js"></script>
     
     <!-- 물리 시스템 -->
     <script src="js/physics/PhysicsWorldManager.js"></script>
@@ -504,6 +504,29 @@
     <!-- UI 시스템 -->
     <script src="js/ui/MobileTouchInterface.js"></script>
     <script src="js/ui/AccessibilitySystem.js"></script>
+    
+    <!-- 오디오 시스템 -->
+    <script src="js/audio/AdaptiveMusicSystem.js"></script>
+    <script src="js/audio/SpatialAudioSystem.js"></script>
+    
+    <!-- 튜토리얼 시스템 -->
+    <script src="js/tutorial/InteractiveTutorialManager.js"></script>
+    
+    <!-- 성능 최적화 시스템 -->
+    <script src="js/performance/LODSystem.js"></script>
+    <script src="js/performance/ObjectPoolingSystem.js"></script>
+    <script src="js/performance/MemoryManager.js"></script>
+    <script src="js/performance/NetworkOptimizer.js"></script>
+    
+    <!-- 코어 시스템 -->
+    <script src="js/core/ErrorHandlingSystem.js"></script>
+    <script src="js/core/SaveSystem.js"></script>
+    <script src="js/core/AdaptiveDifficultySystem.js"></script>
+    <script src="js/core/MultiplayerBalancingSystem.js"></script>
+    
+    <!-- 성능 모니터링 -->
+    <script src="js/performance/PerformanceMonitor.js"></script>
+    <script src="js/performance/ErrorReporter.js"></script>
     
     <!-- 게임 엔진 -->
     <script src="js/core/GameEngine.js"></script>
