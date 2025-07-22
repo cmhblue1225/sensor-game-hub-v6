@@ -168,6 +168,30 @@ export class GamePage {
     }
 
     /**
+     * 모든 UI 패널을 숨기는 함수입니다.
+     */
+    resetUI() {
+        // 모든 패널 숨기기
+        this.elements.sessionPanel.classList.add('hidden');
+        this.elements.massWaitingPanel.classList.add('hidden');
+        this.elements.massWaitingListWidget.classList.add('hidden');
+        this.elements.gameInfoPanel.classList.add('hidden');
+        this.elements.massCompetitivePanel.classList.add('hidden');
+        this.elements.normalScorePanel.classList.add('hidden');
+        this.elements.competitiveScorePanel.classList.add('hidden');
+        this.elements.crosshair.classList.add('hidden');
+        
+        // 센서 상태 패널 숨기기
+        this.elements.soloSensorStatus.classList.add('hidden');
+        this.elements.dualSensorStatus.classList.add('hidden');
+        this.elements.dualSensorStatus2.classList.add('hidden');
+
+        if (this.massWaitingRoomWidget) {
+            this.massWaitingRoomWidget.hide();
+        }
+    }
+
+    /**
    * 모드 선택 화면으로 돌아가는 로직을 처리합니다.
    */
    goBackToModeSelection() {
@@ -176,12 +200,8 @@ export class GamePage {
            this.sdk.cleanup();
         }
    
-        // 모든 패널 숨기기
-        this.elements.sessionPanel.classList.add('hidden');
-        this.elements.massWaitingPanel.classList.add('hidden');
-        if (this.massWaitingRoomWidget) {
-            this.massWaitingRoomWidget.hide();
-        }
+        // 모든 UI 패널 숨기기
+        this.resetUI();
 
         // 모드 선택 패널 표시
         this.elements.modeSelectionPanel.classList.remove('hidden');
@@ -259,6 +279,9 @@ export class GamePage {
     async selectGameMode(mode) {
         console.log(`🎯 게임 모드 선택: ${mode}`);
         this.gameMode = mode;
+
+        // 기존 UI 패널 모두 숨기기
+        this.resetUI();
 
         let sdkGameType;
         if (mode === 'solo') {

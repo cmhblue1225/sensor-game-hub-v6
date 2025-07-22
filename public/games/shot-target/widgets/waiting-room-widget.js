@@ -123,5 +123,10 @@ export class WaitingRoomWidget {
         this.elements.massCompetitivePanel.classList.remove('hidden');
         this.elements.gameInfoPanel.classList.add('hidden');
         this.elements.crosshair.classList.remove('hidden');
+        
+        // 확실히 대기 목록 위젯이 숨겨지도록 추가 보장
+        if (this.elements.massWaitingListWidget) {
+            this.elements.massWaitingListWidget.style.display = 'none';
+        }
     }
 }

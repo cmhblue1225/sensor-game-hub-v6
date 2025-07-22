@@ -30,4 +30,8 @@ export class ShotTargetGame {
     closeMassCompetitiveResultModal() {
         return this.gamePage.closeMassCompetitiveResultModal();
     }
+
+    resetUI() {
+        return this.gamePage.resetUI();
+    }
 }
