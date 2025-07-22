@@ -100,7 +100,8 @@ export class GamePage {
             massWaitingListWidget: document.getElementById('massWaitingListWidget'),
             massWaitingPlayers: document.getElementById('massWaitingPlayers'),
             massStartBtn: document.getElementById('massStartBtn'),
-            controlPanel: document.querySelector('.control-panel')
+            controlPanel: document.querySelector('.control-panel'),
+            backToHubBtn: document.getElementById('backToHubBtn')
         };
     }
 
@@ -186,6 +187,11 @@ export class GamePage {
         this.elements.dualSensorStatus.classList.add('hidden');
         this.elements.dualSensorStatus2.classList.add('hidden');
 
+        // 허브로 버튼 숨기기
+        if (this.elements.backToHubBtn) {
+            this.elements.backToHubBtn.style.display = 'none';
+        }
+
         if (this.massWaitingRoomWidget) {
             this.massWaitingRoomWidget.hide();
         }
@@ -206,8 +212,14 @@ export class GamePage {
         // 모드 선택 패널 표시
         this.elements.modeSelectionPanel.classList.remove('hidden');
 
-        // 컨트롤 패널 숨기기 (모드 선택 화면에서는 불필요)
-        this.elements.controlPanel.innerHTML = '';
+        // 허브로 버튼 표시
+        if (this.elements.backToHubBtn) {
+            this.elements.backToHubBtn.style.display = 'inline-flex';
+        }
+
+        // 컨트롤 패널의 다른 버튼들 제거 (허브로 버튼은 유지)
+        const existingButtons = this.elements.controlPanel.querySelectorAll('.btn:not(#backToHubBtn)');
+        existingButtons.forEach(btn => btn.remove());
 
         // 상태 초기화
         this.waitingRoomWidget.updateGameStatus('게임 모드를 선택하세요');

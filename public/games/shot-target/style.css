@@ -302,6 +302,16 @@ body {
     transform: none;
 }
 
+/* 모드 선택 화면에서만 보이는 버튼 */
+.mode-selection-only {
+    display: none;
+}
+
+/* 모드 선택 패널이 표시될 때만 허브로 버튼 표시 */
+#modeSelectionPanel:not(.hidden) ~ * .mode-selection-only {
+    display: inline-flex;
+}
+
 /* HUD 요소 (게임 중) */
 .hud-panel {
     position: absolute;
