@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🎯 Shot Target</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- 게임 캔버스 -->
+    <canvas id="gameCanvas"></canvas>
+    
+    <!-- 조준점 -->
+    <div class="hud-crosshair hidden" id="crosshair"></div>
+    
+    <!-- UI 오버레이 -->
+    <div class="game-ui">
+        <!-- 점수 패널 (싱글/협동 모드용) -->
+        <div class="ui-panel score-panel" id="normalScorePanel">
+            <div class="score-title">🎯 점수</div>
+            <div class="score-value" id="scoreValue">0</div>
+            
+            <!-- 타이머 -->
+            <div class="timer-section">
+                <div class="timer-title">⏱️ 시간</div>
+                <div class="timer-value" id="timerValue">3:00</div>
+            </div>
+            <div class="score-details" id="scoreDetails">
+                <div class="score-item">
+                    <span>적중:</span>
+                    <span id="hitsCount">0</span>
+                </div>
+                <div class="score-item">
+                    <span>빗나감:</span>
+                    <span id="missesCount">0</span>
+                </div>
+                <div class="score-item">
+                    <span>연속 콤보:</span>
+                    <span id="comboCount">0</span>
+                </div>
+                <div class="score-item">
+                    <span>정확도:</span>
+                    <span id="accuracyValue">100%</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 경쟁 모드용 점수 패널 -->
+        <div class="ui-panel competitive-score-panel hidden" id="competitiveScorePanel">
+            <div class="score-title">⚔️ 경쟁 점수</div>
+            
+            <!-- 타이머 -->
+            <div class="timer-section">
+                <div class="timer-title">⏱️ 시간</div>
+                <div class="timer-value" id="competitiveTimerValue">3:00</div>
+            </div>
+            
+            <div class="player-scores">
+                <div class="player-score">
+                    <div class="player-name">플레이어 1:</div>
+                    <div class="player-score-value" id="player1Score">0</div>
+                </div>
+                <div class="player-score">
+                    <div class="player-name">플레이어 2:</div>
+                    <div class="player-score-value" id="player2Score">0</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 대규모 경쟁 모드용 리더보드 패널 -->
+        <div class="ui-panel mass-competitive-panel hidden" id="massCompetitivePanel">
+            <div class="score-title">👥 실시간 리더보드</div>
+            
+            <!-- 타이머 -->
+            <div class="timer-section">
+                <div class="timer-title">⏱️ 시간</div>
+                <div class="timer-value" id="massCompetitiveTimerValue">3:00</div>
+            </div>
+            
+            <!-- 게임 정보 -->
+            <div class="mass-game-info">
+                <div class="info-item">
+                    <span>참가자:</span>
+                    <span id="massPlayerCount">0/8</span>
+                </div>
+                <!-- <div class="info-item">
+                    <span>표적 생성:</span>
+                    <span id="totalTargetsCreated">0</span>
+                </div> -->
+            </div>
+            
+            <!-- 리더보드 -->
+            <div class="mass-leaderboard" id="massLeaderboard">
+                <!-- 플레이어 목록이 동적으로 추가됨 -->
+            </div>
+        </div>
+        
+        <!-- 내 정보 패널 (대규모 경쟁 모드용) -->
+        <!-- <div class="ui-panel my-mass-info-panel hidden" id="myMassInfoPanel">
+            <div class="score-title">🎯 내 정보</div>
+            <div class="mass-my-stats">
+                <div class="stat-item">
+                    <span class="stat-label">점수:</span>
+                    <span class="stat-value" id="myMassScore">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">순위:</span>
+                    <span class="stat-value" id="myMassRank">-</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">적중:</span>
+                    <span class="stat-value" id="myMassHits">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">콤보:</span>
+                    <span class="stat-value" id="myMassCombo">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">정확도:</span>
+                    <span class="stat-value" id="myMassAccuracy">100%</span>
+                </div>
+            </div>
+        </div> -->
+        
+        
+        
+        <!-- 대규모 경쟁 대기실 패널 -->
+        <div class="ui-panel mass-waiting-panel hidden" id="massWaitingPanel">
+            <div class="session-title">👥 대규모 경쟁 - 대기실</div>
+            <div class="session-instructions">
+                최대 8명이 참여하는 실시간 표적 경쟁!<br>
+                조준점을 표적 중앙에 맞추면 자동으로 발사됩니다.<br>
+                아래 코드를 모바일에서 입력하거나 QR 코드를 스캔하세요.
+            </div>
+            
+            <div class="session-code" id="massSessionCode">----</div>
+            
+            <div class="qr-container" id="massQrContainer">
+                QR 코드 생성 중...
+            </div>
+
+
+            <div class="session-instructions">
+                📱 센서 클라이언트: <strong>/sensor.html</strong><br>
+                플레이어가 3명 이상 연결되면 게임이 시작됩니다.
+            </div>
+            
+            <div style="margin-top: 1.5rem;">
+                <button class="btn btn-success" onclick="game.startMassCompetitive()" id="massStartBtn" disabled>
+                    🚀 게임 시작
+                </button>
+            </div>
+        </div>
+
+        <!-- 상태 패널 -->
+        <div class="ui-panel status-panel">
+            <div class="status-item">
+                <span class="status-text">서버 연결</span>
+                <div class="status-indicator" id="serverStatus"></div>
+            </div>
+            <div class="status-item solo-mode" id="soloSensorStatus">
+                <span class="status-text">센서 연결</span>
+                <div class="status-indicator" id="sensorStatus"></div>
+            </div>
+            <div class="status-item dual-mode hidden" id="dualSensorStatus">
+                <span class="status-text">센서1 연결</span>
+                <div class="status-indicator" id="sensor1Status"></div>
+            </div>
+            <div class="status-item dual-mode hidden" id="dualSensorStatus2">
+                <span class="status-text">센서2 연결</span>
+                <div class="status-indicator" id="sensor2Status"></div>
+            </div>
+            <div class="status-item">
+                <span class="status-text" id="gameStatusText">게임 모드 선택</span>
+            </div>
+        </div>
+        
+        <!-- 게임 모드 선택 패널 -->
+        <div class="ui-panel mode-selection-panel fade-in" id="modeSelectionPanel">
+            <div class="session-title">🎯 Shot Target</div>
+            <div class="session-instructions">
+                게임 모드를 선택하세요!
+            </div>
+            
+            <div class="mode-selection">
+                <button class="mode-btn" id="soloModeBtn">
+                    <div class="mode-icon">🎯</div>
+                    <div class="mode-title">싱글 플레이</div>
+                    <div class="mode-desc">혼자서 표적을 맞춰보세요</div>
+                </button>
+                
+                <button class="mode-btn" id="coopModeBtn">
+                    <div class="mode-icon">🤝</div>
+                    <div class="mode-title">협동 플레이</div>
+                    <div class="mode-desc">2명이 협력하여 플레이</div>
+                </button>
+                
+                <button class="mode-btn" id="competitiveModeBtn">
+                    <div class="mode-icon">⚔️</div>
+                    <div class="mode-title">경쟁 플레이</div>
+                    <div class="mode-desc">2명이 경쟁하여 플레이</div>
+                </button>
+                
+                <button class="mode-btn" id="massCompetitiveModeBtn">
+                    <div class="mode-icon">👥</div>
+                    <div class="mode-title">대규모 경쟁</div>
+                    <div class="mode-desc">3-8명 실시간 경쟁</div>
+                </button>
+            </div>
+        </div>
+        
+        <!-- 세션 정보 패널 -->
+        <div class="ui-panel session-panel fade-in hidden" id="sessionPanel">
+            <div class="session-title" id="sessionTitle">🎯 Shot Target - 싱글 플레이</div>
+            <div class="session-instructions" id="sessionInstructions">
+                모바일 센서로 조준하여 표적을 맞추는 게임!<br>
+                조준점을 표적 중앙에 맞추면 자동으로 발사됩니다.<br>
+                아래 코드를 모바일에서 입력하거나 QR 코드를 스캔하세요.
+            </div>
+            
+            <div class="session-code" id="sessionCode">----</div>
+            
+            <div class="qr-container" id="qrContainer">
+                QR 코드 생성 중...
+            </div>
+            
+            <div class="session-instructions">
+                📱 센서 클라이언트: <br>
+                <strong>/sensor.html</strong>
+            </div>
+        </div>
+        
+        <!-- 게임 정보 패널 -->
+        <div class="ui-panel game-info-panel hidden" id="gameInfoPanel">
+            <div class="info-title">🎯 표적 정보</div>
+            <div class="info-grid">
+                <div class="info-item target-large-info">
+                    <div class="info-icon">🔴</div>
+                    <div class="info-label">대형</div>
+                    <div class="info-value">100pt</div>
+                </div>
+                <div class="info-item target-medium-info">
+                    <div class="info-icon">🟡</div>
+                    <div class="info-label">중형</div>
+                    <div class="info-value">200pt</div>
+                </div>
+                <div class="info-item target-small-info">
+                    <div class="info-icon">🟢</div>
+                    <div class="info-label">소형</div>
+                    <div class="info-value">500pt</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 컨트롤 패널 -->
+        <div class="ui-panel control-panel">
+            <!-- 허브로 버튼 (모드 선택 화면에서만 표시) -->
+            <button class="btn btn-secondary mode-selection-only" id="backToHubBtn" onclick="window.location.href='/'">
+                🏠 허브로
+            </button>
+            <!-- 버튼들은 이제 game-page.js에서 동적으로 생성됩니다. -->
+        </div>
+    </div>
+    
+    <!-- 독립적인 참가자 목록 위젯 (대규모 경쟁 모드 전용) -->
+    <div class="mass-waiting-list hidden" id="massWaitingListWidget">
+        <div class="waiting-title">🎮 참가자 대기실 (0/8)</div>
+        <div class="mass-waiting-players" id="massWaitingPlayers"></div>
+    </div>
+    
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- QR Code Library (폴백 처리 포함) -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- SessionSDK -->
+    <script src="/js/SessionSDK.js"></script>
+    
+    <!-- Shot Target Game Script (New FSD Structure) -->
+    <script type="module">
+        import { ShotTargetGame } from './app/shot-target-game.js';
+        
+        // 전역 게임 인스턴스 생성
+        window.game = new ShotTargetGame();
+        
+        // 페이지 언로드 시 정리
+        window.addEventListener('beforeunload', () => {
+            if (window.game) {
+                window.game.cleanup();
+            }
+        });
+    </script>
+</body>
+</html>

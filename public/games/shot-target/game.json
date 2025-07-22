@@ -1,0 +1,35 @@
+{
+  "id": "shot-target",
+  "title": "Shot Target",
+  "description": "센서로 조준하여 표적을 맞추는 총게임<br>기울기 조작으로 표적 가운데 맞추고 자동 발사!<br>표적 크기별 점수 차등 적용",
+  "category": "multi",
+  "gameTypes": ["solo", "dual", "competitive", "mass-competitive"],
+  "icon": "🎯",
+  "version": "1.0.0",
+  "author": "Claude AI",
+  "created": "2025-01-16T00:00:00Z",
+  "sensors": ["orientation", "motion"],
+  "minPlayers": 1,
+  "maxPlayers": 8,
+  "difficulty": "medium",
+  "status": "active",
+  "featured": true,
+  "tags": ["shooting", "target", "precision", "aiming", "reflex"],
+  "instructions": [
+    "모바일을 기울여서 조준점을 움직이세요",
+    "조준점을 표적 중앙에 맞추면 자동으로 총알이 발사됩니다",
+    "작은 표적일수록 높은 점수를 획득할 수 있습니다",
+    "표적은 일정 시간 후 자동으로 사라집니다",
+    "연속으로 맞추면 콤보 보너스가 적용됩니다"
+  ],
+  "controls": {
+    "tilt": "조준점 이동",
+    "auto": "자동 발사 (표적 중앙 도달시)"
+  },
+  "scoring": {
+    "large_target": 100,
+    "medium_target": 200, 
+    "small_target": 500,
+    "combo_multiplier": 1.5
+  }
+}

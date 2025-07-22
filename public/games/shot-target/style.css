@@ -1,0 +1,997 @@
+:root {
+    --primary: #3b82f6;
+    --secondary: #8b5cf6;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --background: #0f172a;
+    --surface: #1e293b;
+    --card: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
+    --border: #475569;
+    --gradient: linear-gradient(135deg, var(--primary), var(--secondary));
+    --target-large: #ef4444;
+    --target-medium: #f59e0b;
+    --target-small: #10b981;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--background);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+}
+
+/* 게임 캔버스 */
+#gameCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    cursor: crosshair;
+}
+
+/* UI 오버레이 */
+.game-ui {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 100;
+}
+
+.ui-panel {
+    position: absolute;
+    background: rgba(30, 41, 59, 0.9);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    backdrop-filter: blur(12px);
+    pointer-events: all;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+/* 점수 패널 (좌상단) */
+.score-panel {
+    top: 1rem;
+    left: 1rem;
+    min-width: 250px;
+}
+
+.score-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--primary);
+}
+
+.score-value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--success);
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.score-details {
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.score-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+/* 상태 패널 (우상단) */
+.status-panel {
+    top: 1rem;
+    right: 1rem;
+    text-align: left;
+    min-width: 150px;
+}
+
+.status-item {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.9rem;
+}
+
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--error);
+    transition: all 0.3s ease;
+}
+
+.status-indicator.connected {
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+}
+
+.status-text {
+    font-weight: 500;
+}
+
+/* 세션 정보 패널 (중앙) */
+.session-panel {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    max-width: 500px;
+    min-width: 400px;
+}
+
+.session-title {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 1rem;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.session-code {
+    font-size: 3rem;
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    color: var(--primary);
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 2px solid var(--primary);
+    border-radius: 0.75rem;
+    letter-spacing: 0.3em;
+}
+
+.session-instructions {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    line-height: 1.6;
+}
+
+.qr-container {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.75rem;
+    display: inline-block;
+}
+
+/* 게임 정보 패널 (좌하단) */
+.game-info-panel {
+    bottom: 1rem;
+    left: 1rem;
+    min-width: 280px;
+}
+
+.info-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--secondary);
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+}
+
+.info-item {
+    text-align: center;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    border: 1px solid;
+}
+
+.target-large-info {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: var(--target-large);
+}
+
+.target-medium-info {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: var(--target-medium);
+}
+
+.target-small-info {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: var(--target-small);
+}
+
+.info-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.25rem;
+}
+
+.info-label {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.info-value {
+    font-size: 1rem;
+    font-weight: 600;
+    font-family: 'Courier New', monospace;
+}
+
+/* 컨트롤 패널 (하단 우측) */
+.control-panel {
+    bottom: 1rem;
+    right: 1rem;
+    left: auto;
+    transform: none;
+}
+
+/* 대규모 경쟁 모드에서 컨트롤 패널 세로 배치 */
+.control-panel.mass-competitive-mode {
+    bottom: 1rem;
+    right: 1rem;
+    width: auto;
+    min-width: 120px;
+}
+
+.btn-group {
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.btn {
+    padding: 0.75rem 1.25rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-secondary {
+    background: var(--surface);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+}
+
+.btn-success {
+    background: var(--success);
+    color: white;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 모드 선택 화면에서만 보이는 버튼 */
+.mode-selection-only {
+    display: none !important;
+}
+
+/* JavaScript에서 명시적으로 표시할 때 우선순위 */
+.mode-selection-only.show {
+    display: inline-flex !important;
+}
+
+/* HUD 요소 (게임 중) */
+.hud-panel {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: var(--text-primary);
+    font-size: 1.2rem;
+    font-weight: 600;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    pointer-events: none;
+}
+
+.hud-crosshair {
+    position: absolute;
+    width: 30px;
+    height: 30px;
+    border: 2px solid var(--crosshair-color, #ffffff);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 200;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+.hud-crosshair::before,
+.hud-crosshair::after {
+    content: '';
+    position: absolute;
+    background: var(--crosshair-color, #ffffff);
+    box-shadow: 0 0 5px rgba(255, 255, 255, 0.8);
+}
+
+.hud-crosshair::before {
+    width: 2px;
+    height: 10px;
+    top: -5px;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.hud-crosshair::after {
+    width: 10px;
+    height: 2px;
+    top: 50%;
+    left: -5px;
+    transform: translateY(-50%);
+}
+
+/* 타겟 효과 */
+.target-hit-effect {
+    position: absolute;
+    border-radius: 50%;
+    border: 3px solid #ffffff;
+    background: rgba(255, 255, 255, 0.2);
+    animation: target-hit 0.5s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes target-hit {
+    0% {
+        transform: scale(0.5);
+        opacity: 1;
+    }
+
+    100% {
+        transform: scale(2);
+        opacity: 0;
+    }
+}
+
+/* 점수 팝업 */
+.score-popup {
+    position: absolute;
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--success);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    animation: score-popup 1.5s ease-out forwards;
+    pointer-events: none;
+    z-index: 300;
+}
+
+@keyframes score-popup {
+    0% {
+        transform: translateY(0) scale(0.5);
+        opacity: 1;
+    }
+
+    50% {
+        transform: translateY(-30px) scale(1.2);
+        opacity: 1;
+    }
+
+    100% {
+        transform: translateY(-60px) scale(1);
+        opacity: 0;
+    }
+}
+
+/* 타이머 스타일 */
+.timer-section {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border);
+}
+
+.timer-title {
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--warning);
+}
+
+.timer-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--warning);
+    font-family: 'Courier New', monospace;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 게임 모드 선택 패널 */
+.mode-selection-panel {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    max-width: 800px;
+    min-width: 700px;
+}
+
+.mode-selection {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.mode-btn {
+    flex: 1;
+    padding: 2rem 1.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 2px solid var(--primary);
+    border-radius: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    color: var(--text-primary);
+}
+
+.mode-btn:hover {
+    background: rgba(59, 130, 246, 0.2);
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+}
+
+.mode-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.mode-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 0.5rem;
+}
+
+.mode-desc {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* 경쟁 모드용 점수 패널 */
+.competitive-score-panel {
+    top: 1rem;
+    left: 1rem;
+    min-width: 280px;
+}
+
+.player-scores {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.player-score {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 0.5rem;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.player-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.player-score-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--success);
+    font-family: 'Courier New', monospace;
+}
+
+/* 대규모 경쟁 모드용 스타일 */
+.mass-competitive-panel {
+    top: 1rem;
+    left: 1rem;
+    min-width: 300px;
+    max-width: 350px;
+}
+
+.mass-game-info {
+    margin: 1rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.mass-game-info .info-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.5rem;
+    background: rgba(59, 130, 246, 0.05);
+    border-radius: 0.3rem;
+}
+
+.mass-leaderboard {
+    margin-top: 1rem;
+}
+
+.mass-player-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+    border-radius: 0.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    transition: all 0.2s ease;
+}
+
+.mass-player-item:hover {
+    background: rgba(59, 130, 246, 0.15);
+}
+
+.mass-player-item.me {
+    background: rgba(16, 185, 129, 0.2);
+    border-color: var(--success);
+    transform: scale(1.02);
+}
+
+.mass-player-item.winner {
+    background: rgba(245, 158, 11, 0.2);
+    border-color: var(--warning);
+}
+
+.mass-player-info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.mass-player-rank {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--warning);
+    min-width: 20px;
+}
+
+.mass-player-color {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.mass-player-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.mass-player-score {
+    font-weight: 700;
+    font-family: 'Courier New', monospace;
+    color: var(--success);
+}
+
+
+
+/* 대규모 경쟁 대기실 */
+.mass-waiting-panel {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    max-width: 500px;
+    min-width: 400px;
+}
+
+/* 대기실 위젯 (요청사항: 왼쪽 상단 독립 배치) */
+.waiting-room-widget {
+    position: fixed !important;
+    top: 20px !important;
+    left: 20px !important;
+    width: 280px !important;
+    max-height: 400px !important;
+    background: rgba(30, 41, 59, 0.95) !important;
+    border: 2px solid var(--primary) !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+    backdrop-filter: blur(12px) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+    z-index: 1000 !important;
+    font-family: 'Segoe UI', sans-serif !important;
+    color: var(--text-primary) !important;
+}
+
+.waiting-room-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+.waiting-player-list {
+    max-height: 280px;
+    overflow-y: auto;
+    margin-bottom: 12px;
+}
+
+.waiting-player-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.waiting-player-list::-webkit-scrollbar-track {
+    background: rgba(148, 163, 184, 0.1);
+    border-radius: 2px;
+}
+
+.waiting-player-list::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.5);
+    border-radius: 2px;
+}
+
+.waiting-player-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.7);
+}
+
+.waiting-player-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    margin-bottom: 6px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.waiting-player-item:hover {
+    background: rgba(59, 130, 246, 0.15);
+    transform: translateX(2px);
+}
+
+.waiting-empty-slot {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    margin-bottom: 6px;
+    background: rgba(148, 163, 184, 0.1);
+    border: 1px dashed rgba(148, 163, 184, 0.3);
+    border-radius: 6px;
+    opacity: 0.6;
+}
+
+.waiting-status-message {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 8px;
+    background: rgba(59, 130, 246, 0.1);
+    border-radius: 6px;
+    border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.mass-waiting-list {
+    position: fixed !important;
+    top: 20px !important;
+    left: 20px !important;
+    max-height: 400px !important;
+    margin: 0 !important;
+    padding: 16px !important;
+    background: rgba(30, 41, 59, 0.95) !important;
+    border: 2px solid var(--primary) !important;
+    border-radius: 12px !important;
+    backdrop-filter: blur(12px) !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+    z-index: 1000 !important;
+    font-family: 'Segoe UI', sans-serif !important;
+    color: var(--text-primary) !important;
+}
+
+.mass-waiting-players {
+    max-height: 280px !important;
+    overflow-y: auto;
+    margin-bottom: 12px;
+}
+
+.mass-waiting-players::-webkit-scrollbar {
+    width: 4px;
+}
+
+.mass-waiting-players::-webkit-scrollbar-track {
+    background: rgba(148, 163, 184, 0.1);
+    border-radius: 2px;
+}
+
+.mass-waiting-players::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.5);
+    border-radius: 2px;
+}
+
+.mass-waiting-players::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.7);
+}
+
+.mass-waiting-player {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    margin-bottom: 6px;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 6px;
+    transition: all 0.2s ease;
+}
+
+.mass-waiting-player:hover {
+    background: rgba(59, 130, 246, 0.15);
+    transform: translateX(2px);
+}
+
+/* 대기실 헤더 스타일 */
+.waiting-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--primary);
+}
+
+/* 플레이어 색상 팔레트 */
+.player-color-1 {
+    background-color: #3b82f6 !important;
+}
+
+.player-color-2 {
+    background-color: #ef4444 !important;
+}
+
+.player-color-3 {
+    background-color: #10b981 !important;
+}
+
+.player-color-4 {
+    background-color: #f59e0b !important;
+}
+
+.player-color-5 {
+    background-color: #8b5cf6 !important;
+}
+
+.player-color-6 {
+    background-color: #06b6d4 !important;
+}
+
+.player-color-7 {
+    background-color: #f97316 !important;
+}
+
+.player-color-8 {
+    background-color: #84cc16 !important;
+}
+
+/* 협동 모드 중앙 경계선 */
+.center-divider {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateX(-50%);
+    z-index: 50;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
+/* 듀얼 모드 스타일 */
+.dual-mode.hidden {
+    display: none;
+}
+
+.solo-mode.hidden {
+    display: none;
+}
+
+/* 대규모 경쟁 모드 결과 모달 */
+.mass-competitive-result-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+}
+
+.mass-competitive-result-modal.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--surface);
+    border: 2px solid var(--primary);
+    border-radius: 1rem;
+    padding: 2rem;
+    max-width: 600px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 1rem;
+}
+
+.modal-header h2 {
+    font-size: 2rem;
+    font-weight: 700;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+}
+
+.modal-body {
+    margin-bottom: 2rem;
+}
+
+.result-text {
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.4;
+    color: var(--text-primary);
+    background: var(--background);
+    padding: 1.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    white-space: pre-wrap;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.modal-footer {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.modal-footer .btn {
+    min-width: 120px;
+    padding: 0.75rem 1.5rem;
+}
+
+/* 순위별 색상 강조 */
+.result-text {
+    /* 1위 강조 */
+    background: linear-gradient(135deg, var(--background), rgba(255, 215, 0, 0.05));
+}
+
+/* 숨김 클래스 */
+.hidden {
+    display: none !important;
+}
+
+/* 애니메이션 */
+.fade-in {
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 반응형 */
+@media (max-width: 768px) {
+    .ui-panel {
+        padding: 1rem;
+        font-size: 0.9rem;
+    }
+
+    .score-panel,
+    .status-panel,
+    .game-info-panel {
+        min-width: 200px;
+    }
+
+    .session-panel {
+        max-width: 350px;
+        min-width: 300px;
+        padding: 1.5rem;
+    }
+
+    .session-code {
+        font-size: 2.5rem;
+    }
+
+    .info-grid {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+}
