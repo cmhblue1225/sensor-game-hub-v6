@@ -3,6 +3,11 @@ export class SoundSystem {
         this.audioContext = null;
         this.enabled = true;
         this.volume = 0.7;
+        this.bgmVolume = 0.3; // BGM 전용 볼륨 (효과음보다 낮게)
+        this.bgmEnabled = true;
+        this.bgmPlaying = false;
+        this.bgmNodes = []; // BGM 관련 오디오 노드들
+        this.bgmIntervalId = null;
         this.initializeAudioContext();
     }
 
@@ -147,7 +152,7 @@ export class SoundSystem {
         oscillator.stop(this.audioContext.currentTime + duration);
     }
 
-    // 볼륨 설정
+    // 효과음 볼륨 설정
     setVolume(volume) {
         this.volume = Math.max(0, Math.min(1, volume));
     }
@@ -155,6 +160,15 @@ export class SoundSystem {
     // 음향 켜기/끄기
     setEnabled(enabled) {
         this.enabled = enabled;
+        if (!enabled) {
+            this.stopBGM(); // 음향 끄면 BGM도 중지
+        }
+    }
+
+    // 전체 음향 설정 (효과음 + BGM)
+    setAllSoundsEnabled(enabled) {
+        this.setEnabled(enabled);
+        this.setBGMEnabled(enabled);
     }
 
     // 사용자 상호작용으로 오디오 컨텍스트 활성화
@@ -170,8 +184,179 @@ export class SoundSystem {
         }
     }
 
+    // 🎵 신나는 BGM 시작
+    async startBGM() {
+        if (!await this.ensureAudioContext() || !this.bgmEnabled || this.bgmPlaying) return;
+
+        this.bgmPlaying = true;
+        this.playBGMLoop();
+    }
+
+    // 🎵 BGM 중지
+    stopBGM() {
+        this.bgmPlaying = false;
+        
+        // 모든 BGM 노드 정리
+        this.bgmNodes.forEach(node => {
+            try {
+                if (node.stop) node.stop();
+                if (node.disconnect) node.disconnect();
+            } catch (e) {
+                // 이미 정리된 노드 무시
+            }
+        });
+        this.bgmNodes = [];
+
+        if (this.bgmIntervalId) {
+            clearInterval(this.bgmIntervalId);
+            this.bgmIntervalId = null;
+        }
+    }
+
+    // 🎵 BGM 루프 재생
+    async playBGMLoop() {
+        if (!this.bgmPlaying || !await this.ensureAudioContext()) return;
+
+        // 신나는 4/4박자 멜로디 패턴
+        const melodyPattern = [
+            // 1번째 마디: C Major Scale 기반
+            { freq: 523.25, duration: 0.25 }, // C5
+            { freq: 659.25, duration: 0.25 }, // E5
+            { freq: 783.99, duration: 0.25 }, // G5
+            { freq: 1046.50, duration: 0.25 }, // C6
+            
+            // 2번째 마디: 하강
+            { freq: 783.99, duration: 0.25 }, // G5
+            { freq: 659.25, duration: 0.25 }, // E5
+            { freq: 587.33, duration: 0.25 }, // D5
+            { freq: 523.25, duration: 0.25 }, // C5
+            
+            // 3번째 마디: 점프
+            { freq: 698.46, duration: 0.25 }, // F5
+            { freq: 880.00, duration: 0.25 }, // A5
+            { freq: 783.99, duration: 0.25 }, // G5
+            { freq: 659.25, duration: 0.25 }, // E5
+            
+            // 4번째 마디: 마무리
+            { freq: 587.33, duration: 0.25 }, // D5
+            { freq: 523.25, duration: 0.5 },  // C5 (길게)
+            { freq: 0, duration: 0.25 }       // 쉼표
+        ];
+
+        let noteIndex = 0;
+        const playNextNote = () => {
+            if (!this.bgmPlaying) return;
+
+            const note = melodyPattern[noteIndex];
+            
+            if (note.freq > 0) {
+                this.playBGMNote(note.freq, note.duration);
+            }
+
+            noteIndex = (noteIndex + 1) % melodyPattern.length;
+            
+            // 다음 음표 스케줄링
+            setTimeout(playNextNote, note.duration * 1000);
+        };
+
+        // 베이스 라인 추가 (낮은 옥타브)
+        this.playBGMBass();
+        
+        // 멜로디 시작
+        playNextNote();
+    }
+
+    // 🎵 BGM 단일 음표 재생
+    async playBGMNote(frequency, duration) {
+        if (!await this.ensureAudioContext() || !this.bgmPlaying) return;
+
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+        oscillator.type = 'sawtooth'; // 신나는 톤
+        
+        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+        gainNode.gain.linearRampToValueAtTime(this.bgmVolume * 0.4, this.audioContext.currentTime + 0.02);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
+        
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + duration);
+        
+        this.bgmNodes.push(oscillator);
+        this.bgmNodes.push(gainNode);
+    }
+
+    // 🎵 BGM 베이스 라인 (리듬감 추가)
+    async playBGMBass() {
+        if (!await this.ensureAudioContext() || !this.bgmPlaying) return;
+
+        const bassPattern = [
+            130.81, // C3
+            164.81, // E3
+            196.00, // G3
+            130.81  // C3
+        ];
+
+        let bassIndex = 0;
+        const playBassNote = () => {
+            if (!this.bgmPlaying) return;
+
+            const frequency = bassPattern[bassIndex];
+            
+            const oscillator = this.audioContext.createOscillator();
+            const gainNode = this.audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(this.audioContext.destination);
+            
+            oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+            oscillator.type = 'square';
+            
+            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+            gainNode.gain.linearRampToValueAtTime(this.bgmVolume * 0.2, this.audioContext.currentTime + 0.01);
+            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.4);
+            
+            oscillator.start(this.audioContext.currentTime);
+            oscillator.stop(this.audioContext.currentTime + 0.4);
+            
+            this.bgmNodes.push(oscillator);
+            this.bgmNodes.push(gainNode);
+            
+            bassIndex = (bassIndex + 1) % bassPattern.length;
+            
+            // 0.5초마다 베이스 노트 반복
+            setTimeout(playBassNote, 500);
+        };
+
+        playBassNote();
+    }
+
+    // BGM 볼륨 설정
+    setBGMVolume(volume) {
+        this.bgmVolume = Math.max(0, Math.min(1, volume));
+    }
+
+    // BGM 켜기/끄기
+    setBGMEnabled(enabled) {
+        this.bgmEnabled = enabled;
+        if (!enabled && this.bgmPlaying) {
+            this.stopBGM();
+        }
+    }
+
+    // BGM 재생 상태 확인
+    isBGMPlaying() {
+        return this.bgmPlaying;
+    }
+
     // 정리
     cleanup() {
+        this.stopBGM();
+        
         if (this.audioContext) {
             this.audioContext.close();
             this.audioContext = null;

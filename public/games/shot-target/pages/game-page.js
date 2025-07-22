@@ -619,6 +619,11 @@ export class GamePage {
         // 🔊 게임 시작 사운드
         this.soundSystem.playGameStartSound();
 
+        // 🎵 BGM 시작
+        setTimeout(() => {
+            this.soundSystem.startBGM();
+        }, 1000); // 게임 시작 사운드가 끝난 후 BGM 시작
+
         console.log('🎯 Shot Target 게임 시작!');
     }
 
@@ -648,6 +653,9 @@ export class GamePage {
         }
 
         this.waitingRoomWidget.updateGameStatus('게임 종료!');
+
+        // 🎵 BGM 중지
+        this.soundSystem.stopBGM();
 
         // 🔊 게임 종료 사운드
         this.soundSystem.playGameEndSound();
@@ -963,6 +971,9 @@ export class GamePage {
         const pauseBtn = document.getElementById('pauseBtn');
         if (pauseBtn) pauseBtn.textContent = '▶️ 계속';
         this.waitingRoomWidget.updateGameStatus('게임 일시정지');
+        
+        // 🎵 일시정지 시 BGM 중지
+        this.soundSystem.stopBGM();
     }
 
     resumeGame() {
@@ -970,6 +981,9 @@ export class GamePage {
         const pauseBtn = document.getElementById('pauseBtn'); // 버튼을 다시 찾습니다.
         if (pauseBtn) pauseBtn.textContent = '⏸️ 일시정지';
         this.waitingRoomWidget.updateGameStatus('게임 진행 중...');
+        
+        // 🎵 재개 시 BGM 다시 시작
+        this.soundSystem.startBGM();
     }
 
     togglePause() {
@@ -987,6 +1001,9 @@ export class GamePage {
 
         this.targets = [];
         this.shootingSystem.reset();
+
+        // 🎵 BGM 중지 (게임 리셋 시)
+        this.soundSystem.stopBGM();
 
         if (this.timerInterval) {
             clearInterval(this.timerInterval);
