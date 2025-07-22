@@ -177,7 +177,7 @@ export class GamePage {
         this.noteSpawnIndex = 0;
     }
 
-    update(gameState, musicSystem) {
+    async update(gameState, musicSystem) {
         const delta = GAME_CONFIG.NOTE_SPEED;
         
         // 노트 업데이트 및 제거
@@ -201,7 +201,7 @@ export class GamePage {
         }
         
         // 새 노트 생성
-        this.spawnNote(gameState, musicSystem);
+        await this.spawnNote(gameState, musicSystem);
         
         // 파티클 효과 업데이트
         this.updateParticles();
@@ -210,7 +210,7 @@ export class GamePage {
         this.updateTimingGuidelines();
     }
 
-    spawnNote(gameState, musicSystem) {
+    async spawnNote(gameState, musicSystem) {
         if (this.noteSpawnIndex >= this.beatmap.length) return;
         
         const now = Date.now();
