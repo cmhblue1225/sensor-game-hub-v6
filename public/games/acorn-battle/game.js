@@ -389,15 +389,15 @@ class AcornBattleGame {
         const { beta, gamma } = data.data.orientation;
         const smoothedData = this.smoothSensorData(data.sensorId, beta, gamma);
 
-        // 데드존 적용 (미세한 움직임 무시) - solo 게임 방식 적용
-        const deadZone = 3; // 3도 이하의 기울기는 무시 (더 민감하게)
+        // 데드존 적용 (미세한 움직임 무시) - 민감도 향상
+        const deadZone = 2; // 2도 이하의 기울기는 무시 (더욱 민감하게)
         const filteredBeta = Math.abs(smoothedData.beta) > deadZone ? smoothedData.beta : 0;
         const filteredGamma = Math.abs(smoothedData.gamma) > deadZone ? smoothedData.gamma : 0;
 
-        // Solo 게임 방식의 정규화된 이동 계산
-        const maxTilt = 45; // 최대 기울기 각도
-        const sensitivity = 0.4; // 감도 (solo 게임보다 약간 높게)
-        const ballSpeed = 6; // 기본 속도
+        // 민감도 향상된 이동 계산
+        const maxTilt = 35; // 최대 기울기 각도 감소 (더 민감하게)
+        const sensitivity = 0.6; // 감도 대폭 증가 (0.4 → 0.6)
+        const ballSpeed = 8; // 기본 속도 증가 (6 → 8)
         
         // 기울기 정규화 (-1 ~ 1)
         const normalizedTiltX = Math.max(-1, Math.min(1, filteredGamma / maxTilt));
