@@ -599,7 +599,7 @@ class AcornBattleGame {
                     radius: 8
                 });
             }
-            
+
             // 점수 업데이트
             player.score += carriedAcorns;
             player.carriedAcorns = 0;
@@ -613,11 +613,11 @@ class AcornBattleGame {
                 // 가장 최근에 저장된 도토리 하나를 훔침
                 const stolenAcorn = enemyAcorns.pop();
                 player.carriedAcorns = 1;
-                
+
                 // 상대방 점수 감소
                 const enemyPlayer = playerIndex === 0 ? this.gameState.players.sensor2 : this.gameState.players.sensor1;
                 enemyPlayer.score = Math.max(0, enemyPlayer.score - 1);
-                
+
                 console.log(`플레이어 ${playerIndex + 1}이 도토리 1개 훔침! 상대방 점수: ${enemyPlayer.score}`);
             }
         }
