@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🎂 케이크 배달단 (멀티플레이어)</title>
+    <style>
+        :root {
+            --primary: #3b82f6; --secondary: #8b5cf6; --success: #10b981;
+            --warning: #f59e0b; --error: #ef4444; --background: #0f172a;
+            --surface: #1e293b; --text-primary: #f8fafc; --text-secondary: #cbd5e1;
+        }
+        
+        /* 플레이어 색상 */
+        :root {
+            --player1-color: #3b82f6; --player2-color: #ef4444;
+            --player3-color: #10b981; --player4-color: #f59e0b;
+            --player5-color: #8b5cf6; --player6-color: #06b6d4;
+            --player7-color: #f97316; --player8-color: #84cc16;
+        }
+        
+        body { 
+            margin: 0; overflow: hidden; background-color: var(--background); 
+            color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: center; height: 100vh;
+        }
+        
+        #gameContainer { width: 100%; height: 100%; position: relative; }
+        #gameCanvas { display: block; }
+        
+        .ui-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            pointer-events: none; text-align: center;
+        }
+        
+        /* 세션 패널 (좌측 상단) */
+        .session-panel {
+            position: absolute; top: 20px; left: 20px; background: rgba(30, 41, 59, 0.9);
+            padding: 15px; border-radius: 12px; backdrop-filter: blur(10px);
+            display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: auto;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .session-title { font-size: 18px; font-weight: bold; color: var(--primary); }
+        .session-code { font-size: 36px; font-weight: bold; letter-spacing: 3px; color: var(--warning); }
+        .qr-container { 
+            width: 120px; height: 120px; background: white; border-radius: 8px; padding: 5px;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .qr-container img, .qr-container canvas { width: 100%; height: 100%; }
+        
+        /* 게임 정보 패널 (우측 상단) */
+        .game-info-panel {
+            position: absolute; top: 20px; right: 20px; background: rgba(30, 41, 59, 0.9);
+            padding: 15px; border-radius: 12px; backdrop-filter: blur(10px); pointer-events: auto;
+            text-align: right; border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .level-display { font-size: 24px; font-weight: bold; color: var(--success); margin-bottom: 5px; }
+        .score-display { font-size: 16px; color: var(--text-primary); margin-bottom: 3px; }
+        .time-display { font-size: 14px; color: var(--warning); }
+        .progress-display { font-size: 12px; color: var(--text-secondary); margin-top: 5px; }
+        
+        /* 플레이어 상태 패널 (좌측 하단) */
+        .players-panel {
+            position: absolute; bottom: 20px; left: 20px; background: rgba(30, 41, 59, 0.9);
+            padding: 15px; border-radius: 12px; backdrop-filter: blur(10px); pointer-events: auto;
+            border: 1px solid rgba(139, 92, 246, 0.3); max-width: 300px;
+        }
+        
+        .players-title { font-size: 14px; font-weight: bold; color: var(--secondary); margin-bottom: 10px; }
+        .player-list { display: flex; flex-direction: column; gap: 8px; }
+        .player-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.1);
+        }
+        .player-name { font-size: 12px; font-weight: bold; }
+        .player-status { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+        .player-status.connected { background-color: var(--success); color: white; }
+        .player-status.disconnected { background-color: var(--error); color: white; }
+        .player-status.host { background-color: var(--warning); color: white; }
+        
+        /* 게임 시작 버튼 (중앙) */
+        .start-game-container {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(15px);
+            border-radius: 15px; padding: 30px; text-align: center;
+            border: 2px solid var(--primary); pointer-events: auto;
+            display: none; z-index: 1000;
+        }
+        
+        .start-game-title { font-size: 24px; font-weight: bold; color: var(--primary); margin-bottom: 15px; }
+        .start-game-info { font-size: 14px; color: var(--text-secondary); margin-bottom: 20px; }
+        .start-game-btn {
+            padding: 15px 30px; background-color: var(--success); color: white; border: none;
+            border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer;
+            transition: all 0.3s; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        .start-game-btn:hover {
+            background-color: #059669; transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+        .start-game-btn:disabled {
+            background-color: var(--surface); color: var(--text-secondary);
+            cursor: not-allowed; transform: none; box-shadow: none;
+        }
+        
+        /* 컨트롤 패널 (우측 하단) */
+        .controls-panel {
+            position: absolute; bottom: 20px; right: 20px; 
+            display: flex; flex-direction: column; gap: 8px; pointer-events: auto;
+        }
+        
+        .control-btn, .control-link {
+            padding: 10px 16px; background-color: var(--primary); color: white; border: none;
+            border-radius: 8px; font-size: 14px; font-weight: bold; text-decoration: none;
+            cursor: pointer; transition: all 0.2s; text-align: center; min-width: 100px;
+        }
+        .control-btn:hover, .control-link:hover {
+            background-color: #2563eb; transform: translateY(-1px);
+        }
+        
+        /* 게임 메시지 */
+        .game-message {
+            background: rgba(30, 41, 59, 0.95); padding: 20px 40px; border-radius: 15px;
+            font-size: 32px; font-weight: bold; color: white; backdrop-filter: blur(10px);
+            border: 2px solid var(--primary); text-align: center; pointer-events: auto;
+        }
+        
+        /* 대기실 화면 */
+        .waiting-room {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--background); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 500;
+        }
+        
+        .waiting-title { font-size: 48px; color: var(--primary); margin-bottom: 20px; }
+        .waiting-subtitle { font-size: 20px; color: var(--text-secondary); margin-bottom: 40px; }
+        .waiting-players { 
+            background: rgba(30, 41, 59, 0.8); padding: 30px; border-radius: 15px;
+            backdrop-filter: blur(10px); border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        /* 결과 화면 */
+        .result-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.95); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        
+        .result-title { font-size: 48px; font-weight: bold; margin-bottom: 20px; }
+        .result-title.success { color: var(--success); }
+        .result-title.fail { color: var(--error); }
+        .result-stats {
+            background: rgba(30, 41, 59, 0.8); padding: 30px; border-radius: 15px;
+            text-align: center; margin-bottom: 30px;
+        }
+        .result-buttons { display: flex; gap: 20px; }
+        
+        /* 애니메이션 */
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .pulse { animation: pulse 2s infinite; }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-in { animation: slideIn 0.3s ease-out; }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- UI 오버레이 -->
+        <div class="ui-overlay">
+            <div id="messageBox" class="game-message" style="display: none;">메시지</div>
+        </div>
+        
+        <!-- 세션 정보 패널 -->
+        <div class="session-panel">
+            <div class="session-title">🎂 케이크 배달단</div>
+            <div id="sessionCode" class="session-code">----</div>
+            <div id="qrContainer" class="qr-container"></div>
+        </div>
+        
+        <!-- 게임 정보 패널 -->
+        <div class="game-info-panel">
+            <div class="level-display">레벨 <span id="currentLevel">1</span>/5</div>
+            <div class="score-display">점수: <span id="currentScore">0</span></div>
+            <div class="time-display">시간: <span id="gameTimer">--:--</span></div>
+            <div class="progress-display">진행률: <span id="progressPercent">0</span>%</div>
+        </div>
+        
+        <!-- 플레이어 상태 패널 -->
+        <div class="players-panel">
+            <div class="players-title">플레이어 상태</div>
+            <div id="playerList" class="player-list">
+                <!-- 플레이어들이 동적으로 추가됩니다 -->
+            </div>
+        </div>
+        
+        <!-- 게임 시작 버튼 -->
+        <div id="startGameContainer" class="start-game-container">
+            <div class="start-game-title">게임 시작 준비</div>
+            <div class="start-game-info">
+                현재 <span id="connectedCount">0</span>명이 연결되었습니다.<br>
+                (최소 2명 필요)
+            </div>
+            <button id="startGameBtn" class="start-game-btn" disabled>게임 시작</button>
+        </div>
+        
+        <!-- 대기실 화면 -->
+        <div id="waitingRoom" class="waiting-room">
+            <div class="waiting-title">🎂 케이크 배달단</div>
+            <div class="waiting-subtitle">플레이어 연결 대기 중...</div>
+            <div class="waiting-players">
+                <div id="waitingPlayerList" class="player-list">
+                    <!-- 대기 중인 플레이어들 표시 -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 결과 화면 -->
+        <div id="resultScreen" class="result-screen">
+            <div id="resultTitle" class="result-title">게임 완료!</div>
+            <div class="result-stats">
+                <div id="resultStats"></div>
+            </div>
+            <div class="result-buttons">
+                <button class="control-btn" onclick="game.restart()">🔄 다시 시작</button>
+                <a href="/" class="control-link">🏠 허브로 돌아가기</a>
+            </div>
+        </div>
+        
+        <!-- 컨트롤 패널 -->
+        <div class="controls-panel">
+            <button class="control-btn" onclick="game.restart()">🔄 재시작</button>
+            <button class="control-btn" onclick="game.togglePause()">⏸️ 일시정지</button>
+            <a href="/" class="control-link">🏠 허브로</a>
+        </div>
+    </div>
+    
+    <!-- SDK 및 라이브러리 로드 -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/SessionSDK.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cannon@0.20.0/build/cannon.min.js"></script>
+    
+    <script>
+        class CakeDeliveryMultiplayerGame {
+            constructor() {
+                this.sdk = new SessionSDK({
+                    gameId: 'cake-delivery-multiplayer',
+                    gameType: 'multi',
+                    debug: true
+                });
+                
+                // 게임 상태
+                this.gameState = 'waiting'; // waiting, ready, playing, paused, completed, failed
+                this.currentLevel = 1;
+                this.maxLevel = 5;
+                this.score = 0;
+                this.startTime = 0;
+                this.gameTimer = null;
+                
+                // 플레이어 관리
+                this.players = new Map();
+                this.isHost = false;
+                this.minPlayers = 2;
+                this.maxPlayers = 8;
+                
+                // 게임 오브젝트
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.world = null;
+                this.cake = null;
+                this.cakeBody = null;
+                
+                // 레벨 설정
+                this.levelConfig = {
+                    1: { 
+                        roadWidth: 20, 
+                        obstacles: 2, 
+                        obstacleSpeed: 0.5, 
+                        timeLimit: 120,
+                        description: "기본 레벨 - 넓은 길과 느린 장애물" 
+                    },
+                    2: { 
+                        roadWidth: 18, 
+                        obstacles: 3, 
+                        obstacleSpeed: 0.8, 
+                        timeLimit: 100,
+                        description: "조금 좁아진 길과 빨라진 장애물" 
+                    },
+                    3: { 
+                        roadWidth: 16, 
+                        obstacles: 4, 
+                        obstacleSpeed: 1.2, 
+                        timeLimit: 90,
+                        description: "중간 난이도 - 더 많은 장애물" 
+                    },
+                    4: { 
+                        roadWidth: 14, 
+                        obstacles: 5, 
+                        obstacleSpeed: 1.6, 
+                        timeLimit: 80,
+                        description: "고난이도 - 좁은 길과 빠른 장애물" 
+                    },
+                    5: { 
+                        roadWidth: 12, 
+                        obstacles: 6, 
+                        obstacleSpeed: 2.0, 
+                        timeLimit: 70,
+                        description: "최고 난이도 - 극한의 도전!" 
+                    }
+                };
+                
+                // 센서 데이터 처리
+                this.sensorData = new Map();
+                this.lastSensorUpdate = 0;
+                this.sensorUpdateInterval = 33; // 30fps
+                
+                // UI 요소 참조
+                this.elements = {
+                    canvas: document.getElementById('gameCanvas'),
+                    sessionCode: document.getElementById('sessionCode'),
+                    qrContainer: document.getElementById('qrContainer'),
+                    currentLevel: document.getElementById('currentLevel'),
+                    currentScore: document.getElementById('currentScore'),
+                    gameTimer: document.getElementById('gameTimer'),
+                    progressPercent: document.getElementById('progressPercent'),
+                    playerList: document.getElementById('playerList'),
+                    waitingRoom: document.getElementById('waitingRoom'),
+                    waitingPlayerList: document.getElementById('waitingPlayerList'),
+                    startGameContainer: document.getElementById('startGameContainer'),
+                    startGameBtn: document.getElementById('startGameBtn'),
+                    connectedCount: document.getElementById('connectedCount'),
+                    messageBox: document.getElementById('messageBox'),
+                    resultScreen: document.getElementById('resultScreen'),
+                    resultTitle: document.getElementById('resultTitle'),
+                    resultStats: document.getElementById('resultStats')
+                };
+                
+                this.init();
+            }
+            
+            init() {
+                console.log('🎂 케이크 배달 멀티플레이어 게임 초기화 시작...');
+                
+                // Canvas 설정
+                this.setupCanvas();
+                
+                // Three.js 초기화
+                this.initThree();
+                
+                // 물리 엔진 초기화
+                this.initPhysics();
+                
+                // SDK 이벤트 설정
+                this.setupSDKEvents();
+                
+                // UI 이벤트 설정
+                this.setupUIEvents();
+                
+                // 게임 루프 시작
+                this.startGameLoop();
+                
+                console.log('✅ 게임 초기화 완료');
+            }
+            
+            setupCanvas() {
+                const canvas = this.elements.canvas;
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                // 윈도우 리사이즈 이벤트
+                window.addEventListener('resize', () => {
+                    canvas.width = window.innerWidth;
+                    canvas.height = window.innerHeight;
+                    if (this.renderer) {
+                        this.renderer.setSize(window.innerWidth, window.innerHeight);
+                    }
+                    if (this.camera) {
+                        this.camera.aspect = window.innerWidth / window.innerHeight;
+                        this.camera.updateProjectionMatrix();
+                    }
+                });
+            }
+            
+            initThree() {
+                // Scene 생성
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x87CEEB); // 하늘색
+                
+                // 카메라 생성
+                this.camera = new THREE.PerspectiveCamera(
+                    75, 
+                    window.innerWidth / window.innerHeight, 
+                    0.1, 
+                    1000
+                );
+                this.camera.position.set(0, 15, 20);
+                this.camera.lookAt(0, 0, 0);
+                
+                // 렌더러 생성
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: this.elements.canvas,
+                    antialias: true
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                
+                // 조명 추가
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 5);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                this.scene.add(directionalLight);
+                
+                console.log('✅ Three.js 초기화 완료');
+            }
+            
+            initPhysics() {
+                // Cannon.js 물리 세계 생성
+                this.world = new CANNON.World();
+                this.world.gravity.set(0, -9.82, 0);
+                this.world.broadphase = new CANNON.NaiveBroadphase();
+                
+                // 바닥 생성
+                this.createGround();
+                
+                // 케이크 생성
+                this.createCake();
+                
+                console.log('✅ 물리 엔진 초기화 완료');
+            }
+            
+            createGround() {
+                const currentConfig = this.levelConfig[this.currentLevel];
+                const roadWidth = currentConfig.roadWidth;
+                
+                // 시각적 바닥
+                const groundGeometry = new THREE.PlaneGeometry(roadWidth, 100);
+                const groundMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x8B4513,
+                    transparent: true,
+                    opacity: 0.8 
+                });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.receiveShadow = true;
+                this.scene.add(ground);
+                
+                // 물리 바닥
+                const groundShape = new CANNON.Box(new CANNON.Vec3(roadWidth/2, 0.1, 50));
+                const groundBody = new CANNON.Body({ mass: 0 });
+                groundBody.addShape(groundShape);
+                groundBody.position.set(0, -0.1, 0);
+                this.world.add(groundBody);
+                
+                // 도로 가장자리 (보이지 않는 벽)
+                this.createRoadBoundaries(roadWidth);
+            }
+            
+            createRoadBoundaries(roadWidth) {
+                const wallHeight = 2;
+                const wallThickness = 0.5;
+                
+                // 왼쪽 벽
+                const leftWallShape = new CANNON.Box(new CANNON.Vec3(wallThickness, wallHeight, 50));
+                const leftWallBody = new CANNON.Body({ mass: 0 });
+                leftWallBody.addShape(leftWallShape);
+                leftWallBody.position.set(-roadWidth/2 - wallThickness, wallHeight, 0);
+                this.world.add(leftWallBody);
+                
+                // 오른쪽 벽
+                const rightWallShape = new CANNON.Box(new CANNON.Vec3(wallThickness, wallHeight, 50));
+                const rightWallBody = new CANNON.Body({ mass: 0 });
+                rightWallBody.addShape(rightWallShape);
+                rightWallBody.position.set(roadWidth/2 + wallThickness, wallHeight, 0);
+                this.world.add(rightWallBody);
+            }
+            
+            createCake() {
+                // 케이크 크기 (플레이어 수에 따라 조정)
+                const playerCount = this.players.size;
+                const baseSize = 1.5;
+                const sizeMultiplier = Math.min(1 + (playerCount - 2) * 0.1, 2); // 최대 2배까지
+                const cakeSize = baseSize * sizeMultiplier;
+                
+                // 시각적 케이크
+                const cakeGeometry = new THREE.CylinderGeometry(cakeSize, cakeSize, 1.5, 8);
+                const cakeMaterial = new THREE.MeshLambertMaterial({ color: 0xFFC0CB });
+                this.cake = new THREE.Mesh(cakeGeometry, cakeMaterial);
+                this.cake.position.set(0, 2, -20);
+                this.cake.castShadow = true;
+                this.scene.add(this.cake);
+                
+                // 물리 케이크
+                const cakeShape = new CANNON.Cylinder(cakeSize, cakeSize, 1.5, 8);
+                this.cakeBody = new CANNON.Body({ mass: 5 });
+                this.cakeBody.addShape(cakeShape);
+                this.cakeBody.position.set(0, 2, -20);
+                this.cakeBody.material = new CANNON.Material();
+                this.cakeBody.material.friction = 0.3;
+                this.cakeBody.material.restitution = 0.1;
+                this.world.add(this.cakeBody);
+                
+                console.log(`✅ 케이크 생성 완료 (크기: ${cakeSize.toFixed(2)})`);
+            }
+            
+            setupSDKEvents() {
+                // 서버 연결 완료
+                this.sdk.on('connected', () => {
+                    console.log('✅ 서버 연결 완료');
+                    this.createSession();
+                });
+                
+                // 세션 생성 완료
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;
+                    console.log('✅ 세션 생성됨:', session);
+                    this.displaySessionInfo(session);
+                });
+                
+                // 센서 연결
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;
+                    console.log('👤 센서 연결됨:', data);
+                    this.addPlayer(data);
+                });
+                
+                // 센서 데이터 수신
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;
+                    this.processSensorData(data);
+                });
+                
+                // 센서 연결 해제
+                this.sdk.on('sensor-disconnected', (event) => {
+                    const data = event.detail || event;
+                    console.log('❌ 센서 연결 해제:', data);
+                    this.removePlayer(data.sensorId);
+                });
+            }
+            
+            async createSession() {
+                try {
+                    const session = await this.sdk.createSession();
+                    console.log('✅ 세션 생성 성공');
+                } catch (error) {
+                    console.error('❌ 세션 생성 실패:', error);
+                    this.showMessage('세션 생성에 실패했습니다.', 'error');
+                }
+            }
+            
+            displaySessionInfo(session) {
+                // 세션 코드 표시
+                this.elements.sessionCode.textContent = session.sessionCode;
+                
+                // QR 코드 생성
+                const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                this.generateQRCode(qrUrl);
+                
+                console.log('📱 센서 연결 URL:', qrUrl);
+            }
+            
+            generateQRCode(url) {
+                const container = this.elements.qrContainer;
+                container.innerHTML = '';
+                
+                if (typeof QRCode !== 'undefined') {
+                    // QRCode 라이브러리 사용
+                    const canvas = document.createElement('canvas');
+                    QRCode.toCanvas(canvas, url, { width: 110 }, (error) => {
+                        if (!error) {
+                            container.appendChild(canvas);
+                        } else {
+                            this.generateQRCodeFallback(url);
+                        }
+                    });
+                } else {
+                    // 폴백: 외부 API 사용
+                    this.generateQRCodeFallback(url);
+                }
+            }
+            
+            generateQRCodeFallback(url) {
+                const img = document.createElement('img');
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(url)}`;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                this.elements.qrContainer.appendChild(img);
+            }
+            
+            addPlayer(playerData) {
+                const playerId = playerData.sensorId;
+                const playerCount = this.players.size + 1;
+                
+                const player = {
+                    id: playerId,
+                    name: `플레이어 ${playerCount}`,
+                    color: `var(--player${Math.min(playerCount, 8)}-color)`,
+                    connected: true,
+                    isHost: this.players.size === 0 // 첫 번째 플레이어가 방장
+                };
+                
+                this.players.set(playerId, player);
+                
+                // 첫 번째 플레이어인 경우 호스트로 설정
+                if (player.isHost) {
+                    this.isHost = true;
+                    console.log('👑 방장으로 설정됨');
+                }
+                
+                this.updatePlayerUI();
+                this.checkGameReady();
+                
+                this.showMessage(`${player.name}가 참가했습니다!`, 'success');
+            }
+            
+            removePlayer(playerId) {
+                if (this.players.has(playerId)) {
+                    const player = this.players.get(playerId);
+                    this.players.delete(playerId);
+                    this.sensorData.delete(playerId);
+                    
+                    this.updatePlayerUI();
+                    this.checkGameReady();
+                    
+                    this.showMessage(`${player.name}가 나갔습니다.`, 'warning');
+                }
+            }
+            
+            updatePlayerUI() {
+                const playerList = this.elements.playerList;
+                const waitingPlayerList = this.elements.waitingPlayerList;
+                const connectedCount = this.elements.connectedCount;
+                
+                // 플레이어 수 업데이트
+                connectedCount.textContent = this.players.size;
+                
+                // 플레이어 목록 업데이트
+                const updateList = (container) => {
+                    container.innerHTML = '';
+                    this.players.forEach(player => {
+                        const playerItem = document.createElement('div');
+                        playerItem.className = 'player-item';
+                        
+                        const playerName = document.createElement('span');
+                        playerName.className = 'player-name';
+                        playerName.textContent = player.name;
+                        playerName.style.color = player.color;
+                        
+                        const playerStatus = document.createElement('span');
+                        playerStatus.className = `player-status ${player.isHost ? 'host' : 'connected'}`;
+                        playerStatus.textContent = player.isHost ? '방장' : '연결됨';
+                        
+                        playerItem.appendChild(playerName);
+                        playerItem.appendChild(playerStatus);
+                        container.appendChild(playerItem);
+                    });
+                };
+                
+                updateList(playerList);
+                updateList(waitingPlayerList);
+            }
+            
+            checkGameReady() {
+                const canStart = this.players.size >= this.minPlayers;
+                const startBtn = this.elements.startGameBtn;
+                
+                startBtn.disabled = !canStart || !this.isHost;
+                
+                if (canStart && this.isHost && this.gameState === 'waiting') {
+                    this.elements.startGameContainer.style.display = 'block';
+                }
+            }
+            
+            setupUIEvents() {
+                // 게임 시작 버튼
+                this.elements.startGameBtn.addEventListener('click', () => {
+                    if (this.isHost && this.players.size >= this.minPlayers) {
+                        this.startGame();
+                    }
+                });
+                
+                // 키보드 테스트 (개발용)
+                document.addEventListener('keydown', (e) => {
+                    if (this.gameState !== 'playing') return;
+                    
+                    const force = 2;
+                    switch (e.key) {
+                        case 'ArrowLeft':
+                        case 'a':
+                            this.cakeBody.velocity.x = -force;
+                            break;
+                        case 'ArrowRight':
+                        case 'd':
+                            this.cakeBody.velocity.x = force;
+                            break;
+                        case 'ArrowUp':
+                        case 'w':
+                            this.cakeBody.velocity.z = -force;
+                            break;
+                        case 'ArrowDown':
+                        case 's':
+                            this.cakeBody.velocity.z = force;
+                            break;
+                    }
+                });
+            }
+            
+            startGame() {
+                console.log('🚀 게임 시작!');
+                this.gameState = 'playing';
+                this.startTime = Date.now();
+                
+                // UI 숨기기/표시
+                this.elements.waitingRoom.style.display = 'none';
+                this.elements.startGameContainer.style.display = 'none';
+                
+                // 타이머 시작
+                this.startGameTimer();
+                
+                // 레벨 초기화
+                this.initLevel();
+                
+                this.showMessage(`레벨 ${this.currentLevel} 시작!`, 'info');
+            }
+            
+            initLevel() {
+                console.log(`🎯 레벨 ${this.currentLevel} 초기화`);
+                
+                // 레벨 정보 업데이트
+                this.elements.currentLevel.textContent = this.currentLevel;
+                
+                // 기존 장애물 제거
+                this.clearObstacles();
+                
+                // 새 바닥 생성
+                this.createGround();
+                
+                // 케이크 위치 리셋
+                this.resetCakePosition();
+                
+                // 장애물 생성
+                this.createObstacles();
+            }
+            
+            clearObstacles() {
+                // Scene에서 장애물 제거
+                const objectsToRemove = [];
+                this.scene.traverse((object) => {
+                    if (object.userData && object.userData.isObstacle) {
+                        objectsToRemove.push(object);
+                    }
+                });
+                objectsToRemove.forEach(obj => this.scene.remove(obj));
+                
+                // Physics world에서도 제거
+                // (실제 구현에서는 장애물 body들을 추적해서 제거해야 함)
+            }
+            
+            resetCakePosition() {
+                this.cakeBody.position.set(0, 2, -20);
+                this.cakeBody.velocity.set(0, 0, 0);
+                this.cakeBody.angularVelocity.set(0, 0, 0);
+            }
+            
+            createObstacles() {
+                const config = this.levelConfig[this.currentLevel];
+                
+                // 간단한 장애물 생성 (예시)
+                for (let i = 0; i < config.obstacles; i++) {
+                    const x = (Math.random() - 0.5) * (config.roadWidth * 0.8);
+                    const z = -10 + i * -15;
+                    
+                    // 시각적 장애물
+                    const obstacleGeometry = new THREE.BoxGeometry(2, 2, 2);
+                    const obstacleMaterial = new THREE.MeshLambertMaterial({ color: 0xFF0000 });
+                    const obstacle = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+                    obstacle.position.set(x, 1, z);
+                    obstacle.userData = { isObstacle: true, speed: config.obstacleSpeed };
+                    obstacle.castShadow = true;
+                    this.scene.add(obstacle);
+                    
+                    // 물리 장애물
+                    const obstacleShape = new CANNON.Box(new CANNON.Vec3(1, 1, 1));
+                    const obstacleBody = new CANNON.Body({ mass: 10 });
+                    obstacleBody.addShape(obstacleShape);
+                    obstacleBody.position.set(x, 1, z);
+                    this.world.add(obstacleBody);
+                }
+            }
+            
+            startGameTimer() {
+                const config = this.levelConfig[this.currentLevel];
+                let timeLeft = config.timeLimit;
+                
+                this.gameTimer = setInterval(() => {
+                    timeLeft--;
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
+                    this.elements.gameTimer.textContent = 
+                        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    if (timeLeft <= 0) {
+                        this.gameOver(false);
+                    }
+                }, 1000);
+            }
+            
+            processSensorData(sensorData) {
+                if (this.gameState !== 'playing') return;
+                
+                const now = Date.now();
+                if (now - this.lastSensorUpdate < this.sensorUpdateInterval) return;
+                this.lastSensorUpdate = now;
+                
+                // 센서 데이터 저장
+                this.sensorData.set(sensorData.sensorId, sensorData.data);
+                
+                // 모든 플레이어의 센서 데이터 합산
+                this.updateCakeFromSensors();
+            }
+            
+            updateCakeFromSensors() {
+                if (this.sensorData.size === 0) return;
+                
+                let totalGamma = 0;
+                let totalBeta = 0;
+                let count = 0;
+                
+                // 모든 연결된 센서의 데이터 합산
+                this.sensorData.forEach((data) => {
+                    if (data.orientation) {
+                        totalGamma += data.orientation.gamma || 0;
+                        totalBeta += data.orientation.beta || 0;
+                        count++;
+                    }
+                });
+                
+                if (count > 0) {
+                    // 평균값 계산
+                    const avgGamma = totalGamma / count;
+                    const avgBeta = totalBeta / count;
+                    
+                    // 케이크에 힘 적용 (감도 조정)
+                    const sensitivity = 0.1;
+                    const forceX = avgGamma * sensitivity;
+                    const forceZ = avgBeta * sensitivity;
+                    
+                    // 최대 힘 제한
+                    const maxForce = 3;
+                    const clampedForceX = Math.max(-maxForce, Math.min(maxForce, forceX));
+                    const clampedForceZ = Math.max(-maxForce, Math.min(maxForce, forceZ));
+                    
+                    this.cakeBody.velocity.x = clampedForceX;
+                    this.cakeBody.velocity.z = clampedForceZ;
+                }
+            }
+            
+            startGameLoop() {
+                const animate = () => {
+                    requestAnimationFrame(animate);
+                    
+                    if (this.gameState === 'playing') {
+                        // 물리 시뮬레이션
+                        this.world.step(1/60);
+                        
+                        // 시각적 오브젝트 위치 동기화
+                        if (this.cake && this.cakeBody) {
+                            this.cake.position.copy(this.cakeBody.position);
+                            this.cake.quaternion.copy(this.cakeBody.quaternion);
+                        }
+                        
+                        // 장애물 움직임 업데이트
+                        this.updateObstacles();
+                        
+                        // 카메라 따라가기
+                        this.updateCamera();
+                        
+                        // 게임 진행 상황 체크
+                        this.checkGameProgress();
+                    }
+                    
+                    // 렌더링
+                    this.renderer.render(this.scene, this.camera);
+                };
+                
+                animate();
+            }
+            
+            updateObstacles() {
+                this.scene.traverse((object) => {
+                    if (object.userData && object.userData.isObstacle) {
+                        object.position.z += object.userData.speed;
+                        
+                        // 화면을 벗어난 장애물 재배치
+                        if (object.position.z > 30) {
+                            object.position.z = -60;
+                            const config = this.levelConfig[this.currentLevel];
+                            object.position.x = (Math.random() - 0.5) * (config.roadWidth * 0.8);
+                        }
+                    }
+                });
+            }
+            
+            updateCamera() {
+                if (this.cake) {
+                    // 케이크를 부드럽게 따라가는 카메라
+                    const targetX = this.cake.position.x;
+                    const targetZ = this.cake.position.z + 20;
+                    
+                    this.camera.position.x += (targetX - this.camera.position.x) * 0.05;
+                    this.camera.position.z += (targetZ - this.camera.position.z) * 0.05;
+                    this.camera.lookAt(this.cake.position);
+                }
+            }
+            
+            checkGameProgress() {
+                if (!this.cakeBody) return;
+                
+                // 진행률 계산
+                const progress = Math.max(0, (this.cakeBody.position.z + 20) / 50) * 100;
+                this.elements.progressPercent.textContent = Math.round(progress);
+                
+                // 레벨 클리어 체크
+                if (this.cakeBody.position.z >= 30) {
+                    this.levelComplete();
+                }
+                
+                // 케이크가 떨어진 경우
+                if (this.cakeBody.position.y < -5) {
+                    this.gameOver(false);
+                }
+            }
+            
+            levelComplete() {
+                console.log(`🎉 레벨 ${this.currentLevel} 클리어!`);
+                this.score += 1000 * this.currentLevel;
+                this.elements.currentScore.textContent = this.score;
+                
+                if (this.currentLevel < this.maxLevel) {
+                    this.currentLevel++;
+                    this.showMessage(`레벨 ${this.currentLevel - 1} 클리어! 다음 레벨로...`, 'success');
+                    
+                    setTimeout(() => {
+                        this.initLevel();
+                    }, 2000);
+                } else {
+                    this.gameComplete();
+                }
+            }
+            
+            gameComplete() {
+                console.log('🏆 게임 완료!');
+                this.gameState = 'completed';
+                
+                if (this.gameTimer) {
+                    clearInterval(this.gameTimer);
+                }
+                
+                this.showResultScreen(true);
+            }
+            
+            gameOver(success = false) {
+                console.log(success ? '🎉 게임 성공!' : '💥 게임 실패!');
+                this.gameState = success ? 'completed' : 'failed';
+                
+                if (this.gameTimer) {
+                    clearInterval(this.gameTimer);
+                }
+                
+                this.showResultScreen(success);
+            }
+            
+            showResultScreen(success) {
+                const resultScreen = this.elements.resultScreen;
+                const resultTitle = this.elements.resultTitle;
+                const resultStats = this.elements.resultStats;
+                
+                resultTitle.textContent = success ? '🏆 게임 완료!' : '💥 게임 오버';
+                resultTitle.className = `result-title ${success ? 'success' : 'fail'}`;
+                
+                const playTime = Math.round((Date.now() - this.startTime) / 1000);
+                const minutes = Math.floor(playTime / 60);
+                const seconds = playTime % 60;
+                
+                resultStats.innerHTML = `
+                    <div style="font-size: 20px; margin-bottom: 15px;">
+                        클리어한 레벨: ${success ? this.maxLevel : this.currentLevel - 1}/${this.maxLevel}
+                    </div>
+                    <div style="font-size: 16px; margin-bottom: 10px;">
+                        최종 점수: ${this.score.toLocaleString()}점
+                    </div>
+                    <div style="font-size: 16px; margin-bottom: 10px;">
+                        플레이 시간: ${minutes}:${seconds.toString().padStart(2, '0')}
+                    </div>
+                    <div style="font-size: 16px;">
+                        참여 플레이어: ${this.players.size}명
+                    </div>
+                `;
+                
+                resultScreen.style.display = 'flex';
+            }
+            
+            restart() {
+                console.log('🔄 게임 재시작');
+                
+                // 게임 상태 리셋
+                this.gameState = 'waiting';
+                this.currentLevel = 1;
+                this.score = 0;
+                this.startTime = 0;
+                
+                // UI 리셋
+                this.elements.currentLevel.textContent = '1';
+                this.elements.currentScore.textContent = '0';
+                this.elements.gameTimer.textContent = '--:--';
+                this.elements.progressPercent.textContent = '0';
+                this.elements.resultScreen.style.display = 'none';
+                this.elements.waitingRoom.style.display = 'flex';
+                
+                // 타이머 정리
+                if (this.gameTimer) {
+                    clearInterval(this.gameTimer);
+                    this.gameTimer = null;
+                }
+                
+                // 케이크 위치 리셋
+                this.resetCakePosition();
+                
+                // 장애물 정리
+                this.clearObstacles();
+                
+                // 게임 준비 상태 체크
+                this.checkGameReady();
+            }
+            
+            togglePause() {
+                if (this.gameState === 'playing') {
+                    this.gameState = 'paused';
+                    this.showMessage('게임 일시정지', 'info');
+                } else if (this.gameState === 'paused') {
+                    this.gameState = 'playing';
+                    this.hideMessage();
+                }
+            }
+            
+            showMessage(text, type = 'info') {
+                const messageBox = this.elements.messageBox;
+                messageBox.textContent = text;
+                messageBox.className = `game-message ${type}`;
+                messageBox.style.display = 'block';
+                
+                // 3초 후 자동 숨김
+                setTimeout(() => {
+                    this.hideMessage();
+                }, 3000);
+            }
+            
+            hideMessage() {
+                this.elements.messageBox.style.display = 'none';
+            }
+        }
+        
+        // 게임 시작
+        let game;
+        
+        // 페이지 로드 완료 후 게임 초기화
+        window.addEventListener('load', () => {
+            try {
+                game = new CakeDeliveryMultiplayerGame();
+                console.log('🎮 케이크 배달 멀티플레이어 게임 시작!');
+            } catch (error) {
+                console.error('❌ 게임 초기화 실패:', error);
+                alert('게임을 로드하는 중 오류가 발생했습니다. 페이지를 새로고침해주세요.');
+            }
+        });
+    </script>
+</body>
+</html>
