@@ -360,23 +360,33 @@ class DroneRacingGame {
      * 센서 연결 처리
      */
     onSensorConnected(data) {
-        console.log(`센서 연결됨: ${data.sensorId} (${data.connectedSensors}/${data.maxSensors})`);
+        console.log(`🔗 센서 연결됨: ${data.sensorId} (${data.connectedSensors}/${data.maxSensors})`);
+        console.log('📊 센서 연결 데이터:', data);
         
         // 게임 상태 관리자에 센서 연결 상태 업데이트
         if (this.gameStateManager) {
             this.gameStateManager.updateSensorConnection(data.sensorId, true);
+            console.log('✅ 게임 상태 관리자에 센서 연결 상태 업데이트 완료');
         }
         
         // UI 업데이트
         if (data.connectedSensors === 1) {
             // 첫 번째 센서 연결
-            console.log('첫 번째 플레이어 연결됨! 두 번째 플레이어를 기다리는 중...');
+            console.log('👤 첫 번째 플레이어 연결됨! 두 번째 플레이어를 기다리는 중...');
         } else if (data.connectedSensors === 2) {
             // 모든 센서 연결 완료 - 자동으로 게임 시작
-            console.log('모든 플레이어 연결 완료! 게임을 시작합니다.');
+            console.log('👥 모든 플레이어 연결 완료! 게임을 시작합니다.');
+            console.log('🎮 현재 게임 상태:', this.gameState);
+            console.log('🔧 게임 컴포넌트 초기화 상태:', {
+                ui: !!this.ui,
+                physics: !!this.physics,
+                effects: !!this.effects,
+                gameStateManager: !!this.gameStateManager
+            });
             
             // 1초 후 자동으로 경주 시작
             setTimeout(() => {
+                console.log('⏰ 1초 대기 완료, startRace() 호출');
                 this.startRace();
             }, 1000);
         }
@@ -709,51 +719,97 @@ class DroneRacingGame {
      * 경주 시작 (중복 초기화 방지)
      */
     async startRace() {
+        console.log('🏁 ===== startRace() 호출됨 =====');
+        console.log('🎮 현재 게임 상태:', this.gameState);
+        console.log('🔧 게임 초기화 상태:', this.isInitialized);
+        
         // 이미 게임이 시작되었으면 중복 실행 방지
         if (this.gameState === 'countdown' || this.gameState === 'racing') {
             console.warn('⚠️ 게임이 이미 시작되었습니다. 중복 실행을 방지합니다.');
+            console.warn('⚠️ 현재 상태:', this.gameState);
             return;
         }
         
-        console.log('🏁 경주 시작 준비');
+        console.log('🏁 경주 시작 준비 - 상태 검증 통과');
         
-        // UI 전환
-        document.getElementById('sessionPanel').classList.add('hidden');
-        document.getElementById('gameHUD').classList.remove('hidden');
-        document.getElementById('controlPanel').classList.remove('hidden');
+        // UI 전환 로그 강화
+        console.log('🖥️ UI 패널 전환 시작');
+        const sessionPanel = document.getElementById('sessionPanel');
+        const gameHUD = document.getElementById('gameHUD');
+        const controlPanel = document.getElementById('controlPanel');
+        
+        console.log('🖥️ UI 요소 존재 확인:', {
+            sessionPanel: !!sessionPanel,
+            gameHUD: !!gameHUD,
+            controlPanel: !!controlPanel
+        });
+        
+        if (sessionPanel) sessionPanel.classList.add('hidden');
+        if (gameHUD) gameHUD.classList.remove('hidden');
+        if (controlPanel) controlPanel.classList.remove('hidden');
+        
+        console.log('🖥️ UI 패널 전환 완료');
         
         // 게임 컴포넌트가 이미 초기화되었는지 확인
+        console.log('🔧 게임 컴포넌트 상태 확인:', {
+            ui: !!this.ui,
+            physics: !!this.physics,
+            effects: !!this.effects,
+            gameStateManager: !!this.gameStateManager,
+            performanceOptimizer: !!this.performanceOptimizer
+        });
+        
         if (!this.ui || !this.physics || !this.effects) {
             console.log('🔧 게임 컴포넌트 초기화 중...');
             await this.initializeGameComponents();
+            console.log('🔧 게임 컴포넌트 초기화 완료');
         } else {
             console.log('✅ 게임 컴포넌트가 이미 초기화되어 있습니다.');
         }
         
         // 센서 연결 모니터링 활성화
         this.sensorConnectionMonitor.isMonitoring = true;
+        console.log('📡 센서 연결 모니터링 활성화');
         
         // 게임 상태 설정
+        console.log('🎮 게임 상태를 countdown으로 변경');
         this.gameState = 'countdown';
+        console.log('🎮 게임 상태 변경 완료:', this.gameState);
         
         // 강제로 렌더링 한 번 실행하여 드론이 보이도록 함
+        console.log('🎨 강제 렌더링 실행');
         this.render();
+        console.log('🎨 강제 렌더링 완료');
+        
+        // 카운트다운 요소 확인
+        const countdownElement = document.getElementById('countdown');
+        console.log('⏰ 카운트다운 요소 확인:', {
+            exists: !!countdownElement,
+            isHidden: countdownElement?.classList.contains('hidden'),
+            display: countdownElement?.style.display,
+            visibility: countdownElement?.style.visibility
+        });
         
         // 게임 상태 관리자를 통한 카운트다운 시작
         if (this.gameStateManager) {
             console.log('🎮 게임 상태 관리자를 통한 카운트다운 시작');
+            console.log('🎮 게임 상태 관리자 상태:', this.gameStateManager.states);
             this.gameStateManager.setState(this.gameStateManager.states.COUNTDOWN);
+            console.log('🎮 게임 상태 관리자 카운트다운 설정 완료');
         } else {
-            console.log('🎮 직접 카운트다운 시작');
+            console.log('🎮 게임 상태 관리자가 없음 - 직접 카운트다운 시작');
             this.startCountdown();
         }
+        
+        console.log('🏁 ===== startRace() 완료 =====');
     }
     
     /**
      * 카운트다운 시작 (UI 클래스를 통해 개선)
      */
     startCountdown() {
-        console.log('⏰ 카운트다운 시작');
+        console.log('⏰ ===== startCountdown() 호출됨 =====');
+        console.log('⏰ UI 시스템 상태:', !!this.ui);
         
         // UI가 초기화되지 않았으면 직접 처리
         if (!this.ui) {
@@ -762,74 +818,175 @@ class DroneRacingGame {
             return;
         }
         
+        console.log('⏰ UI 시스템을 통한 카운트다운 시작');
         let count = 3;
         
         const countdown = () => {
+            console.log(`⏰ 카운트다운 함수 실행 - count: ${count}`);
+            
             if (count > 0) {
-                console.log(`⏰ 카운트다운: ${count}`);
-                this.ui.showCountdown(count);
+                console.log(`⏰ 카운트다운 표시: ${count}`);
+                console.log('⏰ UI.showCountdown() 호출 전');
+                
+                try {
+                    this.ui.showCountdown(count);
+                    console.log('⏰ UI.showCountdown() 호출 성공');
+                } catch (error) {
+                    console.error('⏰ UI.showCountdown() 호출 실패:', error);
+                    // 폴백으로 직접 처리
+                    this.directCountdown();
+                    return;
+                }
+                
                 count--;
+                console.log(`⏰ 다음 카운트다운을 위해 1초 대기, 다음 count: ${count}`);
                 setTimeout(countdown, 1000);
             } else {
                 console.log('🚀 GO! 경주 시작!');
-                this.ui.showCountdown(0); // GO! 표시
+                console.log('🚀 UI.showCountdown(0) 호출 - GO! 표시');
+                
+                try {
+                    this.ui.showCountdown(0); // GO! 표시
+                    console.log('🚀 GO! 표시 성공');
+                } catch (error) {
+                    console.error('🚀 GO! 표시 실패:', error);
+                }
                 
                 // 1.5초 후 게임 시작
+                console.log('🚀 1.5초 후 게임 시작 타이머 설정');
                 setTimeout(() => {
+                    console.log('🚁 게임 상태를 racing으로 변경');
                     this.gameState = 'racing';
                     this.raceStartTime = Date.now();
-                    console.log('🚁 경주 시작!');
+                    console.log('🚁 경주 시작! 게임 상태:', this.gameState);
+                    console.log('🚁 경주 시작 시간:', this.raceStartTime);
                 }, 1500);
             }
         };
         
+        console.log('⏰ 카운트다운 함수 첫 실행');
         countdown();
+        console.log('⏰ ===== startCountdown() 완료 =====');
     }
     
     /**
      * 직접 카운트다운 처리 (UI 시스템 없이)
      */
     directCountdown() {
+        console.log('⏰ ===== directCountdown() 호출됨 =====');
+        
         const countdownElement = document.getElementById('countdown');
+        console.log('⏰ 카운트다운 요소 검색 결과:', {
+            element: !!countdownElement,
+            id: countdownElement?.id,
+            className: countdownElement?.className,
+            innerHTML: countdownElement?.innerHTML
+        });
+        
         if (!countdownElement) {
             console.error('❌ 카운트다운 요소를 찾을 수 없습니다');
+            console.error('❌ DOM에서 #countdown 요소가 존재하지 않습니다');
+            
+            // DOM 전체에서 countdown 관련 요소 찾기
+            const allElements = document.querySelectorAll('*[id*="countdown"], *[class*="countdown"]');
+            console.log('❌ countdown 관련 요소들:', Array.from(allElements).map(el => ({
+                tagName: el.tagName,
+                id: el.id,
+                className: el.className
+            })));
+            
             return;
         }
         
         console.log('⏰ 직접 카운트다운 시작');
+        console.log('⏰ 카운트다운 요소 초기 상태:', {
+            display: countdownElement.style.display,
+            visibility: countdownElement.style.visibility,
+            opacity: countdownElement.style.opacity,
+            zIndex: countdownElement.style.zIndex,
+            classList: Array.from(countdownElement.classList)
+        });
+        
+        // 카운트다운 요소 표시 설정
         countdownElement.classList.remove('hidden');
         countdownElement.style.display = 'block';
         countdownElement.style.visibility = 'visible';
         countdownElement.style.opacity = '1';
         countdownElement.style.zIndex = '2000';
+        countdownElement.style.position = 'fixed';
+        countdownElement.style.top = '50%';
+        countdownElement.style.left = '50%';
+        countdownElement.style.transform = 'translate(-50%, -50%)';
+        countdownElement.style.fontSize = '120px';
+        countdownElement.style.fontWeight = 'bold';
+        countdownElement.style.textAlign = 'center';
+        countdownElement.style.pointerEvents = 'none';
+        
+        console.log('⏰ 카운트다운 요소 스타일 설정 완료');
+        console.log('⏰ 카운트다운 요소 최종 상태:', {
+            display: countdownElement.style.display,
+            visibility: countdownElement.style.visibility,
+            opacity: countdownElement.style.opacity,
+            zIndex: countdownElement.style.zIndex,
+            classList: Array.from(countdownElement.classList)
+        });
         
         let count = 3;
         
         const countdown = () => {
+            console.log(`⏰ ===== 카운트다운 함수 실행 - count: ${count} =====`);
+            
             if (count > 0) {
-                console.log(`⏰ 카운트다운: ${count}`);
+                console.log(`⏰ 카운트다운 숫자 표시: ${count}`);
+                
+                // 텍스트 설정
                 countdownElement.textContent = count;
                 countdownElement.style.color = '#ffaa00';
                 countdownElement.style.textShadow = '0 0 30px #ffaa00, 0 0 60px #ffaa00';
+                
+                console.log(`⏰ 카운트다운 ${count} 표시 완료`);
+                console.log(`⏰ 요소 내용:`, countdownElement.textContent);
+                console.log(`⏰ 요소 색상:`, countdownElement.style.color);
+                
                 count--;
+                console.log(`⏰ 다음 카운트다운을 위해 1초 대기, 다음 count: ${count}`);
                 setTimeout(countdown, 1000);
             } else {
-                console.log('🚀 GO! 경주 시작!');
+                console.log('🚀 ===== GO! 경주 시작! =====');
+                
+                // GO! 텍스트 설정
                 countdownElement.textContent = 'GO!';
                 countdownElement.style.color = '#00ff88';
                 countdownElement.style.textShadow = '0 0 30px #00ff88, 0 0 60px #00ff88';
                 
+                console.log('🚀 GO! 텍스트 표시 완료');
+                console.log('🚀 요소 내용:', countdownElement.textContent);
+                console.log('🚀 요소 색상:', countdownElement.style.color);
+                
+                // 1.5초 후 게임 시작
+                console.log('🚀 1.5초 후 게임 시작 및 카운트다운 숨김 타이머 설정');
                 setTimeout(() => {
+                    console.log('🚁 ===== 게임 시작 처리 =====');
+                    
+                    // 카운트다운 숨김
                     countdownElement.classList.add('hidden');
                     countdownElement.style.display = 'none';
+                    console.log('🚁 카운트다운 요소 숨김 완료');
+                    
+                    // 게임 상태 변경
+                    console.log('🚁 게임 상태 변경 전:', this.gameState);
                     this.gameState = 'racing';
                     this.raceStartTime = Date.now();
-                    console.log('🚁 경주 시작!');
+                    console.log('🚁 게임 상태 변경 후:', this.gameState);
+                    console.log('🚁 경주 시작 시간:', this.raceStartTime);
+                    console.log('🚁 ===== 경주 시작 완료! =====');
                 }, 1500);
             }
         };
         
+        console.log('⏰ 카운트다운 함수 첫 실행 시작');
         countdown();
+        console.log('⏰ ===== directCountdown() 완료 =====');
     }
     
     /**
@@ -1998,6 +2155,38 @@ class DroneRacingGame {
         const now = performance.now();
         const deltaTime = this.lastFrameTime ? (now - this.lastFrameTime) / 1000 : 1/60;
         this.lastFrameTime = now;
+        
+        // 프레임 카운터 증가
+        this.frameCount = (this.frameCount || 0) + 1;
+        
+        // 게임 상태 디버그 로그 (매 300프레임마다 = 약 5초마다)
+        if (this.frameCount % 300 === 0) {
+            console.log('🎮 게임 상태 디버그:', {
+                gameState: this.gameState,
+                isPaused: this.isPaused,
+                isInitialized: this.isInitialized,
+                frameCount: this.frameCount,
+                components: {
+                    ui: !!this.ui,
+                    physics: !!this.physics,
+                    effects: !!this.effects,
+                    gameStateManager: !!this.gameStateManager
+                }
+            });
+            
+            // 카운트다운 상태일 때 추가 정보
+            if (this.gameState === 'countdown') {
+                const countdownElement = document.getElementById('countdown');
+                console.log('⏰ 카운트다운 상태 디버그:', {
+                    element: !!countdownElement,
+                    isHidden: countdownElement?.classList.contains('hidden'),
+                    display: countdownElement?.style.display,
+                    visibility: countdownElement?.style.visibility,
+                    opacity: countdownElement?.style.opacity,
+                    textContent: countdownElement?.textContent
+                });
+            }
+        }
         
         // 물리 시뮬레이션 업데이트
         if (this.physics && this.gameState === 'racing' && !this.isPaused) {

@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>케이크 배달 게임 테스트 실행기</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 2.5em;
+            font-weight: 300;
+        }
+        
+        .header p {
+            margin: 10px 0 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .controls {
+            padding: 30px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 150px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+            color: white;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+            color: white;
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #17a2b8 0%, #117a8b 100%);
+            color: white;
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%);
+            color: #212529;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .results {
+            padding: 30px;
+            min-height: 400px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #6c757d;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #007bff;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .test-summary {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #007bff;
+        }
+        
+        .test-summary h3 {
+            margin: 0 0 15px 0;
+            color: #495057;
+        }
+        
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 15px;
+            border-radius: 8px;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #6c757d;
+            font-size: 0.9em;
+        }
+        
+        .success { color: #28a745; }
+        .failure { color: #dc3545; }
+        .skipped { color: #ffc107; }
+        .total { color: #007bff; }
+        
+        .test-details {
+            margin-top: 20px;
+        }
+        
+        .test-suite {
+            margin-bottom: 25px;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .suite-header {
+            background: #495057;
+            color: white;
+            padding: 15px 20px;
+            font-weight: 500;
+            font-size: 1.1em;
+        }
+        
+        .test-case {
+            padding: 12px 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .test-case:last-child {
+            border-bottom: none;
+        }
+        
+        .test-status {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        
+        .status-pass {
+            background: #28a745;
+            color: white;
+        }
+        
+        .status-fail {
+            background: #dc3545;
+            color: white;
+        }
+        
+        .status-skip {
+            background: #ffc107;
+            color: #212529;
+        }
+        
+        .test-name {
+            flex: 1;
+        }
+        
+        .test-error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #721c24;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #007bff, #28a745);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧪 케이크 배달 게임 테스트</h1>
+            <p>물리 시뮬레이션, 센서 데이터 처리, UI/UX 컴포넌트 테스트</p>
+        </div>
+        
+        <div class="controls">
+            <div class="button-group">
+                <button id="run-all" class="btn-primary">🚀 모든 테스트 실행</button>
+                <button id="run-physics" class="btn-success">⚡ 물리 테스트</button>
+                <button id="run-sensor" class="btn-info">📱 센서 테스트</button>
+                <button id="run-ui" class="btn-warning">🎨 UI 테스트</button>
+            </div>
+            <div class="button-group" style="margin-top: 15px;">
+                <button id="run-performance" class="btn-info">🚀 성능 테스트</button>
+                <button id="run-compatibility" class="btn-warning">🌐 호환성 테스트</button>
+            </div>
+        </div>
+        
+        <div class="results" id="results">
+            <div class="loading" style="display: none;" id="loading">
+                <div class="spinner"></div>
+                <p>테스트를 실행하고 있습니다...</p>
+            </div>
+            
+            <div id="initial-message">
+                <p style="text-align: center; color: #6c757d; font-size: 1.2em; margin-top: 100px;">
+                    위의 버튼을 클릭하여 테스트를 시작하세요.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 필수 라이브러리 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.20.0/cannon.min.js"></script>
+    
+    <!-- 게임 시스템 -->
+    <script src="../core/GameEngine.js"></script>
+    <script src="../physics/PhysicsWorldManager.js"></script>
+    <script src="../physics/CakePhysicsSystem.js"></script>
+    <script src="../physics/CollisionDetectionSystem.js"></script>
+    <script src="../physics/EnvironmentalPhysics.js"></script>
+    <script src="../input/SensorSmoothingSystem.js"></script>
+    <script src="../input/SensorPredictionSystem.js"></script>
+    <script src="../ui/MobileTouchInterface.js"></script>
+    <script src="../ui/AccessibilitySystem.js"></script>
+    
+    <!-- 테스트 프레임워크 -->
+    <script src="TestFramework.js"></script>
+    
+    <!-- 테스트 스위트 -->
+    <script src="PhysicsTests.js"></script>
+    <script src="SensorTests.js"></script>
+    <script src="UITests.js"></script>
+    <script src="PerformanceTests.js"></script>
+    <script src="CompatibilityTests.js"></script>
+    
+    <script>
+        class TestRunner {
+            constructor() {
+                this.testFramework = new TestFramework();
+                this.setupEventListeners();
+                this.currentTests = [];
+            }
+            
+            setupEventListeners() {
+                document.getElementById('run-all').addEventListener('click', () => this.runAllTests());
+                document.getElementById('run-physics').addEventListener('click', () => this.runPhysicsTests());
+                document.getElementById('run-sensor').addEventListener('click', () => this.runSensorTests());
+                document.getElementById('run-ui').addEventListener('click', () => this.runUITests());
+                document.getElementById('run-performance').addEventListener('click', () => this.runPerformanceTests());
+                document.getElementById('run-compatibility').addEventListener('click', () => this.runCompatibilityTests());
+            }
+            
+            async runAllTests() {
+                this.showLoading();
+                this.disableButtons();
+                
+                try {
+                    // 모든 테스트 실행
+                    const results = await this.testFramework.runAllTests();
+                    this.displayResults(results, '모든 테스트');
+                } catch (error) {
+                    this.displayError(error);
+                } finally {
+                    this.enableButtons();
+                }
+            }
+            
+            async runPhysicsTests() {
+                this.showLoading();
+                this.disableButtons();
+                
+                try {
+                    // 물리 테스트만 필터링하여 실행
+                    const physicsTests = this.testFramework.tests.filter(test => 
+                        test.suite && test.suite.includes('물리')
+                    );
+                    
+                    const results = await this.testFramework.runFilteredTests(physicsTests);
+                    this.displayResults(results, '물리 시뮬레이션 테스트');
+                } catch (error) {
+                    this.displayError(error);
+                } finally {
+                    this.enableButtons();
+                }
+            }
+            
+            async runSensorTests() {
+                this.showLoading();
+                this.disableButtons();
+                
+                try {
+                    // 센서 테스트만 필터링하여 실행
+                    const sensorTests = this.testFramework.tests.filter(test => 
+                        test.suite && test.suite.includes('센서')
+                    );
+                    
+                    const results = await this.testFramework.runFilteredTests(sensorTests);
+                    this.displayResults(results, '센서 데이터 처리 테스트');
+                } catch (error) {
+                    this.displayError(error);
+                } finally {
+                    this.enableButtons();
+                }
+            }
+            
+            async runUITests() {
+                this.showLoading();
+                this.disableButtons();
+                
+                try {
+                    // UI 테스트만 필터링하여 실행
+                    const uiTests = this.testFramework.tests.filter(test => 
+                        test.suite && test.suite.includes('UI')
+                    );
+                    
+                    const results = await this.testFramework.runFilteredTests(uiTests);
+                    this.displayResults(results, 'UI/UX 컴포넌트 테스트');
+                } catch (error) {
+                    this.displayError(error);
+                } finally {
+                    this.enableButtons();
+                }
+            }
+            
+            async runPerformanceTests() {
+                this.showLoading();
+                this.disableButtons();
+                
+                try {
+                    // 성능 테스트만 필터링하여 실행
+                    const performanceTests = this.testFramework.tests.filter(test => 
+                        test.suite && test.suite.includes('성능')
+                    );
+                    
+                    const results = await this.testFramework.runFilteredTests(performanceTests);
+                    this.displayResults(results, '성능 테스트');
+                } catch (error) {
+                    this.displayError(error);
+                } finally {
+                    this.enableButtons();
+                }
+            }
+            
+            async runCompatibilityTests() {
+                this.showLoading();
+                this.disableButtons();
+                
+                try {
+                    // 호환성 테스트만 필터링하여 실행
+                    const compatibilityTests = this.testFramework.tests.filter(test => 
+                        test.suite && (test.suite.includes('호환성') || test.suite.includes('접근성') || test.suite.includes('네트워크'))
+                    );
+                    
+                    const results = await this.testFramework.runFilteredTests(compatibilityTests);
+                    this.displayResults(results, '브라우저 호환성 및 접근성 테스트');
+                } catch (error) {
+                    this.displayError(error);
+                } finally {
+                    this.enableButtons();
+                }
+            }
+            
+            showLoading() {
+                document.getElementById('initial-message').style.display = 'none';
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('results').innerHTML = '';
+                document.getElementById('results').appendChild(document.getElementById('loading'));
+            }
+            
+            disableButtons() {
+                const buttons = document.querySelectorAll('button');
+                buttons.forEach(btn => btn.disabled = true);
+            }
+            
+            enableButtons() {
+                const buttons = document.querySelectorAll('button');
+                buttons.forEach(btn => btn.disabled = false);
+            }
+            
+            displayResults(results, testType) {
+                document.getElementById('loading').style.display = 'none';
+                
+                const resultsContainer = document.getElementById('results');
+                resultsContainer.innerHTML = this.generateResultsHTML(results, testType);
+            }
+            
+            displayError(error) {
+                document.getElementById('loading').style.display = 'none';
+                
+                const resultsContainer = document.getElementById('results');
+                resultsContainer.innerHTML = `
+                    <div class="test-error">
+                        <h3>테스트 실행 오류</h3>
+                        <p>${error.message}</p>
+                        <pre>${error.stack || ''}</pre>
+                    </div>
+                `;
+            }
+            
+            generateResultsHTML(results, testType) {
+                const passRate = results.total > 0 ? Math.round((results.passed / results.total) * 100) : 0;
+                
+                let html = `
+                    <div class="test-summary">
+                        <h3>${testType} 결과</h3>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${passRate}%"></div>
+                        </div>
+                        <div class="summary-stats">
+                            <div class="stat-item">
+                                <div class="stat-number total">${results.total}</div>
+                                <div class="stat-label">총 테스트</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number success">${results.passed}</div>
+                                <div class="stat-label">통과</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number failure">${results.failed}</div>
+                                <div class="stat-label">실패</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-number skipped">${results.skipped}</div>
+                                <div class="stat-label">건너뜀</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                if (results.testDetails && results.testDetails.length > 0) {
+                    html += '<div class="test-details">';
+                    
+                    // 스위트별로 그룹화
+                    const suiteGroups = {};
+                    results.testDetails.forEach(test => {
+                        if (!suiteGroups[test.suite]) {
+                            suiteGroups[test.suite] = [];
+                        }
+                        suiteGroups[test.suite].push(test);
+                    });
+                    
+                    // 각 스위트 렌더링
+                    for (const [suiteName, tests] of Object.entries(suiteGroups)) {
+                        html += `
+                            <div class="test-suite">
+                                <div class="suite-header">${suiteName}</div>
+                        `;
+                        
+                        tests.forEach(test => {
+                            const statusClass = test.status === 'passed' ? 'status-pass' : 
+                                              test.status === 'failed' ? 'status-fail' : 'status-skip';
+                            const statusIcon = test.status === 'passed' ? '✓' : 
+                                             test.status === 'failed' ? '✗' : '⊘';
+                            
+                            html += `
+                                <div class="test-case">
+                                    <div class="test-status ${statusClass}">${statusIcon}</div>
+                                    <div class="test-name">${test.name}</div>
+                                </div>
+                            `;
+                            
+                            if (test.error) {
+                                html += `<div class="test-error">${test.error}</div>`;
+                            }
+                        });
+                        
+                        html += '</div>';
+                    }
+                    
+                    html += '</div>';
+                }
+                
+                return html;
+            }
+        }
+        
+        // 테스트 러너 초기화
+        const testRunner = new TestRunner();
+        
+        // 페이지 로드 완료 후 테스트 프레임워크 준비
+        window.addEventListener('load', () => {
+            console.log('🧪 테스트 환경 준비 완료');
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GLB 모델 분석기</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1a1a1a;
+            color: #00ff00;
+            padding: 20px;
+            margin: 0;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #00ff00;
+            padding-bottom: 20px;
+        }
+        
+        .analysis-section {
+            background: #2a2a2a;
+            border: 1px solid #00ff00;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .model-name {
+            color: #ffff00;
+            font-size: 1.5em;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        
+        .loading {
+            color: #ff6600;
+            font-style: italic;
+        }
+        
+        .error {
+            color: #ff0000;
+            font-weight: bold;
+        }
+        
+        .success {
+            color: #00ff00;
+        }
+        
+        .info {
+            color: #00ccff;
+        }
+        
+        .warning {
+            color: #ffaa00;
+        }
+        
+        pre {
+            background: #1a1a1a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            padding: 15px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        
+        button {
+            background: #00ff00;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #00cc00;
+        }
+        
+        .progress {
+            width: 100%;
+            height: 20px;
+            background: #333;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 10px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #ffff00);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 GLB 모델 분석기</h1>
+            <p>케이크 배달 게임의 GLB 모델들을 상세 분석합니다</p>
+            <button onclick="startAnalysis()">🚀 분석 시작</button>
+            <button onclick="clearResults()">🗑️ 결과 지우기</button>
+        </div>
+        
+        <div id="progressSection" style="display: none;">
+            <h3>분석 진행률</h3>
+            <div class="progress">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div id="progressText">준비 중...</div>
+        </div>
+        
+        <div id="resultsContainer"></div>
+    </div>
+    
+    <!-- Three.js 및 GLTFLoader -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/examples/js/loaders/GLTFLoader.js"></script>
+    
+    <!-- GLB 분석기 -->
+    <script src="js/tools/GLBAnalyzer.js"></script>
+    
+    <script>
+        let analyzer = null;
+        let analysisInProgress = false;
+        
+        // 분석할 GLB 모델들
+        const modelsToAnalyze = [
+            { path: 'anim/glbs/idle.glb', name: 'idle' },
+            { path: 'anim/glbs/original.glb', name: 'original' },
+            { path: 'anim/glbs/pulling.glb', name: 'pulling' },
+            { path: 'anim/glbs/pushing.glb', name: 'pushing' }
+        ];
+        
+        async function startAnalysis() {
+            if (analysisInProgress) {
+                console.log('⚠️ 분석이 이미 진행 중입니다.');
+                return;
+            }
+            
+            analysisInProgress = true;
+            analyzer = new GLBAnalyzer();
+            
+            const progressSection = document.getElementById('progressSection');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            const resultsContainer = document.getElementById('resultsContainer');
+            
+            progressSection.style.display = 'block';
+            resultsContainer.innerHTML = '';
+            
+            console.log('🚀 GLB 모델 분석 시작');
+            
+            for (let i = 0; i < modelsToAnalyze.length; i++) {
+                const model = modelsToAnalyze[i];
+                const progress = ((i + 1) / modelsToAnalyze.length) * 100;
+                
+                progressBar.style.width = `${progress}%`;
+                progressText.textContent = `분석 중: ${model.name} (${i + 1}/${modelsToAnalyze.length})`;
+                
+                // 결과 섹션 생성
+                const section = document.createElement('div');
+                section.className = 'analysis-section';
+                section.id = `analysis-${model.name}`;
+                section.innerHTML = `
+                    <div class="model-name">📦 ${model.name.toUpperCase()}</div>
+                    <div class="loading">분석 중...</div>
+                `;
+                resultsContainer.appendChild(section);
+                
+                try {
+                    const analysis = await analyzer.analyzeGLB(model.path, model.name);
+                    displayAnalysisResult(model.name, analysis);
+                } catch (error) {
+                    displayAnalysisError(model.name, error);
+                }
+            }
+            
+            progressText.textContent = '분석 완료!';
+            analysisInProgress = false;
+            
+            // 종합 분석 결과 표시
+            displaySummary();
+            
+            console.log('✅ 모든 GLB 모델 분석 완료');
+        }
+        
+        function displayAnalysisResult(modelName, analysis) {
+            const section = document.getElementById(`analysis-${modelName}`);
+            
+            const html = `
+                <div class="model-name">📦 ${modelName.toUpperCase()}</div>
+                <div class="success">✅ 분석 완료</div>
+                
+                <h4 class="info">📊 기본 정보</h4>
+                <pre>
+씬 이름: ${analysis.scene.name}
+오브젝트 수: ${analysis.scene.objects.length}
+총 버텍스: ${analysis.geometry.totalVertices.toLocaleString()}
+총 삼각형: ${analysis.geometry.totalTriangles.toLocaleString()}
+재질 수: ${analysis.materials.count}
+텍스처 수: ${analysis.textures.count}
+예상 메모리: ${(analysis.textures.totalMemoryEstimate / 1024 / 1024).toFixed(2)}MB
+                </pre>
+                
+                <h4 class="info">🎬 애니메이션 정보</h4>
+                <pre>
+애니메이션 수: ${analysis.animations.count}
+${analysis.animations.animations.map(anim => 
+    `- ${anim.name}: ${anim.duration.toFixed(2)}초, ${anim.trackCount}개 트랙`
+).join('\n')}
+                </pre>
+                
+                <h4 class="info">🎨 재질 정보</h4>
+                <pre>
+${analysis.materials.materials.map(mat => 
+    `- ${mat.name} (${mat.type})${mat.pbr ? `\n  PBR: 거칠기=${mat.pbr.roughness}, 금속성=${mat.pbr.metalness}` : ''}`
+).join('\n')}
+                </pre>
+                
+                <h4 class="info">🦴 본(Bone) 정보</h4>
+                <pre>
+스켈레톤 있음: ${analysis.bones.hasSkeleton ? '예' : '아니오'}
+본 개수: ${analysis.bones.boneCount}
+${analysis.bones.bones.slice(0, 5).map(bone => 
+    `- ${bone.name}: 위치[${bone.position.map(v => v.toFixed(2)).join(', ')}]`
+).join('\n')}
+${analysis.bones.bones.length > 5 ? `... 및 ${analysis.bones.bones.length - 5}개 더` : ''}
+                </pre>
+                
+                <h4 class="info">📏 크기 정보</h4>
+                <pre>
+바운딩 박스 크기: ${analysis.boundingBox.size.map(v => v.toFixed(2)).join(' x ')}
+중심점: ${analysis.boundingBox.center.map(v => v.toFixed(2)).join(', ')}
+부피: ${analysis.boundingBox.volume.toFixed(2)}
+                </pre>
+                
+                <h4 class="info">🏗️ 계층 구조</h4>
+                <pre>${formatHierarchy(analysis.scene.hierarchy)}</pre>
+                
+                ${analysis.recommendations.length > 0 ? `
+                <h4 class="warning">💡 최적화 권장사항</h4>
+                <pre>
+${analysis.recommendations.map(rec => {
+    const icon = rec.severity === 'warning' ? '⚠️' : 'ℹ️';
+    return `${icon} ${rec.message}`;
+}).join('\n')}
+                </pre>
+                ` : ''}
+            `;
+            
+            section.innerHTML = html;
+        }
+        
+        function displayAnalysisError(modelName, error) {
+            const section = document.getElementById(`analysis-${modelName}`);
+            section.innerHTML = `
+                <div class="model-name">📦 ${modelName.toUpperCase()}</div>
+                <div class="error">❌ 분석 실패</div>
+                <pre class="error">오류: ${error.message}</pre>
+            `;
+        }
+        
+        function formatHierarchy(hierarchy, indent = 0) {
+            const spaces = '  '.repeat(indent);
+            let result = `${spaces}${hierarchy.name} (${hierarchy.type})\n`;
+            
+            hierarchy.children.forEach(child => {
+                result += formatHierarchy(child, indent + 1);
+            });
+            
+            return result;
+        }
+        
+        function displaySummary() {
+            if (!analyzer) return;
+            
+            const allAnalysis = analyzer.getAllAnalysis();
+            const summary = document.createElement('div');
+            summary.className = 'analysis-section';
+            summary.innerHTML = `
+                <div class="model-name">📋 종합 분석 결과</div>
+                <div class="success">총 ${allAnalysis.size}개 모델 분석 완료</div>
+                
+                <h4 class="info">📊 통계</h4>
+                <pre>
+총 버텍스: ${Array.from(allAnalysis.values()).reduce((sum, a) => sum + a.geometry.totalVertices, 0).toLocaleString()}
+총 삼각형: ${Array.from(allAnalysis.values()).reduce((sum, a) => sum + a.geometry.totalTriangles, 0).toLocaleString()}
+총 애니메이션: ${Array.from(allAnalysis.values()).reduce((sum, a) => sum + a.animations.count, 0)}
+총 예상 메모리: ${(Array.from(allAnalysis.values()).reduce((sum, a) => sum + a.textures.totalMemoryEstimate, 0) / 1024 / 1024).toFixed(2)}MB
+                </pre>
+                
+                <h4 class="info">🎯 개발 권장사항</h4>
+                <pre>
+1. 애니메이션 모델들은 스켈레톤 애니메이션을 사용합니다.
+2. 모든 모델이 적절한 폴리곤 수를 가지고 있습니다.
+3. PBR 재질을 활용하여 고품질 렌더링이 가능합니다.
+4. LOD 시스템 구현을 고려해보세요.
+5. 텍스처 압축으로 메모리 사용량을 줄일 수 있습니다.
+                </pre>
+            `;
+            
+            document.getElementById('resultsContainer').appendChild(summary);
+        }
+        
+        function clearResults() {
+            document.getElementById('resultsContainer').innerHTML = '';
+            document.getElementById('progressSection').style.display = 'none';
+            analysisInProgress = false;
+            analyzer = null;
+            console.log('🗑️ 분석 결과 지워짐');
+        }
+        
+        // 페이지 로드 시 자동 분석 시작
+        window.addEventListener('load', () => {
+            console.log('🔍 GLB 모델 분석기 준비 완료');
+            console.log('분석을 시작하려면 "분석 시작" 버튼을 클릭하세요.');
+        });
+    </script>
+</body>
+</html>

@@ -1,25 +1,48 @@
-
 {
   "id": "cake-delivery",
-  "title": "🎂 아슬아슬 케이크 배달단",
-  "description": "두 명이 힘을 합쳐 케이크가 떨어지지 않게 조심조심 목적지까지 배달하는 3D 협동 게임입니다. 환상의 호흡을 보여주세요!",
-  "category": "dual",
+  "title": "🎂 케이크 배달 게임 - 상용 버전",
+  "description": "고급 물리 엔진과 3D 그래픽을 활용한 케이크 배달 시뮬레이션 게임<br>• PBR 렌더링과 실시간 조명<br>• 고급 물리 시뮬레이션<br>• 지능형 센서 데이터 처리<br>• 몰입감 있는 3D 환경",
+  "category": "solo",
   "icon": "🎂",
-  "version": "1.0.0",
-  "author": "Gemini",
-  "sensors": ["orientation"],
-  "maxPlayers": 2,
+  "version": "2.0.0",
+  "author": "Sensor Game Hub - Enhanced Edition",
+  "sensors": ["orientation", "motion", "gyroscope"],
+  "maxPlayers": 1,
   "difficulty": "medium",
   "status": "active",
   "featured": true,
-  "tags": ["3D", "협동", "물리", "코믹"],
+  "tags": ["3d", "physics", "pbr", "advanced", "simulation", "cake", "delivery"],
+  "features": [
+    "🎨 PBR 재질 시스템",
+    "💡 고급 조명 효과",
+    "🌍 실시간 물리 시뮬레이션",
+    "📱 지능형 센서 처리",
+    "🎬 3D 캐릭터 애니메이션",
+    "💥 고급 충돌 감지",
+    "🌪️ 환경 물리 효과",
+    "✨ 파티클 시스템"
+  ],
   "instructions": [
-    "두 명의 플레이어가 각각 모바일 기기를 연결합니다.",
-    "휴대폰을 기울여 자신의 캐릭터를 움직이세요.",
-    "케이크가 기울어지지 않도록 서로의 속도와 방향을 맞추세요.",
-    "장애물을 피해 목적지까지 케이크를 무사히 배달하면 승리합니다!"
+    "기기를 기울여 케이크를 정밀하게 조작하세요",
+    "다양한 케이크 타입별 고유한 물리 특성을 경험하세요",
+    "환경 효과(바람, 중력 변화)에 대응하세요",
+    "케이크 손상을 최소화하며 목표까지 배달하세요"
   ],
   "controls": {
-    "tilt": "캐릭터 이동 (상하좌우)"
+    "tilt": "정밀 케이크 조작",
+    "shake": "특수 물리 효과",
+    "rotation": "3D 시점 조절"
+  },
+  "systemRequirements": {
+    "browser": "Chrome 90+, Safari 14+, Firefox 88+",
+    "sensors": "DeviceOrientationEvent, DeviceMotionEvent",
+    "webgl": "WebGL 2.0 지원 필요",
+    "memory": "최소 512MB RAM 권장"
+  },
+  "performance": {
+    "targetFPS": 60,
+    "adaptiveQuality": true,
+    "memoryOptimized": true,
+    "batteryEfficient": true
   }
 }
