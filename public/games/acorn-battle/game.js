@@ -225,10 +225,10 @@ class AcornBattleGame {
         if (qrContainer) {
             // 세션 코드 추출 (URL에서)
             const sessionCode = this.extractSessionCode(url);
-            
+
             // 외부 QR API를 사용하여 실제 QR 코드 생성
             const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
-            
+
             qrContainer.innerHTML = `
                 <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
                     <div style="margin-bottom: 10px;">
