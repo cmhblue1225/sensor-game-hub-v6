@@ -184,16 +184,16 @@ class AcornBattleGame {
                     if (!error) {
                         canvas.style.width = '150px';
                         canvas.style.height = '150px';
-                        
+
                         // QR 컨테이너에 캔버스 추가
                         const qrContainer = document.querySelector('.qr-container');
                         if (qrContainer) {
                             qrContainer.innerHTML = '';
                             qrContainer.appendChild(canvas);
                         }
-                        
+
                         console.info('QR 코드 생성 성공');
-                        
+
                         // 폴백 숨기기
                         if (this.elements.qrFallback) {
                             this.elements.qrFallback.style.display = 'none';
@@ -220,18 +220,35 @@ class AcornBattleGame {
             this.elements.qrCanvas.style.display = 'none';
         }
 
-        if (this.elements.qrFallback) {
-            this.elements.qrFallback.style.display = 'block';
-
+        // QR 컨테이너에 폴백 QR 코드 표시
+        const qrContainer = document.querySelector('.qr-container');
+        if (qrContainer) {
             // 세션 코드 추출 (URL에서)
             const sessionCode = this.extractSessionCode(url);
-
-            // 사용자 친화적인 대안 표시
-            this.elements.qrFallback.innerHTML = `
-                <div style="text-align: center; padding: 20px; border: 2px solid #6366f1; border-radius: 12px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);">
+            
+            // 외부 QR API를 사용하여 실제 QR 코드 생성
+            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(url)}`;
+            
+            qrContainer.innerHTML = `
+                <div style="text-align: center; padding: 15px; background: white; border-radius: 8px;">
+                    <div style="margin-bottom: 10px;">
+                        <img src="${qrApiUrl}" 
+                             style="width: 150px; height: 150px; border: 2px solid #e2e8f0; border-radius: 8px;" 
+                             alt="QR Code" 
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                        <div style="display: none; padding: 20px; color: #64748b; font-size: 14px;">
+                            QR 코드 로딩 실패
+                        </div>
+                    </div>
+                    <div style="font-size: 12px; color: #64748b; margin-bottom: 15px;">
+                        📱 모바일 카메라로 QR 코드를 스캔하세요
+                    </div>
+                </div>
+                
+                <div style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%); border-radius: 8px;">
                     <div style="margin-bottom: 15px;">
-                        <div style="font-size: 18px; font-weight: bold; color: #1e293b; margin-bottom: 8px;">📱 모바일 연결</div>
-                        <div style="font-size: 14px; color: #64748b;">모바일 기기에서 아래 방법 중 하나를 선택하세요</div>
+                        <div style="font-size: 16px; font-weight: bold; color: #1e293b; margin-bottom: 8px;">📱 다른 연결 방법</div>
+                        <div style="font-size: 14px; color: #64748b;">QR 코드가 작동하지 않는 경우 아래 방법을 사용하세요</div>
                     </div>
                     
                     <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
@@ -247,6 +264,10 @@ class AcornBattleGame {
                     </div>
                 </div>
             `;
+        }
+
+        if (this.elements.qrFallback) {
+            this.elements.qrFallback.style.display = 'block';
         }
     }
 
