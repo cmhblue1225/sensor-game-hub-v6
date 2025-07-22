@@ -478,9 +478,7 @@
     <script src="js/SessionSDK.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     
-    <!-- Three.js 및 물리 엔진 로드 -->
-    <script src="/libs/three.min.js"></script>
-    <script src="/libs/cannon.min.js"></script>
+    <!-- Three.js 및 물리 엔진은 동적으로 로드됩니다 -->
     
     <!-- 그래픽 시스템 -->
     <script src="js/graphics/GLBModelManager.js"></script>
@@ -666,46 +664,250 @@
             console.error('처리되지 않은 Promise 거부:', event.reason);
         });
         
-        // 게임 인스턴스 생성 및 초기화
+        // 라이브러리 로더 클래스
+        class LibraryLoader {
+            constructor() {
+                this.libraries = [
+                    { 
+                        name: 'THREE', 
+                        url: '/libs/three.min.js', 
+                        fallback: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
+                        check: () => typeof THREE !== 'undefined'
+                    },
+                    { 
+                        name: 'CANNON', 
+                        url: '/libs/cannon.min.js', 
+                        fallback: 'https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.20.0/cannon.min.js',
+                        check: () => typeof CANNON !== 'undefined'
+                    }
+                ];
+                this.loadedLibraries = new Set();
+            }
+            
+            async loadScript(url) {
+                return new Promise((resolve, reject) => {
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.onload = () => resolve();
+                    script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
+                    document.head.appendChild(script);
+                });
+            }
+            
+            async loadLibrary(library) {
+                console.log(`📦 라이브러리 로드 시도: ${library.name}`);
+                
+                try {
+                    // 로컬 라이브러리 시도
+                    await this.loadScript(library.url);
+                    
+                    // 로드 확인
+                    if (library.check()) {
+                        console.log(`✅ ${library.name} 로컬 로드 성공`);
+                        this.loadedLibraries.add(library.name);
+                        return { success: true, source: 'local' };
+                    } else {
+                        throw new Error(`Library ${library.name} not found after loading`);
+                    }
+                } catch (error) {
+                    console.warn(`⚠️ ${library.name} 로컬 로드 실패:`, error.message);
+                    
+                    if (library.fallback) {
+                        try {
+                            console.log(`🔄 ${library.name} CDN 폴백 시도...`);
+                            await this.loadScript(library.fallback);
+                            
+                            if (library.check()) {
+                                console.log(`✅ ${library.name} CDN 로드 성공`);
+                                this.loadedLibraries.add(library.name);
+                                return { success: true, source: 'cdn' };
+                            } else {
+                                throw new Error(`Library ${library.name} not found after CDN loading`);
+                            }
+                        } catch (fallbackError) {
+                            console.error(`❌ ${library.name} CDN 로드 실패:`, fallbackError.message);
+                            return { success: false, error: fallbackError };
+                        }
+                    }
+                    
+                    return { success: false, error };
+                }
+            }
+            
+            async loadAllLibraries() {
+                const results = [];
+                
+                for (const library of this.libraries) {
+                    const result = await this.loadLibrary(library);
+                    results.push({ library: library.name, ...result });
+                    
+                    if (!result.success) {
+                        throw new Error(`Critical library ${library.name} failed to load`);
+                    }
+                }
+                
+                return results;
+            }
+            
+            checkDependencies() {
+                const missing = [];
+                
+                if (typeof THREE === 'undefined') missing.push('THREE.js');
+                if (typeof CANNON === 'undefined') missing.push('CANNON.js');
+                
+                return missing;
+            }
+        }
+        
+        // 오류 복구 시스템
+        class ErrorRecoverySystem {
+            constructor() {
+                this.retryAttempts = 3;
+                this.retryDelay = 2000;
+            }
+            
+            showErrorMessage(title, message, canRetry = true) {
+                const loadingScreen = document.getElementById('loadingScreen');
+                if (loadingScreen) {
+                    loadingScreen.innerHTML = `
+                        <div class="loading-title" style="color: var(--error);">${title}</div>
+                        <p style="color: var(--text-secondary); text-align: center; margin: 20px; max-width: 400px;">
+                            ${message}
+                        </p>
+                        ${canRetry ? `
+                            <button onclick="location.reload()" style="margin-top: 20px; margin-right: 10px;">
+                                🔄 다시 시도
+                            </button>
+                            <button onclick="window.history.back()" style="margin-top: 20px;">
+                                ← 뒤로 가기
+                            </button>
+                        ` : ''}
+                    `;
+                }
+            }
+            
+            async retryWithDelay(fn, attempts = this.retryAttempts) {
+                for (let i = 0; i < attempts; i++) {
+                    try {
+                        return await fn();
+                    } catch (error) {
+                        console.warn(`재시도 ${i + 1}/${attempts} 실패:`, error.message);
+                        
+                        if (i < attempts - 1) {
+                            await new Promise(resolve => setTimeout(resolve, this.retryDelay));
+                        } else {
+                            throw error;
+                        }
+                    }
+                }
+            }
+        }
+        
+        // 게임 초기화 관리자
+        class GameInitializationManager {
+            constructor() {
+                this.libraryLoader = new LibraryLoader();
+                this.errorRecovery = new ErrorRecoverySystem();
+                this.initSteps = [
+                    { name: '라이브러리 로드', progress: 30 },
+                    { name: '의존성 검증', progress: 50 },
+                    { name: '게임 엔진 초기화', progress: 80 },
+                    { name: '게임 시작', progress: 100 }
+                ];
+                this.currentStep = 0;
+            }
+            
+            updateProgress(step, progress) {
+                const progressBar = document.getElementById('loadingProgressBar');
+                const loadingTitle = document.querySelector('.loading-title');
+                
+                if (progressBar) {
+                    progressBar.style.width = `${progress}%`;
+                }
+                
+                if (loadingTitle && step) {
+                    loadingTitle.textContent = `${step}...`;
+                }
+            }
+            
+            async initialize() {
+                try {
+                    // 1단계: 라이브러리 로드
+                    this.updateProgress('필수 라이브러리 로드 중', 30);
+                    const libraryResults = await this.libraryLoader.loadAllLibraries();
+                    console.log('📦 라이브러리 로드 결과:', libraryResults);
+                    
+                    // 2단계: 의존성 검증
+                    this.updateProgress('의존성 검증 중', 50);
+                    const missingDeps = this.libraryLoader.checkDependencies();
+                    if (missingDeps.length > 0) {
+                        throw new Error(`필수 라이브러리 누락: ${missingDeps.join(', ')}`);
+                    }
+                    
+                    // 3단계: 게임 엔진 초기화
+                    this.updateProgress('게임 엔진 초기화 중', 80);
+                    const game = new CakeDeliveryGame();
+                    await game.init();
+                    
+                    // 4단계: 게임 시작
+                    this.updateProgress('게임 시작', 100);
+                    
+                    // 로딩 화면 숨기기
+                    setTimeout(() => {
+                        const loadingScreen = document.getElementById('loadingScreen');
+                        if (loadingScreen) {
+                            loadingScreen.style.display = 'none';
+                        }
+                    }, 500);
+                    
+                    console.log('✅ 게임 초기화 완료!');
+                    return game;
+                    
+                } catch (error) {
+                    console.error('❌ 게임 초기화 실패:', error);
+                    
+                    // 오류 메시지 표시
+                    this.errorRecovery.showErrorMessage(
+                        '게임 로드 실패',
+                        `게임을 로드하는 중 오류가 발생했습니다: ${error.message}`,
+                        true
+                    );
+                    
+                    throw error;
+                }
+            }
+        }
+        
+        // 게임 인스턴스 및 초기화 관리자
         let game = null;
+        let initManager = null;
         
         // 페이지 로드 완료 후 게임 초기화
         window.addEventListener('load', async () => {
             try {
                 console.log('🎂 케이크 배달 게임 초기화 시작...');
                 
-                // 게임 인스턴스 생성
-                game = new CakeDeliveryGame();
-                
-                // 게임 초기화
-                await game.init();
-                
-                console.log('✅ 케이크 배달 게임 초기화 완료!');
-                
-                // 로딩 화면 숨기기
-                const loadingScreen = document.getElementById('loadingScreen');
-                if (loadingScreen) {
-                    loadingScreen.style.display = 'none';
-                }
+                initManager = new GameInitializationManager();
+                game = await initManager.initialize();
                 
             } catch (error) {
-                console.error('❌ 게임 초기화 실패:', error);
-                
-                // 오류 메시지 표시
-                const loadingScreen = document.getElementById('loadingScreen');
-                if (loadingScreen) {
-                    loadingScreen.innerHTML = `
-                        <div class="loading-title" style="color: var(--error);">게임 로드 실패</div>
-                        <p style="color: var(--text-secondary); text-align: center; margin: 20px;">
-                            ${error.message || '알 수 없는 오류가 발생했습니다.'}
-                        </p>
-                        <button onclick="location.reload()" style="margin-top: 20px;">
-                            🔄 다시 시도
-                        </button>
-                    `;
-                }
+                console.error('❌ 최종 초기화 실패:', error);
+                // 오류는 이미 GameInitializationManager에서 처리됨
             }
         });
+        
+        // 전역 함수들 (HTML에서 호출)
+        function resetGame() {
+            if (game) {
+                game.restartGame();
+            }
+        }
+        
+        function togglePause() {
+            if (game) {
+                game.togglePause();
+            }
+        }
         
         // 컨트롤 버튼 이벤트 리스너
         document.addEventListener('DOMContentLoaded', () => {

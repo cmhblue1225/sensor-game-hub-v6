@@ -84,7 +84,8 @@ class SessionSDK {
         this.reconnectCount++;
         const delay = this.options.reconnectDelay * this.reconnectCount;
         
-        this.log(`${delay}ms 후 재연결 시도 (${this.reconnectCount}/${this.options.reconnectAttempts})`);\n        
+        this.log(`${delay}ms 후 재연결 시도 (${this.reconnectCount}/${this.options.reconnectAttempts})`);
+        
         setTimeout(() => {
             this.connect();
         }, delay);

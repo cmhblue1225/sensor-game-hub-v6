@@ -1528,30 +1528,4 @@ class CakeDeliveryGame {
     }
 }
 
-// 전역 게임 인스턴스
-let game = null;
-
-// 페이지 로드 시 게임 초기화
-window.addEventListener('load', () => {
-    game = new CakeDeliveryGame();
-});
-
-// 페이지 언로드 시 정리
-window.addEventListener('beforeunload', () => {
-    if (game) {
-        game.cleanup();
-    }
-});
-
-// 전역 함수들 (HTML에서 호출)
-function resetGame() {
-    if (game) {
-        game.restartGame();
-    }
-}
-
-function togglePause() {
-    if (game) {
-        game.togglePause();
-    }
-}
+// CakeDeliveryGame 클래스는 HTML에서 초기화됩니다.
