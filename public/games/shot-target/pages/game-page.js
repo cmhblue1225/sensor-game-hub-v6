@@ -118,6 +118,11 @@ export class GamePage {
         if (this.elements.backToHubBtn) {
             this.elements.backToHubBtn.classList.add('show');
         }
+        
+        // 모드 선택 화면에서는 점수 패널들 숨기기
+        this.elements.normalScorePanel.classList.add('hidden');
+        this.elements.competitiveScorePanel.classList.add('hidden');
+        this.elements.massCompetitivePanel.classList.add('hidden');
     }
     /**
     * 게임 상태에 따라 컨트롤 패널의 버튼을 동적으로 렌더링합니다.
