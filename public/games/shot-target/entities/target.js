@@ -11,7 +11,18 @@ export class Target {
         this.alpha = 1;
         
         // 게임 모드에 따른 중심점 크기 설정
-        this.centerRadius = gameMode === 'mass-competitive' ? 12 : 8;
+        if (gameMode === 'mass-competitive') {
+            // 대규모 경쟁 모드: 표적 크기별 중심점 크기 차별화
+            if (type === 'large') {
+                this.centerRadius = 12;  // 가장 큰 표적
+            } else if (type === 'medium') {
+                this.centerRadius = 10;  // 중간 크기 표적
+            } else {
+                this.centerRadius = 8;   // 가장 작은 표적
+            }
+        } else {
+            this.centerRadius = 8;  // 다른 모드는 기본 크기
+        }
     }
 
     update(targetLifetime) {
