@@ -478,7 +478,10 @@
     <script src="js/SessionSDK.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     
-    <!-- Three.js 및 물리 엔진은 동적으로 로드됩니다 -->
+    <!-- Three.js 및 물리 엔진 로드 -->
+    <script src="/games/cake-delivery/libs/three.min.js"></script>
+    <script src="/games/cake-delivery/libs/cannon.min.js"></script>
+    <script src="/games/cake-delivery/libs/GLTFLoader.js"></script>
     
     <!-- 그래픽 시스템 -->
     <script src="js/graphics/GLBModelManager.js"></script>
@@ -664,105 +667,15 @@
             console.error('처리되지 않은 Promise 거부:', event.reason);
         });
         
-        // 라이브러리 로더 클래스
-        class LibraryLoader {
-            constructor() {
-                this.libraries = [
-                    { 
-                        name: 'THREE', 
-                        url: 'libs/three.min.js', 
-                        fallback: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js',
-                        check: () => typeof THREE !== 'undefined'
-                    },
-                    { 
-                        name: 'CANNON', 
-                        url: 'libs/cannon.min.js', 
-                        fallback: 'https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.20.0/cannon.min.js',
-                        check: () => typeof CANNON !== 'undefined'
-                    },
-                    { 
-                        name: 'GLTFLoader', 
-                        url: 'libs/GLTFLoader.js', 
-                        fallback: 'https://cdn.jsdelivr.net/npm/three@0.127.0/examples/js/loaders/GLTFLoader.js',
-                        check: () => typeof THREE !== 'undefined' && typeof THREE.GLTFLoader !== 'undefined'
-                    }
-                ];
-                this.loadedLibraries = new Set();
-            }
+        // 라이브러리 의존성 체크 함수
+        function checkLibraryDependencies() {
+            const missing = [];
             
-            async loadScript(url) {
-                return new Promise((resolve, reject) => {
-                    const script = document.createElement('script');
-                    script.src = url;
-                    script.onload = () => resolve();
-                    script.onerror = () => reject(new Error(`Failed to load script: ${url}`));
-                    document.head.appendChild(script);
-                });
-            }
+            if (typeof THREE === 'undefined') missing.push('THREE.js');
+            if (typeof CANNON === 'undefined') missing.push('CANNON.js');
+            if (typeof SessionSDK === 'undefined') missing.push('SessionSDK');
             
-            async loadLibrary(library) {
-                console.log(`📦 라이브러리 로드 시도: ${library.name}`);
-                
-                try {
-                    // 로컬 라이브러리 시도
-                    await this.loadScript(library.url);
-                    
-                    // 로드 확인
-                    if (library.check()) {
-                        console.log(`✅ ${library.name} 로컬 로드 성공`);
-                        this.loadedLibraries.add(library.name);
-                        return { success: true, source: 'local' };
-                    } else {
-                        throw new Error(`Library ${library.name} not found after loading`);
-                    }
-                } catch (error) {
-                    console.warn(`⚠️ ${library.name} 로컬 로드 실패:`, error.message);
-                    
-                    if (library.fallback) {
-                        try {
-                            console.log(`🔄 ${library.name} CDN 폴백 시도...`);
-                            await this.loadScript(library.fallback);
-                            
-                            if (library.check()) {
-                                console.log(`✅ ${library.name} CDN 로드 성공`);
-                                this.loadedLibraries.add(library.name);
-                                return { success: true, source: 'cdn' };
-                            } else {
-                                throw new Error(`Library ${library.name} not found after CDN loading`);
-                            }
-                        } catch (fallbackError) {
-                            console.error(`❌ ${library.name} CDN 로드 실패:`, fallbackError.message);
-                            return { success: false, error: fallbackError };
-                        }
-                    }
-                    
-                    return { success: false, error };
-                }
-            }
-            
-            async loadAllLibraries() {
-                const results = [];
-                
-                for (const library of this.libraries) {
-                    const result = await this.loadLibrary(library);
-                    results.push({ library: library.name, ...result });
-                    
-                    if (!result.success) {
-                        throw new Error(`Critical library ${library.name} failed to load`);
-                    }
-                }
-                
-                return results;
-            }
-            
-            checkDependencies() {
-                const missing = [];
-                
-                if (typeof THREE === 'undefined') missing.push('THREE.js');
-                if (typeof CANNON === 'undefined') missing.push('CANNON.js');
-                
-                return missing;
-            }
+            return missing;
         }
         
         // 오류 복구 시스템
@@ -809,18 +722,10 @@
             }
         }
         
-        // 게임 초기화 관리자
+        // 게임 초기화 관리자 (간소화된 버전)
         class GameInitializationManager {
             constructor() {
-                this.libraryLoader = new LibraryLoader();
                 this.errorRecovery = new ErrorRecoverySystem();
-                this.initSteps = [
-                    { name: '라이브러리 로드', progress: 30 },
-                    { name: '의존성 검증', progress: 50 },
-                    { name: '게임 엔진 초기화', progress: 80 },
-                    { name: '게임 시작', progress: 100 }
-                ];
-                this.currentStep = 0;
             }
             
             updateProgress(step, progress) {
@@ -838,24 +743,25 @@
             
             async initialize() {
                 try {
-                    // 1단계: 라이브러리 로드
-                    this.updateProgress('필수 라이브러리 로드 중', 30);
-                    const libraryResults = await this.libraryLoader.loadAllLibraries();
-                    console.log('📦 라이브러리 로드 결과:', libraryResults);
+                    // 1단계: 의존성 검증 (라이브러리는 이미 정적으로 로드됨)
+                    this.updateProgress('의존성 검증 중', 30);
+                    const missingDeps = [];
+                    if (typeof THREE === 'undefined') missingDeps.push('THREE.js');
+                    if (typeof CANNON === 'undefined') missingDeps.push('CANNON.js');
+                    if (typeof SessionSDK === 'undefined') missingDeps.push('SessionSDK');
                     
-                    // 2단계: 의존성 검증
-                    this.updateProgress('의존성 검증 중', 50);
-                    const missingDeps = this.libraryLoader.checkDependencies();
                     if (missingDeps.length > 0) {
                         throw new Error(`필수 라이브러리 누락: ${missingDeps.join(', ')}`);
                     }
                     
-                    // 3단계: 게임 엔진 초기화
-                    this.updateProgress('게임 엔진 초기화 중', 80);
+                    console.log('✅ 모든 라이브러리가 로드되었습니다');
+                    
+                    // 2단계: 게임 엔진 초기화
+                    this.updateProgress('게임 엔진 초기화 중', 70);
                     const game = new CakeDeliveryGame();
                     await game.init();
                     
-                    // 4단계: 게임 시작
+                    // 3단계: 게임 시작
                     this.updateProgress('게임 시작', 100);
                     
                     // 로딩 화면 숨기기
@@ -893,16 +799,8 @@
             try {
                 console.log('🎂 케이크 배달 게임 초기화 시작...');
                 
-                // 필수 의존성 재확인
-                const missingDeps = [];
-                if (typeof THREE === 'undefined') missingDeps.push('THREE.js');
-                if (typeof CANNON === 'undefined') missingDeps.push('CANNON.js');
-                if (typeof SessionSDK === 'undefined') missingDeps.push('SessionSDK');
-                
-                if (missingDeps.length > 0) {
-                    throw new Error(`필수 라이브러리 누락: ${missingDeps.join(', ')}`);
-                }
-                
+                // GameInitializationManager가 라이브러리 로드를 담당하므로
+                // 여기서는 의존성 체크를 하지 않고 바로 초기화 진행
                 initManager = new GameInitializationManager();
                 game = await initManager.initialize();
                 
@@ -917,7 +815,7 @@
                     loadingScreen.innerHTML = `
                         <div class="loading-title" style="color: var(--error);">게임 로드 실패</div>
                         <p style="color: var(--text-secondary); text-align: center; margin: 20px; max-width: 400px;">
-                            게임을 로드하는 중 오류가 발생했습니다.<br>
+                            게임을 로드하는 중 오류가 발생했습니다: ${error.message}<br>
                             페이지를 새로고침하거나 잠시 후 다시 시도해주세요.
                         </p>
                         <button onclick="location.reload()" style="margin-top: 20px; margin-right: 10px;">
