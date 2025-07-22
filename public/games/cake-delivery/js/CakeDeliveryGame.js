@@ -1172,6 +1172,47 @@ class CakeDeliveryGame {
     }
     
     /**
+     * 멀티플레이어 밸런싱 시스템 설정
+     */
+    setupMultiplayerBalancing() {
+        if (!this.multiplayerBalancing) {
+            console.warn('⚠️ 멀티플레이어 밸런싱 시스템이 초기화되지 않았습니다');
+            return;
+        }
+        
+        // 플레이어 성능 균형 이벤트
+        this.multiplayerBalancing.addEventListener('onBalanceAdjustment', (data) => {
+            console.log(`⚖️ 균형 조정: ${data.type} - ${data.adjustment}`);
+            
+            if (this.gameEngine) {
+                // 케이크 물리 조정
+                if (data.type === 'cake_stability') {
+                    this.gameEngine.physicsManager.setCakeStability(data.adjustment);
+                }
+                
+                // 환경 조정
+                if (data.type === 'environment') {
+                    this.gameEngine.physicsManager.setWindStrength(data.adjustment);
+                }
+            }
+        });
+        
+        // 실력 차이 감지 이벤트
+        this.multiplayerBalancing.addEventListener('onSkillGapDetected', (data) => {
+            console.log(`📊 실력 차이 감지: ${data.gap}% - 보정 적용`);
+            
+            // UI에 알림 표시
+            if (this.accessibilitySystem) {
+                this.accessibilitySystem.announceMessage(
+                    `플레이어 간 실력 차이가 감지되어 게임이 조정되었습니다.`
+                );
+            }
+        });
+        
+        console.log('✅ 멀티플레이어 밸런싱 시스템 설정 완료');
+    }
+    
+    /**
      * 난이도 설정 적용
      */
     applyDifficultySettings(difficultyData) {

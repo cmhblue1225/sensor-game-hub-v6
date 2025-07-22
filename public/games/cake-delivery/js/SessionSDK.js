@@ -27,6 +27,41 @@ class SessionSDK {
     }
     
     /**
+     * 이벤트 리스너 등록
+     */
+    on(eventType, callback) {
+        if (!this.eventListeners[eventType]) {
+            this.eventListeners[eventType] = [];
+        }
+        this.eventListeners[eventType].push(callback);
+    }
+    
+    /**
+     * 이벤트 리스너 제거
+     */
+    off(eventType, callback) {
+        if (this.eventListeners[eventType]) {
+            this.eventListeners[eventType] = this.eventListeners[eventType]
+                .filter(listener => listener !== callback);
+        }
+    }
+    
+    /**
+     * 이벤트 발생
+     */
+    emit(eventType, data) {
+        if (this.eventListeners[eventType]) {
+            this.eventListeners[eventType].forEach(callback => {
+                try {
+                    callback(data);
+                } catch (error) {
+                    console.error(`SessionSDK 이벤트 콜백 오류 (${eventType}):`, error);
+                }
+            });
+        }
+    }
+    
+    /**
      * 서버에 연결
      */
     connect() {
@@ -227,50 +262,14 @@ class SessionSDK {
         this.triggerEvent('game-ready', data);
     }
     
-    /**
-     * 이벤트 리스너 등록
-     */
-    on(eventName, callback) {
-        if (!this.eventListeners[eventName]) {
-            this.eventListeners[eventName] = [];
-        }
-        
-        this.eventListeners[eventName].push(callback);
-        return this;
-    }
-    
-    /**
-     * 이벤트 리스너 제거
-     */
-    off(eventName, callback) {
-        if (!this.eventListeners[eventName]) return this;
-        
-        if (callback) {
-            this.eventListeners[eventName] = this.eventListeners[eventName].filter(
-                listener => listener !== callback
-            );
-        } else {
-            delete this.eventListeners[eventName];
-        }
-        
-        return this;
-    }
+    // 중복 메서드 제거됨 (상단에 이미 동일한 메서드가 정의되어 있음)
     
     /**
      * 이벤트 발생
      */
     triggerEvent(eventName, data = {}) {
-        if (!this.eventListeners[eventName]) return;
-        
-        const event = new CustomEvent(eventName, { detail: data });
-        
-        this.eventListeners[eventName].forEach(callback => {
-            try {
-                callback(event);
-            } catch (error) {
-                this.log(`이벤트 핸들러 오류 (${eventName}):`, error);
-            }
-        });
+        // emit 메서드를 사용하여 일관된 이벤트 처리
+        this.emit(eventName, data);
     }
     
     /**
