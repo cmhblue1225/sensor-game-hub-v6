@@ -3,11 +3,9 @@ export class SoundSystem {
         this.audioContext = null;
         this.enabled = true;
         this.volume = 0.7;
-        this.bgmVolume = 0.3; // BGM 전용 볼륨 (효과음보다 낮게)
+        this.bgmVolume = 0.3; // BGM 전용 볼륨
         this.bgmEnabled = true;
-        this.bgmPlaying = false;
-        this.bgmNodes = []; // BGM 관련 오디오 노드들
-        this.bgmIntervalId = null;
+        this.bgmAudio = null; // HTML5 Audio 객체
         this.initializeAudioContext();
     }
 
@@ -184,178 +182,93 @@ export class SoundSystem {
         }
     }
 
-    // 🎵 신나는 BGM 시작
+    // 🎵 MP3 BGM 시작
     async startBGM() {
-        if (!await this.ensureAudioContext() || !this.bgmEnabled || this.bgmPlaying) return;
+        if (!this.bgmEnabled) return;
 
-        this.bgmPlaying = true;
-        this.playBGMLoop();
+        try {
+            // BGM Audio 객체 생성 (아직 생성되지 않은 경우)
+            if (!this.bgmAudio) {
+                this.bgmAudio = new Audio('./bgm/action-trap-aggressive-sport-racing-beat-257032.mp3');
+                this.bgmAudio.loop = true; // 무한 반복
+                this.bgmAudio.volume = this.bgmVolume;
+                
+                // 로드 에러 처리
+                this.bgmAudio.addEventListener('error', (e) => {
+                    console.warn('BGM 로드 실패:', e);
+                });
+            }
+
+            // 이미 재생 중이 아닌 경우에만 재생
+            if (this.bgmAudio.paused) {
+                await this.bgmAudio.play();
+                console.log('🎵 BGM 재생 시작');
+            }
+        } catch (error) {
+            console.warn('BGM 재생 실패:', error);
+        }
     }
 
     // 🎵 BGM 중지
     stopBGM() {
-        this.bgmPlaying = false;
-        
-        // 모든 BGM 노드 정리
-        this.bgmNodes.forEach(node => {
-            try {
-                if (node.stop) node.stop();
-                if (node.disconnect) node.disconnect();
-            } catch (e) {
-                // 이미 정리된 노드 무시
-            }
-        });
-        this.bgmNodes = [];
-
-        if (this.bgmIntervalId) {
-            clearInterval(this.bgmIntervalId);
-            this.bgmIntervalId = null;
+        if (this.bgmAudio && !this.bgmAudio.paused) {
+            this.bgmAudio.pause();
+            this.bgmAudio.currentTime = 0; // 처음부터 다시 시작하도록
+            console.log('🎵 BGM 중지');
         }
     }
 
-    // 🎵 BGM 루프 재생
-    async playBGMLoop() {
-        if (!this.bgmPlaying || !await this.ensureAudioContext()) return;
+    // 🎵 BGM 일시정지 (위치 유지)
+    pauseBGM() {
+        if (this.bgmAudio && !this.bgmAudio.paused) {
+            this.bgmAudio.pause();
+            console.log('🎵 BGM 일시정지');
+        }
+    }
 
-        // 신나는 4/4박자 멜로디 패턴
-        const melodyPattern = [
-            // 1번째 마디: C Major Scale 기반
-            { freq: 523.25, duration: 0.25 }, // C5
-            { freq: 659.25, duration: 0.25 }, // E5
-            { freq: 783.99, duration: 0.25 }, // G5
-            { freq: 1046.50, duration: 0.25 }, // C6
-            
-            // 2번째 마디: 하강
-            { freq: 783.99, duration: 0.25 }, // G5
-            { freq: 659.25, duration: 0.25 }, // E5
-            { freq: 587.33, duration: 0.25 }, // D5
-            { freq: 523.25, duration: 0.25 }, // C5
-            
-            // 3번째 마디: 점프
-            { freq: 698.46, duration: 0.25 }, // F5
-            { freq: 880.00, duration: 0.25 }, // A5
-            { freq: 783.99, duration: 0.25 }, // G5
-            { freq: 659.25, duration: 0.25 }, // E5
-            
-            // 4번째 마디: 마무리
-            { freq: 587.33, duration: 0.25 }, // D5
-            { freq: 523.25, duration: 0.5 },  // C5 (길게)
-            { freq: 0, duration: 0.25 }       // 쉼표
-        ];
-
-        let noteIndex = 0;
-        const playNextNote = () => {
-            if (!this.bgmPlaying) return;
-
-            const note = melodyPattern[noteIndex];
-            
-            if (note.freq > 0) {
-                this.playBGMNote(note.freq, note.duration);
+    // 🎵 BGM 재개
+    async resumeBGM() {
+        if (this.bgmAudio && this.bgmAudio.paused && this.bgmEnabled) {
+            try {
+                await this.bgmAudio.play();
+                console.log('🎵 BGM 재개');
+            } catch (error) {
+                console.warn('BGM 재개 실패:', error);
             }
-
-            noteIndex = (noteIndex + 1) % melodyPattern.length;
-            
-            // 다음 음표 스케줄링
-            setTimeout(playNextNote, note.duration * 1000);
-        };
-
-        // 베이스 라인 추가 (낮은 옥타브)
-        this.playBGMBass();
-        
-        // 멜로디 시작
-        playNextNote();
-    }
-
-    // 🎵 BGM 단일 음표 재생
-    async playBGMNote(frequency, duration) {
-        if (!await this.ensureAudioContext() || !this.bgmPlaying) return;
-
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        
-        oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-        oscillator.type = 'sawtooth'; // 신나는 톤
-        
-        gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-        gainNode.gain.linearRampToValueAtTime(this.bgmVolume * 0.4, this.audioContext.currentTime + 0.02);
-        gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
-        
-        oscillator.start(this.audioContext.currentTime);
-        oscillator.stop(this.audioContext.currentTime + duration);
-        
-        this.bgmNodes.push(oscillator);
-        this.bgmNodes.push(gainNode);
-    }
-
-    // 🎵 BGM 베이스 라인 (리듬감 추가)
-    async playBGMBass() {
-        if (!await this.ensureAudioContext() || !this.bgmPlaying) return;
-
-        const bassPattern = [
-            130.81, // C3
-            164.81, // E3
-            196.00, // G3
-            130.81  // C3
-        ];
-
-        let bassIndex = 0;
-        const playBassNote = () => {
-            if (!this.bgmPlaying) return;
-
-            const frequency = bassPattern[bassIndex];
-            
-            const oscillator = this.audioContext.createOscillator();
-            const gainNode = this.audioContext.createGain();
-            
-            oscillator.connect(gainNode);
-            gainNode.connect(this.audioContext.destination);
-            
-            oscillator.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
-            oscillator.type = 'square';
-            
-            gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-            gainNode.gain.linearRampToValueAtTime(this.bgmVolume * 0.2, this.audioContext.currentTime + 0.01);
-            gainNode.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 0.4);
-            
-            oscillator.start(this.audioContext.currentTime);
-            oscillator.stop(this.audioContext.currentTime + 0.4);
-            
-            this.bgmNodes.push(oscillator);
-            this.bgmNodes.push(gainNode);
-            
-            bassIndex = (bassIndex + 1) % bassPattern.length;
-            
-            // 0.5초마다 베이스 노트 반복
-            setTimeout(playBassNote, 500);
-        };
-
-        playBassNote();
+        }
     }
 
     // BGM 볼륨 설정
     setBGMVolume(volume) {
         this.bgmVolume = Math.max(0, Math.min(1, volume));
+        if (this.bgmAudio) {
+            this.bgmAudio.volume = this.bgmVolume;
+        }
     }
 
     // BGM 켜기/끄기
     setBGMEnabled(enabled) {
         this.bgmEnabled = enabled;
-        if (!enabled && this.bgmPlaying) {
+        if (!enabled) {
             this.stopBGM();
         }
     }
 
     // BGM 재생 상태 확인
     isBGMPlaying() {
-        return this.bgmPlaying;
+        return this.bgmAudio && !this.bgmAudio.paused;
     }
 
     // 정리
     cleanup() {
         this.stopBGM();
+        
+        // HTML5 Audio 객체 정리
+        if (this.bgmAudio) {
+            this.bgmAudio.pause();
+            this.bgmAudio.removeEventListener('error', () => {});
+            this.bgmAudio = null;
+        }
         
         if (this.audioContext) {
             this.audioContext.close();
