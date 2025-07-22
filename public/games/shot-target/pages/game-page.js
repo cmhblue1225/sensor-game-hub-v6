@@ -3,6 +3,7 @@ import { Player } from '../entities/player.js';
 import { ScoringSystem } from '../features/scoring-system.js';
 import { SensorManager } from '../features/sensor-manager.js';
 import { ShootingSystem } from '../features/shooting-system.js';
+import { SoundSystem } from '../features/sound-system.js';
 import { ScorePanelWidget } from '../widgets/score-panel-widget.js';
 import { WaitingRoomWidget } from '../widgets/waiting-room-widget.js';
 import { CONFIG } from '../shared/config.js';
@@ -42,6 +43,7 @@ export class GamePage {
         this.scoringSystem = new ScoringSystem();
         this.sensorManager = new SensorManager();
         this.shootingSystem = new ShootingSystem();
+        this.soundSystem = new SoundSystem();
 
         this.elements = this.initializeElements();
         this.scorePanelWidget = new ScorePanelWidget(this.elements);
@@ -111,6 +113,7 @@ export class GamePage {
         this.setupCanvas();
         this.setupModeSelection();
         this.setupKeyboardControls();
+        this.setupSoundEvents();
         this.startGameLoop();
         this.waitingRoomWidget.updateGameStatus('게임 모드를 선택하세요');
         
@@ -318,6 +321,25 @@ export class GamePage {
                     e.preventDefault();
                     this.tryShoot();
                     break;
+            }
+        });
+    }
+
+    setupSoundEvents() {
+        // 사용자 상호작용 시 오디오 컨텍스트 활성화
+        const enableAudio = () => {
+            this.soundSystem.enableAudio();
+            document.removeEventListener('click', enableAudio);
+            document.removeEventListener('touchstart', enableAudio);
+        };
+        
+        document.addEventListener('click', enableAudio);
+        document.addEventListener('touchstart', enableAudio);
+
+        // 🔊 모든 버튼에 클릭 사운드 추가
+        document.addEventListener('click', (event) => {
+            if (event.target.matches('button, .btn, .mode-btn')) {
+                this.soundSystem.playButtonClickSound();
             }
         });
     }
@@ -594,6 +616,9 @@ export class GamePage {
         this.lastTargetSpawn = Date.now();
         this.startTimer();
 
+        // 🔊 게임 시작 사운드
+        this.soundSystem.playGameStartSound();
+
         console.log('🎯 Shot Target 게임 시작!');
     }
 
@@ -623,6 +648,9 @@ export class GamePage {
         }
 
         this.waitingRoomWidget.updateGameStatus('게임 종료!');
+
+        // 🔊 게임 종료 사운드
+        this.soundSystem.playGameEndSound();
 
         let resultMessage;
 
@@ -753,6 +781,16 @@ export class GamePage {
         this.shootingSystem.createHitEffect(target.x, target.y, points, target.color);
         this.scorePanelWidget.updateScore(this.scoringSystem, this.gameMode);
 
+        // 🔊 표적 맞춤 사운드
+        this.soundSystem.playHitSound(target.type);
+        
+        // 🔊 콤보 사운드 (콤보가 2 이상일 때)
+        const comboCount = this.gameMode === 'mass-competitive' && player ? 
+                          player.comboCount : this.scoringSystem.state.comboCount;
+        if (comboCount >= 2) {
+            this.soundSystem.playComboSound(comboCount);
+        }
+
         console.log(`🎯 표적 명중! +${Math.floor(points)}pt`);
     }
 
@@ -795,6 +833,10 @@ export class GamePage {
             if (!isAlive) {
                 this.scoringSystem.miss();
                 this.scorePanelWidget.updateScore(this.scoringSystem, this.gameMode);
+                
+                // 🔊 표적 놓침 사운드
+                this.soundSystem.playMissSound();
+                
                 console.log('🎯 표적 소멸 - 콤보 리셋');
             }
             return isAlive;
@@ -975,5 +1017,25 @@ export class GamePage {
     closeMassCompetitiveResultModal() {
         this.scorePanelWidget.closeMassCompetitiveResultModal();
         this.resetGame();
+    }
+
+    // 정리 함수
+    cleanup() {
+        if (this.gameLoop) {
+            cancelAnimationFrame(this.gameLoop);
+            this.gameLoop = null;
+        }
+
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+
+        if (this.sdk && typeof this.sdk.cleanup === 'function') {
+            this.sdk.cleanup();
+        }
+
+        // 🔊 사운드 시스템 정리
+        this.soundSystem.cleanup();
     }
 }
