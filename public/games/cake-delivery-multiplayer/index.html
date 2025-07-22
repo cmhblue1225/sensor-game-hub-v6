@@ -546,7 +546,9 @@
                 this.sdk.on('session-created', (event) => {
                     const session = event.detail || event;
                     console.log('✅ 세션 생성됨:', session);
+                    console.log('🔍 displaySessionInfo 호출 전');
                     this.displaySessionInfo(session);
+                    console.log('🔍 displaySessionInfo 호출 후');
                 });
                 
                 // 센서 연결
@@ -574,6 +576,11 @@
                 try {
                     const session = await this.sdk.createSession();
                     console.log('✅ 세션 생성 성공');
+                    console.log('🔍 직접 세션 정보 표시 시도');
+                    // 세션이 생성되면 직접 표시
+                    if (session && session.sessionCode) {
+                        this.displaySessionInfo(session);
+                    }
                 } catch (error) {
                     console.error('❌ 세션 생성 실패:', error);
                     this.showMessage('세션 생성에 실패했습니다.', 'error');
@@ -581,11 +588,21 @@
             }
             
             displaySessionInfo(session) {
+                console.log('🔍 displaySessionInfo 시작, session:', session);
+                console.log('🔍 sessionCode:', session.sessionCode);
+                console.log('🔍 elements.sessionCode:', this.elements.sessionCode);
+                
                 // 세션 코드 표시
-                this.elements.sessionCode.textContent = session.sessionCode;
+                if (this.elements.sessionCode && session.sessionCode) {
+                    this.elements.sessionCode.textContent = session.sessionCode;
+                    console.log('✅ 세션 코드 UI 업데이트 완료');
+                } else {
+                    console.error('❌ 세션 코드 업데이트 실패 - 요소 또는 코드 없음');
+                }
                 
                 // QR 코드 생성
                 const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                console.log('🔍 QR URL 생성:', qrUrl);
                 this.generateQRCode(qrUrl);
                 
                 console.log('📱 센서 연결 URL:', qrUrl);
