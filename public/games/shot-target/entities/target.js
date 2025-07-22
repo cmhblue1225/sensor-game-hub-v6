@@ -21,7 +21,14 @@ export class Target {
                 this.centerRadius = 8;   // 가장 작은 표적
             }
         } else {
-            this.centerRadius = 8;  // 다른 모드는 기본 크기
+            // 나머지 모드들: 표적 크기별 중심점 크기 차별화
+            if (type === 'large') {
+                this.centerRadius = 10;  // 가장 큰 표적
+            } else if (type === 'medium') {
+                this.centerRadius = 9;   // 중간 크기 표적
+            } else {
+                this.centerRadius = 8;   // 가장 작은 표적
+            }
         }
     }
 
