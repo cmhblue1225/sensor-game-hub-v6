@@ -82,7 +82,7 @@ class AcornBattleGame {
         this.animationId = null;
         this.lastSensorUpdate = 0;
         this.sensorThrottle = 16; // 60fps로 개선
-        
+
         // 센서 데이터 스무딩을 위한 버퍼
         this.sensorBuffer = {
             sensor1: { beta: [], gamma: [] },
@@ -388,7 +388,7 @@ class AcornBattleGame {
         // 센서 데이터 스무딩 처리
         const { beta, gamma } = data.data.orientation;
         const smoothedData = this.smoothSensorData(data.sensorId, beta, gamma);
-        
+
         // 데드존 적용 (미세한 움직임 무시)
         const deadZone = 5; // 5도 이하의 기울기는 무시
         const filteredBeta = Math.abs(smoothedData.beta) > deadZone ? smoothedData.beta : 0;
@@ -397,7 +397,7 @@ class AcornBattleGame {
         // 개선된 이동 계산 (더 부드럽고 반응성 좋게)
         const moveSpeed = 4; // 속도 증가
         const sensitivity = 35; // 감도 조절 (낮을수록 더 민감)
-        
+
         const targetVelocityX = filteredGamma * moveSpeed / sensitivity;
         const targetVelocityY = filteredBeta * moveSpeed / sensitivity;
 
