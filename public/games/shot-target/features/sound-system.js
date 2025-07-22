@@ -102,7 +102,7 @@ export class SoundSystem {
         }
     }
 
-    // 콤보 소리 - 높아지는 톤
+    // 콤보 소리 - 높아지는 톤 (최대 3콤보)
     async playComboSound(comboCount) {
         if (!await this.ensureAudioContext()) return;
 
@@ -111,8 +111,8 @@ export class SoundSystem {
         
         this.playTone(frequency, 0.1, 'triangle', this.volume * 0.25);
         
-        // 콤보가 높을수록 추가 효과음
-        if (comboCount >= 5) {
+        // 3콤보 시 특별한 효과음
+        if (comboCount >= 3) {
             setTimeout(() => {
                 this.playTone(frequency * 1.5, 0.08, 'square', this.volume * 0.15);
             }, 50);
