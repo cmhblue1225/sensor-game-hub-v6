@@ -149,7 +149,14 @@ class GameEngine {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        this.renderer.outputEncoding = THREE.sRGBEncoding;
+        
+        // Three.js r150+ 호환성을 위한 설정
+        if (this.renderer.outputColorSpace !== undefined) {
+            this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+        } else if (this.renderer.outputEncoding !== undefined) {
+            this.renderer.outputEncoding = THREE.sRGBEncoding;
+        }
+        
         this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
         this.renderer.toneMappingExposure = 1.0;
         

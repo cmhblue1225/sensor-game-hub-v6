@@ -51,15 +51,53 @@ class CakeDeliveryGame {
         this.multiplayerBalancing = new MultiplayerBalancingSystem();
         
         // 성능 모니터링 시스템 초기화
-        this.performanceMonitor = new PerformanceMonitor();
+        this.performanceMonitor = this.initializePerformanceMonitor();
         
         // 오류 리포팅 시스템 초기화
-        this.errorReporter = new ErrorReporter();
+        this.errorReporter = typeof ErrorReporter !== 'undefined' ? new ErrorReporter() : null;
         
         // 초기화
         this.init();
     }
     
+    /**
+     * 성능 모니터링 시스템 안전 초기화
+     */
+    initializePerformanceMonitor() {
+        try {
+            if (typeof PerformanceMonitor !== 'undefined') {
+                return new PerformanceMonitor();
+            } else {
+                console.warn('⚠️ PerformanceMonitor를 사용할 수 없습니다. 기본 모니터링을 사용합니다.');
+                return this.createFallbackPerformanceMonitor();
+            }
+        } catch (error) {
+            console.error('❌ PerformanceMonitor 초기화 실패:', error);
+            return this.createFallbackPerformanceMonitor();
+        }
+    }
+    
+    /**
+     * 대체 성능 모니터링 시스템 생성
+     */
+    createFallbackPerformanceMonitor() {
+        return {
+            metrics: {
+                fps: { current: 0, average: 0, min: Infinity, max: 0, history: [] },
+                memory: { used: 0, total: 0, percentage: 0 },
+                network: { latency: 0 }
+            },
+            config: { enabled: true, updateInterval: 1000, historySize: 60 },
+            startMonitoring: () => console.log('기본 성능 모니터링 시작'),
+            stopMonitoring: () => console.log('기본 성능 모니터링 중지'),
+            getMetrics: function() { return this.metrics; },
+            updateFPS: () => {},
+            updateMemory: () => {},
+            updateNetwork: () => {},
+            getDebugInfo: () => ({ fps: 60, memory: '알 수 없음', network: '알 수 없음' })
+        };
+    }
+
     /**
      * 게임 초기화
      */
