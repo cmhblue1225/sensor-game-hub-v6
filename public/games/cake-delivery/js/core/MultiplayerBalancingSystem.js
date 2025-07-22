@@ -18,6 +18,9 @@ class MultiplayerBalancingSystem {
             competitive: { difficultyMultiplier: 1.1, scoreMultiplier: 1.0 }
         };
         
+        // 이벤트 리스너 시스템
+        this.eventListeners = new Map();
+        
         console.log('✅ 멀티플레이어 밸런싱 시스템 초기화 완료');
     }
     
@@ -43,6 +46,8 @@ class MultiplayerBalancingSystem {
      * 게임 상태 업데이트
      */
     updateGameState() {
+        const previousMode = this.gameState.gameMode;
+        
         this.gameState.playerCount = this.players.size;
         this.gameState.isMultiplayer = this.players.size > 1;
         
@@ -53,6 +58,20 @@ class MultiplayerBalancingSystem {
         } else {
             this.gameState.gameMode = 'competitive';
         }
+        
+        // 게임 모드가 변경된 경우 이벤트 발생
+        if (previousMode !== this.gameState.gameMode) {
+            this.dispatchEvent('gameModeChanged', {
+                previousMode,
+                currentMode: this.gameState.gameMode,
+                playerCount: this.gameState.playerCount
+            });
+        }
+        
+        // 게임 상태 변경 이벤트 발생
+        this.dispatchEvent('gameStateUpdated', {
+            gameState: { ...this.gameState }
+        });
     }
     
     /**
@@ -60,5 +79,44 @@ class MultiplayerBalancingSystem {
      */
     getCurrentBalance() {
         return this.balanceSettings[this.gameState.gameMode];
+    }
+    
+    /**
+     * 이벤트 리스너 등록
+     */
+    addEventListener(eventType, callback) {
+        if (!this.eventListeners.has(eventType)) {
+            this.eventListeners.set(eventType, []);
+        }
+        this.eventListeners.get(eventType).push(callback);
+    }
+    
+    /**
+     * 이벤트 리스너 제거
+     */
+    removeEventListener(eventType, callback) {
+        const listeners = this.eventListeners.get(eventType);
+        if (listeners) {
+            const index = listeners.indexOf(callback);
+            if (index > -1) {
+                listeners.splice(index, 1);
+            }
+        }
+    }
+    
+    /**
+     * 이벤트 발생
+     */
+    dispatchEvent(eventType, data) {
+        const listeners = this.eventListeners.get(eventType);
+        if (listeners) {
+            listeners.forEach(callback => {
+                try {
+                    callback(data);
+                } catch (error) {
+                    console.error(`멀티플레이어 밸런싱 시스템 이벤트 오류 (${eventType}):`, error);
+                }
+            });
+        }
     }
 }
