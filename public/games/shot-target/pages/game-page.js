@@ -726,7 +726,8 @@ export class GamePage {
             typeConfig.radius,
             typeConfig.points,
             typeConfig.color,
-            targetType
+            targetType,
+            this.gameMode
         );
 
         this.targets.push(target);

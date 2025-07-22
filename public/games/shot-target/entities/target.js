@@ -1,13 +1,17 @@
 export class Target {
-    constructor(x, y, radius, points, color, type) {
+    constructor(x, y, radius, points, color, type, gameMode = 'solo') {
         this.x = x;
         this.y = y;
         this.radius = radius;
         this.points = points;
         this.color = color;
         this.type = type;
+        this.gameMode = gameMode;
         this.spawnTime = Date.now();
         this.alpha = 1;
+        
+        // 게임 모드에 따른 중심점 크기 설정
+        this.centerRadius = gameMode === 'mass-competitive' ? 12 : 8;
     }
 
     update(targetLifetime) {
@@ -37,7 +41,7 @@ export class Target {
 
         // 중앙 점
         ctx.beginPath();
-        ctx.arc(this.x, this.y, 8, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, this.centerRadius, 0, Math.PI * 2);
         ctx.fillStyle = this.color;
         ctx.fill();
 
