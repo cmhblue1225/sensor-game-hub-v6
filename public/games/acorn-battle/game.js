@@ -81,7 +81,14 @@ class AcornBattleGame {
         // 게임 루프 관련
         this.animationId = null;
         this.lastSensorUpdate = 0;
-        this.sensorThrottle = 33; // 30fps
+        this.sensorThrottle = 16; // 60fps로 개선
+        
+        // 센서 데이터 스무딩을 위한 버퍼
+        this.sensorBuffer = {
+            sensor1: { beta: [], gamma: [] },
+            sensor2: { beta: [], gamma: [] }
+        };
+        this.bufferSize = 3; // 최근 3개 값의 평균 사용
 
         this.setupEvents();
         this.initializeGame();
@@ -378,12 +385,26 @@ class AcornBattleGame {
             console.log(`${data.sensorId} 무적 상태 해제`);
         }
 
-        // 센서 데이터로 이동 계산
-        const moveSpeed = 3;
+        // 센서 데이터 스무딩 처리
         const { beta, gamma } = data.data.orientation;
+        const smoothedData = this.smoothSensorData(data.sensorId, beta, gamma);
+        
+        // 데드존 적용 (미세한 움직임 무시)
+        const deadZone = 5; // 5도 이하의 기울기는 무시
+        const filteredBeta = Math.abs(smoothedData.beta) > deadZone ? smoothedData.beta : 0;
+        const filteredGamma = Math.abs(smoothedData.gamma) > deadZone ? smoothedData.gamma : 0;
 
-        player.velocity.x = (gamma || 0) * moveSpeed / 45;
-        player.velocity.y = (beta || 0) * moveSpeed / 45;
+        // 개선된 이동 계산 (더 부드럽고 반응성 좋게)
+        const moveSpeed = 4; // 속도 증가
+        const sensitivity = 35; // 감도 조절 (낮을수록 더 민감)
+        
+        const targetVelocityX = filteredGamma * moveSpeed / sensitivity;
+        const targetVelocityY = filteredBeta * moveSpeed / sensitivity;
+
+        // 속도 보간으로 부드러운 움직임
+        const smoothing = 0.15; // 보간 강도 (0.1 = 매우 부드럽게, 0.3 = 빠르게 반응)
+        player.velocity.x = this.lerp(player.velocity.x, targetVelocityX, smoothing);
+        player.velocity.y = this.lerp(player.velocity.y, targetVelocityY, smoothing);
 
         // 위치 업데이트
         player.position.x += player.velocity.x;
@@ -391,6 +412,33 @@ class AcornBattleGame {
 
         // 맵 경계 제한
         this.constrainPlayerToMap(player);
+    }
+
+    // 센서 데이터 스무딩 함수
+    smoothSensorData(sensorId, beta, gamma) {
+        const buffer = this.sensorBuffer[sensorId];
+        if (!buffer) return { beta, gamma };
+
+        // 버퍼에 새 데이터 추가
+        buffer.beta.push(beta);
+        buffer.gamma.push(gamma);
+
+        // 버퍼 크기 제한
+        if (buffer.beta.length > this.bufferSize) {
+            buffer.beta.shift();
+            buffer.gamma.shift();
+        }
+
+        // 평균값 계산 (스무딩)
+        const avgBeta = buffer.beta.reduce((sum, val) => sum + val, 0) / buffer.beta.length;
+        const avgGamma = buffer.gamma.reduce((sum, val) => sum + val, 0) / buffer.gamma.length;
+
+        return { beta: avgBeta, gamma: avgGamma };
+    }
+
+    // 선형 보간 함수
+    lerp(start, end, factor) {
+        return start + (end - start) * factor;
     }
 
     constrainPlayerToMap(player) {
