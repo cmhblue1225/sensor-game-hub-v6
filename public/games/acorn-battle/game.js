@@ -389,29 +389,45 @@ class AcornBattleGame {
         const { beta, gamma } = data.data.orientation;
         const smoothedData = this.smoothSensorData(data.sensorId, beta, gamma);
 
-        // 데드존 적용 (미세한 움직임 무시)
-        const deadZone = 5; // 5도 이하의 기울기는 무시
+        // 데드존 적용 (미세한 움직임 무시) - solo 게임 방식 적용
+        const deadZone = 3; // 3도 이하의 기울기는 무시 (더 민감하게)
         const filteredBeta = Math.abs(smoothedData.beta) > deadZone ? smoothedData.beta : 0;
         const filteredGamma = Math.abs(smoothedData.gamma) > deadZone ? smoothedData.gamma : 0;
 
-        // 개선된 이동 계산 (더 부드럽고 반응성 좋게)
-        const moveSpeed = 4; // 속도 증가
-        const sensitivity = 35; // 감도 조절 (낮을수록 더 민감)
+        // Solo 게임 방식의 정규화된 이동 계산
+        const maxTilt = 45; // 최대 기울기 각도
+        const sensitivity = 0.4; // 감도 (solo 게임보다 약간 높게)
+        const ballSpeed = 6; // 기본 속도
+        
+        // 기울기 정규화 (-1 ~ 1)
+        const normalizedTiltX = Math.max(-1, Math.min(1, filteredGamma / maxTilt));
+        const normalizedTiltY = Math.max(-1, Math.min(1, filteredBeta / maxTilt));
+        
+        // 목표 속도 계산
+        const targetVelocityX = normalizedTiltX * ballSpeed * sensitivity;
+        const targetVelocityY = normalizedTiltY * ballSpeed * sensitivity;
 
-        const targetVelocityX = filteredGamma * moveSpeed / sensitivity;
-        const targetVelocityY = filteredBeta * moveSpeed / sensitivity;
+        // 속도 보간으로 부드러운 움직임 (solo 게임 방식)
+        const acceleration = 0.2; // 가속도 (0.1 = 매우 부드럽게, 0.3 = 빠르게 반응)
+        player.velocity.x += (targetVelocityX - player.velocity.x) * acceleration;
+        player.velocity.y += (targetVelocityY - player.velocity.y) * acceleration;
 
-        // 속도 보간으로 부드러운 움직임
-        const smoothing = 0.15; // 보간 강도 (0.1 = 매우 부드럽게, 0.3 = 빠르게 반응)
-        player.velocity.x = this.lerp(player.velocity.x, targetVelocityX, smoothing);
-        player.velocity.y = this.lerp(player.velocity.y, targetVelocityY, smoothing);
+        // 최대 속도 제한 (solo 게임 방식)
+        const maxSpeed = ballSpeed * 1.5;
+        player.velocity.x = Math.max(-maxSpeed, Math.min(maxSpeed, player.velocity.x));
+        player.velocity.y = Math.max(-maxSpeed, Math.min(maxSpeed, player.velocity.y));
+
+        // 마찰 적용 (solo 게임 방식)
+        const friction = 0.98; // 마찰 계수
+        player.velocity.x *= friction;
+        player.velocity.y *= friction;
 
         // 위치 업데이트
         player.position.x += player.velocity.x;
         player.position.y += player.velocity.y;
 
-        // 맵 경계 제한
-        this.constrainPlayerToMap(player);
+        // 맵 경계 제한 및 반사 (solo 게임 방식)
+        this.constrainPlayerToMapWithBounce(player);
     }
 
     // 센서 데이터 스무딩 함수
@@ -445,6 +461,24 @@ class AcornBattleGame {
         const margin = player.radius || 20;
         player.position.x = Math.max(margin, Math.min(this.canvas.width - margin, player.position.x));
         player.position.y = Math.max(margin, Math.min(this.canvas.height - margin, player.position.y));
+    }
+
+    // Solo 게임 방식의 벽 충돌 반사 기능
+    constrainPlayerToMapWithBounce(player) {
+        const margin = player.radius || 20;
+        const bounceStrength = 0.7; // 반사 강도
+
+        // 좌우 벽 충돌
+        if (player.position.x - margin < 0 || player.position.x + margin > this.canvas.width) {
+            player.velocity.x *= -bounceStrength;
+            player.position.x = Math.max(margin, Math.min(this.canvas.width - margin, player.position.x));
+        }
+
+        // 상하 벽 충돌
+        if (player.position.y - margin < 0 || player.position.y + margin > this.canvas.height) {
+            player.velocity.y *= -bounceStrength;
+            player.position.y = Math.max(margin, Math.min(this.canvas.height - margin, player.position.y));
+        }
     }
 
     updateSensorStatus(sensorId, status) {
