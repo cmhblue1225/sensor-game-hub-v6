@@ -546,21 +546,23 @@ class AcornBattleGame {
         players.forEach((player, playerIndex) => {
             if (!player || player.stunned) return;
 
-            // 도토리 수집 체크
-            this.gameState.acorns = this.gameState.acorns.filter(acorn => {
-                const distance = Math.sqrt(
-                    Math.pow(player.position.x - acorn.position.x, 2) +
-                    Math.pow(player.position.y - acorn.position.y, 2)
-                );
+            // 도토리 수집 체크 (한 번에 하나만 집을 수 있음)
+            if ((player.carriedAcorns || 0) === 0) {
+                this.gameState.acorns = this.gameState.acorns.filter(acorn => {
+                    const distance = Math.sqrt(
+                        Math.pow(player.position.x - acorn.position.x, 2) +
+                        Math.pow(player.position.y - acorn.position.y, 2)
+                    );
 
-                if (distance < player.radius + acorn.radius) {
-                    // 도토리 수집
-                    player.carriedAcorns = (player.carriedAcorns || 0) + 1;
-                    console.log(`플레이어 ${playerIndex + 1}이 도토리 수집! 보유: ${player.carriedAcorns}`);
-                    return false; // 도토리 제거
-                }
-                return true; // 도토리 유지
-            });
+                    if (distance < player.radius + acorn.radius) {
+                        // 도토리 수집 (최대 1개)
+                        player.carriedAcorns = 1;
+                        console.log(`플레이어 ${playerIndex + 1}이 도토리 수집! 보유: ${player.carriedAcorns}`);
+                        return false; // 도토리 제거
+                    }
+                    return true; // 도토리 유지
+                });
+            }
 
             // 점수 구역 체크
             this.checkScoreZones(player, playerIndex);
