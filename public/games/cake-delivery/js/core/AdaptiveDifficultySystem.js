@@ -5,6 +5,7 @@
 class AdaptiveDifficultySystem {
     constructor() {
         this.currentDifficulty = 'normal';
+        this.eventListeners = new Map(); // 이벤트 리스너 맵 추가
         this.playerPerformance = {
             totalGames: 0,
             successfulGames: 0,
@@ -35,6 +36,45 @@ class AdaptiveDifficultySystem {
         };
         
         console.log('✅ 적응형 난이도 시스템 초기화 완료');
+    }
+    
+    /**
+     * 이벤트 리스너 추가 (DOM EventTarget과 유사한 인터페이스)
+     */
+    addEventListener(eventType, callback) {
+        if (!this.eventListeners.has(eventType)) {
+            this.eventListeners.set(eventType, []);
+        }
+        this.eventListeners.get(eventType).push(callback);
+    }
+    
+    /**
+     * 이벤트 리스너 제거
+     */
+    removeEventListener(eventType, callback) {
+        const listeners = this.eventListeners.get(eventType);
+        if (listeners) {
+            const index = listeners.indexOf(callback);
+            if (index !== -1) {
+                listeners.splice(index, 1);
+            }
+        }
+    }
+    
+    /**
+     * 이벤트 발생
+     */
+    dispatchEvent(eventType, eventData) {
+        const listeners = this.eventListeners.get(eventType);
+        if (listeners) {
+            listeners.forEach(callback => {
+                try {
+                    callback(eventData);
+                } catch (error) {
+                    console.error(`난이도 시스템 이벤트 콜백 오류 (${eventType}):`, error);
+                }
+            });
+        }
     }
     
     /**

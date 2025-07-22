@@ -1203,6 +1203,79 @@ class GameEngine {
     }
     
     /**
+     * 게임 일시정지
+     */
+    pauseGame() {
+        if (this.gameState === 'playing') {
+            this.gameState = 'paused';
+            
+            // 물리 시뮬레이션 일시정지
+            if (this.physicsManager) {
+                this.physicsManager.pauseSimulation();
+            }
+            
+            // 애니메이션 일시정지
+            if (this.animationSystem) {
+                this.animationSystem.pauseAnimations();
+            }
+            
+            // 오디오 일시정지
+            if (this.musicSystem) {
+                this.musicSystem.pause();
+            }
+            
+            // 파티클 시스템 일시정지
+            if (this.particleSystem) {
+                this.particleSystem.pause();
+            }
+            
+            console.log('⏸️ 게임 일시정지');
+        }
+    }
+    
+    /**
+     * 게임 재개
+     */
+    resumeGame() {
+        if (this.gameState === 'paused') {
+            this.gameState = 'playing';
+            
+            // 물리 시뮬레이션 재개
+            if (this.physicsManager) {
+                this.physicsManager.resumeSimulation();
+            }
+            
+            // 애니메이션 재개
+            if (this.animationSystem) {
+                this.animationSystem.resumeAnimations();
+            }
+            
+            // 오디오 재개
+            if (this.musicSystem) {
+                this.musicSystem.resume();
+            }
+            
+            // 파티클 시스템 재개
+            if (this.particleSystem) {
+                this.particleSystem.resume();
+            }
+            
+            console.log('▶️ 게임 재개');
+        }
+    }
+    
+    /**
+     * 게임 상태 토글 (일시정지/재개)
+     */
+    togglePause() {
+        if (this.gameState === 'playing') {
+            this.pauseGame();
+        } else if (this.gameState === 'paused') {
+            this.resumeGame();
+        }
+    }
+    
+    /**
      * 정리
      */
     cleanup() {
