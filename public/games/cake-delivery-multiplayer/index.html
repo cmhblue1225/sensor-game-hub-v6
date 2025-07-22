@@ -36,10 +36,10 @@
         
         /* 세션 패널 (좌측 상단) */
         .session-panel {
-            position: absolute; top: 20px; left: 20px; background: rgba(30, 41, 59, 0.9);
+            position: absolute; top: 20px; left: 20px; background: rgba(30, 41, 59, 0.95);
             padding: 15px; border-radius: 12px; backdrop-filter: blur(10px);
             display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: auto;
-            border: 1px solid rgba(59, 130, 246, 0.3);
+            border: 1px solid rgba(59, 130, 246, 0.3); z-index: 600;
         }
         
         .session-title { font-size: 18px; font-weight: bold; color: var(--primary); }
@@ -54,7 +54,7 @@
         .game-info-panel {
             position: absolute; top: 20px; right: 20px; background: rgba(30, 41, 59, 0.9);
             padding: 15px; border-radius: 12px; backdrop-filter: blur(10px); pointer-events: auto;
-            text-align: right; border: 1px solid rgba(16, 185, 129, 0.3);
+            text-align: right; border: 1px solid rgba(16, 185, 129, 0.3); z-index: 600;
         }
         
         .level-display { font-size: 24px; font-weight: bold; color: var(--success); margin-bottom: 5px; }
@@ -66,7 +66,7 @@
         .players-panel {
             position: absolute; bottom: 20px; left: 20px; background: rgba(30, 41, 59, 0.9);
             padding: 15px; border-radius: 12px; backdrop-filter: blur(10px); pointer-events: auto;
-            border: 1px solid rgba(139, 92, 246, 0.3); max-width: 300px;
+            border: 1px solid rgba(139, 92, 246, 0.3); max-width: 300px; z-index: 600;
         }
         
         .players-title { font-size: 14px; font-weight: bold; color: var(--secondary); margin-bottom: 10px; }
@@ -546,9 +546,7 @@
                 this.sdk.on('session-created', (event) => {
                     const session = event.detail || event;
                     console.log('✅ 세션 생성됨:', session);
-                    console.log('🔍 displaySessionInfo 호출 전');
                     this.displaySessionInfo(session);
-                    console.log('🔍 displaySessionInfo 호출 후');
                 });
                 
                 // 센서 연결
@@ -576,7 +574,6 @@
                 try {
                     const session = await this.sdk.createSession();
                     console.log('✅ 세션 생성 성공');
-                    console.log('🔍 직접 세션 정보 표시 시도');
                     // 세션이 생성되면 직접 표시
                     if (session && session.sessionCode) {
                         this.displaySessionInfo(session);
@@ -588,21 +585,14 @@
             }
             
             displaySessionInfo(session) {
-                console.log('🔍 displaySessionInfo 시작, session:', session);
-                console.log('🔍 sessionCode:', session.sessionCode);
-                console.log('🔍 elements.sessionCode:', this.elements.sessionCode);
-                
                 // 세션 코드 표시
                 if (this.elements.sessionCode && session.sessionCode) {
                     this.elements.sessionCode.textContent = session.sessionCode;
                     console.log('✅ 세션 코드 UI 업데이트 완료');
-                } else {
-                    console.error('❌ 세션 코드 업데이트 실패 - 요소 또는 코드 없음');
                 }
                 
                 // QR 코드 생성
                 const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
-                console.log('🔍 QR URL 생성:', qrUrl);
                 this.generateQRCode(qrUrl);
                 
                 console.log('📱 센서 연결 URL:', qrUrl);
