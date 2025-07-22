@@ -4,23 +4,26 @@
  */
 class CakeDeliveryGame {
     constructor() {
-        // 게임 엔진 초기화
-        this.gameEngine = new GameEngine();
-        
-        // SessionSDK 설정
-        this.sdk = new SessionSDK({
-            gameId: 'cake-delivery',
-            gameType: 'solo',
-            debug: true
-        });
-        
-        // 게임 상태
+        // 기본 상태 먼저 초기화
         this.gameState = 'loading';
         this.gameMode = 'normal';
         this.cakeType = 'basic';
         this.score = 0;
         this.level = 1;
         this.lives = 3;
+        
+        // 시스템들 초기화 전에 null로 설정
+        this.gameEngine = null;
+        this.sdk = null;
+        this.mobileInterface = null;
+        this.accessibilitySystem = null;
+        this.tutorialManager = null;
+        this.errorHandler = null;
+        this.saveSystem = null;
+        this.difficultySystem = null;
+        this.multiplayerBalancing = null;
+        this.performanceMonitor = null;
+        this.errorReporter = null;
         
         // UI 요소들
         this.scoreDisplay = document.getElementById('scoreDisplay');
@@ -29,35 +32,60 @@ class CakeDeliveryGame {
         this.sessionCode = document.getElementById('sessionCode');
         this.connectionStatus = document.getElementById('connectionStatus');
         
-        // 모바일 터치 인터페이스 초기화
-        this.mobileInterface = null;
+        console.log('🎂 CakeDeliveryGame 생성자 완료, 지연된 초기화 시작...');
         
-        // 접근성 시스템 초기화
-        this.accessibilitySystem = null;
-        
-        // 튜토리얼 시스템 초기화
-        this.tutorialManager = null;
-        
-        // 오류 처리 시스템 초기화
-        this.errorHandler = new ErrorHandlingSystem();
-        
-        // 저장 시스템 초기화
-        this.saveSystem = new SaveSystem();
-        
-        // 적응형 난이도 시스템 초기화
-        this.difficultySystem = new AdaptiveDifficultySystem();
-        
-        // 멀티플레이어 밸런싱 시스템 초기화
-        this.multiplayerBalancing = new MultiplayerBalancingSystem();
-        
-        // 성능 모니터링 시스템 초기화
-        this.performanceMonitor = this.initializePerformanceMonitor();
-        
-        // 오류 리포팅 시스템 초기화
-        this.errorReporter = typeof ErrorReporter !== 'undefined' ? new ErrorReporter() : null;
-        
-        // 초기화
-        this.init();
+        // 안전한 지연 초기화 - DOM이 완전히 로드된 후 실행
+        setTimeout(() => {
+            this.initializeSystems();
+        }, 100);
+    }
+    
+    /**
+     * 시스템들의 안전한 초기화
+     */
+    async initializeSystems() {
+        try {
+            console.log('🔧 시스템 초기화 시작...');
+            
+            // 1. 핵심 시스템들 먼저 초기화 (순서 중요)
+            this.errorHandler = new ErrorHandlingSystem();
+            console.log('✅ 오류 처리 시스템 초기화 완료');
+            
+            this.saveSystem = new SaveSystem();
+            console.log('✅ 저장 시스템 초기화 완료');
+            
+            // 2. 성능 모니터링 시스템 초기화
+            this.performanceMonitor = this.initializePerformanceMonitor();
+            console.log('✅ 성능 모니터링 시스템 초기화 완료');
+            
+            // 3. 오류 리포팅 시스템 초기화
+            this.errorReporter = typeof ErrorReporter !== 'undefined' ? new ErrorReporter() : null;
+            console.log('✅ 오류 리포팅 시스템 초기화 완료');
+            
+            // 4. 게임 엔진 초기화
+            this.gameEngine = new GameEngine();
+            console.log('✅ 게임 엔진 초기화 완료');
+            
+            // 5. SessionSDK 초기화
+            this.sdk = new SessionSDK({
+                gameId: 'cake-delivery',
+                gameType: 'solo',
+                debug: true
+            });
+            console.log('✅ SessionSDK 초기화 완료');
+            
+            // 6. 난이도 및 밸런싱 시스템 초기화
+            this.difficultySystem = new AdaptiveDifficultySystem();
+            this.multiplayerBalancing = new MultiplayerBalancingSystem();
+            console.log('✅ 난이도 및 밸런싱 시스템 초기화 완료');
+            
+            // 7. 게임 초기화 실행
+            await this.init();
+            
+        } catch (error) {
+            console.error('❌ 시스템 초기화 실패:', error);
+            this.showError(`시스템 초기화에 실패했습니다: ${error.message}`);
+        }
     }
     
     /**
@@ -153,11 +181,18 @@ class CakeDeliveryGame {
      * SessionSDK 이벤트 설정
      */
     setupSDKEvents() {
-        // 서버 연결 완료 후 세션 생성
-        this.sdk.on('connected', () => {
-            console.log('✅ 서버 연결 완료');
-            this.createSession();
-        });
+        try {
+            // 안전성 검사
+            if (!this.sdk) {
+                console.warn('⚠️ SessionSDK가 초기화되지 않았습니다.');
+                return;
+            }
+            
+            // 서버 연결 완료 후 세션 생성
+            this.sdk.on('connected', () => {
+                console.log('✅ 서버 연결 완료');
+                this.createSession();
+            });
         
         // 세션 생성 완료
         this.sdk.on('session-created', (event) => {
@@ -178,34 +213,60 @@ class CakeDeliveryGame {
             }
         });
         
-        // 센서 데이터 수신
-        this.sdk.on('sensor-data', (event) => {
-            const data = event.detail || event;
-            this.processSensorData(data);
-        });
-        
-        // 게임 준비 완료
-        this.sdk.on('game-ready', (event) => {
-            const data = event.detail || event;
-            console.log('게임 준비 완료');
-            this.startGame();
-        });
-        
-        // 센서 연결 해제
-        this.sdk.on('sensor-disconnected', (event) => {
-            const data = event.detail || event;
-            console.log('센서 연결 해제:', data.sensorId);
-            this.updateConnectionStatus('센서 연결 해제됨 ❌');
-        });
+            // 센서 데이터 수신
+            this.sdk.on('sensor-data', (event) => {
+                const data = event.detail || event;
+                this.processSensorData(data);
+            });
+            
+            // 게임 준비 완료
+            this.sdk.on('game-ready', (event) => {
+                const data = event.detail || event;
+                console.log('게임 준비 완료');
+                this.startGame();
+            });
+            
+            // 센서 연결 해제
+            this.sdk.on('sensor-disconnected', (event) => {
+                const data = event.detail || event;
+                console.log('센서 연결 해제:', data.sensorId);
+                this.updateConnectionStatus('센서 연결 해제됨 ❌');
+            });
+            
+            console.log('✅ SessionSDK 이벤트 설정 완료');
+            
+        } catch (error) {
+            console.error('❌ SessionSDK 이벤트 설정 실패:', error);
+            this.showError('SessionSDK 이벤트 설정에 실패했습니다.');
+        }
     }
     
     /**
      * 게임 엔진 준비 대기
      */
     async waitForEngineReady() {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
+            // 안전성 검사
+            if (!this.gameEngine) {
+                console.error('❌ 게임 엔진이 초기화되지 않았습니다.');
+                reject(new Error('게임 엔진이 초기화되지 않았습니다.'));
+                return;
+            }
+            
+            let attempts = 0;
+            const maxAttempts = 100; // 10초 제한
+            
             const checkReady = () => {
-                if (this.gameEngine.gameState === 'menu') {
+                attempts++;
+                
+                if (attempts > maxAttempts) {
+                    console.error('❌ 게임 엔진 준비 시간 초과');
+                    reject(new Error('게임 엔진 준비 시간 초과'));
+                    return;
+                }
+                
+                if (this.gameEngine && this.gameEngine.gameState === 'menu') {
+                    console.log('✅ 게임 엔진 준비 완료');
                     resolve();
                 } else {
                     setTimeout(checkReady, 100);
@@ -523,10 +584,17 @@ class CakeDeliveryGame {
      */
     async createSession() {
         try {
+            // 안전성 검사
+            if (!this.sdk) {
+                console.error('❌ SessionSDK가 초기화되지 않아 세션을 생성할 수 없습니다.');
+                return;
+            }
+            
             const session = await this.sdk.createSession();
-            console.log('세션 생성 성공');
+            console.log('✅ 세션 생성 성공');
         } catch (error) {
-            console.error('세션 생성 실패:', error);
+            console.error('❌ 세션 생성 실패:', error);
+            // 3초 후 재시도
             setTimeout(() => this.createSession(), 3000);
         }
     }
@@ -810,45 +878,57 @@ class CakeDeliveryGame {
      * 오류 처리 시스템 설정
      */
     setupErrorHandling() {
-        // 게임 오류 알림 콜백 등록
-        this.errorHandler.registerNotificationCallback((errorInfo) => {
-            // UI에 오류 알림 표시
-            if (errorInfo.severity === 'critical' && !errorInfo.recovered) {
-                this.showErrorNotification('게임에 문제가 발생했습니다', '다시 시도해주세요.');
-            } else if (errorInfo.severity === 'error' && !errorInfo.recovered) {
-                this.showErrorNotification('경고', '일시적인 문제가 발생했습니다.');
+        try {
+            // 안전성 검사
+            if (!this.errorHandler) {
+                console.warn('⚠️ ErrorHandlingSystem이 초기화되지 않았습니다. 기본 오류 처리로 대체합니다.');
+                return;
             }
             
-            // 오류 로깅
-            console.error('게임 오류:', errorInfo.message);
+            // 게임 오류 알림 콜백 등록
+            this.errorHandler.registerNotificationCallback((errorInfo) => {
+                // UI에 오류 알림 표시
+                if (errorInfo.severity === 'critical' && !errorInfo.recovered) {
+                    this.showErrorNotification('게임에 문제가 발생했습니다', '다시 시도해주세요.');
+                } else if (errorInfo.severity === 'error' && !errorInfo.recovered) {
+                    this.showErrorNotification('경고', '일시적인 문제가 발생했습니다.');
+                }
+                
+                // 오류 로깅
+                console.error('게임 오류:', errorInfo.message);
+                
+                // 센서 연결 오류 처리
+                if (errorInfo.type === 'SensorConnectionError') {
+                    this.handleSensorConnectionError(errorInfo);
+                }
+                
+                // 리소스 로드 오류 처리
+                if (errorInfo.type === 'ResourceError') {
+                    this.handleResourceError(errorInfo);
+                }
+            });
             
-            // 센서 연결 오류 처리
-            if (errorInfo.type === 'SensorConnectionError') {
-                this.handleSensorConnectionError(errorInfo);
-            }
+            // 센서 오류 처리 전략 등록
+            this.errorHandler.registerRecoveryStrategy('SensorConnectionError', (error, context) => {
+                return this.recoverSensorConnection(context);
+            });
             
-            // 리소스 로드 오류 처리
-            if (errorInfo.type === 'ResourceError') {
-                this.handleResourceError(errorInfo);
-            }
-        });
-        
-        // 센서 오류 처리 전략 등록
-        this.errorHandler.registerRecoveryStrategy('SensorConnectionError', (error, context) => {
-            return this.recoverSensorConnection(context);
-        });
-        
-        // 게임 엔진 오류 처리 전략 등록
-        this.errorHandler.registerRecoveryStrategy('GameEngineError', (error, context) => {
-            return this.recoverGameEngine(context);
-        });
-        
-        // URL 파라미터로 디버그 모드 설정
-        const urlParams = new URLSearchParams(window.location.search);
-        const debugMode = urlParams.get('debug') === 'true';
-        this.errorHandler.setDebugMode(debugMode);
-        
-        console.log('✅ 오류 처리 시스템 설정 완료');
+            // 게임 엔진 오류 처리 전략 등록
+            this.errorHandler.registerRecoveryStrategy('GameEngineError', (error, context) => {
+                return this.recoverGameEngine(context);
+            });
+            
+            // URL 파라미터로 디버그 모드 설정
+            const urlParams = new URLSearchParams(window.location.search);
+            const debugMode = urlParams.get('debug') === 'true';
+            this.errorHandler.setDebugMode(debugMode);
+            
+            console.log('✅ 오류 처리 시스템 설정 완료');
+            
+        } catch (error) {
+            console.error('❌ 오류 처리 시스템 설정 실패:', error);
+            // 폴백: 기본 오류 처리만 사용
+        }
     }
     
     /**
