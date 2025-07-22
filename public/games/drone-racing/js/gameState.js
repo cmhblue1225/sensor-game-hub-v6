@@ -185,12 +185,16 @@ class GameStateManager {
      * 카운트다운 상태 처리
      */
     handleCountdownState(data = {}) {
+        console.log('⏰ 카운트다운 상태 처리 시작');
+        
+        // 카운트다운 상태 초기화 (isActive는 startCountdown에서 설정)
         this.countdownState = {
-            isActive: true,
+            isActive: false,  // startCountdown에서 true로 설정됨
             currentCount: data.startCount || 3,
             startTime: Date.now()
         };
         
+        console.log('⏰ 카운트다운 상태 초기화 완료, startCountdown() 호출');
         this.startCountdown();
     }
     
