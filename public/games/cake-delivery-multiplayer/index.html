@@ -291,6 +291,7 @@
                         obstacles: 2, 
                         obstacleSpeed: 0.5, 
                         timeLimit: 120,
+                        forwardSpeed: 0.3,
                         description: "기본 레벨 - 넓은 길과 느린 장애물" 
                     },
                     2: { 
@@ -298,6 +299,7 @@
                         obstacles: 3, 
                         obstacleSpeed: 0.8, 
                         timeLimit: 100,
+                        forwardSpeed: 0.4,
                         description: "조금 좁아진 길과 빨라진 장애물" 
                     },
                     3: { 
@@ -305,6 +307,7 @@
                         obstacles: 4, 
                         obstacleSpeed: 1.2, 
                         timeLimit: 90,
+                        forwardSpeed: 0.5,
                         description: "중간 난이도 - 더 많은 장애물" 
                     },
                     4: { 
@@ -312,6 +315,7 @@
                         obstacles: 5, 
                         obstacleSpeed: 1.6, 
                         timeLimit: 80,
+                        forwardSpeed: 0.6,
                         description: "고난이도 - 좁은 길과 빠른 장애물" 
                     },
                     5: { 
@@ -319,6 +323,7 @@
                         obstacles: 6, 
                         obstacleSpeed: 2.0, 
                         timeLimit: 70,
+                        forwardSpeed: 0.7,
                         description: "최고 난이도 - 극한의 도전!" 
                     }
                 };
@@ -748,10 +753,14 @@
                 console.log('🚀 게임 시작!');
                 this.gameState = 'playing';
                 this.startTime = Date.now();
+                this.levelStartTime = Date.now();
                 
                 // UI 숨기기/표시
                 this.elements.waitingRoom.style.display = 'none';
                 this.elements.startGameContainer.style.display = 'none';
+                
+                // 플레이어들을 게임 위치로 배치
+                this.initializePlayersForGame();
                 
                 // 타이머 시작
                 this.startGameTimer();
@@ -760,6 +769,39 @@
                 this.initLevel();
                 
                 this.showMessage(`레벨 ${this.currentLevel} 시작!`, 'info');
+            }
+            
+            initializePlayersForGame() {
+                console.log('🎮 플레이어 게임 내 배치 시작');
+                let playerIndex = 0;
+                const startPositions = [
+                    [-3, 0.5, -8],   // 플레이어 1
+                    [3, 0.5, -8],    // 플레이어 2
+                    [-5, 0.5, -10],   // 플레이어 3
+                    [5, 0.5, -10],    // 플레이어 4
+                    [-7, 0.5, -12],   // 플레이어 5
+                    [7, 0.5, -12],    // 플레이어 6
+                    [-9, 0.5, -14],  // 플레이어 7
+                    [9, 0.5, -14]    // 플레이어 8
+                ];
+                
+                for (const [playerId, playerData] of this.players) {
+                    if (playerData.mesh && playerIndex < startPositions.length) {
+                        const [x, y, z] = startPositions[playerIndex];
+                        playerData.mesh.position.set(x, y, z);
+                        playerData.mesh.visible = true;
+                        
+                        // 플레이어 색상 설정 (구별하기 쉽도록)
+                        const colors = [0x3b82f6, 0xef4444, 0x10b981, 0xf59e0b, 0x8b5cf6, 0x06b6d4, 0xf97316, 0x84cc16];
+                        if (playerData.mesh.material) {
+                            playerData.mesh.material.color.setHex(colors[playerIndex] || 0x3b82f6);
+                        }
+                        
+                        console.log(`✅ 플레이어 ${playerIndex + 1} (${playerId}) 위치: (${x}, ${y}, ${z})`);
+                        playerIndex++;
+                    }
+                }
+                console.log(`🎮 총 ${playerIndex}명의 플레이어 배치 완료`);
             }
             
             initLevel() {
@@ -828,20 +870,136 @@
             }
             
             startGameTimer() {
+                if (this.gameTimer) {
+                    clearInterval(this.gameTimer);
+                }
+                
                 const config = this.levelConfig[this.currentLevel];
-                let timeLeft = config.timeLimit;
+                const totalTime = config.timeLimit;
                 
                 this.gameTimer = setInterval(() => {
-                    timeLeft--;
+                    if (this.gameState !== 'playing') return;
+                    
+                    const currentTime = Date.now();
+                    const elapsed = (currentTime - this.levelStartTime) / 1000;
+                    const timeLeft = Math.max(0, totalTime - elapsed);
+                    
+                    // 타이머 UI 업데이트
                     const minutes = Math.floor(timeLeft / 60);
-                    const seconds = timeLeft % 60;
+                    const seconds = Math.floor(timeLeft % 60);
                     this.elements.gameTimer.textContent = 
                         `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
                     
+                    // 케이크 Z 위치 기반 진행률 계산
+                    const progress = this.calculateProgress();
+                    this.elements.progressPercent.textContent = Math.floor(progress);
+                    
+                    // 시간 초과 확인
                     if (timeLeft <= 0) {
-                        this.gameOver(false);
+                        this.gameOver(false, '시간 초과!');
                     }
-                }, 1000);
+                    
+                    // 목표 도달 확인 (케이크가 충분히 멀리 이동했을 때)
+                    if (progress >= 100) {
+                        this.completeLevel();
+                    }
+                }, 100);  // 더 정확한 업데이트를 위해 100ms 간격
+            }
+            
+            calculateProgress() {
+                if (!this.cake.mesh) return 0;
+                
+                // 케이크의 Z 위치를 기반으로 진행률 계산
+                const currentZ = this.cake.mesh.position.z;
+                const startZ = 0;  // 시작 위치
+                const targetZ = 50 + (this.currentLevel * 10);  // 레벨별 목표 지점
+                
+                const progress = ((currentZ - startZ) / (targetZ - startZ)) * 100;
+                return Math.max(0, Math.min(100, progress));
+            }
+            
+            completeLevel() {
+                console.log(`🎉 레벨 ${this.currentLevel} 완료!`);
+                
+                // 타이머 정지
+                if (this.gameTimer) {
+                    clearInterval(this.gameTimer);
+                    this.gameTimer = null;
+                }
+                
+                // 점수 계산
+                const timeBonus = Math.max(0, this.levelConfig[this.currentLevel].timeLimit - 
+                    (Date.now() - this.levelStartTime) / 1000);
+                const levelScore = 100 + Math.floor(timeBonus * 10);
+                this.currentScore += levelScore;
+                this.elements.currentScore.textContent = this.currentScore;
+                
+                if (this.currentLevel < this.maxLevel) {
+                    // 다음 레벨로
+                    this.showMessage(`레벨 ${this.currentLevel} 완료! (+${levelScore}점)`, 'success', 3000);
+                    setTimeout(() => {
+                        this.nextLevel();
+                    }, 3000);
+                } else {
+                    // 게임 완전 완료
+                    this.gameComplete();
+                }
+            }
+            
+            nextLevel() {
+                this.currentLevel++;
+                this.levelStartTime = Date.now();
+                
+                // 케이크 위치 초기화
+                if (this.cake.mesh && this.cakeBody) {
+                    this.cake.mesh.position.set(0, 1.5, 0);
+                    this.cakeBody.position.set(0, 1.5, 0);
+                    this.cakeBody.velocity.set(0, 0, 0);
+                    this.cakeBody.angularVelocity.set(0, 0, 0);
+                }
+                
+                // 레벨 초기화 및 타이머 재시작
+                this.initLevel();
+                this.startGameTimer();
+                
+                this.showMessage(`레벨 ${this.currentLevel} 시작!`, 'info', 2000);
+            }
+            
+            gameOver(success = false, reason = '') {
+                console.log(`🔚 게임 종료: ${success ? '성공' : '실패'} - ${reason}`);
+                this.gameState = 'ended';
+                
+                // 타이머 정지
+                if (this.gameTimer) {
+                    clearInterval(this.gameTimer);
+                    this.gameTimer = null;
+                }
+                
+                // 결과 화면 표시
+                const resultTitle = success ? '🎉 게임 클리어!' : '😞 게임 실패';
+                const resultMessage = reason ? `${resultTitle}\n${reason}` : resultTitle;
+                
+                this.showMessage(resultMessage, success ? 'success' : 'error', 5000);
+                
+                // 3초 후 결과 화면으로
+                setTimeout(() => {
+                    this.showGameResult(success);
+                }, 3000);
+            }
+            
+            gameComplete() {
+                console.log('🏆 전체 게임 완료!');
+                const totalTime = (Date.now() - this.startTime) / 1000;
+                const minutes = Math.floor(totalTime / 60);
+                const seconds = Math.floor(totalTime % 60);
+                
+                this.gameOver(true, `전체 완료!\n점수: ${this.currentScore}점\n시간: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+            }
+            
+            showGameResult(success) {
+                // 결과 화면 UI 표시 로직
+                console.log('결과 화면 표시:', success);
+                // TODO: 결과 화면 UI 구현
             }
             
             processSensorData(sensorData) {
@@ -851,15 +1009,53 @@
                 if (now - this.lastSensorUpdate < this.sensorUpdateInterval) return;
                 this.lastSensorUpdate = now;
                 
-                // 센서 데이터 저장
-                this.sensorData.set(sensorData.sensorId, sensorData.data);
+                const playerId = sensorData.sensorId;
+                const data = sensorData.data;
                 
-                // 모든 플레이어의 센서 데이터 합산
+                // 플레이어 위치 업데이트 (개별 조작)
+                this.updatePlayerPosition(playerId, data);
+                
+                // 센서 데이터 저장 (케이크 조작용)
+                this.sensorData.set(playerId, data);
+                
+                // 모든 플레이어의 센서 데이터로 케이크 조작
                 this.updateCakeFromSensors();
             }
             
+            updatePlayerPosition(playerId, data) {
+                if (!data.orientation) return;
+                
+                const player = this.players.get(playerId);
+                if (!player || !player.mesh) return;
+                
+                const { gamma, beta } = data.orientation;
+                
+                // 데이터 검증 및 극값 제한
+                if (!isFinite(gamma) || !isFinite(beta)) return;
+                const clampedGamma = THREE.MathUtils.clamp(gamma, -90, 90);
+                const clampedBeta = THREE.MathUtils.clamp(beta, -90, 90);
+                
+                // 이동 계산 (감도 조정)
+                const sensitivity = 0.15;
+                const moveX = clampedGamma * sensitivity;
+                const moveZ = clampedBeta * sensitivity;
+                
+                // 플레이어 이동 (부드러운 보간)
+                const currentPos = player.mesh.position;
+                const newX = currentPos.x + moveX * 0.1;
+                const newZ = currentPos.z + moveZ * 0.1;
+                
+                // 이동 범위 제한 (게임 영역 내)
+                const maxX = 15;
+                const maxZ = 100;
+                const minZ = -20;
+                
+                player.mesh.position.x = THREE.MathUtils.clamp(newX, -maxX, maxX);
+                player.mesh.position.z = THREE.MathUtils.clamp(newZ, minZ, maxZ);
+            }
+            
             updateCakeFromSensors() {
-                if (this.sensorData.size === 0) return;
+                if (this.sensorData.size === 0 || !this.cakeBody) return;
                 
                 let totalGamma = 0;
                 let totalBeta = 0;
@@ -868,9 +1064,15 @@
                 // 모든 연결된 센서의 데이터 합산
                 this.sensorData.forEach((data) => {
                     if (data.orientation) {
-                        totalGamma += data.orientation.gamma || 0;
-                        totalBeta += data.orientation.beta || 0;
-                        count++;
+                        // 극값 필터링
+                        const gamma = data.orientation.gamma || 0;
+                        const beta = data.orientation.beta || 0;
+                        
+                        if (isFinite(gamma) && isFinite(beta)) {
+                            totalGamma += THREE.MathUtils.clamp(gamma, -90, 90);
+                            totalBeta += THREE.MathUtils.clamp(beta, -90, 90);
+                            count++;
+                        }
                     }
                 });
                 
@@ -879,18 +1081,27 @@
                     const avgGamma = totalGamma / count;
                     const avgBeta = totalBeta / count;
                     
-                    // 케이크에 힘 적용 (감도 조정)
-                    const sensitivity = 0.1;
+                    // 케이크에 힘 적용 (협력 효과)
+                    const baseSensitivity = 0.08;
+                    const cooperationMultiplier = Math.min(1.5, 1 + (count - 1) * 0.1); // 플레이어가 많을수록 더 강함
+                    const sensitivity = baseSensitivity * cooperationMultiplier;
+                    
                     const forceX = avgGamma * sensitivity;
                     const forceZ = avgBeta * sensitivity;
                     
                     // 최대 힘 제한
-                    const maxForce = 3;
-                    const clampedForceX = Math.max(-maxForce, Math.min(maxForce, forceX));
-                    const clampedForceZ = Math.max(-maxForce, Math.min(maxForce, forceZ));
+                    const maxForce = 4;
+                    const clampedForceX = THREE.MathUtils.clamp(forceX, -maxForce, maxForce);
+                    const clampedForceZ = THREE.MathUtils.clamp(forceZ, -maxForce, maxForce);
                     
-                    this.cakeBody.velocity.x = clampedForceX;
-                    this.cakeBody.velocity.z = clampedForceZ;
+                    // 부드러운 힘 적용
+                    this.cakeBody.velocity.x = THREE.MathUtils.lerp(this.cakeBody.velocity.x, clampedForceX, 0.3);
+                    this.cakeBody.velocity.z = THREE.MathUtils.lerp(this.cakeBody.velocity.z, clampedForceZ, 0.3);
+                    
+                    // 자동 전진 (레벨별 속도)
+                    const config = this.levelConfig[this.currentLevel];
+                    const forwardSpeed = config.forwardSpeed || 0.5;
+                    this.cakeBody.velocity.z += forwardSpeed;
                 }
             }
             
@@ -903,9 +1114,9 @@
                         this.world.step(1/60);
                         
                         // 시각적 오브젝트 위치 동기화
-                        if (this.cake && this.cakeBody) {
-                            this.cake.position.copy(this.cakeBody.position);
-                            this.cake.quaternion.copy(this.cakeBody.quaternion);
+                        if (this.cake.mesh && this.cakeBody) {
+                            this.cake.mesh.position.copy(this.cakeBody.position);
+                            this.cake.mesh.quaternion.copy(this.cakeBody.quaternion);
                         }
                         
                         // 장애물 움직임 업데이트
@@ -941,73 +1152,84 @@
             }
             
             updateCamera() {
-                if (this.cake) {
+                if (this.cake.mesh) {
                     // 케이크를 부드럽게 따라가는 카메라
-                    const targetX = this.cake.position.x;
-                    const targetZ = this.cake.position.z + 20;
+                    const targetX = this.cake.mesh.position.x;
+                    const targetZ = this.cake.mesh.position.z + 20;
                     
                     this.camera.position.x += (targetX - this.camera.position.x) * 0.05;
                     this.camera.position.z += (targetZ - this.camera.position.z) * 0.05;
-                    this.camera.lookAt(this.cake.position);
+                    this.camera.lookAt(this.cake.mesh.position);
                 }
             }
             
             checkGameProgress() {
                 if (!this.cakeBody) return;
                 
-                // 진행률 계산
-                const progress = Math.max(0, (this.cakeBody.position.z + 20) / 50) * 100;
-                this.elements.progressPercent.textContent = Math.round(progress);
+                // 충돌 감지
+                this.checkCollisions();
                 
-                // 레벨 클리어 체크
-                if (this.cakeBody.position.z >= 30) {
-                    this.levelComplete();
+                // 케이크 기울기 체크 (넘어짐 방지)
+                this.checkCakeStability();
+                
+                // 도로 이탈 체크
+                this.checkRoadBounds();
+                
+                // 레벨 클리어 체크는 타이머에서 진행률 기반으로 처리됨
+            }
+            
+            checkCollisions() {
+                if (!this.cakeBody) return;
+                
+                const cakePosition = this.cakeBody.position;
+                const cakeRadius = 2; // 케이크 충돌 반경
+                
+                // 장애물과의 충돌 체크
+                this.scene.traverse((object) => {
+                    if (object.userData && object.userData.isObstacle) {
+                        const distance = cakePosition.distanceTo(object.position);
+                        if (distance < cakeRadius + 1) {
+                            this.gameOver(false, '장애물 충돌!');
+                        }
+                    }
+                });
+            }
+            
+            checkCakeStability() {
+                if (!this.cakeBody) return;
+                
+                // 케이크 기울기 체크 (쿼터니언을 오일러 각도로 변환)
+                const euler = new THREE.Euler();
+                euler.setFromQuaternion(this.cakeBody.quaternion);
+                
+                const maxTilt = Math.PI / 4; // 45도
+                if (Math.abs(euler.x) > maxTilt || Math.abs(euler.z) > maxTilt) {
+                    this.gameOver(false, '케이크가 넘어졌습니다!');
+                }
+            }
+            
+            checkRoadBounds() {
+                if (!this.cakeBody) return;
+                
+                const config = this.levelConfig[this.currentLevel];
+                const roadWidth = config.roadWidth;
+                
+                // 도로 폭을 벗어났는지 체크
+                if (Math.abs(this.cakeBody.position.x) > roadWidth / 2) {
+                    this.gameOver(false, '도로를 벗어났습니다!');
+                }
+                
+                // 뒤로 너무 많이 밀려났는지 체크
+                if (this.cakeBody.position.z < -30) {
+                    this.gameOver(false, '너무 뒤로 밀려났습니다!');
                 }
                 
                 // 케이크가 떨어진 경우
                 if (this.cakeBody.position.y < -5) {
-                    this.gameOver(false);
+                    this.gameOver(false, '케이크가 떨어졌습니다!');
                 }
             }
             
-            levelComplete() {
-                console.log(`🎉 레벨 ${this.currentLevel} 클리어!`);
-                this.score += 1000 * this.currentLevel;
-                this.elements.currentScore.textContent = this.score;
-                
-                if (this.currentLevel < this.maxLevel) {
-                    this.currentLevel++;
-                    this.showMessage(`레벨 ${this.currentLevel - 1} 클리어! 다음 레벨로...`, 'success');
-                    
-                    setTimeout(() => {
-                        this.initLevel();
-                    }, 2000);
-                } else {
-                    this.gameComplete();
-                }
-            }
-            
-            gameComplete() {
-                console.log('🏆 게임 완료!');
-                this.gameState = 'completed';
-                
-                if (this.gameTimer) {
-                    clearInterval(this.gameTimer);
-                }
-                
-                this.showResultScreen(true);
-            }
-            
-            gameOver(success = false) {
-                console.log(success ? '🎉 게임 성공!' : '💥 게임 실패!');
-                this.gameState = success ? 'completed' : 'failed';
-                
-                if (this.gameTimer) {
-                    clearInterval(this.gameTimer);
-                }
-                
-                this.showResultScreen(success);
-            }
             
             showResultScreen(success) {
                 const resultScreen = this.elements.resultScreen;
@@ -1026,7 +1248,7 @@
                         클리어한 레벨: ${success ? this.maxLevel : this.currentLevel - 1}/${this.maxLevel}
                     </div>
                     <div style="font-size: 16px; margin-bottom: 10px;">
-                        최종 점수: ${this.score.toLocaleString()}점
+                        최종 점수: ${this.currentScore.toLocaleString()}점
                     </div>
                     <div style="font-size: 16px; margin-bottom: 10px;">
                         플레이 시간: ${minutes}:${seconds.toString().padStart(2, '0')}
@@ -1045,7 +1267,7 @@
                 // 게임 상태 리셋
                 this.gameState = 'waiting';
                 this.currentLevel = 1;
-                this.score = 0;
+                this.currentScore = 0;
                 this.startTime = 0;
                 
                 // UI 리셋
