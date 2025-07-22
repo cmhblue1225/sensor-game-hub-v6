@@ -125,28 +125,46 @@ export class GamePage {
     **/
     renderControlPanel(state) {
         const controlPanel = this.elements.controlPanel;
+        
+        // 기존 허브로 버튼 보존
+        const existingHubBtn = this.elements.backToHubBtn;
+        
+        // 다른 버튼들만 제거
+        const existingButtons = controlPanel.querySelectorAll('.btn:not(#backToHubBtn)');
+        existingButtons.forEach(btn => btn.remove());
+        
+        // 버튼 그룹이 없으면 생성
+        let btnGroup = controlPanel.querySelector('.btn-group');
+        if (!btnGroup) {
+            btnGroup = document.createElement('div');
+            btnGroup.className = 'btn-group';
+            controlPanel.appendChild(btnGroup);
+        }
+
         let buttonsHtml = '';
 
         if (state === 'waiting') {
             // 대기 화면(QR코드 화면)에 표시될 버튼들
             buttonsHtml = `
-                <div class="btn-group">
-                    <button class="btn btn-secondary" id="backToModeBtn">🔄 모드 선택</button>
-                    <a href="/" class="btn btn-secondary">🏠 허브로</a>
-                </div>
+                <button class="btn btn-secondary" id="backToModeBtn">🔄 모드 선택</button>
+                <a href="/" class="btn btn-secondary">🏠 허브로</a>
             `;
         } else if (state === 'playing') {
             // 실제 게임 진행 중에 표시될 버튼들
             buttonsHtml = `
-                <div class="btn-group">
-                    <button class="btn btn-secondary" id="resetBtn">🔄 재시작</button>
-                    <button class="btn btn-primary" id="pauseBtn">⏸️ 일시정지</button>
-                    <a href="/" class="btn btn-secondary">🏠 허브로</a>
-                </div>
+                <button class="btn btn-secondary" id="resetBtn">🔄 재시작</button>
+                <button class="btn btn-primary" id="pauseBtn">⏸️ 일시정지</button>
+                <a href="/" class="btn btn-secondary">🏠 허브로</a>
             `;
         }
 
-        controlPanel.innerHTML = buttonsHtml;
+        btnGroup.innerHTML = buttonsHtml;
+        
+        // 허브로 버튼 숨기기 (게임 진행 중이므로)
+        if (existingHubBtn) {
+            existingHubBtn.classList.remove('show');
+        }
+        
         this.setupControlPanelListeners(state);
     }
 
@@ -225,6 +243,12 @@ export class GamePage {
         // 컨트롤 패널의 다른 버튼들 제거 (허브로 버튼은 유지)
         const existingButtons = this.elements.controlPanel.querySelectorAll('.btn:not(#backToHubBtn)');
         existingButtons.forEach(btn => btn.remove());
+        
+        // 버튼 그룹도 제거
+        const btnGroup = this.elements.controlPanel.querySelector('.btn-group');
+        if (btnGroup) {
+            btnGroup.remove();
+        }
 
         // 상태 초기화
         this.waitingRoomWidget.updateGameStatus('게임 모드를 선택하세요');
