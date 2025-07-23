@@ -2226,6 +2226,31 @@ class RhythmBladeDual {
         }
     }
     
+    showModeSelection() {
+        // 게임을 일시정지하고 모드 선택 화면으로 이동
+        if (this.gameState.phase === 'playing') {
+            this.togglePause();
+        }
+        
+        // 세션 패널을 보이고 게임 UI를 숨김
+        document.getElementById('sessionPanel').classList.remove('hidden');
+        document.getElementById('gameStats').classList.add('hidden');
+        document.getElementById('cooperationMeter').classList.add('hidden');
+        document.getElementById('controlPanel').classList.add('hidden');
+        document.getElementById('gameInstructions').classList.add('hidden');
+        
+        // 게임 상태를 대기로 변경
+        this.gameState.phase = 'waiting';
+        
+        // 음악 정지
+        if (this.bgMusic && !this.bgMusic.paused) {
+            this.bgMusic.pause();
+            this.bgMusic.currentTime = 0;
+        }
+        
+        console.log('🎵 모드 선택 화면으로 이동');
+    }
+    
     render() {
         this.renderer.render(this.scene, this.camera);
     }

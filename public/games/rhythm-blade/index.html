@@ -132,9 +132,12 @@
         
         <!-- 컨트롤 패널 -->
         <div class="ui-panel control-panel hidden" id="controlPanel">
-            <button class="btn btn-secondary" onclick="game.resetGame()">🔄 재시작</button>
-            <button class="btn btn-secondary" onclick="game.togglePause()">⏸️ 일시정지</button>
-            <a href="/" class="btn btn-secondary">🏠 허브로</a>
+            <div class="control-grid">
+                <button class="btn btn-secondary" onclick="game.resetGame()">🔄 재시작</button>
+                <button class="btn btn-secondary" onclick="game.togglePause()">⏸️ 일시정지</button>
+                <button class="btn btn-secondary" onclick="game.showModeSelection()">🎵 모드선택</button>
+                <a href="/" class="btn btn-secondary">🏠 허브로</a>
+            </div>
         </div>
         
         <!-- ✅ 바닥 가이드라인 게임 설명 (탭소닉 스타일) -->
