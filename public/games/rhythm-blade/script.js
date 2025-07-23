@@ -1443,8 +1443,34 @@ class RhythmBladeDual {
     }
     
     startGame() {
-        this.gameState.phase = 'playing';
-        this.gameState.startTime = Date.now();
+        // 🔄 게임 상태 완전 초기화
+        this.gameState = {
+            phase: 'playing',
+            score: 0,
+            combo: 0,
+            maxCombo: 0,
+            totalNotes: 0,
+            hitNotes: 0,
+            startTime: Date.now(),
+            endingStartTime: 0
+        };
+        
+        // 🗑️ 기존 노트들 모두 제거
+        this.notes.forEach(note => {
+            this.scene.remove(note);
+        });
+        this.notes = [];
+        
+        // 🎼 새 비트맵 생성 (선택된 트랙에 맞게)
+        this.beatmap = this.generateRhythmBeatmap();
+        this.noteIndex = 0;  // 노트 인덱스 초기화
+        
+        // 🎯 협력 시스템 초기화
+        this.cooperation = {
+            sync: 100,
+            recentHits: [],
+            cooperationBonus: 1.0
+        };
         
         // 🎵 음악 재생 시작 (음악 길이에 맞춰 자연스럽게)
         if (this.musicLoaded) {
@@ -1485,7 +1511,10 @@ class RhythmBladeDual {
         document.getElementById('controlPanel').classList.remove('hidden');
         document.getElementById('gameInstructions').classList.remove('hidden');
         
-        console.log('🎮 Rhythm Blade Dual 게임 시작! (90초 제한)');
+        // 🎯 UI 초기화 및 업데이트
+        this.updateUI();
+        
+        console.log('🎮 Rhythm Blade Dual 게임 시작! (완전 초기화됨)');
     }
     
     triggerSwing(sensorId) {
@@ -2192,24 +2221,34 @@ class RhythmBladeDual {
     }
     
     resetGame() {
+        // 🔄 게임 상태 완전 초기화
         this.gameState = {
             phase: 'playing',
             score: 0,
             combo: 0,
             maxCombo: 0,
-            totalNotes: this.beatmap.length,
+            totalNotes: 0,
             hitNotes: 0,
             startTime: Date.now(),
-            endingStartTime: 0        // 2초 지연 종료를 위한 초기화
+            endingStartTime: 0
         };
         
-        this.noteSpawnIndex = 0;
-        this.cooperation.sync = 100;
-        this.cooperation.cooperationBonus = 1.0;
-        
-        // 기존 노트들 제거
-        this.notes.forEach(note => this.scene.remove(note));
+        // 🗑️ 기존 노트들 모두 제거
+        this.notes.forEach(note => {
+            this.scene.remove(note);
+        });
         this.notes = [];
+        
+        // 🎼 새 비트맵 생성 (현재 선택된 트랙에 맞게)
+        this.beatmap = this.generateRhythmBeatmap();
+        this.noteIndex = 0;  // 노트 인덱스 초기화
+        
+        // 🎯 협력 시스템 초기화
+        this.cooperation = {
+            sync: 100,
+            recentHits: [],
+            cooperationBonus: 1.0
+        };
         
         // 🎵 음악 재시작
         if (this.musicLoaded) {
@@ -2219,7 +2258,10 @@ class RhythmBladeDual {
             });
         }
         
-        console.log('🔄 게임 재시작');
+        // 🎯 UI 업데이트
+        this.updateUI();
+        
+        console.log('🔄 게임 재시작 (완전 초기화됨)');
     }
     
     togglePause() {
