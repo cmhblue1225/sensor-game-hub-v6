@@ -310,12 +310,12 @@
                 this.obstacles = [];
                 this.playerMeshes = new Map();
                 
-                // 스테이지 설정
+                // 스테이지 설정 (케이크 게임 기반 속도 시스템)
                 this.stageConfig = {
                     1: { 
                         name: "기본 벽 장애물",
                         description: "간단한 벽 장애물을 피해보세요",
-                        speed: 1.0,
+                        forwardSpeed: 0.12,  // 자동 전진 속도
                         obstacleCount: 8,
                         obstacleTypes: ['wall'],
                         trackWidth: 20
@@ -323,7 +323,7 @@
                     2: { 
                         name: "벽과 구덩이",
                         description: "벽과 구덩이가 등장합니다",
-                        speed: 1.2,
+                        forwardSpeed: 0.15,
                         obstacleCount: 12,
                         obstacleTypes: ['wall', 'pit'],
                         trackWidth: 18
@@ -331,7 +331,7 @@
                     3: { 
                         name: "회전 장애물 추가",
                         description: "회전하는 장애물이 등장합니다",
-                        speed: 1.4,
+                        forwardSpeed: 0.18,
                         obstacleCount: 15,
                         obstacleTypes: ['wall', 'pit', 'rotating'],
                         trackWidth: 16
@@ -339,7 +339,7 @@
                     4: { 
                         name: "이동 장애물",
                         description: "좌우로 움직이는 장애물까지!",
-                        speed: 1.6,
+                        forwardSpeed: 0.22,
                         obstacleCount: 18,
                         obstacleTypes: ['wall', 'pit', 'rotating', 'moving'],
                         trackWidth: 14
@@ -347,15 +347,25 @@
                     5: { 
                         name: "최종 도전",
                         description: "모든 장애물이 총출동합니다!",
-                        speed: 2.0,
+                        forwardSpeed: 0.26,
                         obstacleCount: 25,
                         obstacleTypes: ['wall', 'pit', 'rotating', 'moving'],
                         trackWidth: 12
                     }
                 };
                 
+                // 센서 처리 설정 (케이크 게임 기반)
+                this.sensorConfig = {
+                    sensitivity: 0.02,     // 센서 감도
+                    maxSpeed: 0.15,        // 최대 좌우 이동 속도
+                    deadZone: 1.5,         // 데드존 (도 단위)
+                    smoothingFactor: 0.25, // 스무딩 계수
+                    historySize: 3         // 센서 히스토리 크기
+                };
+                
                 // 센서 데이터 처리
                 this.sensorData = new Map();
+                this.sensorHistory = new Map(); // 센서 스무딩용 히스토리
                 this.lastSensorUpdate = 0;
                 this.sensorUpdateInterval = 33; // 30fps
                 
@@ -1206,6 +1216,34 @@
                 this.sensorData.set(playerId, data);
             }
             
+            // 센서 데이터 스무딩 함수 (케이크 게임 기반)
+            smoothSensorData(playerId, gamma, beta) {
+                if (!this.sensorHistory.has(playerId)) {
+                    this.sensorHistory.set(playerId, []);
+                }
+                
+                const history = this.sensorHistory.get(playerId);
+                history.push({ gamma, beta, timestamp: Date.now() });
+                
+                // 히스토리 크기 제한
+                if (history.length > this.sensorConfig.historySize) {
+                    history.shift();
+                }
+                
+                // 평균값 계산 (스무딩)
+                let avgGamma = 0;
+                let avgBeta = 0;
+                history.forEach(h => {
+                    avgGamma += h.gamma;
+                    avgBeta += h.beta;
+                });
+                
+                return {
+                    gamma: avgGamma / history.length,
+                    beta: avgBeta / history.length
+                };
+            }
+            
             updatePlayerMovement(playerId, data) {
                 if (!data.orientation) return;
                 
@@ -1224,34 +1262,47 @@
                 // 데이터 검증
                 if (!isFinite(gamma) || !isFinite(beta)) return;
                 
+                // 극값 제한
+                const clampedGamma = THREE.MathUtils.clamp(gamma, -60, 60);
+                const clampedBeta = THREE.MathUtils.clamp(beta, -60, 60);
+                
+                // 센서 데이터 스무딩
+                const smoothedData = this.smoothSensorData(playerId, clampedGamma, clampedBeta);
+                
                 // 데드존 적용
-                const deadZone = 5;
-                const adjustedGamma = Math.abs(gamma) < deadZone ? 0 : gamma;
-                const adjustedBeta = Math.abs(beta) < deadZone ? 0 : beta;
+                const deadZone = this.sensorConfig.deadZone;
+                const adjustedGamma = Math.abs(smoothedData.gamma) < deadZone ? 0 : smoothedData.gamma;
+                const adjustedBeta = Math.abs(smoothedData.beta) < deadZone ? 0 : smoothedData.beta;
                 
-                // 이동 계산
-                const sensitivity = 0.1;
-                const speedMultiplier = this.stageConfig[this.currentStage].speed;
+                // 이동 계산 (케이크 게임 기반)
+                const config = this.stageConfig[this.currentStage];
+                const sensitivity = this.sensorConfig.sensitivity;
+                const maxSpeed = this.sensorConfig.maxSpeed;
                 
-                const moveX = THREE.MathUtils.clamp(adjustedGamma * sensitivity, -3, 3);
-                const moveZ = THREE.MathUtils.clamp(-adjustedBeta * sensitivity * speedMultiplier, -2, 3); // 앞뒤 이동
+                // 좌우 이동 (센서 gamma)
+                let moveX = adjustedGamma * sensitivity;
+                moveX = THREE.MathUtils.clamp(moveX, -maxSpeed, maxSpeed);
                 
-                // 위치 업데이트
+                // 자동 전진 + 미세 앞뒤 조정
+                let moveZ = (adjustedBeta * sensitivity * 0.5) - config.forwardSpeed; // 자동 전진!
+                
+                // 위치 업데이트 (부드러운 보간)
                 const currentPos = playerMesh.body.position;
-                const newX = currentPos.x + moveX * 0.3;
-                const newZ = currentPos.z + moveZ * 0.3;
+                const targetX = currentPos.x + moveX;
+                const targetZ = currentPos.z + moveZ;
                 
-                // 경계 체크 (트랙 안에서만 이동)
-                const trackWidth = this.stageConfig[this.currentStage].trackWidth;
-                const clampedX = THREE.MathUtils.clamp(newX, -trackWidth/2 + 1, trackWidth/2 - 1);
-                const clampedZ = THREE.MathUtils.clamp(newZ, -20, 180); // 트랙 범위 내
+                // 경계 체크
+                const trackWidth = config.trackWidth;
+                const clampedTargetX = THREE.MathUtils.clamp(targetX, -trackWidth/2 + 1, trackWidth/2 - 1);
                 
-                playerMesh.body.position.x = clampedX;
-                playerMesh.body.position.z = clampedZ;
+                // 부드러운 위치 업데이트
+                const lerpFactor = this.sensorConfig.smoothingFactor;
+                playerMesh.body.position.x = THREE.MathUtils.lerp(currentPos.x, clampedTargetX, lerpFactor);
+                playerMesh.body.position.z = THREE.MathUtils.lerp(currentPos.z, targetZ, lerpFactor);
                 
-                // 부드러운 회전 (이동 방향에 따라)
+                // 플레이어 회전 (러닝 방향)
                 if (Math.abs(moveX) > 0.01) {
-                    const targetRotation = moveX > 0 ? Math.PI / 8 : -Math.PI / 8;
+                    const targetRotation = moveX > 0 ? Math.PI / 6 : -Math.PI / 6;
                     playerMesh.group.rotation.y = THREE.MathUtils.lerp(playerMesh.group.rotation.y, targetRotation, 0.1);
                 } else {
                     playerMesh.group.rotation.y = THREE.MathUtils.lerp(playerMesh.group.rotation.y, 0, 0.05);
@@ -1366,8 +1417,8 @@
                     
                     const playerPos = playerMesh.body.position;
                     
-                    // 완주선 도달 체크 (z = 180)
-                    if (playerPos.z >= 180) {
+                    // 완주선 도달 체크 - 더 멀리 설정 (z = 300)
+                    if (playerPos.z >= 300) {
                         const player = this.players.get(playerId);
                         if (player && !player.finishTime) {
                             player.finishTime = Date.now();
@@ -1486,7 +1537,7 @@
             }
             
             updateCamera() {
-                // 모든 살아있는 플레이어를 추적하는 카메라
+                // 러닝 게임용 3인칭 카메라 - 플레이어들을 뒤에서 추적
                 if (this.alivePlayers.size === 0) return;
                 
                 let centerX = 0, centerZ = 0;
@@ -1494,6 +1545,7 @@
                 let minZ = Infinity, maxZ = -Infinity;
                 
                 // 살아있는 플레이어들의 위치 계산
+                let aliveCount = 0;
                 for (const playerId of this.alivePlayers) {
                     const playerMesh = this.playerMeshes.get(playerId);
                     if (playerMesh && playerMesh.isAlive) {
@@ -1505,34 +1557,38 @@
                         maxX = Math.max(maxX, pos.x);
                         minZ = Math.min(minZ, pos.z);
                         maxZ = Math.max(maxZ, pos.z);
+                        aliveCount++;
                     }
                 }
                 
-                centerX /= this.alivePlayers.size;
-                centerZ /= this.alivePlayers.size;
+                if (aliveCount === 0) return;
                 
-                // 카메라 거리 자동 조정
-                const spreadX = maxX - minX;
-                const spreadZ = maxZ - minZ;
-                const maxSpread = Math.max(spreadX, spreadZ);
+                centerX /= aliveCount;
+                centerZ /= aliveCount;
                 
-                const minDistance = 20;
-                const maxDistance = 50;
-                const distance = Math.min(maxDistance, Math.max(minDistance, maxSpread * 2 + 15));
+                // 러닝 게임 특화 카메라 설정
+                const spreadX = Math.max(5, maxX - minX); // 최소 5 단위 보장
                 
-                // 카메라 위치 설정
+                // 카메라 위치 (뒤에서 위로 바라보는 러닝 게임 시점)
+                const baseHeight = 20;
+                const baseDistance = 25;
+                
+                // 플레이어 분산에 따른 거리 조정
+                const dynamicDistance = baseDistance + (spreadX * 1.5);
+                const dynamicHeight = baseHeight + (spreadX * 0.8);
+                
                 const targetX = centerX;
-                const targetY = distance * 0.8;
-                const targetZ = centerZ - distance * 0.8;
+                const targetY = dynamicHeight;
+                const targetZ = centerZ - dynamicDistance; // 플레이어들 뒤쪽
                 
-                // 부드러운 카메라 이동
-                const lerpFactor = 0.05;
+                // 부드러운 카메라 이동 (러닝 게임용 빠른 반응)
+                const lerpFactor = 0.08;
                 this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetX, lerpFactor);
                 this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetY, lerpFactor);
                 this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetZ, lerpFactor);
                 
-                // 카메라가 플레이어들을 바라보도록
-                const lookAtTarget = new THREE.Vector3(centerX, 1, centerZ + 10);
+                // 카메라가 플레이어들 앞쪽을 바라보도록 (진행 방향)
+                const lookAtTarget = new THREE.Vector3(centerX, 2, centerZ + 15);
                 this.camera.lookAt(lookAtTarget);
             }
             
@@ -1598,7 +1654,11 @@
                 });
                 this.obstacles = [];
                 
+                // 센서 히스토리 정리
+                this.sensorHistory.clear();
+                
                 this.updatePlayerUI();
+                this.checkGameReady(); // 게임 준비 상태 재확인
                 this.showMessage('게임이 초기화되었습니다.', 'info');
             }
             
