@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tilt Arcade Game</title>
+    <link rel="stylesheet" href="/css/theme.css">
+    <style>
+        .game-container {
+            position: relative;
+            max-width: 1200px;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #gameCanvas {
+            background: linear-gradient(45deg, var(--surface), var(--card));
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            max-width: 100%;
+            max-height: 80vh;
+        }
+
+        .game-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .session-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .session-panel img {
+            width: 24px;
+            height: 24px;
+        }
+
+        .score-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .control-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 41, 59, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .control-panel button {
+            background-color: var(--primary);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .control-panel button:hover {
+            background-color: var(--secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div class="game-ui">
+            <div class="session-panel">
+                <img src="/images/qrcode.svg" alt="QR Code">
+                <span id="sessionCode">Loading...</span>
+            </div>
+            <div class="score-panel">
+                Score: <span id="scoreDisplay">0</span>
+            </div>
+            <div class="control-panel">
+                <button id="restartButton">Restart</button>
+                <button id="pauseButton">Pause</button>
+                <a href="/" class="btn">Hub</a>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/SessionSDK.js"></script>
+    <script>
+        // 세션 SDK 초기화
+        const sessionSDK = new SessionSDK();
+
+        // 게임 상태 변수
+        let isGameActive = false;
+        let score = 0;
+        let ball = {
+            x: 0,
+            y: 0,
+            radius: 10,
+            speed: {
+                x: 0,
+                y: 0
+            }
+        };
+        let paddle = {
+            x: 0,
+            y: 0,
+            width: 100,
+            height: 20
+        };
+        let bricks = [];
+        const brickWidth = 80;
+        const brickHeight = 20;
+        const brickPadding = 10;
+        const brickColumns = 8;
+        const brickRows = 5;
+
+        // 캔버스 및 컨텍스트 초기화
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 게임 초기화
+        function initGame() {
+            // 캔버스 크기 설정
+            canvas.width = window.innerWidth * 0.8;
+            canvas.height = window.innerHeight * 0.6;
+
+            // 패들 초기 위치 설정
+            paddle.x = (canvas.width - paddle.width) / 2;
+            paddle.y = canvas.height - paddle.height - 10;
+
+            // 공 초기 위치 설정
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height - 30;
+
+            // 벽돌 생성
+            createBricks();
+
+            // 게임 시작
+            startGame();
+        }
+
+        // 벽돌 생성
+        function createBricks() {
+            bricks = [];
+            for (let c = 0; c < brickColumns; c++) {
+                bricks[c] = [];
+                for (let r = 0; r < brickRows; r++) {
+                    bricks[c][r] = { x: 0, y: 0, status: 1 };
+                }
+            }
+        }
+
+        // 게임 시작
+        function startGame() {
+            isGameActive = true;
+            ball.speed.x = 3;
+            ball.speed.y = -3;
+            requestAnimationFrame(gameLoop);
+        }
+
+        // 게임 루프
+        function gameLoop() {
+            if (isGameActive) {
+                // 캔버스 클리어
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 공 움직임 업데이트
+                updateBallPosition();
+
+                // 벽돌 그리기
+                drawBricks();
+
+                // 패들 그리기
+                drawPaddle();
+
+                // 공 그리기
+                drawBall();
+
+                // 점수 업데이트
+                updateScore();
+
+                // 다음 프레임 요청
+                requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // 공 움직임 업데이트
+        function updateBallPosition() {
+            ball.x += ball.speed.x;
+            ball.y += ball.speed.y;
+
+            // 벽 충돌 감지
+            if (ball.x + ball.radius > canvas.width || ball.x - ball.radius < 0) {
+                ball.speed.x = -ball.speed.x;
+            }
+            if (ball.y - ball.radius < 0) {
+                ball.speed.y = -ball.speed.y;
+            }
+            if (ball.y + ball.radius > canvas.height) {
+                isGameActive = false;
+                alert('Game Over!');
+            }
+
+            // 패들 충돌 감지
+            if (
+                ball.y + ball.radius >= paddle.y &&
+                ball.x >= paddle.x &&
+                ball.x <= paddle.x + paddle.width
+            ) {
+                ball.speed.y = -ball.speed.y;
+            }
+
+            // 벽돌 충돌 감지
+            detectBrickCollision();
+        }
+
+        // 벽돌 충돌 감지
+        function detectBrickCollision() {
+            for (let c = 0; c < brickColumns; c++) {
+                for (let r = 0; r < brickRows; r++) {
+                    const brick = bricks[c][r];
+                    if (brick.status === 1) {
+                        if (
+                            ball.x > brick.x &&
+                            ball.x < brick.x + brickWidth &&
+                            ball.y > brick.y &&
+                            ball.y < brick.y + brickHeight
+                        ) {
+                            ball.speed.y = -ball.speed.y;
+                            brick.status = 0;
+                            score++;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 벽돌 그리기
+        function drawBricks() {
+            for (let c = 0; c < brickColumns; c++) {
+                for (let r = 0; r < brickRows; r++) {
+                    if (bricks[c][r].status === 1) {
+                        const brickX = c * (brickWidth + brickPadding) + brickPadding;
+                        const brickY = r * (brickHeight + brickPadding) + brickPadding;
+                        bricks[c][r].x = brickX;
+                        bricks[c][r].y = brickY;
+                        ctx.beginPath();
+                        ctx.rect(brickX, brickY, brickWidth, brickHeight);
+                        ctx.fillStyle = 'var(--primary)';
+                        ctx.fill();
+                        ctx.closePath();
+                    }
+                }
+            }
+        }
+
+        // 패들 그리기
+        function drawPaddle() {
+            ctx.beginPath();
+            ctx.rect(paddle.x, paddle.y, paddle.width, paddle.height);
+            ctx.fillStyle = 'var(--text-primary)';
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // 공 그리기
+        function drawBall() {
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fillStyle = 'var(--text-primary)';
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        // 점수 업데이트
+        function updateScore() {
+            document.getElementById('scoreDisplay').textContent = score;
+        }
+
+        // 재시작 버튼 클릭 핸들러
+        document.getElementById('restartButton').addEventListener('click', () => {
+            initGame();
+        });
+
+        // 일시정지 버튼 클릭 핸들러
+        document.getElementById('pauseButton').addEventListener('click', () => {
+            isGameActive = !isGameActive;
+            if (isGameActive) {
+                gameLoop();
+            }
+        });
+
+        // 세션 SDK 연결 대기
+        sessionSDK.on('connected', () => {
+            // 세션 코드 표시
+            document.getElementById('sessionCode').textContent = sessionSDK.getSessionCode();
+
+            // 게임 초기화
+            initGame();
+        });
+
+        // 센서 데이터 처리
+        sessionSDK.on('motion', (event) => {
+            const { orientation } = event.detail || event;
+            paddle.x = (canvas.width - paddle.width) * ((orientation.gamma + 90) / 180);
+        });
+    </script>
+</body>
+</html>
