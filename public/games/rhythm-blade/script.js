@@ -51,7 +51,7 @@ class RhythmBladeDual {
                 description: 'Electronic',
                 bpm: 128,
                 style: 'energetic',
-                duration: 90, // 1분 30초
+                duration: 150, // 실제 음악 길이에 맞춤 (약 2분 30초)
                 sources: [
                     'https://www.bensound.com/bensound-music/bensound-energy.mp3',
                     'https://www.bensound.com/bensound-music/bensound-electroman.mp3',
@@ -64,7 +64,7 @@ class RhythmBladeDual {
                 description: 'Synthwave',
                 bpm: 120,
                 style: 'atmospheric',
-                duration: 90, // 1분 30초
+                duration: 150, // 실제 음악 길이에 맞춤 (약 2분 30초)
                 sources: [
                     'https://www.bensound.com/bensound-music/bensound-retrosoul.mp3',
                     'https://www.bensound.com/bensound-music/bensound-badass.mp3',
@@ -77,7 +77,7 @@ class RhythmBladeDual {
                 description: 'Techno',
                 bpm: 140,
                 style: 'intense',
-                duration: 90, // 1분 30초
+                duration: 150, // 실제 음악 길이에 맞춤 (약 2분 30초)
                 sources: [
                     'https://www.bensound.com/bensound-music/bensound-dubstep.mp3',
                     'https://www.bensound.com/bensound-music/bensound-house.mp3',
@@ -90,7 +90,7 @@ class RhythmBladeDual {
                 description: 'Ambient',
                 bpm: 100,
                 style: 'flowing',
-                duration: 90, // 1분 30초
+                duration: 150, // 실제 음악 길이에 맞춤 (약 2분 30초)
                 sources: [
                     'https://www.bensound.com/bensound-music/bensound-dreams.mp3',
                     'https://www.bensound.com/bensound-music/bensound-deepblue.mp3',
@@ -103,7 +103,7 @@ class RhythmBladeDual {
                 description: 'Drum&Bass',
                 bpm: 150,
                 style: 'aggressive',
-                duration: 90, // 1분 30초
+                duration: 150, // 실제 음악 길이에 맞춤 (약 2분 30초)
                 sources: [
                     'https://www.bensound.com/bensound-music/bensound-punky.mp3',
                     'https://www.bensound.com/bensound-music/bensound-extremeaction.mp3',
@@ -116,7 +116,7 @@ class RhythmBladeDual {
                 description: 'Chill',
                 bpm: 90,
                 style: 'relaxed',
-                duration: 90, // 1분 30초
+                duration: 150, // 실제 음악 길이에 맞춤 (약 2분 30초)
                 sources: [
                     'https://www.bensound.com/bensound-music/bensound-relaxing.mp3',
                     'https://www.bensound.com/bensound-music/bensound-tenderness.mp3',
@@ -129,7 +129,7 @@ class RhythmBladeDual {
                 description: 'Progressive',
                 bpm: 130,
                 style: 'progressive',
-                duration: 90, // 1분 30초
+                duration: 150, // 실제 음악 길이에 맞춤 (약 2분 30초)
                 sources: [
                     'https://www.bensound.com/bensound-music/bensound-epic.mp3',
                     'https://www.bensound.com/bensound-music/bensound-adventure.mp3',
@@ -142,7 +142,7 @@ class RhythmBladeDual {
                 description: 'Hardcore',
                 bpm: 160,
                 style: 'hardcore',
-                duration: 90, // 1분 30초
+                duration: 150, // 실제 음악 길이에 맞춤 (약 2분 30초)
                 sources: [
                     'https://www.bensound.com/bensound-music/bensound-extremeaction.mp3',
                     'https://www.bensound.com/bensound-music/bensound-actionable.mp3',
@@ -155,7 +155,7 @@ class RhythmBladeDual {
                 description: 'Melodic',
                 bpm: 115,
                 style: 'melodic',
-                duration: 90, // 1분 30초
+                duration: 150, // 실제 음악 길이에 맞춤 (약 2분 30초)
                 sources: [
                     'https://www.bensound.com/bensound-music/bensound-happiness.mp3',
                     'https://www.bensound.com/bensound-music/bensound-memories.mp3',
@@ -1430,31 +1430,37 @@ class RhythmBladeDual {
         this.gameState.phase = 'playing';
         this.gameState.startTime = Date.now();
         
-        // 🎵 음악 재생 시작 (90초 제한)
+        // 🎵 음악 재생 시작 (음악 길이에 맞춰 자연스럽게)
         if (this.musicLoaded) {
             this.bgMusic.currentTime = 0;
             
-            // 90초 후 음악 자동 정지 리스너 추가
-            const timeUpdateHandler = () => {
-                if (this.bgMusic.currentTime >= 90) {
+            // 음악 종료 시 게임 종료 리스너 추가
+            const musicEndHandler = () => {
+                console.log('🎵 음악 종료 - 게임을 자연스럽게 종료합니다');
+                this.endGame('음악 완료');
+                this.bgMusic.removeEventListener('ended', musicEndHandler);
+                this.bgMusic.removeEventListener('timeupdate', safetyHandler);
+            };
+            this.bgMusic.addEventListener('ended', musicEndHandler);
+            
+            // 2분 이상 재생 방지 안전장치
+            const safetyHandler = () => {
+                if (this.bgMusic.currentTime >= 120) { // 2분 = 120초
+                    console.log('🎵 2분 안전장치 - 음악을 종료합니다');
                     this.bgMusic.pause();
-                    this.bgMusic.removeEventListener('timeupdate', timeUpdateHandler);
+                    this.endGame('시간 제한 (2분)');
+                    this.bgMusic.removeEventListener('timeupdate', safetyHandler);
+                    this.bgMusic.removeEventListener('ended', musicEndHandler);
                 }
             };
-            this.bgMusic.addEventListener('timeupdate', timeUpdateHandler);
+            this.bgMusic.addEventListener('timeupdate', safetyHandler);
             
             this.bgMusic.play().then(() => {
-                console.log('🎵 음악 재생 시작 (90초 제한)');
+                console.log('🎵 음악 재생 시작 (자연스러운 길이)');
             }).catch(e => {
                 console.warn('🎵 음악 재생 실패:', e);
             });
         }
-        
-        // ⏰ 90초 후 게임 자동 종료 타이머 설정
-        this.gameTimeLimit = 90000; // 90초 = 90,000ms
-        this.gameTimer = setTimeout(() => {
-            this.endGame('시간 종료');
-        }, this.gameTimeLimit);
         
         // UI 전환
         document.getElementById('sessionPanel').classList.add('hidden');
@@ -2128,10 +2134,9 @@ class RhythmBladeDual {
     endGame(reason = '게임 완료') {
         this.gameState.phase = 'ended';
         
-        // ⏰ 게임 타이머 정리
-        if (this.gameTimer) {
-            clearTimeout(this.gameTimer);
-            this.gameTimer = null;
+        // 🎵 음악 관련 리스너 정리 (이미 제거되었지만 안전을 위해)
+        if (this.bgMusic) {
+            this.bgMusic.removeEventListener('ended', () => {});
         }
         
         // 🎵 음악 정지
@@ -2236,10 +2241,10 @@ class RhythmBladeDual {
         const track = this.tracks[this.currentTrack];
         const targetDuration = track.duration;
         
-        // ⚡ Electric Storm - 4/4박자 전기적 패턴 (90초, 45마디)
+        // ⚡ Electric Storm - 4/4박자 전기적 패턴 (최대 2분, 60마디)
         
-        // 도입부: 기본 패턴 (0-20초, 10마디)
-        for (let measure = 0; measure < 10; measure++) {
+        // 도입부: 기본 패턴 (0-24초, 12마디)
+        for (let measure = 0; measure < 12; measure++) {
             const measureStart = measure * measureBeat;
             
             // 각 마디 1, 3박에 노트 배치 (4/4박자 강박)
@@ -2247,22 +2252,22 @@ class RhythmBladeDual {
             beatmap.push({ time: measureStart + wholeBeat * 3, lane: "sensor2", type: "normal" });
             
             if (measure % 3 === 2) {
-                beatmap.push({ time: measureStart + measureBeat - halfBeat, lane: "both", type: "cooperation" });
+                beatmap.push({ time: measureStart + wholeBeat * 4, lane: "both", type: "cooperation" });
             }
         }
         
-        // 중반부: 활발한 패턴 (20-60초, 20마디)
-        for (let measure = 10; measure < 30; measure++) {
+        // 중반부: 활발한 패턴 (24-80초, 28마디)
+        for (let measure = 12; measure < 40; measure++) {
             const measureStart = measure * measureBeat;
             
-            // 1박, 2.5박, 4박 패턴
+            // 1박, 2박, 4박 패턴 (정박으로 수정)
             beatmap.push({ time: measureStart + wholeBeat, lane: measure % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
-            beatmap.push({ time: measureStart + wholeBeat * 2.5, lane: "both", type: "cooperation" });
+            beatmap.push({ time: measureStart + wholeBeat * 2, lane: "both", type: "cooperation" });
             beatmap.push({ time: measureStart + wholeBeat * 4, lane: measure % 2 === 0 ? "sensor2" : "sensor1", type: "normal" });
         }
         
-        // 클라이맥스: 매 박 패턴 (60-80초, 10마디)
-        for (let measure = 30; measure < 40; measure++) {
+        // 클라이맥스: 매 박 패턴 (80-100초, 10마디)
+        for (let measure = 40; measure < 50; measure++) {
             const measureStart = measure * measureBeat;
             
             for (let beat = 1; beat <= 4; beat++) {
@@ -2275,8 +2280,8 @@ class RhythmBladeDual {
             }
         }
         
-        // 마무리: 여유로운 패턴 (80-90초, 5마디)
-        for (let measure = 40; measure < 45; measure++) {
+        // 마무리: 여유로운 패턴 (100-120초, 10마디)
+        for (let measure = 50; measure < 60; measure++) {
             const measureStart = measure * measureBeat;
             
             beatmap.push({ time: measureStart + wholeBeat, lane: "both", type: "cooperation" });
@@ -2291,10 +2296,10 @@ class RhythmBladeDual {
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
         
-        // 🌙 Neon Nights - 4/4박자 신스웨이브 패턴 (90초, 45마디)
+        // 🌙 Neon Nights - 4/4박자 신스웨이브 패턴 (최대 2분, 60마디)
         
-        // 분위기 도입부 (0-24초, 12마디)
-        for (let measure = 0; measure < 12; measure++) {
+        // 분위기 도입부 (0-32초, 16마디)
+        for (let measure = 0; measure < 16; measure++) {
             const measureStart = measure * measureBeat;
             
             // 1박, 3박 기본 패턴
@@ -2306,19 +2311,19 @@ class RhythmBladeDual {
             }
         }
         
-        // 신스 멜로디 구간 (24-70초, 23마디)
-        for (let measure = 12; measure < 35; measure++) {
+        // 신스 멜로디 구간 (32-96초, 32마디)
+        for (let measure = 16; measure < 48; measure++) {
             const measureStart = measure * measureBeat;
             
-            // 1, 2, 3.5, 4박 패턴
+            // 1, 2, 3, 4박 패턴 (정박으로 수정)
             beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
             beatmap.push({ time: measureStart + wholeBeat * 2, lane: "sensor2", type: "normal" });
-            beatmap.push({ time: measureStart + wholeBeat * 3.5, lane: "both", type: "cooperation" });
+            beatmap.push({ time: measureStart + wholeBeat * 3, lane: "both", type: "cooperation" });
             beatmap.push({ time: measureStart + wholeBeat * 4, lane: measure % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
         }
         
-        // 아웃트로 (70-90초, 10마디)
-        for (let measure = 35; measure < 45; measure++) {
+        // 아웃트로 (96-120초, 12마디)
+        for (let measure = 48; measure < 60; measure++) {
             const measureStart = measure * measureBeat;
             
             beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
@@ -2337,10 +2342,10 @@ class RhythmBladeDual {
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
         
-        // 🤖 Cyber Beat - 4/4박자 테크노 패턴 (90초, 45마디)
+        // 🤖 Cyber Beat - 4/4박자 테크노 패턴 (최대 2분, 60마디)
         
-        // 테크노 기본 킥 패턴 (0-60초, 30마디)
-        for (let measure = 0; measure < 30; measure++) {
+        // 테크노 기본 킥 패턴 (0-80초, 40마디)
+        for (let measure = 0; measure < 40; measure++) {
             const measureStart = measure * measureBeat;
             
             // 4/4 킥 드럼 패턴: 1, 2, 3, 4박
@@ -2350,14 +2355,14 @@ class RhythmBladeDual {
             beatmap.push({ time: measureStart + wholeBeat * 4, lane: measure % 2 === 0 ? "sensor2" : "both", type: measure % 2 === 0 ? "normal" : "cooperation" });
         }
         
-        // 사이버 브레이크다운 (60-90초, 15마디)
-        for (let measure = 30; measure < 45; measure++) {
+        // 사이버 브레이크다운 (80-120초, 20마디)
+        for (let measure = 40; measure < 60; measure++) {
             const measureStart = measure * measureBeat;
             
-            // 1박, 2.5박, 3.5박, 4박 패턴
+            // 1박, 2박, 3박, 4박 패턴 (정박으로 수정)
             beatmap.push({ time: measureStart + wholeBeat, lane: "both", type: "cooperation" });
-            beatmap.push({ time: measureStart + wholeBeat * 2.5, lane: "sensor1", type: "normal" });
-            beatmap.push({ time: measureStart + wholeBeat * 3.5, lane: "sensor2", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 2, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 3, lane: "sensor2", type: "normal" });
             beatmap.push({ time: measureStart + wholeBeat * 4, lane: "both", type: "cooperation" });
         }
         
@@ -2369,10 +2374,10 @@ class RhythmBladeDual {
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
         
-        // 🚀 Space Rhythm - 4/4박자 우주적 패턴 (90초, 45마디)
+        // 🚀 Space Rhythm - 4/4박자 우주적 패턴 (최대 2분, 60마디)
         
-        // 우주 도입부 (0-90초, 45마디)
-        for (let measure = 0; measure < 45; measure++) {
+        // 우주 도입부 (0-120초, 60마디)
+        for (let measure = 0; measure < 60; measure++) {
             const measureStart = measure * measureBeat;
             
             if (measure % 3 === 0) {
@@ -2398,10 +2403,10 @@ class RhythmBladeDual {
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
         
-        // 🔥 Fire Dance - 4/4박자 격렬한 패턴 (90초, 45마디)
+        // 🔥 Fire Dance - 4/4박자 격렬한 패턴 (최대 2분, 60마디)
         
-        // 불꽃 점화 (0-90초, 45마디)
-        for (let measure = 0; measure < 45; measure++) {
+        // 불꽃 점화 (0-120초, 60마디)
+        for (let measure = 0; measure < 60; measure++) {
             const measureStart = measure * measureBeat;
             
             // 1, 2, 3, 4박 모두 사용하되 협력으로 조절
@@ -2424,10 +2429,10 @@ class RhythmBladeDual {
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
         
-        // 🌊 Ocean Waves - 4/4박자 물결 패턴 (90초, 45마디)
+        // 🌊 Ocean Waves - 4/4박자 물결 패턴 (최대 2분, 60마디)
         
-        // 잔잔한 파도 (0-90초, 45마디)
-        for (let measure = 0; measure < 45; measure++) {
+        // 잔잔한 파도 (0-120초, 60마디)
+        for (let measure = 0; measure < 60; measure++) {
             const measureStart = measure * measureBeat;
             
             // 물결치는 듯한 1, 3박 기본 + 가끔 2박
@@ -2446,15 +2451,15 @@ class RhythmBladeDual {
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
         
-        // 💎 Crystal Cave - 4/4박자 수정 동굴 패턴 (90초, 45마디)
+        // 💎 Crystal Cave - 4/4박자 수정 동굴 패턴 (최대 2분, 60마디)
         
-        // 수정 울림 (0-90초, 45마디)
-        for (let measure = 0; measure < 45; measure++) {
+        // 수정 울림 (0-120초, 60마디)
+        for (let measure = 0; measure < 60; measure++) {
             const measureStart = measure * measureBeat;
             
-            // 수정처럼 반짝이는 패턴: 1, 2.5, 4박
+            // 수정처럼 반짝이는 패턴: 1, 2, 4박 (정박으로 수정)
             beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
-            beatmap.push({ time: measureStart + wholeBeat * 2.5, lane: "both", type: "cooperation" });
+            beatmap.push({ time: measureStart + wholeBeat * 2, lane: "both", type: "cooperation" });
             
             if (measure % 2 === 1) {
                 beatmap.push({ time: measureStart + wholeBeat * 4, lane: "sensor2", type: "normal" });
@@ -2470,16 +2475,16 @@ class RhythmBladeDual {
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
         
-        // ⛈️ Thunder Storm - 4/4박자 천둥 패턴 (90초, 45마디)
+        // ⛈️ Thunder Storm - 4/4박자 천둥 패턴 (최대 2분, 60마디)
         
-        // 천둥 번개 (0-90초, 45마디)
-        for (let measure = 0; measure < 45; measure++) {
+        // 천둥 번개 (0-120초, 60마디)
+        for (let measure = 0; measure < 60; measure++) {
             const measureStart = measure * measureBeat;
             
-            // 강력하지만 예측 가능한 패턴
+            // 강력하지만 예측 가능한 패턴 (정박으로 수정)
             beatmap.push({ time: measureStart + wholeBeat, lane: "both", type: "cooperation" });
-            beatmap.push({ time: measureStart + wholeBeat * 2.5, lane: "sensor1", type: "normal" });
-            beatmap.push({ time: measureStart + wholeBeat * 3.5, lane: "sensor2", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 2, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 3, lane: "sensor2", type: "normal" });
             beatmap.push({ time: measureStart + wholeBeat * 4, lane: "both", type: "cooperation" });
         }
         
@@ -2491,10 +2496,10 @@ class RhythmBladeDual {
         const beatmap = [];
         const track = this.tracks[this.currentTrack];
         
-        // ✨ Starlight - 4/4박자 별빛 패턴 (90초, 45마디)
+        // ✨ Starlight - 4/4박자 별빛 패턴 (최대 2분, 60마디)
         
-        // 별빛 멜로디 (0-90초, 45마디)
-        for (let measure = 0; measure < 45; measure++) {
+        // 별빛 멜로디 (0-120초, 60마디)
+        for (let measure = 0; measure < 60; measure++) {
             const measureStart = measure * measureBeat;
             
             // 아름다운 멜로딕 패턴: 1, 3박 기본 + 가끔 2, 4박
@@ -2516,8 +2521,8 @@ class RhythmBladeDual {
     generateDefault44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
         const beatmap = [];
         
-        // 기본 4/4박자 패턴 (90초, 45마디)
-        for (let measure = 0; measure < 45; measure++) {
+        // 기본 4/4박자 패턴 (최대 2분, 60마디)
+        for (let measure = 0; measure < 60; measure++) {
             const measureStart = measure * measureBeat;
             
             beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
