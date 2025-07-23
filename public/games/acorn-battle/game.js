@@ -43,7 +43,7 @@ class AcornBattleGame {
             },
             connectedSensors: new Set(),
             startTime: null,
-            timeRemaining: 60,
+            timeRemaining: 90,
             acorns: [],
             obstacles: [],
             // 점수 구역에 저장된 도토리들
@@ -716,7 +716,7 @@ class AcornBattleGame {
 
         this.gameState.phase = 'playing';
         this.gameState.startTime = Date.now();
-        this.gameState.timeRemaining = 60;
+        this.gameState.timeRemaining = 90;
 
         // UI 업데이트
         if (this.elements.gameOverlay) {
@@ -1213,7 +1213,7 @@ class AcornBattleGame {
         if (this.gameState.phase !== 'playing' || !this.gameState.startTime) return;
 
         const elapsed = (Date.now() - this.gameState.startTime) / 1000;
-        this.gameState.timeRemaining = Math.max(0, 60 - elapsed);
+        this.gameState.timeRemaining = Math.max(0, 90 - elapsed);
 
         // 타이머 UI 업데이트
         this.updateTimerUI();
@@ -1324,7 +1324,7 @@ class AcornBattleGame {
         // 게임 상태 초기화
         this.gameState.phase = 'waiting';
         this.gameState.startTime = null;
-        this.gameState.timeRemaining = 60;
+        this.gameState.timeRemaining = 90;
 
         // 플레이어 상태 초기화
         Object.values(this.gameState.players).forEach(player => {
