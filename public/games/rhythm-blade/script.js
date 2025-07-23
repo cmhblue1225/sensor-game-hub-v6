@@ -1384,15 +1384,6 @@ class RhythmBladeDual {
     updateConnectionStatus() {
         const connectedCount = Object.values(this.sensorStatus).filter(s => s.connected).length;
         console.log(`연결된 센서: ${connectedCount}/2`);
-        
-        // 2개의 센서가 모두 연결되고 게임이 대기 상태일 때 시작 버튼 표시
-        if (connectedCount === 2 && this.gameState.phase === 'waiting') {
-            // ID로 게임 시작 버튼이 있는지 확인
-            const existingStartButton = document.getElementById('gameStartButton');
-            if (!existingStartButton) {
-                this.showStartButton();
-            }
-        }
     }
     
     processSensorData(data) {
@@ -1420,14 +1411,7 @@ class RhythmBladeDual {
     }
     
     showStartButton() {
-        // 기존 게임 시작 버튼이 있다면 제거
-        const existingButton = document.getElementById('gameStartButton');
-        if (existingButton) {
-            existingButton.remove();
-        }
-        
         const startButton = document.createElement('button');
-        startButton.id = 'gameStartButton';  // 고유 ID 추가
         startButton.className = 'btn btn-primary';
         startButton.style.cssText = 'font-size: 1.2rem; padding: 1rem 2rem; margin-top: 1rem;';
         startButton.innerHTML = '🎵 게임 시작!';
@@ -1443,34 +1427,8 @@ class RhythmBladeDual {
     }
     
     startGame() {
-        // 🗑️ 기존 노트들 모두 제거
-        this.notes.forEach(note => {
-            this.scene.remove(note);
-        });
-        this.notes = [];
-        
-        // 🎼 새 비트맵 생성 (선택된 트랙에 맞게)
-        this.beatmap = this.generateRhythmBeatmap();
-        this.noteSpawnIndex = 0;  // 노트 인덱스 초기화
-        
-        // 🔄 게임 상태 완전 초기화 (비트맵 생성 후)
-        this.gameState = {
-            phase: 'playing',
-            score: 0,
-            combo: 0,
-            maxCombo: 0,
-            totalNotes: this.beatmap.length,  // 새 비트맵 길이 설정
-            hitNotes: 0,
-            startTime: Date.now(),
-            endingStartTime: 0
-        };
-        
-        // 🎯 협력 시스템 초기화
-        this.cooperation = {
-            sync: 100,
-            recentHits: [],
-            cooperationBonus: 1.0
-        };
+        this.gameState.phase = 'playing';
+        this.gameState.startTime = Date.now();
         
         // 🎵 음악 재생 시작 (음악 길이에 맞춰 자연스럽게)
         if (this.musicLoaded) {
@@ -1511,10 +1469,7 @@ class RhythmBladeDual {
         document.getElementById('controlPanel').classList.remove('hidden');
         document.getElementById('gameInstructions').classList.remove('hidden');
         
-        // 🎯 UI 초기화 및 업데이트
-        this.updateUI();
-        
-        console.log('🎮 Rhythm Blade Dual 게임 시작! (완전 초기화됨)');
+        console.log('🎮 Rhythm Blade Dual 게임 시작! (90초 제한)');
     }
     
     triggerSwing(sensorId) {
@@ -1979,29 +1934,25 @@ class RhythmBladeDual {
     spawnNote() {
         if (this.noteSpawnIndex >= this.beatmap.length) return;
         
+        const now = Date.now();
+        const elapsedTime = (now - this.gameState.startTime) / 1000;
         const noteData = this.beatmap[this.noteSpawnIndex];
         
-        // 🎯 센서 반응 시간을 고려한 예측 스포닝 (3초 앞서 노트 생성하여 화면 뒤에서 앞으로 이동)
-        const VISUAL_APPROACH_TIME = 3.0; // 3초 동안 노트가 화면을 가로질러 접근
-        const targetNoteTime = noteData.time - VISUAL_APPROACH_TIME;
+        // 🎯 센서 반응 시간을 고려한 예측 스포닝 (음악보다 약간 앞서 노트 생성)
+        const PREDICTIVE_SPAWN_OFFSET = 0.1; // 100ms 미리 스포닝
+        const adjustedNoteTime = Math.max(0, noteData.time - PREDICTIVE_SPAWN_OFFSET);
         
-        // 🎵 음악 시간 기준으로 동기화 (음악이 재생 중이면 음악 시간 우선)
-        let currentTime = 0;
-        if (this.musicLoaded && !this.bgMusic.paused) {
-            currentTime = this.bgMusic.currentTime;
-        } else {
-            // 음악이 재생되지 않으면 게임 시작 시간 기준
-            const now = Date.now();
-            currentTime = (now - this.gameState.startTime) / 1000;
-        }
+        // 🎵 음악 재생 상태와 동기화 체크
+        const musicCurrentTime = this.musicLoaded && !this.bgMusic.paused ? this.bgMusic.currentTime : elapsedTime;
+        const syncedTime = this.musicLoaded ? musicCurrentTime : elapsedTime; // 음악이 로드되면 음악 시간 우선
         
-        if (currentTime >= targetNoteTime) {
+        if (syncedTime >= adjustedNoteTime) {
             this.createNote(noteData);
             this.noteSpawnIndex++;
             
-            // 🎯 디버그 로깅
+            // 🎯 센서 최적화 로깅 (디버그용)
             if (this.sdk.options.debug) {
-                console.log(`🎼 노트 생성: ${noteData.type}/${noteData.lane}, 목표시간=${noteData.time.toFixed(2)}s, 현재시간=${currentTime.toFixed(2)}s`);
+                console.log(`🎼 노트 생성: 타입=${noteData.type}, 레인=${noteData.lane}, 시간=${noteData.time.toFixed(2)}s, 실제=${syncedTime.toFixed(2)}s`);
             }
         }
     }
@@ -2225,34 +2176,24 @@ class RhythmBladeDual {
     }
     
     resetGame() {
-        // 🗑️ 기존 노트들 모두 제거
-        this.notes.forEach(note => {
-            this.scene.remove(note);
-        });
-        this.notes = [];
-        
-        // 🎼 새 비트맵 생성 (현재 선택된 트랙에 맞게)
-        this.beatmap = this.generateRhythmBeatmap();
-        this.noteSpawnIndex = 0;  // 노트 인덱스 초기화
-        
-        // 🔄 게임 상태 완전 초기화 (비트맵 생성 후)
         this.gameState = {
             phase: 'playing',
             score: 0,
             combo: 0,
             maxCombo: 0,
-            totalNotes: this.beatmap.length,  // 새 비트맵 길이 설정
+            totalNotes: this.beatmap.length,
             hitNotes: 0,
             startTime: Date.now(),
-            endingStartTime: 0
+            endingStartTime: 0        // 2초 지연 종료를 위한 초기화
         };
         
-        // 🎯 협력 시스템 초기화
-        this.cooperation = {
-            sync: 100,
-            recentHits: [],
-            cooperationBonus: 1.0
-        };
+        this.noteSpawnIndex = 0;
+        this.cooperation.sync = 100;
+        this.cooperation.cooperationBonus = 1.0;
+        
+        // 기존 노트들 제거
+        this.notes.forEach(note => this.scene.remove(note));
+        this.notes = [];
         
         // 🎵 음악 재시작
         if (this.musicLoaded) {
@@ -2262,10 +2203,7 @@ class RhythmBladeDual {
             });
         }
         
-        // 🎯 UI 업데이트
-        this.updateUI();
-        
-        console.log('🔄 게임 재시작 (완전 초기화됨)');
+        console.log('🔄 게임 재시작');
     }
     
     togglePause() {
@@ -2309,9 +2247,6 @@ class RhythmBladeDual {
             this.bgMusic.pause();
             this.bgMusic.currentTime = 0;
         }
-        
-        // 센서가 이미 연결되어 있다면 게임 시작 버튼 표시
-        this.updateConnectionStatus();
         
         console.log('🎵 모드 선택 화면으로 이동');
     }
