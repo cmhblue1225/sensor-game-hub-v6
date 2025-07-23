@@ -81,7 +81,7 @@ class AcornBattleGame {
         // 게임 루프 관련
         this.animationId = null;
         this.lastSensorUpdate = 0;
-        this.sensorThrottle = 16; // 60fps - 반응성과 안정성의 균형
+        this.sensorThrottle = 33; // 30fps - 안정성과 반응성의 최적 균형
 
         // 고급 센서 데이터 스무딩 시스템
         this.sensorBuffer = {
