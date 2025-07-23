@@ -56,16 +56,34 @@
         
         /* 플레이어 상태 패널 (좌측 하단) */
         .players-panel {
-            position: absolute; bottom: 20px; left: 20px; background: rgba(30, 41, 59, 0.9);
+            position: absolute; bottom: 20px; left: 20px; background: rgba(30, 41, 59, 0.95);
             padding: 15px; border-radius: 12px; backdrop-filter: blur(10px); pointer-events: auto;
             border: 1px solid rgba(139, 92, 246, 0.3); max-width: 300px; z-index: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .players-panel:hover {
+            background: rgba(30, 41, 59, 0.98);
+            border-color: rgba(139, 92, 246, 0.6);
+            transform: translateY(-2px);
         }
         
         .players-title { font-size: 14px; font-weight: bold; color: var(--secondary); margin-bottom: 10px; }
         .player-list { display: flex; flex-direction: column; gap: 8px; }
         .player-item {
             display: flex; justify-content: space-between; align-items: center;
-            padding: 6px 10px; border-radius: 6px; background: rgba(255, 255, 255, 0.1);
+            padding: 8px 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease; position: relative;
+        }
+        
+        .player-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(3px);
+        }
+        
+        .player-item.active {
+            border-left: 3px solid var(--success);
+            animation: pulse 2s infinite;
         }
         .player-name { font-size: 12px; font-weight: bold; }
         .player-status { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
@@ -74,11 +92,23 @@
         
         /* 게임 메시지 */
         .game-message {
-            background: rgba(30, 41, 59, 0.9); padding: 20px 40px; border-radius: 15px;
-            font-size: 2em; font-weight: bold; color: white; backdrop-filter: blur(10px);
-            border: 2px solid var(--primary); pointer-events: auto;
+            background: rgba(30, 41, 59, 0.95); padding: 25px 45px; border-radius: 20px;
+            font-size: 2em; font-weight: bold; color: white; backdrop-filter: blur(15px);
+            border: 3px solid var(--primary); pointer-events: auto;
             display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 700;
+            z-index: 700; text-align: center; white-space: pre-line;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: messageSlideIn 0.5s ease-out;
+        }
+        
+        @keyframes messageSlideIn {
+            from { opacity: 0; transform: translate(-50%, -60%) scale(0.8); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
         }
         
         .game-message.success { border-color: var(--success); }
@@ -88,7 +118,7 @@
         /* 대기실 */
         .waiting-room {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: var(--background); display: flex; flex-direction: column;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); display: flex; flex-direction: column;
             justify-content: center; align-items: center; z-index: 500;
         }
         
@@ -319,7 +349,9 @@
                 // 센서 데이터 처리
                 this.sensorData = new Map();
                 this.lastSensorUpdate = 0;
-                this.sensorUpdateInterval = 50; // 20fps
+                this.sensorUpdateInterval = 33; // 30fps
+                this.sensorHistory = new Map(); // 센서 데이터 히스토리 (스무딩용)
+                this.historySize = 5; // 히스토리 크기
                 
                 // UI 요소 참조
                 this.elements = {
@@ -381,12 +413,12 @@
                 
                 // 카메라 생성 (3인칭 시점)
                 this.camera = new THREE.PerspectiveCamera(
-                    75, 
+                    60, 
                     window.innerWidth / window.innerHeight, 
                     0.1, 
                     1000
                 );
-                this.camera.position.set(0, 15, 20);
+                this.camera.position.set(0, 12, -35); // 뒤에서 앞으로 보는 시점
                 
                 // 렌더러 생성
                 this.renderer = new THREE.WebGLRenderer({ 
@@ -443,63 +475,142 @@
             }
             
             createRoad() {
-                const roadLength = 200;
+                const roadLength = 300; // 더 긴 도로
                 const roadWidth = 20;
                 
-                // 도로 시각적 요소
+                // 도로 시각적 요소 (세그먼트로 나누어 더 자연스럽게)
                 const roadGeometry = new THREE.PlaneGeometry(roadWidth, roadLength);
-                const roadMaterial = new THREE.MeshLambertMaterial({ color: 0x555555 });
+                const roadMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x444444,
+                    transparent: true,
+                    opacity: 0.9
+                });
                 this.road = new THREE.Mesh(roadGeometry, roadMaterial);
                 this.road.rotation.x = -Math.PI / 2;
                 this.road.position.y = 0;
-                this.road.position.z = roadLength / 2 - 20;
+                this.road.position.z = roadLength / 2;
                 this.road.receiveShadow = true;
                 this.scene.add(this.road);
+                
+                // 도로 중앙선 추가
+                this.createRoadMarkings(roadWidth, roadLength);
                 
                 // 도로 물리 바디
                 const roadShape = new CANNON.Plane();
                 const roadBody = new CANNON.Body({ mass: 0 });
                 roadBody.addShape(roadShape);
                 roadBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
-                roadBody.position.set(0, 0, roadLength / 2 - 20);
+                roadBody.position.set(0, 0, roadLength / 2);
                 this.world.add(roadBody);
                 
                 // 도로 양쪽 가드레일
                 this.createGuardRails(roadWidth, roadLength);
                 
+                // 목표 지점 생성
+                this.createGoal(roadLength);
+                
                 console.log('✅ 도로 생성 완료');
             }
             
+            createRoadMarkings(roadWidth, roadLength) {
+                // 중앙선 (점선)
+                const lineGeometry = new THREE.BoxGeometry(0.2, 0.01, 2);
+                const lineMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+                
+                for (let i = 0; i < roadLength / 8; i++) {
+                    const line = new THREE.Mesh(lineGeometry, lineMaterial);
+                    line.position.set(0, 0.01, i * 8);
+                    this.scene.add(line);
+                }
+                
+                // 측면 가이드 라인
+                const sideLineGeometry = new THREE.BoxGeometry(roadWidth - 2, 0.01, 1);
+                const sideLineMaterial = new THREE.MeshLambertMaterial({ color: 0xffff00 });
+                
+                const startLine = new THREE.Mesh(sideLineGeometry, sideLineMaterial);
+                startLine.position.set(0, 0.01, -10);
+                this.scene.add(startLine);
+            }
+            
+            createGoal(roadLength) {
+                // 골 지점 표시
+                const goalGeometry = new THREE.BoxGeometry(18, 0.1, 5);
+                const goalMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x00ff00,
+                    transparent: true,
+                    opacity: 0.7
+                });
+                this.goalArea = new THREE.Mesh(goalGeometry, goalMaterial);
+                this.goalArea.position.set(0, 0.05, roadLength - 20);
+                this.scene.add(this.goalArea);
+                
+                // 골 표시 텍스트 효과
+                const goalPosts = [];
+                for (let i = -1; i <= 1; i += 2) {
+                    const postGeometry = new THREE.CylinderGeometry(0.2, 0.2, 6, 8);
+                    const postMaterial = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+                    const post = new THREE.Mesh(postGeometry, postMaterial);
+                    post.position.set(i * 9, 3, roadLength - 20);
+                    post.castShadow = true;
+                    this.scene.add(post);
+                    goalPosts.push(post);
+                }
+                
+                // 승리 배너
+                const bannerGeometry = new THREE.PlaneGeometry(16, 3);
+                const bannerMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x00ff00,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const banner = new THREE.Mesh(bannerGeometry, bannerMaterial);
+                banner.position.set(0, 5, roadLength - 20);
+                this.scene.add(banner);
+                
+                this.goalPosition = roadLength - 25;
+            }
+            
             createGuardRails(roadWidth, roadLength) {
-                const railHeight = 2;
-                const railThickness = 0.5;
+                const railHeight = 1.5;
+                const railThickness = 0.3;
                 
-                // 왼쪽 가드레일
-                const leftRailGeometry = new THREE.BoxGeometry(railThickness, railHeight, roadLength);
-                const railMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
-                const leftRail = new THREE.Mesh(leftRailGeometry, railMaterial);
-                leftRail.position.set(-roadWidth/2 - railThickness/2, railHeight/2, roadLength/2 - 20);
-                leftRail.castShadow = true;
-                this.scene.add(leftRail);
+                // 왼쪽 가드레일 (분할된 형태로 더 자연스럽게)
+                const segmentLength = 20;
+                const segments = Math.ceil(roadLength / segmentLength);
                 
-                // 오른쪽 가드레일
-                const rightRail = new THREE.Mesh(leftRailGeometry, railMaterial);
-                rightRail.position.set(roadWidth/2 + railThickness/2, railHeight/2, roadLength/2 - 20);
-                rightRail.castShadow = true;
-                this.scene.add(rightRail);
-                
-                // 물리 바디들
-                const railShape = new CANNON.Box(new CANNON.Vec3(railThickness/2, railHeight/2, roadLength/2));
-                
-                const leftRailBody = new CANNON.Body({ mass: 0 });
-                leftRailBody.addShape(railShape);
-                leftRailBody.position.copy(leftRail.position);
-                this.world.add(leftRailBody);
-                
-                const rightRailBody = new CANNON.Body({ mass: 0 });
-                rightRailBody.addShape(railShape);
-                rightRailBody.position.copy(rightRail.position);
-                this.world.add(rightRailBody);
+                for (let i = 0; i < segments; i++) {
+                    const railGeometry = new THREE.BoxGeometry(railThickness, railHeight, segmentLength);
+                    const railMaterial = new THREE.MeshLambertMaterial({ 
+                        color: 0xcccccc,
+                        transparent: true,
+                        opacity: 0.8
+                    });
+                    
+                    // 왼쪽 레일
+                    const leftRail = new THREE.Mesh(railGeometry, railMaterial);
+                    leftRail.position.set(-roadWidth/2 - railThickness/2, railHeight/2, i * segmentLength);
+                    leftRail.castShadow = true;
+                    this.scene.add(leftRail);
+                    
+                    // 오른쪽 레일
+                    const rightRail = new THREE.Mesh(railGeometry, railMaterial);
+                    rightRail.position.set(roadWidth/2 + railThickness/2, railHeight/2, i * segmentLength);
+                    rightRail.castShadow = true;
+                    this.scene.add(rightRail);
+                    
+                    // 물리 바디들
+                    const railShape = new CANNON.Box(new CANNON.Vec3(railThickness/2, railHeight/2, segmentLength/2));
+                    
+                    const leftRailBody = new CANNON.Body({ mass: 0 });
+                    leftRailBody.addShape(railShape);
+                    leftRailBody.position.copy(leftRail.position);
+                    this.world.add(leftRailBody);
+                    
+                    const rightRailBody = new CANNON.Body({ mass: 0 });
+                    rightRailBody.addShape(railShape);
+                    rightRailBody.position.copy(rightRail.position);
+                    this.world.add(rightRailBody);
+                }
             }
             
             createCake(cakeType) {
@@ -552,8 +663,8 @@
                     mainMaterial.opacity = 0.8;
                 }
                 
-                // 케이크 위치 설정
-                cakeGroup.position.set(0, height / 2 + 0.5, 0);
+                // 케이크 위치 설정 (도로 시작점)
+                cakeGroup.position.set(0, height / 2 + 0.5, -20);
                 this.scene.add(cakeGroup);
                 
                 // 물리 바디
@@ -620,16 +731,16 @@
                     playerGroup.add(leg);
                 }
                 
-                // 초기 위치 설정
+                // 초기 위치 설정 (도로 시작점 주변)
                 const positions = [
-                    [-4, 0, -5],   // 플레이어 1
-                    [4, 0, -5],    // 플레이어 2
-                    [-6, 0, -7],   // 플레이어 3
-                    [6, 0, -7],    // 플레이어 4
-                    [-8, 0, -9],   // 플레이어 5
-                    [8, 0, -9],    // 플레이어 6
-                    [-10, 0, -11], // 플레이어 7
-                    [10, 0, -11]   // 플레이어 8
+                    [-3, 0, -25],   // 플레이어 1
+                    [3, 0, -25],    // 플레이어 2
+                    [-6, 0, -28],   // 플레이어 3
+                    [6, 0, -28],    // 플레이어 4
+                    [-2, 0, -31],   // 플레이어 5
+                    [2, 0, -31],    // 플레이어 6
+                    [-5, 0, -34],   // 플레이어 7
+                    [5, 0, -34]     // 플레이어 8
                 ];
                 
                 if (playerIndex < positions.length) {
@@ -801,7 +912,7 @@
                     const hostIcon = player.isHost ? '👑 ' : '';
                     
                     playerHTML += `
-                        <div class="player-item">
+                        <div class="player-item" data-player-id="${playerId}">
                             <span class="player-name">${hostIcon}${player.name}</span>
                             <span class="player-status ${statusClass}">${statusText}</span>
                         </div>
@@ -890,23 +1001,44 @@
                 
                 const config = this.levelConfig[this.currentLevel];
                 const roadWidth = config.roadWidth;
+                const roadLength = 300;
                 
-                // 장애물 생성
+                // 정적 장애물 생성 (도로 전체에 분산)
                 for (let i = 0; i < config.obstacles; i++) {
-                    const obstacleGeometry = new THREE.BoxGeometry(2, 2, 2);
-                    const obstacleMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+                    const obstacleSize = 1.5 + Math.random() * 1; // 다양한 크기
+                    const obstacleGeometry = new THREE.BoxGeometry(obstacleSize, obstacleSize * 1.2, obstacleSize);
+                    
+                    // 레벨별 장애물 색상 변화
+                    const obstacleColors = [0xff4444, 0xff6600, 0xff0066, 0x8800ff, 0x0088ff];
+                    const obstacleColor = obstacleColors[(this.currentLevel - 1) % obstacleColors.length];
+                    const obstacleMaterial = new THREE.MeshLambertMaterial({ 
+                        color: obstacleColor,
+                        transparent: true,
+                        opacity: 0.9
+                    });
                     const obstacleMesh = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
                     
-                    // 랜덤 위치 (도로 내에서)
-                    const x = (Math.random() - 0.5) * (roadWidth - 4);
-                    const z = 20 + (i * 15) + Math.random() * 10;
-                    obstacleMesh.position.set(x, 1, z);
+                    // 장애물 위치 (도로 앞쪽에 배치)
+                    const x = (Math.random() - 0.5) * (roadWidth - 3);
+                    const z = 30 + (i * (roadLength - 60) / config.obstacles) + (Math.random() - 0.5) * 20;
+                    obstacleMesh.position.set(x, obstacleSize * 0.6, z);
                     obstacleMesh.castShadow = true;
+                    
+                    // 장애물에 경고 효과 추가
+                    const warningGeometry = new THREE.CylinderGeometry(obstacleSize + 0.5, obstacleSize + 0.5, 0.1, 16);
+                    const warningMaterial = new THREE.MeshLambertMaterial({ 
+                        color: 0xffff00,
+                        transparent: true,
+                        opacity: 0.3
+                    });
+                    const warningMesh = new THREE.Mesh(warningGeometry, warningMaterial);
+                    warningMesh.position.set(0, -obstacleSize * 0.5, 0);
+                    obstacleMesh.add(warningMesh);
                     
                     this.scene.add(obstacleMesh);
                     
                     // 물리 바디
-                    const obstacleShape = new CANNON.Box(new CANNON.Vec3(1, 1, 1));
+                    const obstacleShape = new CANNON.Box(new CANNON.Vec3(obstacleSize/2, obstacleSize*0.6, obstacleSize/2));
                     const obstacleBody = new CANNON.Body({ mass: 0 });
                     obstacleBody.addShape(obstacleShape);
                     obstacleBody.position.copy(obstacleMesh.position);
@@ -915,12 +1047,51 @@
                     this.obstacles.push({
                         mesh: obstacleMesh,
                         body: obstacleBody,
-                        speed: config.obstacleSpeed,
-                        initialZ: z
+                        size: obstacleSize,
+                        type: 'static',
+                        initialPosition: { x, z }
                     });
                 }
                 
-                console.log(`✅ ${config.obstacles}개 장애물 생성 완료`);
+                // 동적 장애물 추가 (레벨 3부터)
+                if (this.currentLevel >= 3) {
+                    const movingObstacles = Math.min(2, this.currentLevel - 2);
+                    for (let i = 0; i < movingObstacles; i++) {
+                        const obstacleSize = 1.8;
+                        const obstacleGeometry = new THREE.CylinderGeometry(obstacleSize/2, obstacleSize/2, obstacleSize, 8);
+                        const obstacleMaterial = new THREE.MeshLambertMaterial({ 
+                            color: 0xff8800,
+                            transparent: true,
+                            opacity: 0.8
+                        });
+                        const obstacleMesh = new THREE.Mesh(obstacleGeometry, obstacleMaterial);
+                        
+                        const x = (Math.random() - 0.5) * (roadWidth - 4);
+                        const z = 80 + i * 60;
+                        obstacleMesh.position.set(x, obstacleSize/2, z);
+                        obstacleMesh.castShadow = true;
+                        
+                        this.scene.add(obstacleMesh);
+                        
+                        const obstacleShape = new CANNON.Cylinder(obstacleSize/2, obstacleSize/2, obstacleSize, 8);
+                        const obstacleBody = new CANNON.Body({ mass: 0 });
+                        obstacleBody.addShape(obstacleShape);
+                        obstacleBody.position.copy(obstacleMesh.position);
+                        this.world.add(obstacleBody);
+                        
+                        this.obstacles.push({
+                            mesh: obstacleMesh,
+                            body: obstacleBody,
+                            size: obstacleSize,
+                            type: 'moving',
+                            moveDirection: Math.random() > 0.5 ? 1 : -1,
+                            moveSpeed: 0.8 + Math.random() * 0.4,
+                            initialPosition: { x, z }
+                        });
+                    }
+                }
+                
+                console.log(`✅ ${config.obstacles}개 정적 + ${this.currentLevel >= 3 ? Math.min(2, this.currentLevel - 2) : 0}개 동적 장애물 생성 완료`);
             }
             
             startGameTimer() {
@@ -977,29 +1148,81 @@
                 const player = this.players.get(playerId);
                 if (!player || !player.mesh) return;
                 
+                // 플레이어 UI 액티브 표시 추가
+                const playerElement = document.querySelector(`[data-player-id="${playerId}"]`);
+                if (playerElement) {
+                    playerElement.classList.add('active');
+                    setTimeout(() => playerElement.classList.remove('active'), 300);
+                }
+                
                 const { gamma, beta } = data.orientation;
                 
                 // 데이터 검증
                 if (!isFinite(gamma) || !isFinite(beta)) return;
-                const clampedGamma = THREE.MathUtils.clamp(gamma, -45, 45);
-                const clampedBeta = THREE.MathUtils.clamp(beta, -45, 45);
                 
-                // 플레이어 이동 (부드럽게)
-                const sensitivity = 0.1;
-                const moveX = clampedGamma * sensitivity;
-                const moveZ = clampedBeta * sensitivity;
+                // 센서 히스토리 업데이트 (스무딩을 위해)
+                if (!this.sensorHistory.has(playerId)) {
+                    this.sensorHistory.set(playerId, []);
+                }
+                
+                const history = this.sensorHistory.get(playerId);
+                history.push({ gamma, beta, timestamp: Date.now() });
+                
+                // 히스토리 크기 제한
+                if (history.length > this.historySize) {
+                    history.shift();
+                }
+                
+                // 평균값 계산 (스무딩)
+                let avgGamma = 0;
+                let avgBeta = 0;
+                history.forEach(h => {
+                    avgGamma += h.gamma;
+                    avgBeta += h.beta;
+                });
+                avgGamma /= history.length;
+                avgBeta /= history.length;
+                
+                // 극값 제한
+                const clampedGamma = THREE.MathUtils.clamp(avgGamma, -60, 60);
+                const clampedBeta = THREE.MathUtils.clamp(avgBeta, -60, 60);
+                
+                // 데드존 적용 (작은 움직임 무시)
+                const deadZone = 3;
+                const adjustedGamma = Math.abs(clampedGamma) < deadZone ? 0 : clampedGamma;
+                const adjustedBeta = Math.abs(clampedBeta) < deadZone ? 0 : clampedBeta;
+                
+                // 플레이어 이동 (더 부드럽고 자연스럽게)
+                const baseSensitivity = 0.08;
+                const dynamicSensitivity = baseSensitivity * (1 + Math.abs(adjustedGamma + adjustedBeta) / 100);
+                
+                const moveX = adjustedGamma * dynamicSensitivity;
+                const moveZ = adjustedBeta * dynamicSensitivity;
                 
                 const currentPos = player.mesh.position;
-                const newX = currentPos.x + moveX * 0.1;
-                const newZ = currentPos.z + moveZ * 0.1;
+                const targetX = currentPos.x + moveX;
+                const targetZ = currentPos.z + moveZ;
                 
-                // 이동 범위 제한
-                const maxX = 12;
-                const maxZ = 50;
-                const minZ = -15;
+                // 이동 범위 제한 (도로 경계)
+                const maxX = 8; // 도로 폭 내에서만 이동
+                const maxZ = this.goalPosition || 250;
+                const minZ = -40;
                 
-                player.mesh.position.x = THREE.MathUtils.clamp(newX, -maxX, maxX);
-                player.mesh.position.z = THREE.MathUtils.clamp(newZ, minZ, maxZ);
+                const clampedTargetX = THREE.MathUtils.clamp(targetX, -maxX, maxX);
+                const clampedTargetZ = THREE.MathUtils.clamp(targetZ, minZ, maxZ);
+                
+                // 부드러운 보간 이동
+                const lerpFactor = 0.15;
+                player.mesh.position.x = THREE.MathUtils.lerp(currentPos.x, clampedTargetX, lerpFactor);
+                player.mesh.position.z = THREE.MathUtils.lerp(currentPos.z, clampedTargetZ, lerpFactor);
+                
+                // 플레이어 회전 (이동 방향에 따라)
+                if (Math.abs(moveX) > 0.01) {
+                    const targetRotation = moveX > 0 ? Math.PI / 8 : -Math.PI / 8;
+                    player.mesh.rotation.y = THREE.MathUtils.lerp(player.mesh.rotation.y, targetRotation, 0.1);
+                } else {
+                    player.mesh.rotation.y = THREE.MathUtils.lerp(player.mesh.rotation.y, 0, 0.05);
+                }
                 
                 // 플레이어 위치 저장
                 player.position = {
@@ -1016,15 +1239,20 @@
                 let totalBeta = 0;
                 let count = 0;
                 
-                // 모든 센서 데이터 합산
+                // 모든 센서 데이터 합산 (스무딩된 데이터 사용)
                 this.sensorData.forEach((data, playerId) => {
                     if (data.orientation) {
                         const gamma = data.orientation.gamma || 0;
                         const beta = data.orientation.beta || 0;
                         
                         if (isFinite(gamma) && isFinite(beta)) {
-                            totalGamma += THREE.MathUtils.clamp(gamma, -45, 45);
-                            totalBeta += THREE.MathUtils.clamp(beta, -45, 45);
+                            // 데드존 적용
+                            const deadZone = 2;
+                            const adjustedGamma = Math.abs(gamma) < deadZone ? 0 : gamma;
+                            const adjustedBeta = Math.abs(beta) < deadZone ? 0 : beta;
+                            
+                            totalGamma += THREE.MathUtils.clamp(adjustedGamma, -60, 60);
+                            totalBeta += THREE.MathUtils.clamp(adjustedBeta, -60, 60);
                             count++;
                         }
                     }
@@ -1036,12 +1264,17 @@
                     const avgBeta = totalBeta / count;
                     
                     // 케이크 조작 (협력 효과)
-                    const baseSensitivity = 0.15;
-                    const cooperationBonus = Math.min(1.5, 1 + (count - 1) * 0.2);
+                    const baseSensitivity = 0.12;
+                    const cooperationBonus = Math.min(1.8, 1 + (count - 1) * 0.15);
                     const sensitivity = baseSensitivity * cooperationBonus;
                     
+                    // 자동 전진 (위쪽으로 이동)
+                    const autoForwardSpeed = 1.5; // 기본 전진 속도
+                    const levelSpeedMultiplier = 1 + (this.currentLevel - 1) * 0.2; // 레벨별 속도 증가
+                    const forwardForce = autoForwardSpeed * levelSpeedMultiplier;
+                    
                     const forceX = avgGamma * sensitivity;
-                    const forceZ = avgBeta * sensitivity;
+                    let forceZ = (avgBeta * sensitivity) + forwardForce; // 자동 전진 + 센서 조작
                     
                     // 케이크 안정성에 따른 조정
                     const stabilityMultiplier = this.cake.config.stability;
@@ -1049,13 +1282,24 @@
                     const adjustedForceZ = forceZ * stabilityMultiplier;
                     
                     // 힘 제한
-                    const maxForce = 8;
-                    const clampedForceX = THREE.MathUtils.clamp(adjustedForceX, -maxForce, maxForce);
-                    const clampedForceZ = THREE.MathUtils.clamp(adjustedForceZ, -maxForce, maxForce);
+                    const maxForceX = 6;
+                    const maxForceZ = forwardForce + 3; // 전진력 + 추가 조작력
+                    const clampedForceX = THREE.MathUtils.clamp(adjustedForceX, -maxForceX, maxForceX);
+                    const clampedForceZ = THREE.MathUtils.clamp(adjustedForceZ, 0, maxForceZ); // Z는 항상 양수 (전진만)
                     
                     // 부드러운 힘 적용
-                    this.cake.body.velocity.x = THREE.MathUtils.lerp(this.cake.body.velocity.x, clampedForceX, 0.3);
-                    this.cake.body.velocity.z = THREE.MathUtils.lerp(this.cake.body.velocity.z, clampedForceZ, 0.3);
+                    const lerpFactor = 0.25;
+                    this.cake.body.velocity.x = THREE.MathUtils.lerp(this.cake.body.velocity.x, clampedForceX, lerpFactor);
+                    this.cake.body.velocity.z = THREE.MathUtils.lerp(this.cake.body.velocity.z, clampedForceZ, lerpFactor);
+                    
+                    // 케이크가 너무 기울어지지 않도록 안정화
+                    const stabilizationForce = 0.1;
+                    this.cake.body.angularVelocity.x *= (1 - stabilizationForce);
+                    this.cake.body.angularVelocity.z *= (1 - stabilizationForce);
+                } else {
+                    // 센서 데이터가 없을 때도 자동 전진
+                    const autoForwardSpeed = 1.0;
+                    this.cake.body.velocity.z = THREE.MathUtils.lerp(this.cake.body.velocity.z, autoForwardSpeed, 0.1);
                 }
                 
                 // 플레이어 간 거리 체크
@@ -1082,12 +1326,34 @@
             }
             
             startGameLoop() {
-                const animate = () => {
+                let lastTime = performance.now();
+                let frameCount = 0;
+                let fps = 60;
+                this.particleQuality = 1.0;
+                
+                const animate = (currentTime) => {
                     requestAnimationFrame(animate);
                     
+                    // FPS 계산 및 성능 모니터링
+                    frameCount++;
+                    if (frameCount % 60 === 0) {
+                        const deltaTime = currentTime - lastTime;
+                        fps = Math.round(60000 / deltaTime);
+                        lastTime = currentTime;
+                        
+                        // 성능이 낮으면 품질 조정
+                        if (fps < 25 && this.particleQuality > 0.3) {
+                            console.log('⚡ 성능 최적화 활성화 (FPS:', fps, ')');
+                            this.particleQuality *= 0.7;
+                        } else if (fps > 50 && this.particleQuality < 1.0) {
+                            this.particleQuality = Math.min(1.0, this.particleQuality * 1.1);
+                        }
+                    }
+                    
                     if (this.gameState === 'playing') {
-                        // 물리 시뮬레이션
-                        this.world.step(1/60);
+                        // 적응적 물리 시뮬레이션
+                        const fixedTimeStep = 1/60;
+                        this.world.step(fixedTimeStep);
                         
                         // 케이크 위치 동기화
                         if (this.cake.mesh && this.cake.body) {
@@ -1095,13 +1361,25 @@
                             this.cake.mesh.quaternion.copy(this.cake.body.quaternion);
                         }
                         
-                        // 장애물 업데이트
-                        this.updateObstacles();
+                        // 플레이어 위치 동기화
+                        for (const [playerId, player] of this.players) {
+                            if (player.mesh && player.body) {
+                                player.mesh.position.copy(player.body.position);
+                                player.mesh.quaternion.copy(player.body.quaternion);
+                            }
+                        }
                         
-                        // 게임 진행 체크
-                        this.checkGameProgress();
+                        // 장애물 업데이트 (프레임 스킵)
+                        if (frameCount % 2 === 0) {
+                            this.updateObstacles();
+                        }
                         
-                        // 카메라 업데이트 (3인칭 시점)
+                        // 게임 진행 체크 (30fps)
+                        if (frameCount % 2 === 0) {
+                            this.checkGameProgress();
+                        }
+                        
+                        // 카메라 업데이트
                         this.updateCamera();
                     }
                     
@@ -1109,21 +1387,62 @@
                     this.renderer.render(this.scene, this.camera);
                 };
                 
-                animate();
+                animate(performance.now());
+            }
+            
+            // 메모리 정리 함수
+            disposeResources() {
+                console.log('🧹 메모리 정리 시작...');
+                
+                this.scene.traverse((object) => {
+                    if (object.geometry) {
+                        object.geometry.dispose();
+                    }
+                    if (object.material) {
+                        if (Array.isArray(object.material)) {
+                            object.material.forEach(material => material.dispose());
+                        } else {
+                            object.material.dispose();
+                        }
+                    }
+                });
+                
+                // 텍스처 정리
+                if (this.renderer) {
+                    this.renderer.dispose();
+                }
+                
+                // 물리 엔진 정리
+                if (this.world) {
+                    this.world.bodies.forEach(body => {
+                        this.world.remove(body);
+                    });
+                }
+                
+                console.log('✅ 메모리 정리 완료');
             }
             
             updateObstacles() {
                 this.obstacles.forEach(obstacle => {
-                    // 장애물을 플레이어 쪽으로 이동 (뒤로)
-                    obstacle.mesh.position.z -= obstacle.speed * 0.1;
-                    obstacle.body.position.z = obstacle.mesh.position.z;
-                    
-                    // 화면을 벗어나면 앞쪽으로 재배치
-                    if (obstacle.mesh.position.z < -30) {
-                        const config = this.levelConfig[this.currentLevel];
-                        obstacle.mesh.position.z = obstacle.initialZ + 100;
-                        obstacle.mesh.position.x = (Math.random() - 0.5) * (config.roadWidth - 4);
-                        obstacle.body.position.copy(obstacle.mesh.position);
+                    if (obstacle.type === 'moving') {
+                        // 동적 장애물: 좌우로 이동
+                        const currentX = obstacle.mesh.position.x;
+                        const roadBoundary = 8;
+                        
+                        // 경계에 닿으면 방향 전환
+                        if (currentX >= roadBoundary || currentX <= -roadBoundary) {
+                            obstacle.moveDirection *= -1;
+                        }
+                        
+                        // 위치 업데이트
+                        obstacle.mesh.position.x += obstacle.moveDirection * obstacle.moveSpeed * 0.05;
+                        obstacle.body.position.x = obstacle.mesh.position.x;
+                        
+                        // 회전 효과
+                        obstacle.mesh.rotation.y += 0.02 * obstacle.moveDirection;
+                    } else {
+                        // 정적 장애물: 약간의 회전 효과만
+                        obstacle.mesh.rotation.y += 0.005;
                     }
                 });
             }
@@ -1131,52 +1450,249 @@
             checkGameProgress() {
                 if (!this.cake.body) return;
                 
-                // 케이크 위치 기반 진행률 계산
-                const progress = Math.max(0, (this.cake.body.position.z + 10) / 60) * 100;
+                // 케이크 위치 기반 진행률 계산 (0 ~ goalPosition)
+                const currentZ = this.cake.body.position.z;
+                const startZ = -20;
+                const endZ = this.goalPosition || 250;
+                const progress = Math.max(0, Math.min(100, ((currentZ - startZ) / (endZ - startZ)) * 100));
+                
                 this.elements.progressPercent.textContent = Math.floor(progress);
                 
-                // 도로 이탈 체크
+                // 도로 이탈 체크 (경고 시스템 포함)
                 const config = this.levelConfig[this.currentLevel];
-                if (Math.abs(this.cake.body.position.x) > config.roadWidth / 2) {
+                const roadBoundary = config.roadWidth / 2;
+                const roadDistance = Math.abs(this.cake.body.position.x);
+                const warningZone = roadBoundary * 0.8; // 경고 영역 80%
+                
+                if (roadDistance > warningZone && roadDistance <= roadBoundary) {
+                    // 경고 영역 - 시각적 경고만
+                    if (!this.warningActive) {
+                        this.warningActive = true;
+                        this.createWarningEffect();
+                        this.showMessage('⚠️ 도로 가장자리입니다!', 'warning', 1500);
+                        setTimeout(() => { this.warningActive = false; }, 2000);
+                    }
+                } else if (roadDistance > roadBoundary) {
+                    // 완전히 도로 이탈
+                    this.createParticleEffect(this.cake.body.position.clone(), 0xff8800, 15);
                     this.gameOver(false, '케이크가 도로를 벗어났습니다!');
                     return;
                 }
                 
                 // 케이크 떨어짐 체크
-                if (this.cake.body.position.y < -2) {
+                if (this.cake.body.position.y < -3) {
                     this.gameOver(false, '케이크가 떨어졌습니다!');
                     return;
                 }
                 
-                // 장애물 충돌 체크
-                this.obstacles.forEach(obstacle => {
+                // 뒤로 너무 밀려났는지 체크
+                if (currentZ < -50) {
+                    this.gameOver(false, '너무 뒤로 밀려났습니다!');
+                    return;
+                }
+                
+                // 장애물 충돌 체크 (더 정확한 거리 계산)
+                for (const obstacle of this.obstacles) {
                     const distance = this.cake.body.position.distanceTo(obstacle.body.position);
-                    if (distance < 3) {
+                    const collisionRadius = 2.5 + (obstacle.size || 1.5); // 케이크 반경 + 장애물 반경
+                    
+                    if (distance < collisionRadius) {
+                        // 충돌 효과 추가
+                        this.createCollisionEffect(obstacle.mesh.position);
                         this.gameOver(false, '장애물에 충돌했습니다!');
                         return;
                     }
+                }
+                
+                // 레벨 완료 체크 (목표 지점 도달)
+                if (currentZ >= (this.goalPosition - 5)) {
+                    this.completeLevel();
+                }
+            }
+            
+            createCollisionEffect(position) {
+                // 충돌 시 파티클 효과
+                const particleGeometry = new THREE.SphereGeometry(0.1, 8, 6);
+                const particleMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0xff4444,
+                    transparent: true,
+                    opacity: 0.8
                 });
                 
-                // 레벨 완료 체크
-                if (progress >= 100) {
-                    this.completeLevel();
+                for (let i = 0; i < 8; i++) {
+                    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                    particle.position.copy(position);
+                    particle.position.add(new THREE.Vector3(
+                        (Math.random() - 0.5) * 2,
+                        Math.random() * 2,
+                        (Math.random() - 0.5) * 2
+                    ));
+                    this.scene.add(particle);
+                    
+                    // 파티클 애니메이션
+                    const startTime = Date.now();
+                    const animateParticle = () => {
+                        const elapsed = (Date.now() - startTime) / 1000;
+                        if (elapsed < 1) {
+                            particle.position.y += 2 * (1 - elapsed);
+                            particle.material.opacity = 0.8 * (1 - elapsed);
+                            requestAnimationFrame(animateParticle);
+                        } else {
+                            this.scene.remove(particle);
+                        }
+                    };
+                    animateParticle();
+                }
+            }
+            
+            // 향상된 시각적 피드백 효과들
+            createParticleEffect(position, color = 0xff4444, count = 12) {
+                // 성능에 따라 파티클 수 조정
+                const adjustedCount = Math.floor(count * (this.particleQuality || 1.0));
+                if (adjustedCount <= 0) return;
+                
+                const particles = [];
+                
+                for (let i = 0; i < adjustedCount; i++) {
+                    const particleGeometry = new THREE.SphereGeometry(0.05 + Math.random() * 0.03, 6, 6);
+                    const particleMaterial = new THREE.MeshLambertMaterial({ 
+                        color: color,
+                        transparent: true,
+                        opacity: 0.9,
+                        emissive: new THREE.Color(color).multiplyScalar(0.2)
+                    });
+                    
+                    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+                    particle.position.copy(position);
+                    
+                    const angle = (i / count) * Math.PI * 2;
+                    const speed = 1 + Math.random() * 2;
+                    particle.userData = {
+                        velocity: new THREE.Vector3(
+                            Math.cos(angle) * speed,
+                            2 + Math.random() * 3,
+                            Math.sin(angle) * speed
+                        )
+                    };
+                    
+                    this.scene.add(particle);
+                    particles.push(particle);
+                }
+                
+                // 파티클 애니메이션
+                const startTime = Date.now();
+                const animateParticles = () => {
+                    const elapsed = (Date.now() - startTime) / 1000;
+                    if (elapsed < 1.5) {
+                        particles.forEach(particle => {
+                            if (particle && particle.parent) {
+                                particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.02));
+                                particle.userData.velocity.y -= 0.08; // 중력
+                                
+                                const fadeProgress = elapsed / 1.5;
+                                particle.material.opacity = 0.9 * (1 - fadeProgress);
+                                particle.scale.setScalar(1 - fadeProgress * 0.3);
+                            }
+                        });
+                        requestAnimationFrame(animateParticles);
+                    } else {
+                        particles.forEach(particle => {
+                            if (particle && particle.parent) {
+                                this.scene.remove(particle);
+                            }
+                        });
+                    }
+                };
+                animateParticles();
+            }
+            
+            createSuccessEffect() {
+                // 성공 시 황금색 폭죽 효과
+                const cakePos = this.cake.mesh ? this.cake.mesh.position : new THREE.Vector3(0, 2, 0);
+                
+                for (let i = 0; i < 3; i++) {
+                    setTimeout(() => {
+                        const offsetPos = cakePos.clone().add(new THREE.Vector3(
+                            (Math.random() - 0.5) * 4,
+                            Math.random() * 2,
+                            (Math.random() - 0.5) * 4
+                        ));
+                        this.createParticleEffect(offsetPos, 0xffd700, 20); // 황금색
+                    }, i * 300);
+                }
+            }
+            
+            createFailureEffect() {
+                // 실패 시 빨간색 폭발 효과
+                const cakePos = this.cake.mesh ? this.cake.mesh.position : new THREE.Vector3(0, 2, 0);
+                this.createParticleEffect(cakePos, 0xff4444, 25); // 빨간색
+                
+                setTimeout(() => {
+                    this.createParticleEffect(cakePos, 0xff8800, 15); // 주황색
+                }, 200);
+            }
+            
+            createWarningEffect() {
+                // 도로 이탈 경고 효과
+                const roadEdges = [-10, 10];
+                roadEdges.forEach(x => {
+                    for (let z = -20; z < 100; z += 10) {
+                        const warningPos = new THREE.Vector3(x, 0.1, z);
+                        this.createParticleEffect(warningPos, 0xff8800, 3); // 주황색 경고
+                    }
+                });
+            }
+            
+            checkPlayerCooperation() {
+                // 플레이어 간 거리 체크 및 협력 피드백
+                const playerPositions = Array.from(this.players.values())
+                    .filter(p => p.mesh)
+                    .map(p => p.mesh.position);
+                
+                if (playerPositions.length < 2) return;
+                
+                let maxDistance = 0;
+                for (let i = 0; i < playerPositions.length; i++) {
+                    for (let j = i + 1; j < playerPositions.length; j++) {
+                        const distance = playerPositions[i].distanceTo(playerPositions[j]);
+                        maxDistance = Math.max(maxDistance, distance);
+                    }
+                }
+                
+                if (maxDistance > 15) {
+                    // 플레이어들이 너무 멀어짐
+                    this.showMessage('⚠️ 플레이어들이 너무 멀리 떨어져 있습니다!', 'warning', 2000);
+                    this.createParticleEffect(this.cake.mesh.position, 0xff8800, 8);
                 }
             }
             
             updateCamera() {
                 if (this.cake.mesh) {
-                    // 3인칭 카메라 (케이크 뒤에서 따라가기)
-                    const targetX = this.cake.mesh.position.x;
-                    const targetY = this.cake.mesh.position.y + 10;
-                    const targetZ = this.cake.mesh.position.z + 15;
+                    // 3인칭 카메라 (케이크 뒤쪽에서 약간 위에서 바라보는 시점)
+                    const cakePos = this.cake.mesh.position;
+                    
+                    // 카메라 목표 위치 계산
+                    const cameraDistance = 18;
+                    const cameraHeight = 8;
+                    const cameraOffset = -12; // 케이크 뒤쪽
+                    
+                    const targetX = cakePos.x; // 케이크와 같은 X 위치
+                    const targetY = cakePos.y + cameraHeight;
+                    const targetZ = cakePos.z + cameraOffset; // 케이크 뒤에서
                     
                     // 부드러운 카메라 이동
-                    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetX, 0.1);
-                    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetY, 0.1);
-                    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetZ, 0.1);
+                    const lerpFactor = 0.08;
+                    this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetX, lerpFactor);
+                    this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetY, lerpFactor);
+                    this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetZ, lerpFactor);
                     
-                    // 카메라가 케이크를 바라보도록
-                    this.camera.lookAt(this.cake.mesh.position);
+                    // 카메라가 케이크 앞쪽을 바라보도록 (진행 방향)
+                    const lookAtTarget = new THREE.Vector3(
+                        cakePos.x,
+                        cakePos.y + 1,
+                        cakePos.z + 8 // 케이크 앞쪽을 바라봄
+                    );
+                    this.camera.lookAt(lookAtTarget);
                 }
             }
             
@@ -1232,15 +1748,22 @@
                     this.gameTimer = null;
                 }
                 
+                // 시각적 피드백 효과
+                if (success) {
+                    this.createSuccessEffect();
+                } else {
+                    this.createFailureEffect();
+                }
+                
                 const resultTitle = success ? '🎉 게임 클리어!' : '😞 게임 실패';
                 const resultMessage = reason ? `${resultTitle}\n${reason}` : resultTitle;
                 
-                this.showMessage(resultMessage, success ? 'success' : 'error');
+                this.showMessage(resultMessage, success ? 'success' : 'error', 4000);
                 
                 // 결과 화면 표시
                 setTimeout(() => {
                     this.showResultScreen(success);
-                }, 3000);
+                }, 4000);
             }
             
             gameComplete() {
@@ -1290,6 +1813,7 @@
                 this.currentLevel = 1;
                 this.currentScore = 0;
                 this.startTime = 0;
+                this.warningActive = false;
                 
                 // UI 리셋
                 this.elements.currentLevel.textContent = '1';
@@ -1307,10 +1831,18 @@
                 
                 // 장애물 제거
                 this.obstacles.forEach(obstacle => {
-                    this.scene.remove(obstacle.mesh);
-                    this.world.remove(obstacle.body);
+                    if (obstacle.mesh) this.scene.remove(obstacle.mesh);
+                    if (obstacle.body) this.world.remove(obstacle.body);
                 });
                 this.obstacles = [];
+                
+                // 센서 히스토리 정리
+                if (this.sensorHistory) {
+                    this.sensorHistory.clear();
+                }
+                
+                // 성능 설정 초기화
+                this.particleQuality = 1.0;
                 
                 // 기본 환경 재생성
                 this.createEnvironment();
