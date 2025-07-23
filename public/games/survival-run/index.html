@@ -431,14 +431,15 @@
                 this.scene = new THREE.Scene();
                 this.scene.background = new THREE.Color(0x87ceeb); // 하늘색 배경
                 
-                // 카메라 생성 (3인칭 시점, 모든 플레이어 추적)
+                // 카메라 생성 (케이크 게임과 동일한 설정)
                 this.camera = new THREE.PerspectiveCamera(
                     75, 
                     window.innerWidth / window.innerHeight, 
                     0.1, 
                     1000
                 );
-                this.camera.position.set(0, 25, -30); // 위에서 뒤로 보는 시점
+                this.camera.position.set(0, 15, 10); // 케이크 게임과 동일한 초기 위치
+                this.camera.lookAt(0, 0, 0);
                 
                 // 렌더러 생성
                 this.renderer = new THREE.WebGLRenderer({ 
@@ -1257,48 +1258,59 @@
                     setTimeout(() => playerElement.classList.remove('active'), 300);
                 }
                 
+                // 케이크 게임과 동일한 센서 처리
                 const { gamma, beta } = data.orientation;
                 
-                // 데이터 검증
+                // 데이터 검증 (케이크 게임 동일)
                 if (!isFinite(gamma) || !isFinite(beta)) return;
                 
-                // 극값 제한
-                const clampedGamma = THREE.MathUtils.clamp(gamma, -60, 60);
-                const clampedBeta = THREE.MathUtils.clamp(beta, -60, 60);
+                // 극값 제한 (-180 ~ 180도) - 케이크 게임 동일
+                const clampedGamma = THREE.MathUtils.clamp(gamma, -180, 180);
+                const clampedBeta = THREE.MathUtils.clamp(beta, -180, 180);
                 
-                // 센서 데이터 스무딩
+                // 센서 데이터 스무딩 적용
                 const smoothedData = this.smoothSensorData(playerId, clampedGamma, clampedBeta);
                 
-                // 데드존 적용
-                const deadZone = this.sensorConfig.deadZone;
-                const adjustedGamma = Math.abs(smoothedData.gamma) < deadZone ? 0 : smoothedData.gamma;
-                const adjustedBeta = Math.abs(smoothedData.beta) < deadZone ? 0 : smoothedData.beta;
-                
-                // 이동 계산 (케이크 게임 기반)
+                // 케이크 게임 동일한 설정값
                 const config = this.stageConfig[this.currentStage];
-                const sensitivity = this.sensorConfig.sensitivity;
-                const maxSpeed = this.sensorConfig.maxSpeed;
+                const sensitivity = 0.02;  // 케이크 게임 동일
+                const maxSpeed = 0.2;      // 케이크 게임 동일
                 
-                // 좌우 이동 (센서 gamma)
-                let moveX = adjustedGamma * sensitivity;
+                // 이동 계산 (케이크 게임 동일)
+                let moveX = smoothedData.gamma * sensitivity;
+                let moveZ = smoothedData.beta * sensitivity;
+                
                 moveX = THREE.MathUtils.clamp(moveX, -maxSpeed, maxSpeed);
+                moveZ = THREE.MathUtils.clamp(moveZ, -maxSpeed, maxSpeed);
                 
-                // 자동 전진 + 미세 앞뒤 조정
-                let moveZ = (adjustedBeta * sensitivity * 0.5) - config.forwardSpeed; // 자동 전진!
+                // 타겟 속도 계산 (케이크 게임 동일) - forwardSpeed로 자동 전진
+                const targetVelocity = new THREE.Vector3(moveX, 0, moveZ - config.forwardSpeed);
                 
-                // 위치 업데이트 (부드러운 보간)
-                const currentPos = playerMesh.body.position;
-                const targetX = currentPos.x + moveX;
-                const targetZ = currentPos.z + moveZ;
+                // 플레이어 속도 초기화 (없으면 생성)
+                if (!playerMesh.velocity) {
+                    playerMesh.velocity = new THREE.Vector3(0, 0, 0);
+                }
                 
-                // 경계 체크
+                // 이전 위치 저장
+                const oldPosition = playerMesh.group.position.clone();
+                
+                // 부드러운 속도 보간 (케이크 게임 동일: 0.08)
+                playerMesh.velocity.lerp(targetVelocity, 0.08);
+                
+                // 새로운 목표 위치 계산
+                const targetPosition = oldPosition.clone().add(playerMesh.velocity);
+                
+                // 위치를 부드럽게 보간 (케이크 게임 동일: 0.7)
+                playerMesh.group.position.lerp(targetPosition, 0.7);
+                
+                // 도로 이탈 방지 (케이크 게임 동일)
                 const trackWidth = config.trackWidth;
-                const clampedTargetX = THREE.MathUtils.clamp(targetX, -trackWidth/2 + 1, trackWidth/2 - 1);
+                const roadLimit = trackWidth / 2 - 0.5;
+                playerMesh.group.position.x = THREE.MathUtils.clamp(playerMesh.group.position.x, -roadLimit, roadLimit);
+                playerMesh.group.position.z = THREE.MathUtils.clamp(playerMesh.group.position.z, -100, 500); // 더 넓은 Z 범위
                 
-                // 부드러운 위치 업데이트
-                const lerpFactor = this.sensorConfig.smoothingFactor;
-                playerMesh.body.position.x = THREE.MathUtils.lerp(currentPos.x, clampedTargetX, lerpFactor);
-                playerMesh.body.position.z = THREE.MathUtils.lerp(currentPos.z, targetZ, lerpFactor);
+                // 물리 바디 위치 동기화
+                playerMesh.body.position.copy(playerMesh.group.position);
                 
                 // 플레이어 회전 (러닝 방향)
                 if (Math.abs(moveX) > 0.01) {
@@ -1320,15 +1332,8 @@
                         const fixedTimeStep = 1/60;
                         this.world.step(fixedTimeStep);
                         
-                        // 플레이어 위치 동기화
-                        for (const [playerId, playerMesh] of this.playerMeshes) {
-                            if (playerMesh.group && playerMesh.body && playerMesh.isAlive) {
-                                playerMesh.group.position.copy(playerMesh.body.position);
-                                // Y 위치는 고정 (점프 방지)
-                                playerMesh.group.position.y = 1;
-                                playerMesh.body.position.y = 1;
-                            }
-                        }
+                        // 플레이어 위치는 센서 처리에서 직접 업데이트되므로 별도 동기화 불필요
+                        // 케이크 게임과 동일한 방식: updatePlayerMovement에서 직접 position 처리
                         
                         // 장애물 업데이트
                         this.updateObstacles();
@@ -1379,7 +1384,8 @@
                 for (const [playerId, playerMesh] of this.playerMeshes) {
                     if (!playerMesh.isAlive) continue;
                     
-                    const playerPos = playerMesh.body.position;
+                    // 새로운 위치 시스템: group.position 사용
+                    const playerPos = playerMesh.group.position;
                     
                     // 장애물과의 충돌 체크
                     for (const obstacle of this.obstacles) {
@@ -1393,7 +1399,7 @@
                             }
                         } else {
                             // 기타 장애물 충돌 (거리 기반)
-                            const obstaclePos = obstacle.body.position;
+                            const obstaclePos = obstacle.body ? obstacle.body.position : obstacle.mesh.position;
                             const distance = playerPos.distanceTo(obstaclePos);
                             
                             if (distance < 1.5) {
@@ -1403,11 +1409,7 @@
                         }
                     }
                     
-                    // 트랙 이탈 체크
-                    const trackWidth = this.stageConfig[this.currentStage].trackWidth;
-                    if (Math.abs(playerPos.x) > trackWidth/2) {
-                        this.eliminatePlayer(playerId, '트랙을 벗어났습니다!');
-                    }
+                    // 트랙 이탈은 이미 updatePlayerMovement에서 처리되므로 여기서는 제거
                 }
             }
             
@@ -1415,7 +1417,8 @@
                 for (const [playerId, playerMesh] of this.playerMeshes) {
                     if (!playerMesh.isAlive) continue;
                     
-                    const playerPos = playerMesh.body.position;
+                    // 새로운 위치 시스템: group.position 사용
+                    const playerPos = playerMesh.group.position;
                     
                     // 완주선 도달 체크 - 더 멀리 설정 (z = 300)
                     if (playerPos.z >= 300) {
@@ -1537,26 +1540,19 @@
             }
             
             updateCamera() {
-                // 러닝 게임용 3인칭 카메라 - 플레이어들을 뒤에서 추적
+                // 케이크 게임과 동일한 카메라 시스템 - 플레이어 그룹 중심 추적
                 if (this.alivePlayers.size === 0) return;
                 
                 let centerX = 0, centerZ = 0;
-                let minX = Infinity, maxX = -Infinity;
-                let minZ = Infinity, maxZ = -Infinity;
-                
-                // 살아있는 플레이어들의 위치 계산
                 let aliveCount = 0;
+                
+                // 살아있는 플레이어들의 중심 위치 계산
                 for (const playerId of this.alivePlayers) {
                     const playerMesh = this.playerMeshes.get(playerId);
                     if (playerMesh && playerMesh.isAlive) {
                         const pos = playerMesh.group.position;
                         centerX += pos.x;
                         centerZ += pos.z;
-                        
-                        minX = Math.min(minX, pos.x);
-                        maxX = Math.max(maxX, pos.x);
-                        minZ = Math.min(minZ, pos.z);
-                        maxZ = Math.max(maxZ, pos.z);
                         aliveCount++;
                     }
                 }
@@ -1566,30 +1562,20 @@
                 centerX /= aliveCount;
                 centerZ /= aliveCount;
                 
-                // 러닝 게임 특화 카메라 설정
-                const spreadX = Math.max(5, maxX - minX); // 최소 5 단위 보장
+                // 가상의 중심점 생성 (케이크 역할)
+                const virtualCenter = new THREE.Vector3(centerX, 0, centerZ);
                 
-                // 카메라 위치 (뒤에서 위로 바라보는 러닝 게임 시점)
-                const baseHeight = 20;
-                const baseDistance = 25;
+                // 케이크 게임과 동일한 카메라 로직
+                const targetPosition = new THREE.Vector3();
+                targetPosition.copy(virtualCenter);
+                targetPosition.y += 15;  // 케이크 게임과 동일한 높이 오프셋
+                targetPosition.z += 10;  // 케이크 게임과 동일한 뒤쪽 오프셋
                 
-                // 플레이어 분산에 따른 거리 조정
-                const dynamicDistance = baseDistance + (spreadX * 1.5);
-                const dynamicHeight = baseHeight + (spreadX * 0.8);
+                // 케이크 게임과 동일한 보간 속도 (0.05)
+                this.camera.position.lerp(targetPosition, 0.05);
                 
-                const targetX = centerX;
-                const targetY = dynamicHeight;
-                const targetZ = centerZ - dynamicDistance; // 플레이어들 뒤쪽
-                
-                // 부드러운 카메라 이동 (러닝 게임용 빠른 반응)
-                const lerpFactor = 0.08;
-                this.camera.position.x = THREE.MathUtils.lerp(this.camera.position.x, targetX, lerpFactor);
-                this.camera.position.y = THREE.MathUtils.lerp(this.camera.position.y, targetY, lerpFactor);
-                this.camera.position.z = THREE.MathUtils.lerp(this.camera.position.z, targetZ, lerpFactor);
-                
-                // 카메라가 플레이어들 앞쪽을 바라보도록 (진행 방향)
-                const lookAtTarget = new THREE.Vector3(centerX, 2, centerZ + 15);
-                this.camera.lookAt(lookAtTarget);
+                // 케이크 게임과 동일한 lookAt (중심점을 바라봄)
+                this.camera.lookAt(virtualCenter);
             }
             
             restart() {
