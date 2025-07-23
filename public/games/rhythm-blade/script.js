@@ -1384,6 +1384,15 @@ class RhythmBladeDual {
     updateConnectionStatus() {
         const connectedCount = Object.values(this.sensorStatus).filter(s => s.connected).length;
         console.log(`연결된 센서: ${connectedCount}/2`);
+        
+        // 2개의 센서가 모두 연결되고 게임이 대기 상태일 때 시작 버튼 표시
+        if (connectedCount === 2 && this.gameState.phase === 'waiting') {
+            // 기존 시작 버튼이 있는지 확인하고 없으면 새로 생성
+            const existingStartButton = document.querySelector('.btn-primary');
+            if (!existingStartButton) {
+                this.showStartButton();
+            }
+        }
     }
     
     processSensorData(data) {
@@ -2247,6 +2256,9 @@ class RhythmBladeDual {
             this.bgMusic.pause();
             this.bgMusic.currentTime = 0;
         }
+        
+        // 센서가 이미 연결되어 있다면 게임 시작 버튼 표시
+        this.updateConnectionStatus();
         
         console.log('🎵 모드 선택 화면으로 이동');
     }
