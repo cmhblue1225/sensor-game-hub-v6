@@ -1318,6 +1318,9 @@ class AcornBattleGame {
     }
 
     restartGame() {
+        // 배경음악 정지 (재시작 시)
+        this.stopBackgroundMusic();
+        
         // 게임 상태 초기화
         this.gameState.phase = 'waiting';
         this.gameState.startTime = null;
@@ -1383,6 +1386,11 @@ class AcornBattleGame {
             this.animationId = null;
         }
 
+        // 배경음악 일시정지
+        if (this.backgroundMusic && this.backgroundMusic.audio) {
+            this.backgroundMusic.audio.pause();
+        }
+
         // UI 업데이트
         if (this.elements.gameOverlay) {
             this.elements.gameOverlay.style.display = 'block';
@@ -1392,7 +1400,7 @@ class AcornBattleGame {
             this.elements.pauseBtn.textContent = '▶️ 재개';
         }
 
-        console.log('게임 일시정지됨');
+        console.log('게임 일시정지됨 - 배경음악 일시정지');
     }
 
     resumeGame() {
@@ -1408,10 +1416,17 @@ class AcornBattleGame {
             this.elements.pauseBtn.textContent = '⏸️ 일시정지';
         }
 
+        // 배경음악 재개
+        if (this.backgroundMusic && this.backgroundMusic.audio && !this.isMuted) {
+            this.backgroundMusic.audio.play().catch(error => {
+                console.warn('MP3 재개 실패:', error);
+            });
+        }
+
         // 게임 루프 재시작
         this.startGameLoop();
 
-        console.log('게임 재개됨');
+        console.log('게임 재개됨 - 배경음악 재개');
     }
 
     initializeGame() {
