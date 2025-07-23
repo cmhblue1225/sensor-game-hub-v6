@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🏃‍♂️ Survival Run</title>
+    <style>
+        :root {
+            --primary: #3b82f6; --secondary: #8b5cf6; --success: #10b981;
+            --warning: #f59e0b; --error: #ef4444; --background: #0f172a;
+            --surface: #1e293b; --text-primary: #f8fafc; --text-secondary: #cbd5e1;
+        }
+        
+        body { 
+            margin: 0; overflow: hidden; background-color: var(--background); 
+            color: var(--text-primary); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            display: flex; justify-content: center; align-items: center; height: 100vh;
+        }
+        
+        #gameContainer { width: 100%; height: 100%; position: relative; }
+        #gameCanvas { display: block; }
+        
+        .ui-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            pointer-events: none; text-align: center;
+        }
+        
+        /* 세션 패널 (좌측 상단) */
+        .session-panel {
+            position: absolute; top: 20px; left: 20px; background: rgba(30, 41, 59, 0.95);
+            padding: 15px; border-radius: 12px; backdrop-filter: blur(10px);
+            display: flex; flex-direction: column; align-items: center; gap: 10px; pointer-events: auto;
+            border: 1px solid rgba(59, 130, 246, 0.3); z-index: 600;
+        }
+        
+        .session-title { font-size: 18px; font-weight: bold; color: var(--primary); }
+        .session-code { font-size: 36px; font-weight: bold; letter-spacing: 3px; color: var(--warning); }
+        .qr-container { 
+            width: 120px; height: 120px; background: white; border-radius: 8px; padding: 5px;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .qr-container img, .qr-container canvas { width: 100%; height: 100%; }
+        
+        /* 게임 정보 패널 (우측 상단) */
+        .game-info-panel {
+            position: absolute; top: 20px; right: 20px; background: rgba(30, 41, 59, 0.9);
+            padding: 15px; border-radius: 12px; backdrop-filter: blur(10px); pointer-events: auto;
+            text-align: right; border: 1px solid rgba(16, 185, 129, 0.3); z-index: 600;
+        }
+        
+        .stage-display { font-size: 24px; font-weight: bold; color: var(--success); margin-bottom: 5px; }
+        .timer-display { font-size: 18px; color: var(--warning); margin-bottom: 3px; }
+        .alive-display { font-size: 16px; color: var(--text-primary); }
+        
+        /* 플레이어 상태 패널 (좌측 하단) */
+        .players-panel {
+            position: absolute; bottom: 20px; left: 20px; background: rgba(30, 41, 59, 0.95);
+            padding: 15px; border-radius: 12px; backdrop-filter: blur(10px); pointer-events: auto;
+            border: 1px solid rgba(139, 92, 246, 0.3); max-width: 300px; z-index: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .players-panel:hover {
+            background: rgba(30, 41, 59, 0.98);
+            border-color: rgba(139, 92, 246, 0.6);
+            transform: translateY(-2px);
+        }
+        
+        .players-title { font-size: 14px; font-weight: bold; color: var(--secondary); margin-bottom: 10px; }
+        .player-list { display: flex; flex-direction: column; gap: 8px; }
+        .player-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.1);
+            transition: all 0.2s ease; position: relative;
+        }
+        
+        .player-item:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(3px);
+        }
+        
+        .player-item.active {
+            border-left: 3px solid var(--success);
+            animation: pulse 2s infinite;
+        }
+        
+        .player-item.dead {
+            background: rgba(239, 68, 68, 0.2);
+            border-left: 3px solid var(--error);
+            opacity: 0.6;
+        }
+        
+        .player-name { font-size: 12px; font-weight: bold; }
+        .player-status { font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+        .player-status.alive { background: var(--success); color: white; }
+        .player-status.dead { background: var(--error); color: white; }
+        .player-status.spectating { background: var(--warning); color: black; }
+        
+        /* 게임 메시지 */
+        .game-message {
+            background: rgba(30, 41, 59, 0.95); padding: 25px 45px; border-radius: 20px;
+            font-size: 2em; font-weight: bold; color: white; backdrop-filter: blur(15px);
+            border: 3px solid var(--primary); pointer-events: auto;
+            display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            z-index: 700; text-align: center; white-space: pre-line;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: messageSlideIn 0.5s ease-out;
+        }
+        
+        @keyframes messageSlideIn {
+            from { opacity: 0; transform: translate(-50%, -60%) scale(0.8); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+        
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        .game-message.success { border-color: var(--success); }
+        .game-message.error { border-color: var(--error); }
+        .game-message.warning { border-color: var(--warning); }
+        .game-message.stage { border-color: var(--secondary); background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(139, 92, 246, 0.9)); }
+        
+        /* 대기실 */
+        .waiting-room {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); display: flex; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 500;
+        }
+        
+        .waiting-title { font-size: 48px; color: var(--primary); margin-bottom: 20px; }
+        .waiting-subtitle { font-size: 20px; color: var(--text-secondary); margin-bottom: 40px; }
+        .waiting-players { 
+            background: rgba(30, 41, 59, 0.8); padding: 30px; border-radius: 15px;
+            backdrop-filter: blur(10px); border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        .connected-count { color: var(--success); font-weight: bold; font-size: 18px; }
+        
+        /* 게임 시작 버튼 */
+        .start-game-container {
+            position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+            display: none; z-index: 600;
+        }
+        
+        .start-btn {
+            background: linear-gradient(135deg, var(--success), var(--primary));
+            color: white; border: none; padding: 15px 30px; border-radius: 10px;
+            font-size: 18px; font-weight: bold; cursor: pointer;
+            transition: all 0.3s ease; pointer-events: auto;
+        }
+        
+        .start-btn:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(59, 130, 246, 0.4); }
+        .start-btn:disabled { 
+            background: rgba(100, 100, 100, 0.3); cursor: not-allowed; transform: none; box-shadow: none;
+        }
+        
+        /* 결과 화면 */
+        .result-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--background); display: none; flex-direction: column;
+            justify-content: center; align-items: center; z-index: 800;
+        }
+        
+        .result-title { font-size: 48px; margin-bottom: 30px; text-align: center; }
+        .result-title.winner { color: var(--success); }
+        .result-title.loser { color: var(--error); }
+        
+        .result-stats {
+            background: rgba(30, 41, 59, 0.8); padding: 30px; border-radius: 15px;
+            text-align: center; margin-bottom: 30px; min-width: 400px;
+        }
+        
+        .result-buttons {
+            display: flex; gap: 20px;
+        }
+        
+        .control-btn, .control-link {
+            padding: 12px 24px; border-radius: 8px; font-size: 16px; font-weight: bold;
+            text-decoration: none; border: none; cursor: pointer; transition: all 0.3s ease;
+        }
+        
+        .control-btn { background: var(--primary); color: white; }
+        .control-btn:hover { background: #2563eb; transform: translateY(-1px); }
+        
+        .control-link { background: var(--surface); color: var(--text-primary); }
+        .control-link:hover { background: var(--secondary); }
+        
+        /* 스테이지 전환 화면 */
+        .stage-transition {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(139, 92, 246, 0.9));
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 750; color: white; text-align: center;
+        }
+        
+        .stage-number { font-size: 120px; font-weight: bold; margin-bottom: 20px; }
+        .stage-title { font-size: 36px; margin-bottom: 10px; }
+        .stage-description { font-size: 20px; margin-bottom: 30px; }
+        .stage-countdown { font-size: 48px; color: var(--warning); }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- UI 오버레이 -->
+        <div class="ui-overlay">
+            <div id="messageBox" class="game-message">메시지</div>
+        </div>
+        
+        <!-- 세션 정보 패널 -->
+        <div class="session-panel">
+            <div class="session-title">🏃‍♂️ Survival Run</div>
+            <div id="sessionCode" class="session-code">----</div>
+            <div id="qrContainer" class="qr-container"></div>
+        </div>
+        
+        <!-- 게임 정보 패널 -->
+        <div class="game-info-panel">
+            <div class="stage-display">스테이지 <span id="currentStage">1</span>/5</div>
+            <div class="timer-display">시간: <span id="stageTimer">01:00</span></div>
+            <div class="alive-display">생존자: <span id="aliveCount">0</span>명</div>
+        </div>
+        
+        <!-- 플레이어 상태 패널 -->
+        <div class="players-panel">
+            <div class="players-title">플레이어 상태</div>
+            <div id="playerList" class="player-list">
+                <!-- 플레이어들이 동적으로 추가됩니다 -->
+            </div>
+        </div>
+        
+        <!-- 게임 시작 버튼 -->
+        <div id="startGameContainer" class="start-game-container">
+            <button id="startGameBtn" class="start-btn">🚀 게임 시작</button>
+        </div>
+        
+        <!-- 대기실 -->
+        <div id="waitingRoom" class="waiting-room">
+            <div class="waiting-title">🏃‍♂️ Survival Run</div>
+            <div class="waiting-subtitle">플레이어 연결 대기 중...</div>
+            <div class="waiting-players">
+                <div class="connected-count">연결된 플레이어: <span id="connectedCount">0</span>/8명</div>
+                <div id="waitingPlayerList" class="player-list">
+                    <!-- 대기 중인 플레이어들 표시 -->
+                </div>
+            </div>
+        </div>
+        
+        <!-- 스테이지 전환 화면 -->
+        <div id="stageTransition" class="stage-transition">
+            <div id="stageNumber" class="stage-number">1</div>
+            <div id="stageTitle" class="stage-title">스테이지 1</div>
+            <div id="stageDescription" class="stage-description">기본 벽 장애물</div>
+            <div id="stageCountdown" class="stage-countdown">3</div>
+        </div>
+        
+        <!-- 결과 화면 -->
+        <div id="resultScreen" class="result-screen">
+            <div id="resultTitle" class="result-title">게임 완료!</div>
+            <div class="result-stats">
+                <div id="resultStats"></div>
+            </div>
+            <div class="result-buttons">
+                <button class="control-btn" onclick="game.restart()">🔄 다시 시작</button>
+                <a href="/" class="control-link">🏠 허브로 돌아가기</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 라이브러리 로드 -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/js/SessionSDK.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="libs/three.min.js"></script>
+    <script src="libs/cannon.min.js"></script>
+    
+    <script>
+        class SurvivalRunGame {
+            constructor() {
+                console.log('🏃‍♂️ Survival Run 게임 초기화 시작...');
+                
+                // 게임 상태
+                this.gameState = 'waiting'; // waiting, playing, stage_transition, ended
+                this.currentStage = 1;
+                this.maxStage = 5;
+                this.stageTimer = null;
+                this.stageTimeLeft = 60; // 각 스테이지 60초
+                this.startTime = null;
+                
+                // 플레이어 관리
+                this.players = new Map();
+                this.alivePlayers = new Set();
+                this.deadPlayers = new Set();
+                this.minPlayers = 2;
+                this.maxPlayers = 8;
+                this.isHost = false;
+                
+                // Three.js 관련
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.world = null; // CANNON 물리 세계
+                
+                // 게임 오브젝트
+                this.track = null;
+                this.obstacles = [];
+                this.playerMeshes = new Map();
+                
+                // 스테이지 설정 (케이크 게임 기반 속도 시스템)
+                this.stageConfig = {
+                    1: { 
+                        name: "기본 벽 장애물",
+                        description: "간단한 벽 장애물을 피해보세요",
+                        forwardSpeed: 0.12,  // 자동 전진 속도
+                        obstacleCount: 8,
+                        obstacleTypes: ['wall'],
+                        trackWidth: 20
+                    },
+                    2: { 
+                        name: "벽과 구덩이",
+                        description: "벽과 구덩이가 등장합니다",
+                        forwardSpeed: 0.15,
+                        obstacleCount: 12,
+                        obstacleTypes: ['wall', 'pit'],
+                        trackWidth: 18
+                    },
+                    3: { 
+                        name: "회전 장애물 추가",
+                        description: "회전하는 장애물이 등장합니다",
+                        forwardSpeed: 0.18,
+                        obstacleCount: 15,
+                        obstacleTypes: ['wall', 'pit', 'rotating'],
+                        trackWidth: 16
+                    },
+                    4: { 
+                        name: "이동 장애물",
+                        description: "좌우로 움직이는 장애물까지!",
+                        forwardSpeed: 0.22,
+                        obstacleCount: 18,
+                        obstacleTypes: ['wall', 'pit', 'rotating', 'moving'],
+                        trackWidth: 14
+                    },
+                    5: { 
+                        name: "최종 도전",
+                        description: "모든 장애물이 총출동합니다!",
+                        forwardSpeed: 0.26,
+                        obstacleCount: 25,
+                        obstacleTypes: ['wall', 'pit', 'rotating', 'moving'],
+                        trackWidth: 12
+                    }
+                };
+                
+                // 센서 처리 설정 (케이크 게임 기반)
+                this.sensorConfig = {
+                    sensitivity: 0.02,     // 센서 감도
+                    maxSpeed: 0.15,        // 최대 좌우 이동 속도
+                    deadZone: 1.5,         // 데드존 (도 단위)
+                    smoothingFactor: 0.25, // 스무딩 계수
+                    historySize: 3         // 센서 히스토리 크기
+                };
+                
+                // 센서 데이터 처리
+                this.sensorData = new Map();
+                this.sensorHistory = new Map(); // 센서 스무딩용 히스토리
+                this.lastSensorUpdate = 0;
+                this.sensorUpdateInterval = 33; // 30fps
+                
+                // UI 요소 참조
+                this.elements = {
+                    canvas: document.getElementById('gameCanvas'),
+                    sessionCode: document.getElementById('sessionCode'),
+                    qrContainer: document.getElementById('qrContainer'),
+                    currentStage: document.getElementById('currentStage'),
+                    stageTimer: document.getElementById('stageTimer'),
+                    aliveCount: document.getElementById('aliveCount'),
+                    playerList: document.getElementById('playerList'),
+                    waitingRoom: document.getElementById('waitingRoom'),
+                    waitingPlayerList: document.getElementById('waitingPlayerList'),
+                    connectedCount: document.getElementById('connectedCount'),
+                    startGameContainer: document.getElementById('startGameContainer'),
+                    startGameBtn: document.getElementById('startGameBtn'),
+                    stageTransition: document.getElementById('stageTransition'),
+                    stageNumber: document.getElementById('stageNumber'),
+                    stageTitle: document.getElementById('stageTitle'),
+                    stageDescription: document.getElementById('stageDescription'),
+                    stageCountdown: document.getElementById('stageCountdown'),
+                    resultScreen: document.getElementById('resultScreen'),
+                    resultTitle: document.getElementById('resultTitle'),
+                    resultStats: document.getElementById('resultStats'),
+                    messageBox: document.getElementById('messageBox')
+                };
+                
+                // 초기화
+                this.init();
+            }
+            
+            async init() {
+                try {
+                    // SessionSDK 초기화
+                    this.sdk = new SessionSDK({
+                        gameId: 'survival-run',
+                        gameType: 'multi'
+                    });
+                    
+                    // 3D 환경 초기화
+                    await this.init3D();
+                    
+                    // 이벤트 설정
+                    this.setupEvents();
+                    this.setupUIEvents();
+                    
+                    // 게임 루프 시작
+                    this.startGameLoop();
+                    
+                    console.log('✅ 게임 초기화 완료');
+                    
+                } catch (error) {
+                    console.error('❌ 게임 초기화 실패:', error);
+                    this.showMessage('게임 초기화에 실패했습니다.', 'error');
+                }
+            }
+            
+            async init3D() {
+                console.log('🎮 3D 환경 초기화...');
+                
+                // 씬 생성
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x87ceeb); // 하늘색 배경
+                
+                // 카메라 생성 (케이크 게임과 동일한 설정)
+                this.camera = new THREE.PerspectiveCamera(
+                    75, 
+                    window.innerWidth / window.innerHeight, 
+                    0.1, 
+                    1000
+                );
+                this.camera.position.set(0, 15, 10); // 케이크 게임과 동일한 초기 위치
+                this.camera.lookAt(0, 0, 0);
+                
+                // 렌더러 생성
+                this.renderer = new THREE.WebGLRenderer({ 
+                    canvas: this.elements.canvas, 
+                    antialias: true 
+                });
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+                this.renderer.shadowMap.enabled = true;
+                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+                
+                // 물리 세계 초기화
+                this.world = new CANNON.World();
+                this.world.gravity.set(0, -9.82, 0);
+                this.world.broadphase = new CANNON.NaiveBroadphase();
+                
+                // 조명 설정
+                this.setupLighting();
+                
+                // 기본 환경 생성
+                this.createEnvironment();
+                
+                // 윈도우 리사이즈 이벤트
+                window.addEventListener('resize', () => this.onWindowResize());
+                
+                console.log('✅ 3D 환경 초기화 완료');
+            }
+            
+            setupLighting() {
+                // 환경광
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+                this.scene.add(ambientLight);
+                
+                // 주광
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(20, 30, 10);
+                directionalLight.castShadow = true;
+                directionalLight.shadow.mapSize.width = 2048;
+                directionalLight.shadow.mapSize.height = 2048;
+                directionalLight.shadow.camera.near = 0.5;
+                directionalLight.shadow.camera.far = 100;
+                directionalLight.shadow.camera.left = -50;
+                directionalLight.shadow.camera.right = 50;
+                directionalLight.shadow.camera.top = 50;
+                directionalLight.shadow.camera.bottom = -50;
+                this.scene.add(directionalLight);
+            }
+            
+            createEnvironment() {
+                // 런닝 트랙 생성
+                this.createTrack();
+            }
+            
+            createTrack() {
+                const trackLength = 200; // 긴 트랙
+                const trackWidth = 20;
+                
+                // 트랙 지면
+                const trackGeometry = new THREE.PlaneGeometry(trackWidth, trackLength);
+                const trackMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x666666,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                this.track = new THREE.Mesh(trackGeometry, trackMaterial);
+                this.track.rotation.x = -Math.PI / 2;
+                this.track.position.y = 0;
+                this.track.position.z = trackLength / 2;
+                this.track.receiveShadow = true;
+                this.scene.add(this.track);
+                
+                // 트랙 중앙선과 경계선
+                this.createTrackMarkings(trackWidth, trackLength);
+                
+                // 트랙 물리 바디
+                const trackShape = new CANNON.Plane();
+                const trackBody = new CANNON.Body({ mass: 0 });
+                trackBody.addShape(trackShape);
+                trackBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+                trackBody.position.set(0, 0, trackLength / 2);
+                this.world.add(trackBody);
+                
+                // 트랙 양쪽 벽 (경계)
+                this.createTrackWalls(trackWidth, trackLength);
+                
+                console.log('✅ 런닝 트랙 생성 완료');
+            }
+            
+            createTrackMarkings(trackWidth, trackLength) {
+                // 중앙선 (점선)
+                const lineGeometry = new THREE.BoxGeometry(0.2, 0.01, 3);
+                const lineMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+                
+                for (let i = 0; i < trackLength / 10; i++) {
+                    const line = new THREE.Mesh(lineGeometry, lineMaterial);
+                    line.position.set(0, 0.01, i * 10);
+                    this.scene.add(line);
+                }
+                
+                // 시작선
+                const startLineGeometry = new THREE.BoxGeometry(trackWidth - 2, 0.01, 1);
+                const startLineMaterial = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
+                const startLine = new THREE.Mesh(startLineGeometry, startLineMaterial);
+                startLine.position.set(0, 0.01, -10);
+                this.scene.add(startLine);
+                
+                // 골라인
+                const finishLineGeometry = new THREE.BoxGeometry(trackWidth - 2, 0.01, 1);
+                const finishLineMaterial = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+                const finishLine = new THREE.Mesh(finishLineGeometry, finishLineMaterial);
+                finishLine.position.set(0, 0.01, trackLength - 10);
+                this.scene.add(finishLine);
+            }
+            
+            createTrackWalls(trackWidth, trackLength) {
+                const wallHeight = 2;
+                const wallThickness = 0.5;
+                
+                // 왼쪽 벽
+                const leftWallGeometry = new THREE.BoxGeometry(wallThickness, wallHeight, trackLength);
+                const wallMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0xcccccc,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const leftWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+                leftWall.position.set(-trackWidth/2 - wallThickness/2, wallHeight/2, trackLength/2);
+                leftWall.castShadow = true;
+                this.scene.add(leftWall);
+                
+                // 오른쪽 벽
+                const rightWall = new THREE.Mesh(leftWallGeometry, wallMaterial);
+                rightWall.position.set(trackWidth/2 + wallThickness/2, wallHeight/2, trackLength/2);
+                rightWall.castShadow = true;
+                this.scene.add(rightWall);
+                
+                // 물리 바디들
+                const wallShape = new CANNON.Box(new CANNON.Vec3(wallThickness/2, wallHeight/2, trackLength/2));
+                
+                const leftWallBody = new CANNON.Body({ mass: 0 });
+                leftWallBody.addShape(wallShape);
+                leftWallBody.position.copy(leftWall.position);
+                this.world.add(leftWallBody);
+                
+                const rightWallBody = new CANNON.Body({ mass: 0 });
+                rightWallBody.addShape(wallShape);
+                rightWallBody.position.copy(rightWall.position);
+                this.world.add(rightWallBody);
+            }
+            
+            createPlayer(playerId, playerIndex) {
+                console.log(`👤 플레이어 ${playerIndex + 1} 생성 시작...`);
+                
+                // 플레이어 그룹 (사람 모양) - 케이크 게임에서 가져온 디자인
+                const playerGroup = new THREE.Group();
+                
+                // 플레이어별 색상
+                const playerColors = [
+                    0x3b82f6, 0xef4444, 0x10b981, 0xf59e0b, 
+                    0x8b5cf6, 0x06b6d4, 0xf97316, 0x84cc16
+                ];
+                const playerColor = playerColors[playerIndex % playerColors.length];
+                
+                // 몸통
+                const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.5, 8);
+                const bodyMaterial = new THREE.MeshLambertMaterial({ color: playerColor });
+                const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+                body.position.y = 1.0;
+                body.castShadow = true;
+                playerGroup.add(body);
+                
+                // 머리
+                const headGeometry = new THREE.SphereGeometry(0.25, 16, 12);
+                const headMaterial = new THREE.MeshLambertMaterial({ color: 0xffdbac });
+                const head = new THREE.Mesh(headGeometry, headMaterial);
+                head.position.y = 2.0;
+                head.castShadow = true;
+                playerGroup.add(head);
+                
+                // 팔 (2개)
+                for (let i = 0; i < 2; i++) {
+                    const armGeometry = new THREE.CylinderGeometry(0.1, 0.12, 1, 6);
+                    const arm = new THREE.Mesh(armGeometry, bodyMaterial);
+                    arm.position.x = (i === 0) ? -0.6 : 0.6;
+                    arm.position.y = 1.3;
+                    arm.rotation.z = (i === 0) ? 0.3 : -0.3;
+                    arm.castShadow = true;
+                    playerGroup.add(arm);
+                }
+                
+                // 다리 (2개)
+                for (let i = 0; i < 2; i++) {
+                    const legGeometry = new THREE.CylinderGeometry(0.12, 0.15, 1.2, 6);
+                    const leg = new THREE.Mesh(legGeometry, bodyMaterial);
+                    leg.position.x = (i === 0) ? -0.25 : 0.25;
+                    leg.position.y = 0.1;
+                    leg.castShadow = true;
+                    playerGroup.add(leg);
+                }
+                
+                // 플레이어 라벨 (1P, 2P 등)
+                const labelCanvas = document.createElement('canvas');
+                labelCanvas.width = 128;
+                labelCanvas.height = 64;
+                const labelContext = labelCanvas.getContext('2d');
+                labelContext.fillStyle = '#ffffff';
+                labelContext.fillRect(0, 0, 128, 64);
+                labelContext.fillStyle = '#000000';
+                labelContext.font = 'bold 24px Arial';
+                labelContext.textAlign = 'center';
+                labelContext.fillText(`${playerIndex + 1}P`, 64, 40);
+                
+                const labelTexture = new THREE.CanvasTexture(labelCanvas);
+                const labelMaterial = new THREE.MeshBasicMaterial({ 
+                    map: labelTexture, 
+                    transparent: true,
+                    alphaTest: 0.1
+                });
+                const labelGeometry = new THREE.PlaneGeometry(1.5, 0.75);
+                const label = new THREE.Mesh(labelGeometry, labelMaterial);
+                label.position.y = 3;
+                label.rotation.x = -Math.PI / 4; // 약간 아래로 기울여서 보기 쉽게
+                playerGroup.add(label);
+                
+                // 시작 위치 설정 (트랙 시작점)
+                const startPositions = [
+                    [-3, 0, -15],   [-1, 0, -15],   [1, 0, -15],    [3, 0, -15],    // 앞줄
+                    [-3, 0, -18],   [-1, 0, -18],   [1, 0, -18],    [3, 0, -18]     // 뒷줄
+                ];
+                
+                if (playerIndex < startPositions.length) {
+                    const [x, y, z] = startPositions[playerIndex];
+                    playerGroup.position.set(x, y + 1, z);
+                }
+                
+                // 물리 바디 생성
+                const playerShape = new CANNON.Cylinder(0.3, 0.4, 1.5, 8);
+                const playerBody = new CANNON.Body({ 
+                    mass: 1,
+                    material: new CANNON.Material({ friction: 0.3, restitution: 0.1 })
+                });
+                playerBody.addShape(playerShape);
+                playerBody.position.copy(playerGroup.position);
+                // 플레이어가 넘어지지 않도록 고정
+                playerBody.fixedRotation = true;
+                this.world.add(playerBody);
+                
+                this.scene.add(playerGroup);
+                
+                // 플레이어 데이터 저장
+                this.playerMeshes.set(playerId, {
+                    group: playerGroup,
+                    body: playerBody,
+                    color: playerColor,
+                    index: playerIndex,
+                    isAlive: true
+                });
+                
+                console.log(`✅ 플레이어 ${playerIndex + 1} 생성 완료`);
+                return playerGroup;
+            }
+            
+            setupEvents() {
+                // 서버 연결
+                this.sdk.on('connected', () => {
+                    console.log('✅ 서버 연결 완료');
+                    this.createSession();
+                });
+                
+                // 세션 생성 완료
+                this.sdk.on('session-created', (event) => {
+                    const session = event.detail || event;
+                    console.log('✅ 세션 생성됨:', session);
+                    this.displaySessionInfo(session);
+                });
+                
+                // 센서 연결
+                this.sdk.on('sensor-connected', (event) => {
+                    const data = event.detail || event;
+                    console.log('👤 센서 연결됨:', data);
+                    this.addPlayer(data);
+                });
+                
+                // 센서 데이터 수신
+                this.sdk.on('sensor-data', (event) => {
+                    const data = event.detail || event;
+                    this.processSensorData(data);
+                });
+                
+                // 센서 연결 해제
+                this.sdk.on('sensor-disconnected', (event) => {
+                    const data = event.detail || event;
+                    console.log('❌ 센서 연결 해제:', data);
+                    this.removePlayer(data.sensorId);
+                });
+            }
+            
+            async createSession() {
+                try {
+                    const session = await this.sdk.createSession();
+                    console.log('✅ 세션 생성 성공');
+                    if (session && session.sessionCode) {
+                        this.displaySessionInfo(session);
+                    }
+                } catch (error) {
+                    console.error('❌ 세션 생성 실패:', error);
+                    this.showMessage('세션 생성에 실패했습니다.', 'error');
+                }
+            }
+            
+            displaySessionInfo(session) {
+                // 세션 코드 표시
+                if (this.elements.sessionCode && session.sessionCode) {
+                    this.elements.sessionCode.textContent = session.sessionCode;
+                    console.log('✅ 세션 코드 UI 업데이트 완료');
+                }
+                
+                // QR 코드 생성
+                const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
+                this.generateQRCode(qrUrl);
+                
+                console.log('📱 센서 연결 URL:', qrUrl);
+            }
+            
+            generateQRCode(url) {
+                const container = this.elements.qrContainer;
+                container.innerHTML = '';
+                
+                if (typeof QRCode !== 'undefined') {
+                    const canvas = document.createElement('canvas');
+                    QRCode.toCanvas(canvas, url, { width: 110 }, (error) => {
+                        if (!error) {
+                            container.appendChild(canvas);
+                        } else {
+                            this.generateQRCodeFallback(url);
+                        }
+                    });
+                } else {
+                    this.generateQRCodeFallback(url);
+                }
+            }
+            
+            generateQRCodeFallback(url) {
+                const img = document.createElement('img');
+                img.src = `https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=${encodeURIComponent(url)}`;
+                img.style.width = '100%';
+                img.style.height = '100%';
+                this.elements.qrContainer.appendChild(img);
+            }
+            
+            addPlayer(playerData) {
+                const playerId = playerData.sensorId;
+                const playerCount = this.players.size;
+                
+                // 플레이어 3D 모델 생성
+                const playerMesh = this.createPlayer(playerId, playerCount);
+                
+                const player = {
+                    id: playerId,
+                    name: `플레이어 ${playerCount + 1}`,
+                    mesh: playerMesh,
+                    connected: true,
+                    isHost: this.players.size === 0, // 첫 번째 플레이어가 방장
+                    isAlive: true,
+                    finishTime: null
+                };
+                
+                this.players.set(playerId, player);
+                this.alivePlayers.add(playerId);
+                
+                // 첫 번째 플레이어인 경우 호스트로 설정
+                if (player.isHost) {
+                    this.isHost = true;
+                    console.log('👑 방장으로 설정됨');
+                }
+                
+                this.updatePlayerUI();
+                this.checkGameReady();
+                
+                this.showMessage(`${player.name}가 참가했습니다!`, 'success');
+            }
+            
+            removePlayer(playerId) {
+                if (this.players.has(playerId)) {
+                    const player = this.players.get(playerId);
+                    
+                    // 3D 모델 제거
+                    if (player.mesh) {
+                        this.scene.remove(player.mesh);
+                    }
+                    
+                    // 물리 바디 제거
+                    if (this.playerMeshes.has(playerId)) {
+                        const playerMesh = this.playerMeshes.get(playerId);
+                        if (playerMesh.body) {
+                            this.world.remove(playerMesh.body);
+                        }
+                        this.playerMeshes.delete(playerId);
+                    }
+                    
+                    this.players.delete(playerId);
+                    this.alivePlayers.delete(playerId);
+                    this.deadPlayers.delete(playerId);
+                    this.sensorData.delete(playerId);
+                    
+                    this.updatePlayerUI();
+                    this.checkGameReady();
+                    
+                    this.showMessage(`${player.name}가 나갔습니다.`, 'warning');
+                    
+                    // 게임 중이고 플레이어가 너무 적어지면 게임 중단
+                    if (this.gameState === 'playing' && this.alivePlayers.size < 2) {
+                        this.endGame();
+                    }
+                }
+            }
+            
+            updatePlayerUI() {
+                const playerList = this.elements.playerList;
+                const waitingPlayerList = this.elements.waitingPlayerList;
+                const connectedCount = this.elements.connectedCount;
+                const aliveCount = this.elements.aliveCount;
+                
+                // 플레이어 수 업데이트
+                connectedCount.textContent = this.players.size;
+                aliveCount.textContent = this.alivePlayers.size;
+                
+                // 플레이어 목록 HTML 생성
+                let playerHTML = '';
+                for (const [playerId, player] of this.players) {
+                    let statusClass, statusText;
+                    
+                    if (!player.connected) {
+                        statusClass = 'disconnected';
+                        statusText = '연결 끊김';
+                    } else if (this.deadPlayers.has(playerId)) {
+                        statusClass = 'dead';
+                        statusText = '탈락';
+                    } else if (this.alivePlayers.has(playerId)) {
+                        statusClass = 'alive';
+                        statusText = '생존';
+                    } else {
+                        statusClass = 'spectating';
+                        statusText = '관전';
+                    }
+                    
+                    const hostIcon = player.isHost ? '👑 ' : '';
+                    const deadClass = this.deadPlayers.has(playerId) ? 'dead' : '';
+                    
+                    playerHTML += `
+                        <div class="player-item ${deadClass}" data-player-id="${playerId}">
+                            <span class="player-name">${hostIcon}${player.name}</span>
+                            <span class="player-status ${statusClass}">${statusText}</span>
+                        </div>
+                    `;
+                }
+                
+                playerList.innerHTML = playerHTML;
+                waitingPlayerList.innerHTML = playerHTML;
+            }
+            
+            checkGameReady() {
+                const canStart = this.players.size >= this.minPlayers;
+                const startBtn = this.elements.startGameBtn;
+                
+                startBtn.disabled = !canStart || !this.isHost;
+                
+                if (canStart && this.isHost && this.gameState === 'waiting') {
+                    this.elements.startGameContainer.style.display = 'block';
+                }
+            }
+            
+            setupUIEvents() {
+                // 게임 시작 버튼
+                this.elements.startGameBtn.addEventListener('click', () => {
+                    if (this.isHost && this.players.size >= this.minPlayers) {
+                        this.startGame();
+                    }
+                });
+            }
+            
+            startGame() {
+                console.log('🚀 게임 시작!');
+                this.gameState = 'stage_transition';
+                this.startTime = Date.now();
+                
+                // UI 숨기기
+                this.elements.waitingRoom.style.display = 'none';
+                this.elements.startGameContainer.style.display = 'none';
+                
+                // 모든 플레이어를 생존자로 설정
+                this.alivePlayers.clear();
+                this.deadPlayers.clear();
+                for (const playerId of this.players.keys()) {
+                    this.alivePlayers.add(playerId);
+                    const player = this.players.get(playerId);
+                    player.isAlive = true;
+                }
+                
+                this.updatePlayerUI();
+                
+                // 첫 스테이지 시작
+                this.startStage(1);
+            }
+            
+            startStage(stageNumber) {
+                this.currentStage = stageNumber;
+                this.elements.currentStage.textContent = stageNumber;
+                
+                const config = this.stageConfig[stageNumber];
+                
+                // 스테이지 전환 화면 표시
+                this.showStageTransition(stageNumber, config);
+                
+                // 장애물 생성
+                setTimeout(() => {
+                    this.createObstacles(config);
+                    this.gameState = 'playing';
+                    this.startStageTimer();
+                }, 3000); // 3초 카운트다운 후 시작
+            }
+            
+            showStageTransition(stageNumber, config) {
+                this.elements.stageNumber.textContent = stageNumber;
+                this.elements.stageTitle.textContent = `스테이지 ${stageNumber}`;
+                this.elements.stageDescription.textContent = config.description;
+                this.elements.stageTransition.style.display = 'flex';
+                
+                // 카운트다운
+                let countdown = 3;
+                this.elements.stageCountdown.textContent = countdown;
+                
+                const countdownInterval = setInterval(() => {
+                    countdown--;
+                    if (countdown > 0) {
+                        this.elements.stageCountdown.textContent = countdown;
+                    } else {
+                        this.elements.stageCountdown.textContent = 'START!';
+                        setTimeout(() => {
+                            this.elements.stageTransition.style.display = 'none';
+                        }, 500);
+                        clearInterval(countdownInterval);
+                    }
+                }, 1000);
+            }
+            
+            createObstacles(config) {
+                // 기존 장애물 제거
+                this.obstacles.forEach(obstacle => {
+                    this.scene.remove(obstacle.mesh);
+                    this.world.remove(obstacle.body);
+                });
+                this.obstacles = [];
+                
+                const trackLength = 200;
+                const trackWidth = config.trackWidth;
+                
+                // 장애물 생성
+                for (let i = 0; i < config.obstacleCount; i++) {
+                    const obstacleType = config.obstacleTypes[Math.floor(Math.random() * config.obstacleTypes.length)];
+                    const obstacle = this.createObstacle(obstacleType, trackWidth, trackLength, i);
+                    if (obstacle) {
+                        this.obstacles.push(obstacle);
+                    }
+                }
+                
+                console.log(`✅ 스테이지 ${this.currentStage}: ${config.obstacleCount}개 장애물 생성 완료`);
+            }
+            
+            createObstacle(type, trackWidth, trackLength, index) {
+                const z = 20 + (index * (trackLength - 40) / this.stageConfig[this.currentStage].obstacleCount);
+                
+                switch (type) {
+                    case 'wall':
+                        return this.createWallObstacle(trackWidth, z);
+                    case 'pit':
+                        return this.createPitObstacle(trackWidth, z);
+                    case 'rotating':
+                        return this.createRotatingObstacle(trackWidth, z);
+                    case 'moving':
+                        return this.createMovingObstacle(trackWidth, z);
+                    default:
+                        return null;
+                }
+            }
+            
+            createWallObstacle(trackWidth, z) {
+                const wallWidth = 3 + Math.random() * 4; // 3-7 너비
+                const wallHeight = 2;
+                const wallDepth = 1;
+                
+                // 벽 위치 (트랙 안에서 랜덤)
+                const maxX = (trackWidth - wallWidth) / 2;
+                const x = (Math.random() - 0.5) * maxX * 2;
+                
+                // 벽 시각적 모델
+                const wallGeometry = new THREE.BoxGeometry(wallWidth, wallHeight, wallDepth);
+                const wallMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0xff4444,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const wallMesh = new THREE.Mesh(wallGeometry, wallMaterial);
+                wallMesh.position.set(x, wallHeight/2, z);
+                wallMesh.castShadow = true;
+                this.scene.add(wallMesh);
+                
+                // 물리 바디
+                const wallShape = new CANNON.Box(new CANNON.Vec3(wallWidth/2, wallHeight/2, wallDepth/2));
+                const wallBody = new CANNON.Body({ mass: 0 });
+                wallBody.addShape(wallShape);
+                wallBody.position.copy(wallMesh.position);
+                this.world.add(wallBody);
+                
+                return {
+                    type: 'wall',
+                    mesh: wallMesh,
+                    body: wallBody
+                };
+            }
+            
+            createPitObstacle(trackWidth, z) {
+                const pitWidth = 2 + Math.random() * 3; // 2-5 너비
+                const pitDepth = 2;
+                
+                // 구덩이 위치
+                const maxX = (trackWidth - pitWidth) / 2;
+                const x = (Math.random() - 0.5) * maxX * 2;
+                
+                // 구덩이 시각적 표시 (검은색 평면)
+                const pitGeometry = new THREE.PlaneGeometry(pitWidth, pitDepth);
+                const pitMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x000000,
+                    transparent: true,
+                    opacity: 0.9
+                });
+                const pitMesh = new THREE.Mesh(pitGeometry, pitMaterial);
+                pitMesh.rotation.x = -Math.PI / 2;
+                pitMesh.position.set(x, -0.1, z); // 약간 아래에
+                this.scene.add(pitMesh);
+                
+                // 물리 바디 (보이지 않는 트리거)
+                const pitShape = new CANNON.Box(new CANNON.Vec3(pitWidth/2, 0.1, pitDepth/2));
+                const pitBody = new CANNON.Body({ 
+                    mass: 0,
+                    isTrigger: true // 트리거로 설정
+                });
+                pitBody.addShape(pitShape);
+                pitBody.position.set(x, -0.1, z);
+                this.world.add(pitBody);
+                
+                return {
+                    type: 'pit',
+                    mesh: pitMesh,
+                    body: pitBody,
+                    triggerZone: { x, z, width: pitWidth, depth: pitDepth }
+                };
+            }
+            
+            createRotatingObstacle(trackWidth, z) {
+                const obstacleSize = 1.5;
+                const armLength = 3;
+                
+                // 회전 장애물 중심
+                const x = (Math.random() - 0.5) * (trackWidth - armLength * 2);
+                
+                // 중심 기둥
+                const poleGeometry = new THREE.CylinderGeometry(0.2, 0.2, 3, 8);
+                const poleMaterial = new THREE.MeshLambertMaterial({ color: 0x666666 });
+                const pole = new THREE.Mesh(poleGeometry, poleMaterial);
+                pole.position.set(x, 1.5, z);
+                
+                // 회전하는 팔
+                const armGeometry = new THREE.BoxGeometry(armLength * 2, 0.3, 0.3);
+                const armMaterial = new THREE.MeshLambertMaterial({ color: 0xff8800 });
+                const arm = new THREE.Mesh(armGeometry, armMaterial);
+                arm.position.set(x, 1.5, z);
+                arm.castShadow = true;
+                
+                // 그룹으로 묶기
+                const rotatingGroup = new THREE.Group();
+                rotatingGroup.add(pole);
+                rotatingGroup.add(arm);
+                this.scene.add(rotatingGroup);
+                
+                // 물리 바디 (팔 부분만)
+                const armShape = new CANNON.Box(new CANNON.Vec3(armLength, 0.15, 0.15));
+                const armBody = new CANNON.Body({ mass: 0 });
+                armBody.addShape(armShape);
+                armBody.position.set(x, 1.5, z);
+                this.world.add(armBody);
+                
+                return {
+                    type: 'rotating',
+                    mesh: rotatingGroup,
+                    body: armBody,
+                    arm: arm, // 회전할 팔 참조
+                    rotationSpeed: 0.02 + Math.random() * 0.03
+                };
+            }
+            
+            createMovingObstacle(trackWidth, z) {
+                const obstacleSize = 1.5;
+                
+                // 이동 장애물
+                const movingGeometry = new THREE.CylinderGeometry(obstacleSize/2, obstacleSize/2, 2, 8);
+                const movingMaterial = new THREE.MeshLambertMaterial({ 
+                    color: 0x8800ff,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                const movingMesh = new THREE.Mesh(movingGeometry, movingMaterial);
+                
+                const startX = -trackWidth/2 + obstacleSize;
+                movingMesh.position.set(startX, 1, z);
+                movingMesh.castShadow = true;
+                this.scene.add(movingMesh);
+                
+                // 물리 바디
+                const movingShape = new CANNON.Cylinder(obstacleSize/2, obstacleSize/2, 2, 8);
+                const movingBody = new CANNON.Body({ mass: 0 });
+                movingBody.addShape(movingShape);
+                movingBody.position.copy(movingMesh.position);
+                this.world.add(movingBody);
+                
+                return {
+                    type: 'moving',
+                    mesh: movingMesh,
+                    body: movingBody,
+                    moveDirection: 1,
+                    moveSpeed: 0.5 + Math.random() * 1.0,
+                    trackWidth: trackWidth,
+                    obstacleSize: obstacleSize
+                };
+            }
+            
+            startStageTimer() {
+                if (this.stageTimer) {
+                    clearInterval(this.stageTimer);
+                }
+                
+                this.stageTimeLeft = 60; // 60초
+                
+                this.stageTimer = setInterval(() => {
+                    if (this.gameState !== 'playing') return;
+                    
+                    this.stageTimeLeft--;
+                    const minutes = Math.floor(this.stageTimeLeft / 60);
+                    const seconds = this.stageTimeLeft % 60;
+                    this.elements.stageTimer.textContent = 
+                        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    if (this.stageTimeLeft <= 0) {
+                        this.completeStage();
+                    }
+                }, 1000);
+            }
+            
+            processSensorData(sensorData) {
+                if (this.gameState !== 'playing') return;
+                
+                const now = Date.now();
+                if (now - this.lastSensorUpdate < this.sensorUpdateInterval) return;
+                this.lastSensorUpdate = now;
+                
+                const playerId = sensorData.sensorId;
+                const data = sensorData.data;
+                
+                // 죽은 플레이어는 조작 불가
+                if (this.deadPlayers.has(playerId)) return;
+                
+                // 플레이어 이동 업데이트
+                this.updatePlayerMovement(playerId, data);
+                
+                // 센서 데이터 저장
+                this.sensorData.set(playerId, data);
+            }
+            
+            // 센서 데이터 스무딩 함수 (케이크 게임 기반)
+            smoothSensorData(playerId, gamma, beta) {
+                if (!this.sensorHistory.has(playerId)) {
+                    this.sensorHistory.set(playerId, []);
+                }
+                
+                const history = this.sensorHistory.get(playerId);
+                history.push({ gamma, beta, timestamp: Date.now() });
+                
+                // 히스토리 크기 제한
+                if (history.length > this.sensorConfig.historySize) {
+                    history.shift();
+                }
+                
+                // 평균값 계산 (스무딩)
+                let avgGamma = 0;
+                let avgBeta = 0;
+                history.forEach(h => {
+                    avgGamma += h.gamma;
+                    avgBeta += h.beta;
+                });
+                
+                return {
+                    gamma: avgGamma / history.length,
+                    beta: avgBeta / history.length
+                };
+            }
+            
+            updatePlayerMovement(playerId, data) {
+                if (!data.orientation) return;
+                
+                const playerMesh = this.playerMeshes.get(playerId);
+                if (!playerMesh || !playerMesh.isAlive) return;
+                
+                // 플레이어 UI 액티브 표시
+                const playerElement = document.querySelector(`[data-player-id="${playerId}"]`);
+                if (playerElement) {
+                    playerElement.classList.add('active');
+                    setTimeout(() => playerElement.classList.remove('active'), 300);
+                }
+                
+                // 케이크 게임과 동일한 센서 처리
+                const { gamma, beta } = data.orientation;
+                
+                // 데이터 검증 (케이크 게임 동일)
+                if (!isFinite(gamma) || !isFinite(beta)) return;
+                
+                // 극값 제한 (-180 ~ 180도) - 케이크 게임 동일
+                const clampedGamma = THREE.MathUtils.clamp(gamma, -180, 180);
+                const clampedBeta = THREE.MathUtils.clamp(beta, -180, 180);
+                
+                // 센서 데이터 스무딩 적용
+                const smoothedData = this.smoothSensorData(playerId, clampedGamma, clampedBeta);
+                
+                // 케이크 게임 동일한 설정값
+                const config = this.stageConfig[this.currentStage];
+                const sensitivity = 0.02;  // 케이크 게임 동일
+                const maxSpeed = 0.2;      // 케이크 게임 동일
+                
+                // 이동 계산 (케이크 게임 동일)
+                let moveX = smoothedData.gamma * sensitivity;
+                let moveZ = smoothedData.beta * sensitivity;
+                
+                moveX = THREE.MathUtils.clamp(moveX, -maxSpeed, maxSpeed);
+                moveZ = THREE.MathUtils.clamp(moveZ, -maxSpeed, maxSpeed);
+                
+                // 타겟 속도 계산 (케이크 게임 동일) - forwardSpeed로 자동 전진
+                const targetVelocity = new THREE.Vector3(moveX, 0, moveZ - config.forwardSpeed);
+                
+                // 플레이어 속도 초기화 (없으면 생성)
+                if (!playerMesh.velocity) {
+                    playerMesh.velocity = new THREE.Vector3(0, 0, 0);
+                }
+                
+                // 이전 위치 저장
+                const oldPosition = playerMesh.group.position.clone();
+                
+                // 부드러운 속도 보간 (케이크 게임 동일: 0.08)
+                playerMesh.velocity.lerp(targetVelocity, 0.08);
+                
+                // 새로운 목표 위치 계산
+                const targetPosition = oldPosition.clone().add(playerMesh.velocity);
+                
+                // 위치를 부드럽게 보간 (케이크 게임 동일: 0.7)
+                playerMesh.group.position.lerp(targetPosition, 0.7);
+                
+                // 도로 이탈 방지 (케이크 게임 동일)
+                const trackWidth = config.trackWidth;
+                const roadLimit = trackWidth / 2 - 0.5;
+                playerMesh.group.position.x = THREE.MathUtils.clamp(playerMesh.group.position.x, -roadLimit, roadLimit);
+                playerMesh.group.position.z = THREE.MathUtils.clamp(playerMesh.group.position.z, -100, 500); // 더 넓은 Z 범위
+                
+                // 물리 바디 위치 동기화
+                playerMesh.body.position.copy(playerMesh.group.position);
+                
+                // 플레이어 회전 (러닝 방향)
+                if (Math.abs(moveX) > 0.01) {
+                    const targetRotation = moveX > 0 ? Math.PI / 6 : -Math.PI / 6;
+                    playerMesh.group.rotation.y = THREE.MathUtils.lerp(playerMesh.group.rotation.y, targetRotation, 0.1);
+                } else {
+                    playerMesh.group.rotation.y = THREE.MathUtils.lerp(playerMesh.group.rotation.y, 0, 0.05);
+                }
+            }
+            
+            startGameLoop() {
+                let lastTime = performance.now();
+                
+                const animate = (currentTime) => {
+                    requestAnimationFrame(animate);
+                    
+                    if (this.gameState === 'playing') {
+                        // 물리 시뮬레이션
+                        const fixedTimeStep = 1/60;
+                        this.world.step(fixedTimeStep);
+                        
+                        // 플레이어 위치는 센서 처리에서 직접 업데이트되므로 별도 동기화 불필요
+                        // 케이크 게임과 동일한 방식: updatePlayerMovement에서 직접 position 처리
+                        
+                        // 장애물 업데이트
+                        this.updateObstacles();
+                        
+                        // 충돌 체크
+                        this.checkCollisions();
+                        
+                        // 완주 체크
+                        this.checkFinishLine();
+                        
+                        // 카메라 업데이트
+                        this.updateCamera();
+                    }
+                    
+                    // 렌더링
+                    this.renderer.render(this.scene, this.camera);
+                };
+                
+                animate(performance.now());
+            }
+            
+            updateObstacles() {
+                this.obstacles.forEach(obstacle => {
+                    if (obstacle.type === 'rotating' && obstacle.arm) {
+                        // 회전 장애물
+                        obstacle.arm.rotation.y += obstacle.rotationSpeed;
+                        // 물리 바디도 회전
+                        obstacle.body.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), obstacle.arm.rotation.y);
+                    } else if (obstacle.type === 'moving') {
+                        // 이동 장애물
+                        const currentX = obstacle.mesh.position.x;
+                        const boundary = obstacle.trackWidth/2 - obstacle.obstacleSize/2;
+                        
+                        // 경계에 닿으면 방향 전환
+                        if (currentX >= boundary || currentX <= -boundary) {
+                            obstacle.moveDirection *= -1;
+                        }
+                        
+                        // 위치 업데이트
+                        const deltaX = obstacle.moveDirection * obstacle.moveSpeed * 0.02;
+                        obstacle.mesh.position.x += deltaX;
+                        obstacle.body.position.x = obstacle.mesh.position.x;
+                    }
+                });
+            }
+            
+            checkCollisions() {
+                for (const [playerId, playerMesh] of this.playerMeshes) {
+                    if (!playerMesh.isAlive) continue;
+                    
+                    // 새로운 위치 시스템: group.position 사용
+                    const playerPos = playerMesh.group.position;
+                    
+                    // 장애물과의 충돌 체크
+                    for (const obstacle of this.obstacles) {
+                        if (obstacle.type === 'pit') {
+                            // 구덩이 충돌 (영역 기반)
+                            const pit = obstacle.triggerZone;
+                            if (Math.abs(playerPos.x - pit.x) < pit.width/2 && 
+                                Math.abs(playerPos.z - pit.z) < pit.depth/2) {
+                                this.eliminatePlayer(playerId, '구덩이에 빠졌습니다!');
+                                break;
+                            }
+                        } else {
+                            // 기타 장애물 충돌 (거리 기반)
+                            const obstaclePos = obstacle.body ? obstacle.body.position : obstacle.mesh.position;
+                            const distance = playerPos.distanceTo(obstaclePos);
+                            
+                            if (distance < 1.5) {
+                                this.eliminatePlayer(playerId, '장애물에 충돌했습니다!');
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 트랙 이탈은 이미 updatePlayerMovement에서 처리되므로 여기서는 제거
+                }
+            }
+            
+            checkFinishLine() {
+                for (const [playerId, playerMesh] of this.playerMeshes) {
+                    if (!playerMesh.isAlive) continue;
+                    
+                    // 새로운 위치 시스템: group.position 사용
+                    const playerPos = playerMesh.group.position;
+                    
+                    // 완주선 도달 체크 - 더 멀리 설정 (z = 300)
+                    if (playerPos.z >= 300) {
+                        const player = this.players.get(playerId);
+                        if (player && !player.finishTime) {
+                            player.finishTime = Date.now();
+                            this.showMessage(`${player.name}이 완주했습니다!`, 'success', 2000);
+                        }
+                    }
+                }
+            }
+            
+            eliminatePlayer(playerId, reason) {
+                console.log(`💀 플레이어 ${playerId} 탈락: ${reason}`);
+                
+                const player = this.players.get(playerId);
+                const playerMesh = this.playerMeshes.get(playerId);
+                
+                if (player && playerMesh) {
+                    // 플레이어 상태 변경
+                    player.isAlive = false;
+                    playerMesh.isAlive = false;
+                    this.alivePlayers.delete(playerId);
+                    this.deadPlayers.add(playerId);
+                    
+                    // 시각적 효과 (투명하게)
+                    playerMesh.group.traverse((child) => {
+                        if (child.material) {
+                            child.material.transparent = true;
+                            child.material.opacity = 0.3;
+                        }
+                    });
+                    
+                    this.updatePlayerUI();
+                    this.showMessage(`${player.name}: ${reason}`, 'error', 2000);
+                    
+                    // 생존자가 1명 이하면 게임 종료
+                    if (this.alivePlayers.size <= 1) {
+                        this.endGame();
+                    }
+                }
+            }
+            
+            completeStage() {
+                console.log(`✅ 스테이지 ${this.currentStage} 완료`);
+                
+                if (this.stageTimer) {
+                    clearInterval(this.stageTimer);
+                    this.stageTimer = null;
+                }
+                
+                this.gameState = 'stage_transition';
+                
+                if (this.currentStage < this.maxStage) {
+                    // 다음 스테이지로
+                    this.showMessage(`스테이지 ${this.currentStage} 완료!\n10초 후 다음 스테이지가 시작됩니다.`, 'stage', 10000);
+                    
+                    setTimeout(() => {
+                        this.startStage(this.currentStage + 1);
+                    }, 10000);
+                } else {
+                    // 모든 스테이지 완료
+                    this.endGame();
+                }
+            }
+            
+            endGame() {
+                console.log('🏁 게임 종료');
+                this.gameState = 'ended';
+                
+                if (this.stageTimer) {
+                    clearInterval(this.stageTimer);
+                    this.stageTimer = null;
+                }
+                
+                this.showResultScreen();
+            }
+            
+            showResultScreen() {
+                const resultScreen = this.elements.resultScreen;
+                const resultTitle = this.elements.resultTitle;
+                const resultStats = this.elements.resultStats;
+                
+                // 우승자 결정
+                let winner = null;
+                if (this.alivePlayers.size === 1) {
+                    const winnerId = Array.from(this.alivePlayers)[0];
+                    winner = this.players.get(winnerId);
+                }
+                
+                if (winner) {
+                    resultTitle.textContent = `🏆 ${winner.name} 승리!`;
+                    resultTitle.className = 'result-title winner';
+                } else {
+                    resultTitle.textContent = '🎮 게임 종료';
+                    resultTitle.className = 'result-title';
+                }
+                
+                const playTime = Math.round((Date.now() - this.startTime) / 1000);
+                const minutes = Math.floor(playTime / 60);
+                const seconds = playTime % 60;
+                
+                resultStats.innerHTML = `
+                    <div style="font-size: 20px; margin-bottom: 15px;">
+                        클리어한 스테이지: ${this.currentStage}/${this.maxStage}
+                    </div>
+                    <div style="font-size: 16px; margin-bottom: 10px;">
+                        플레이 시간: ${minutes}:${seconds.toString().padStart(2, '0')}
+                    </div>
+                    <div style="font-size: 16px; margin-bottom: 10px;">
+                        생존자: ${this.alivePlayers.size}명
+                    </div>
+                    <div style="font-size: 16px;">
+                        총 참여자: ${this.players.size}명
+                    </div>
+                `;
+                
+                resultScreen.style.display = 'flex';
+            }
+            
+            updateCamera() {
+                // 케이크 게임과 동일한 카메라 시스템 - 플레이어 그룹 중심 추적
+                if (this.alivePlayers.size === 0) return;
+                
+                let centerX = 0, centerZ = 0;
+                let aliveCount = 0;
+                
+                // 살아있는 플레이어들의 중심 위치 계산
+                for (const playerId of this.alivePlayers) {
+                    const playerMesh = this.playerMeshes.get(playerId);
+                    if (playerMesh && playerMesh.isAlive) {
+                        const pos = playerMesh.group.position;
+                        centerX += pos.x;
+                        centerZ += pos.z;
+                        aliveCount++;
+                    }
+                }
+                
+                if (aliveCount === 0) return;
+                
+                centerX /= aliveCount;
+                centerZ /= aliveCount;
+                
+                // 가상의 중심점 생성 (케이크 역할)
+                const virtualCenter = new THREE.Vector3(centerX, 0, centerZ);
+                
+                // 케이크 게임과 동일한 카메라 로직
+                const targetPosition = new THREE.Vector3();
+                targetPosition.copy(virtualCenter);
+                targetPosition.y += 15;  // 케이크 게임과 동일한 높이 오프셋
+                targetPosition.z += 10;  // 케이크 게임과 동일한 뒤쪽 오프셋
+                
+                // 케이크 게임과 동일한 보간 속도 (0.05)
+                this.camera.position.lerp(targetPosition, 0.05);
+                
+                // 케이크 게임과 동일한 lookAt (중심점을 바라봄)
+                this.camera.lookAt(virtualCenter);
+            }
+            
+            restart() {
+                console.log('🔄 게임 재시작');
+                
+                // 게임 상태 리셋
+                this.gameState = 'waiting';
+                this.currentStage = 1;
+                this.startTime = 0;
+                this.stageTimeLeft = 60;
+                
+                // 플레이어 상태 리셋
+                this.alivePlayers.clear();
+                this.deadPlayers.clear();
+                for (const [playerId, player] of this.players) {
+                    player.isAlive = true;
+                    player.finishTime = null;
+                    this.alivePlayers.add(playerId);
+                    
+                    // 플레이어 시각적 상태 복원
+                    const playerMesh = this.playerMeshes.get(playerId);
+                    if (playerMesh) {
+                        playerMesh.isAlive = true;
+                        playerMesh.group.traverse((child) => {
+                            if (child.material) {
+                                child.material.transparent = false;
+                                child.material.opacity = 1.0;
+                            }
+                        });
+                        
+                        // 시작 위치로 이동
+                        const startPositions = [
+                            [-3, 0, -15],   [-1, 0, -15],   [1, 0, -15],    [3, 0, -15],
+                            [-3, 0, -18],   [-1, 0, -18],   [1, 0, -18],    [3, 0, -18]
+                        ];
+                        
+                        if (playerMesh.index < startPositions.length) {
+                            const [x, y, z] = startPositions[playerMesh.index];
+                            playerMesh.group.position.set(x, y + 1, z);
+                            playerMesh.body.position.set(x, y + 1, z);
+                        }
+                    }
+                }
+                
+                // UI 리셋
+                this.elements.currentStage.textContent = '1';
+                this.elements.stageTimer.textContent = '01:00';
+                this.elements.resultScreen.style.display = 'none';
+                this.elements.stageTransition.style.display = 'none';
+                this.elements.waitingRoom.style.display = 'flex';
+                
+                // 타이머 정리
+                if (this.stageTimer) {
+                    clearInterval(this.stageTimer);
+                    this.stageTimer = null;
+                }
+                
+                // 장애물 제거
+                this.obstacles.forEach(obstacle => {
+                    if (obstacle.mesh) this.scene.remove(obstacle.mesh);
+                    if (obstacle.body) this.world.remove(obstacle.body);
+                });
+                this.obstacles = [];
+                
+                // 센서 히스토리 정리
+                this.sensorHistory.clear();
+                
+                this.updatePlayerUI();
+                this.checkGameReady(); // 게임 준비 상태 재확인
+                this.showMessage('게임이 초기화되었습니다.', 'info');
+            }
+            
+            showMessage(message, type = 'info', duration = 3000) {
+                const messageBox = this.elements.messageBox;
+                messageBox.textContent = message;
+                messageBox.className = `game-message ${type}`;
+                messageBox.style.display = 'block';
+                
+                setTimeout(() => {
+                    messageBox.style.display = 'none';
+                }, duration);
+            }
+            
+            onWindowResize() {
+                this.camera.aspect = window.innerWidth / window.innerHeight;
+                this.camera.updateProjectionMatrix();
+                this.renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        }
+        
+        // 라이브러리 로딩 체크 및 게임 시작
+        function waitForLibraries() {
+            console.log('📚 라이브러리 로딩 대기 중...');
+            
+            const checkLibraries = () => {
+                if (typeof THREE !== 'undefined' && typeof CANNON !== 'undefined') {
+                    console.log('✅ 모든 라이브러리 로드 완료');
+                    window.game = new SurvivalRunGame();
+                    console.log('🏃‍♂️ Survival Run 게임 시작!');
+                } else {
+                    console.log('⏳ 라이브러리 로딩 중...');
+                    setTimeout(checkLibraries, 100);
+                }
+            };
+            
+            checkLibraries();
+        }
+        
+        // 페이지 로드 완료 후 실행
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', waitForLibraries);
+        } else {
+            waitForLibraries();
+        }
+    </script>
+</body>
+</html>
