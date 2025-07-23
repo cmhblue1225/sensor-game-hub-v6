@@ -81,14 +81,18 @@ class AcornBattleGame {
         // 게임 루프 관련
         this.animationId = null;
         this.lastSensorUpdate = 0;
-        this.sensorThrottle = 8; // 120fps로 향상 (16ms → 8ms) - 더 부드러운 움직임
+        this.sensorThrottle = 25; // 40fps - 센서 노이즈 감소를 위한 적절한 간격
 
-        // 센서 데이터 스무딩을 위한 버퍼 (버퍼 크기 대폭 증가)
+        // 고급 센서 데이터 스무딩 시스템
         this.sensorBuffer = {
-            sensor1: { beta: [], gamma: [] },
-            sensor2: { beta: [], gamma: [] }
+            sensor1: { beta: [], gamma: [], velocity: { x: 0, y: 0 } },
+            sensor2: { beta: [], gamma: [], velocity: { x: 0, y: 0 } }
         };
-        this.bufferSize = 8; // 최근 8개 값의 평균 사용 (훨씬 더 부드럽게)
+        this.bufferSize = 6; // 적절한 버퍼 크기로 노이즈 제거
+        
+        // 관성 및 감속 시스템
+        this.inertiaFactor = 0.85; // 관성 계수 (0.85 = 15% 감속)
+        this.accelerationSmoothing = 0.15; // 가속도 스무딩 강도
 
         // 오디오 시스템 초기화
         this.audioContext = null;
@@ -608,33 +612,45 @@ class AcornBattleGame {
             console.log(`${data.sensorId} 무적 상태 해제`);
         }
 
-        // 센서 데이터 스무딩 처리 (튀는 현상 방지)
+        // 센서 데이터 스무딩 처리 (노이즈 제거)
         const { beta, gamma } = data.data.orientation;
         const smoothedData = this.smoothSensorData(data.sensorId, beta, gamma);
         
-        // 적절한 데드존 적용 (튀는 현상 방지)
-        const deadZone = 3; // 5 → 3 (더 민감한 반응)
+        // 적절한 데드존 적용 (미세한 떨림 제거)
+        const deadZone = 4;
         const filteredBeta = Math.abs(smoothedData.beta) > deadZone ? smoothedData.beta : 0;
         const filteredGamma = Math.abs(smoothedData.gamma) > deadZone ? smoothedData.gamma : 0;
 
-        // 안정적인 속도 설정
-        const maxTilt = 30; // 35 → 30 (더 민감한 반응)
-        const maxSpeed = 6; // 5 → 6 (더 빠른 움직임)
+        // 관성 기반 움직임 시스템
+        const maxTilt = 30;
+        const sensitivity = 0.8; // 센서 민감도
         
-        // 부드러운 속도 계산
-        const targetVelocityX = (filteredGamma / maxTilt) * maxSpeed;
-        const targetVelocityY = (filteredBeta / maxTilt) * maxSpeed;
+        // 목표 가속도 계산 (기울기에 비례)
+        const targetAccelX = (filteredGamma / maxTilt) * sensitivity;
+        const targetAccelY = (filteredBeta / maxTilt) * sensitivity;
         
-        // 속도 보간으로 부드러운 움직임 (튀는 현상 방지)
-        const smoothing = 0.5; // 0.3 → 0.5 (더 빠른 반응)
-        player.velocity.x = this.lerp(player.velocity.x || 0, targetVelocityX, smoothing);
-        player.velocity.y = this.lerp(player.velocity.y || 0, targetVelocityY, smoothing);
+        // 현재 속도에 관성 적용 (자연스러운 감속)
+        player.velocity.x *= this.inertiaFactor;
+        player.velocity.y *= this.inertiaFactor;
+        
+        // 가속도를 속도에 부드럽게 적용
+        player.velocity.x += targetAccelX * this.accelerationSmoothing;
+        player.velocity.y += targetAccelY * this.accelerationSmoothing;
+        
+        // 최대 속도 제한 (너무 빨라지지 않도록)
+        const maxSpeed = 6;
+        const currentSpeed = Math.sqrt(player.velocity.x ** 2 + player.velocity.y ** 2);
+        if (currentSpeed > maxSpeed) {
+            const scale = maxSpeed / currentSpeed;
+            player.velocity.x *= scale;
+            player.velocity.y *= scale;
+        }
 
-        // 장애물처럼 단순한 위치 업데이트
+        // 위치 업데이트 (관성 기반)
         player.position.x += player.velocity.x;
         player.position.y += player.velocity.y;
 
-        // 장애물처럼 단순한 경계 처리
+        // 경계 처리 (벽에서 반사)
         this.constrainPlayerToMapWithBounce(player);
     }
 
