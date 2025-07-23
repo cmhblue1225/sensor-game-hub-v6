@@ -334,10 +334,10 @@ class AcornBattleGame {
     }
 
     handleSensorData(data) {
-        // 센서 데이터 throttling 완전 제거 (끊김 현상 해결)
-        // const now = Date.now();
-        // if (now - this.lastSensorUpdate < this.sensorThrottle) return;
-        // this.lastSensorUpdate = now;
+        // 센서 데이터 throttling 적절히 적용 (튀는 현상 방지)
+        const now = Date.now();
+        if (now - this.lastSensorUpdate < this.sensorThrottle) return;
+        this.lastSensorUpdate = now;
 
         if (this.gameState.phase !== 'playing') return;
 
@@ -395,21 +395,27 @@ class AcornBattleGame {
             console.log(`${data.sensorId} 무적 상태 해제`);
         }
 
-        // 장애물처럼 단순하고 부드러운 움직임 구현
+        // 센서 데이터 스무딩 처리 (튀는 현상 방지)
         const { beta, gamma } = data.data.orientation;
+        const smoothedData = this.smoothSensorData(data.sensorId, beta, gamma);
         
-        // 더 민감한 데드존 적용
-        const deadZone = 3; // 5 → 3 (더 민감하게)
-        const filteredBeta = Math.abs(beta) > deadZone ? beta : 0;
-        const filteredGamma = Math.abs(gamma) > deadZone ? gamma : 0;
+        // 적절한 데드존 적용 (튀는 현상 방지)
+        const deadZone = 5; // 3 → 5 (안정성 향상)
+        const filteredBeta = Math.abs(smoothedData.beta) > deadZone ? smoothedData.beta : 0;
+        const filteredGamma = Math.abs(smoothedData.gamma) > deadZone ? smoothedData.gamma : 0;
 
-        // 더 빠르고 민감한 속도 설정
-        const maxTilt = 30; // 45 → 30 (작은 움직임도 큰 반응)
-        const maxSpeed = 6; // 4 → 6 (50% 빨라짐)
+        // 안정적인 속도 설정
+        const maxTilt = 35; // 30 → 35 (안정성 향상)
+        const maxSpeed = 5; // 6 → 5 (튀는 현상 방지)
         
-        // 직접 속도 계산 (장애물처럼 단순하게)
-        player.velocity.x = (filteredGamma / maxTilt) * maxSpeed;
-        player.velocity.y = (filteredBeta / maxTilt) * maxSpeed;
+        // 부드러운 속도 계산
+        const targetVelocityX = (filteredGamma / maxTilt) * maxSpeed;
+        const targetVelocityY = (filteredBeta / maxTilt) * maxSpeed;
+        
+        // 속도 보간으로 부드러운 움직임 (튀는 현상 방지)
+        const smoothing = 0.3; // 보간 강도
+        player.velocity.x = this.lerp(player.velocity.x || 0, targetVelocityX, smoothing);
+        player.velocity.y = this.lerp(player.velocity.y || 0, targetVelocityY, smoothing);
 
         // 장애물처럼 단순한 위치 업데이트
         player.position.x += player.velocity.x;
