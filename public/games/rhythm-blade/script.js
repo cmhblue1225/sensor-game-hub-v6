@@ -268,6 +268,7 @@ class RhythmBladeDual {
             return;
         }
         
+        const previousTrack = this.currentTrack;
         this.currentTrack = trackId;
         
         // 🎵 새 트랙 로드
@@ -279,6 +280,12 @@ class RhythmBladeDual {
         
         // UI 업데이트
         this.updateTrackSelection();
+        
+        // 다른 모드를 선택했을 때 게임 초기화
+        if (previousTrack !== trackId) {
+            this.resetGameState();
+            console.log(`🎵 새 모드 선택으로 게임 초기화: ${this.tracks[trackId].name}`);
+        }
         
         console.log(`🎵 트랙 변경: ${this.tracks[trackId].name}`);
     }
@@ -2181,6 +2188,36 @@ class RhythmBladeDual {
         console.log('🎮 게임 종료 - 마지막 블록 처리 완료 2초 후 종료!');
     }
     
+    resetGameState() {
+        // 게임 상태만 초기화 (게임 시작하지 않음)
+        this.gameState = {
+            phase: 'waiting',
+            score: 0,
+            combo: 0,
+            maxCombo: 0,
+            totalNotes: this.beatmap.length,
+            hitNotes: 0,
+            startTime: 0,
+            endingStartTime: 0
+        };
+        
+        this.noteSpawnIndex = 0;
+        this.cooperation.sync = 100;
+        this.cooperation.cooperationBonus = 1.0;
+        
+        // 기존 노트들 제거
+        this.notes.forEach(note => this.scene.remove(note));
+        this.notes = [];
+        
+        // 음악 정지
+        if (this.bgMusic && !this.bgMusic.paused) {
+            this.bgMusic.pause();
+            this.bgMusic.currentTime = 0;
+        }
+        
+        console.log('🔄 게임 상태 초기화');
+    }
+
     resetGame() {
         this.gameState = {
             phase: 'playing',
