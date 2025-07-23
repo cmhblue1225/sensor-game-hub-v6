@@ -90,8 +90,153 @@ class AcornBattleGame {
         };
         this.bufferSize = 5; // 최근 5개 값의 평균 사용 (더 부드럽게)
 
+        // 오디오 시스템 초기화
+        this.audioContext = null;
+        this.sounds = {};
+        this.backgroundMusic = null;
+        this.isMuted = false;
+        this.initializeAudio();
+
         this.setupEvents();
         this.initializeGame();
+    }
+
+    // 오디오 시스템 초기화
+    initializeAudio() {
+        try {
+            // Web Audio API 초기화
+            this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            
+            // 배경음악 생성 (간단한 멜로디)
+            this.createBackgroundMusic();
+            
+            // 효과음 생성
+            this.createSoundEffects();
+            
+            console.log('오디오 시스템 초기화 완료');
+        } catch (error) {
+            console.warn('오디오 시스템 초기화 실패:', error);
+            this.audioContext = null;
+        }
+    }
+
+    // 배경음악 생성
+    createBackgroundMusic() {
+        if (!this.audioContext) return;
+
+        // 간단한 배경음악 멜로디 생성
+        this.backgroundMusic = {
+            isPlaying: false,
+            oscillators: [],
+            gainNode: null
+        };
+
+        // 배경음악 볼륨 조절
+        this.backgroundMusic.gainNode = this.audioContext.createGain();
+        this.backgroundMusic.gainNode.gain.value = 0.1; // 낮은 볼륨
+        this.backgroundMusic.gainNode.connect(this.audioContext.destination);
+    }
+
+    // 효과음 생성
+    createSoundEffects() {
+        if (!this.audioContext) return;
+
+        this.sounds = {
+            acornCollect: () => this.playTone(800, 0.1, 0.1), // 도토리 수집
+            scorePoint: () => this.playTone(1000, 0.2, 0.15), // 점수 획득
+            acornSteal: () => this.playTone(600, 0.15, 0.12), // 도토리 훔치기
+            obstacleHit: () => this.playTone(200, 0.3, 0.2), // 장애물 충돌
+            gameStart: () => this.playMelody([523, 659, 784], 0.3), // 게임 시작
+            gameEnd: () => this.playMelody([784, 659, 523], 0.5) // 게임 종료
+        };
+    }
+
+    // 단일 톤 재생
+    playTone(frequency, duration, volume = 0.1) {
+        if (!this.audioContext || this.isMuted) return;
+
+        const oscillator = this.audioContext.createOscillator();
+        const gainNode = this.audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(this.audioContext.destination);
+
+        oscillator.frequency.value = frequency;
+        oscillator.type = 'sine';
+
+        gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
+
+        oscillator.start(this.audioContext.currentTime);
+        oscillator.stop(this.audioContext.currentTime + duration);
+    }
+
+    // 멜로디 재생
+    playMelody(frequencies, noteDuration) {
+        if (!this.audioContext || this.isMuted) return;
+
+        frequencies.forEach((freq, index) => {
+            setTimeout(() => {
+                this.playTone(freq, noteDuration, 0.08);
+            }, index * noteDuration * 1000);
+        });
+    }
+
+    // 배경음악 시작
+    startBackgroundMusic() {
+        if (!this.audioContext || this.isMuted || this.backgroundMusic.isPlaying) return;
+
+        this.backgroundMusic.isPlaying = true;
+        this.playBackgroundLoop();
+    }
+
+    // 배경음악 루프
+    playBackgroundLoop() {
+        if (!this.backgroundMusic.isPlaying || this.isMuted) return;
+
+        // 간단한 배경 멜로디 (도토리 배틀 테마)
+        const melody = [523, 587, 659, 698, 784, 698, 659, 587]; // C, D, E, F, G, F, E, D
+        
+        melody.forEach((freq, index) => {
+            setTimeout(() => {
+                if (this.backgroundMusic.isPlaying && !this.isMuted) {
+                    this.playTone(freq, 0.8, 0.03); // 매우 낮은 볼륨
+                }
+            }, index * 1000);
+        });
+
+        // 8초 후 반복
+        setTimeout(() => {
+            if (this.backgroundMusic.isPlaying) {
+                this.playBackgroundLoop();
+            }
+        }, 8000);
+    }
+
+    // 배경음악 정지
+    stopBackgroundMusic() {
+        if (this.backgroundMusic) {
+            this.backgroundMusic.isPlaying = false;
+            this.backgroundMusic.oscillators.forEach(osc => {
+                try {
+                    osc.stop();
+                } catch (e) {
+                    // 이미 정지된 oscillator 무시
+                }
+            });
+            this.backgroundMusic.oscillators = [];
+        }
+    }
+
+    // 음소거 토글
+    toggleMute() {
+        this.isMuted = !this.isMuted;
+        if (this.isMuted) {
+            this.stopBackgroundMusic();
+        } else if (this.gameState.phase === 'playing') {
+            this.startBackgroundMusic();
+        }
+        console.log('음소거:', this.isMuted ? '켜짐' : '꺼짐');
     }
 
     setupEvents() {
@@ -522,6 +667,12 @@ class AcornBattleGame {
         // 게임 루프 시작
         this.startGameLoop();
 
+        // 게임 시작 효과음 및 배경음악 재생
+        if (this.sounds.gameStart) {
+            this.sounds.gameStart();
+        }
+        this.startBackgroundMusic();
+
         console.log('게임 시작!');
     }
 
@@ -635,6 +786,12 @@ class AcornBattleGame {
                         // 도토리 수집 (최대 1개)
                         player.carriedAcorns = 1;
                         console.log(`플레이어 ${playerIndex + 1}이 도토리 수집! 보유: ${player.carriedAcorns}`);
+                        
+                        // 도토리 수집 효과음 재생
+                        if (this.sounds.acornCollect) {
+                            this.sounds.acornCollect();
+                        }
+                        
                         return false; // 도토리 제거
                     }
                     return true; // 도토리 유지
@@ -683,6 +840,11 @@ class AcornBattleGame {
             player.score += carriedAcorns;
             player.carriedAcorns = 0;
             console.log(`플레이어 ${playerIndex + 1} 도토리 ${carriedAcorns}개 저장! 현재 점수: ${player.score}`);
+            
+            // 점수 획득 효과음 재생
+            if (this.sounds.scorePoint) {
+                this.sounds.scorePoint();
+            }
         }
 
         // 상대방 점수 구역에서 도토리 훔치기
@@ -698,6 +860,11 @@ class AcornBattleGame {
                 enemyPlayer.score = Math.max(0, enemyPlayer.score - 1);
 
                 console.log(`플레이어 ${playerIndex + 1}이 도토리 1개 훔침! 상대방 점수: ${enemyPlayer.score}`);
+                
+                // 도토리 훔치기 효과음 재생
+                if (this.sounds.acornSteal) {
+                    this.sounds.acornSteal();
+                }
             }
         }
     }
@@ -743,6 +910,11 @@ class AcornBattleGame {
                 }
 
                 console.log(`플레이어 ${playerIndex + 1} 장애물 충돌! ${droppedAcorns}개 도토리 떨어뜨림`);
+                
+                // 장애물 충돌 효과음 재생
+                if (this.sounds.obstacleHit) {
+                    this.sounds.obstacleHit();
+                }
             }
         });
     }
@@ -1024,6 +1196,12 @@ class AcornBattleGame {
         if (this.animationId) {
             cancelAnimationFrame(this.animationId);
             this.animationId = null;
+        }
+
+        // 배경음악 정지 및 게임 종료 효과음 재생
+        this.stopBackgroundMusic();
+        if (this.sounds.gameEnd) {
+            this.sounds.gameEnd();
         }
 
         // 결과 표시
