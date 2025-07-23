@@ -1411,6 +1411,12 @@ class RhythmBladeDual {
     }
     
     showStartButton() {
+        // 중복 버튼 방지: 기존 시작 버튼이 있으면 제거
+        const existingButton = document.querySelector('#sessionPanel .btn-primary');
+        if (existingButton && existingButton.innerHTML.includes('게임 시작')) {
+            existingButton.remove();
+        }
+        
         const startButton = document.createElement('button');
         startButton.className = 'btn btn-primary';
         startButton.style.cssText = 'font-size: 1.2rem; padding: 1rem 2rem; margin-top: 1rem;';
@@ -2246,6 +2252,13 @@ class RhythmBladeDual {
         if (this.bgMusic && !this.bgMusic.paused) {
             this.bgMusic.pause();
             this.bgMusic.currentTime = 0;
+        }
+        
+        // 센서가 이미 연결되어 있는지 확인하고 게임 시작 버튼 표시
+        const connectedCount = Object.values(this.sensorStatus).filter(s => s.connected).length;
+        if (connectedCount === 2) {
+            console.log('🎮 센서가 이미 연결되어 있음 - 게임 시작 버튼 표시');
+            this.showStartButton();
         }
         
         console.log('🎵 모드 선택 화면으로 이동');
