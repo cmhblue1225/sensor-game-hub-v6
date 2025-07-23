@@ -177,8 +177,10 @@ class RhythmBladeDual {
             }
         };
         
-        this.bpm = this.tracks[this.currentTrack].bpm;
-        this.beatInterval = 60 / this.bpm; // 비트 간격 계산
+        // 4/4박자 표준화 - 모든 음악을 센서 친화적 120 BPM으로 통일
+        this.originalBpm = this.tracks[this.currentTrack].bpm; // 원본 BPM 보존
+        this.bpm = 120; // 센서 플레이 최적화 표준 BPM
+        this.beatInterval = 60 / this.bpm; // 4/4박자 기준 비트 간격 (0.5초)
         
         this.initializeMusic();
         
@@ -216,8 +218,10 @@ class RhythmBladeDual {
         }
         
         // BPM 업데이트
-        this.bpm = track.bpm;
-        this.beatInterval = 60 / this.bpm;
+        // 4/4박자 표준화 - 선택된 음악도 120 BPM으로 통일
+        this.originalBpm = track.bpm; // 원본 BPM 보존
+        this.bpm = 120; // 센서 플레이 최적화 표준 BPM
+        this.beatInterval = 60 / this.bpm; // 4/4박자 기준 비트 간격 (0.5초)
         
         // 🎵 audio 엘리먼트 소스 업데이트
         this.bgMusic.innerHTML = '';
@@ -312,9 +316,9 @@ class RhythmBladeDual {
     }
     
     generateRhythmBeatmap() {
-        // 🎵 선택된 트랙에 따른 맞춤형 비트맵 생성
+        // 🎵 선택된 트랙에 따른 맞춤형 비트맵 생성 (4/4박자 통일)
         const track = this.tracks[this.currentTrack];
-        console.log(`🎼 ${track.name} 비트맵 생성 중...`);
+        console.log(`🎼 ${track.name} 비트맵 생성 중... (4/4박자 기준)`);
         
         // 🎯 센서 기반 타이밍 최적화 계산
         const SENSOR_DELAY = 0.15; // 150ms 센서 쿨다운
@@ -322,39 +326,43 @@ class RhythmBladeDual {
         const REACTION_BUFFER = 0.1; // 100ms 반응 여유 시간
         const TOTAL_SENSOR_OFFSET = SENSOR_DELAY + SWING_TIME + REACTION_BUFFER; // 500ms 총 오프셋
         
-        // BPM에 따른 비트 간격 계산 (센서 최적화)
-        const beat = this.beatInterval; // 현재 트랙의 BPM 기준
-        const sensorMinInterval = Math.max(beat / 2, TOTAL_SENSOR_OFFSET); // 센서 안전 최소 간격
-        const halfBeat = Math.max(beat / 2, sensorMinInterval); // 센서 친화적 하프비트
-        const quarterBeat = Math.max(beat / 4, TOTAL_SENSOR_OFFSET * 0.8); // 센서 친화적 쿼터비트
-        const doubleBeat = beat * 2; // 여유로운 간격
+        // 🎵 4/4박자 표준화 (모든 음악을 센서 친화적 4/4박자로 통일)
+        const STANDARD_4_4_BPM = 120; // 센서 플레이에 최적화된 표준 BPM
+        const standardBeatInterval = 60 / STANDARD_4_4_BPM; // 0.5초 (4/4박자 기준)
         
-        console.log(`🎯 센서 최적화: 총 오프셋 ${TOTAL_SENSOR_OFFSET * 1000}ms, 최소 간격 ${sensorMinInterval * 1000}ms`);
+        // 4/4박자 기본 패턴 계산
+        const wholeBeat = standardBeatInterval; // 1박 (0.5초)
+        const halfBeat = standardBeatInterval / 2; // 0.5박 (0.25초)
+        const quarterBeat = Math.max(standardBeatInterval / 4, TOTAL_SENSOR_OFFSET * 0.8); // 0.25박 (센서 안전)
+        const doubleBeat = standardBeatInterval * 2; // 2박 (1초)
+        const measureBeat = standardBeatInterval * 4; // 1마디 (2초)
         
-        // 🎼 트랙별 맞춤형 비트맵 생성
+        console.log(`🎯 4/4박자 표준화: ${STANDARD_4_4_BPM} BPM, 1박=${wholeBeat}초, 최소간격=${quarterBeat}초`);
+        
+        // 🎼 트랙별 4/4박자 맞춤형 비트맵 생성 (음악 스타일에 맞춘 4/4 패턴)
         switch (this.currentTrack) {
             case 'electric-storm':
-                return this.generateElectricStormBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
+                return this.generateElectricStorm44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             case 'neon-nights':
-                return this.generateNeonNightsBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
+                return this.generateNeonNights44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             case 'cyber-beat':
-                return this.generateCyberBeatBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
+                return this.generateCyberBeat44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             case 'space-rhythm':
-                return this.generateSpaceRhythmBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
+                return this.generateSpaceRhythm44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             case 'fire-dance':
-                return this.generateFireDanceBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
+                return this.generateFireDance44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             case 'ocean-waves':
-                return this.generateOceanWavesBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
+                return this.generateOceanWaves44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             case 'crystal-cave':
-                return this.generateCrystalCaveBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
+                return this.generateCrystalCave44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             case 'neon-city':
-                return this.generateNeonCityBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
+                return this.generateNeonCity44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             case 'thunder-storm':
-                return this.generateThunderStormBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
+                return this.generateThunderStorm44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             case 'starlight':
-                return this.generateStarlightBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
+                return this.generateStarlight44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             default:
-                return this.generateDefaultBeatmap(beat, halfBeat, doubleBeat, sensorMinInterval);
+                return this.generateDefault44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
         }
     }
     
@@ -2214,6 +2222,324 @@ class RhythmBladeDual {
         requestAnimationFrame(() => this.gameLoop());
         this.update();
         this.render();
+    }
+    // 🎵 4/4박자 통일 노트 생성 함수들 (센서 친화적)
+    generateElectricStorm44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
+        const beatmap = [];
+        const track = this.tracks[this.currentTrack];
+        const targetDuration = track.duration;
+        
+        // ⚡ Electric Storm - 4/4박자 전기적 패턴 (강렬하지만 플레이 가능)
+        let currentTime = 0;
+        
+        // 도입부: 1-2마디씩 노트 (8초간)
+        for (let measure = 0; measure < 4; measure++) {
+            const measureStart = measure * measureBeat;
+            
+            // 각 마디 1, 3박에 노트 배치 (4/4박자 강박)
+            beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 3, lane: "sensor2", type: "normal" });
+            
+            if (measure % 2 === 1) {
+                beatmap.push({ time: measureStart + measureBeat - halfBeat, lane: "both", type: "cooperation" });
+            }
+        }
+        
+        // 중반부: 더 활발한 4/4 패턴 (16초간)
+        currentTime = measureBeat * 4;
+        for (let measure = 0; measure < 8; measure++) {
+            const measureStart = currentTime + measure * measureBeat;
+            
+            // 1박, 2.5박, 4박 패턴
+            beatmap.push({ time: measureStart + wholeBeat, lane: measure % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 2.5, lane: "both", type: "cooperation" });
+            beatmap.push({ time: measureStart + wholeBeat * 4, lane: measure % 2 === 0 ? "sensor2" : "sensor1", type: "normal" });
+        }
+        
+        // 클라이맥스: 매 박마다 노트 (8초간)
+        currentTime = measureBeat * 12;
+        for (let measure = 0; measure < 4; measure++) {
+            const measureStart = currentTime + measure * measureBeat;
+            
+            for (let beat = 1; beat <= 4; beat++) {
+                const lane = beat % 2 === 1 ? "sensor1" : "sensor2";
+                if (beat === 4 && measure % 2 === 1) {
+                    beatmap.push({ time: measureStart + wholeBeat * beat, lane: "both", type: "cooperation" });
+                } else {
+                    beatmap.push({ time: measureStart + wholeBeat * beat, lane: lane, type: "normal" });
+                }
+            }
+        }
+        
+        console.log(`⚡ Electric Storm 4/4박자: ${beatmap.length}개 노트`);
+        return beatmap;
+    }
+
+    generateNeonNights44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
+        const beatmap = [];
+        const track = this.tracks[this.currentTrack];
+        
+        // 🌙 Neon Nights - 4/4박자 신스웨이브 패턴 (분위기 있는)
+        let currentTime = 0;
+        
+        // 분위기 도입부 (12초)
+        for (let measure = 0; measure < 6; measure++) {
+            const measureStart = measure * measureBeat;
+            
+            // 1박, 3박 기본 패턴
+            beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
+            if (measure % 2 === 0) {
+                beatmap.push({ time: measureStart + wholeBeat * 3, lane: "sensor2", type: "normal" });
+            } else {
+                beatmap.push({ time: measureStart + wholeBeat * 3, lane: "both", type: "cooperation" });
+            }
+        }
+        
+        // 신스 멜로디 구간 (16초)
+        currentTime = measureBeat * 6;
+        for (let measure = 0; measure < 8; measure++) {
+            const measureStart = currentTime + measure * measureBeat;
+            
+            // 1, 2, 3.5, 4박 패턴
+            beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 2, lane: "sensor2", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 3.5, lane: "both", type: "cooperation" });
+            beatmap.push({ time: measureStart + wholeBeat * 4, lane: measure % 2 === 0 ? "sensor1" : "sensor2", type: "normal" });
+        }
+        
+        console.log(`🌙 Neon Nights 4/4박자: ${beatmap.length}개 노트`);
+        return beatmap;
+    }
+
+    generateCyberBeat44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
+        const beatmap = [];
+        const track = this.tracks[this.currentTrack];
+        
+        // 🤖 Cyber Beat - 4/4박자 테크노 패턴 (빠르지만 일정한)
+        let currentTime = 0;
+        
+        // 테크노 기본 킥 패턴 (16초)
+        for (let measure = 0; measure < 8; measure++) {
+            const measureStart = measure * measureBeat;
+            
+            // 4/4 킥 드럼 패턴: 1, 2, 3, 4박
+            beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 2, lane: "sensor2", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 3, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 4, lane: measure % 2 === 0 ? "sensor2" : "both", type: measure % 2 === 0 ? "normal" : "cooperation" });
+        }
+        
+        // 사이버 브레이크다운 (8초)
+        currentTime = measureBeat * 8;
+        for (let measure = 0; measure < 4; measure++) {
+            const measureStart = currentTime + measure * measureBeat;
+            
+            // 1박, 2.5박, 3.5박, 4박 패턴
+            beatmap.push({ time: measureStart + wholeBeat, lane: "both", type: "cooperation" });
+            beatmap.push({ time: measureStart + wholeBeat * 2.5, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 3.5, lane: "sensor2", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 4, lane: "both", type: "cooperation" });
+        }
+        
+        console.log(`🤖 Cyber Beat 4/4박자: ${beatmap.length}개 노트`);
+        return beatmap;
+    }
+
+    generateSpaceRhythm44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
+        const beatmap = [];
+        const track = this.tracks[this.currentTrack];
+        
+        // 🚀 Space Rhythm - 4/4박자 우주적 패턴 (여유로운)
+        let currentTime = 0;
+        
+        // 우주 도입부 (16초)
+        for (let measure = 0; measure < 8; measure++) {
+            const measureStart = measure * measureBeat;
+            
+            if (measure % 3 === 0) {
+                // 넓은 우주감: 1박, 4박만
+                beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
+                beatmap.push({ time: measureStart + wholeBeat * 4, lane: "sensor2", type: "normal" });
+            } else if (measure % 3 === 1) {
+                // 중간 밀도: 1박, 3박
+                beatmap.push({ time: measureStart + wholeBeat, lane: "sensor2", type: "normal" });
+                beatmap.push({ time: measureStart + wholeBeat * 3, lane: "both", type: "cooperation" });
+            } else {
+                // 활발한 궤도: 2박, 4박
+                beatmap.push({ time: measureStart + wholeBeat * 2, lane: "sensor1", type: "normal" });
+                beatmap.push({ time: measureStart + wholeBeat * 4, lane: "sensor2", type: "normal" });
+            }
+        }
+        
+        console.log(`🚀 Space Rhythm 4/4박자: ${beatmap.length}개 노트`);
+        return beatmap;
+    }
+
+    generateFireDance44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
+        const beatmap = [];
+        const track = this.tracks[this.currentTrack];
+        
+        // 🔥 Fire Dance - 4/4박자 격렬한 패턴 (통제된 격렬함)
+        let currentTime = 0;
+        
+        // 불꽃 점화 (12초)
+        for (let measure = 0; measure < 6; measure++) {
+            const measureStart = measure * measureBeat;
+            
+            // 1, 2, 3, 4박 모두 사용하되 협력으로 조절
+            beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 2, lane: "sensor2", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 3, lane: "sensor1", type: "normal" });
+            
+            if (measure % 2 === 0) {
+                beatmap.push({ time: measureStart + wholeBeat * 4, lane: "sensor2", type: "normal" });
+            } else {
+                beatmap.push({ time: measureStart + wholeBeat * 4, lane: "both", type: "cooperation" });
+            }
+        }
+        
+        console.log(`🔥 Fire Dance 4/4박자: ${beatmap.length}개 노트`);
+        return beatmap;
+    }
+
+    generateOceanWaves44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
+        const beatmap = [];
+        const track = this.tracks[this.currentTrack];
+        
+        // 🌊 Ocean Waves - 4/4박자 물결 패턴 (편안한)
+        let currentTime = 0;
+        
+        // 잔잔한 파도 (20초)
+        for (let measure = 0; measure < 10; measure++) {
+            const measureStart = measure * measureBeat;
+            
+            // 물결치는 듯한 1, 3박 기본 + 가끔 2박
+            beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
+            if (measure % 3 === 1) {
+                beatmap.push({ time: measureStart + wholeBeat * 2, lane: "sensor2", type: "normal" });
+            }
+            beatmap.push({ time: measureStart + wholeBeat * 3, lane: measure % 2 === 0 ? "sensor2" : "both", type: measure % 2 === 0 ? "normal" : "cooperation" });
+        }
+        
+        console.log(`🌊 Ocean Waves 4/4박자: ${beatmap.length}개 노트`);
+        return beatmap;
+    }
+
+    generateCrystalCave44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
+        const beatmap = [];
+        const track = this.tracks[this.currentTrack];
+        
+        // 💎 Crystal Cave - 4/4박자 수정 동굴 패턴 (신비로운)
+        let currentTime = 0;
+        
+        // 수정 울림 (16초)
+        for (let measure = 0; measure < 8; measure++) {
+            const measureStart = measure * measureBeat;
+            
+            // 수정처럼 반짝이는 패턴: 1, 2.5, 4박
+            beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 2.5, lane: "both", type: "cooperation" });
+            
+            if (measure % 2 === 1) {
+                beatmap.push({ time: measureStart + wholeBeat * 4, lane: "sensor2", type: "normal" });
+            }
+        }
+        
+        console.log(`💎 Crystal Cave 4/4박자: ${beatmap.length}개 노트`);
+        return beatmap;
+    }
+
+    generateNeonCity44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
+        const beatmap = [];
+        const track = this.tracks[this.currentTrack];
+        
+        // 🏙️ Neon City - 4/4박자 레트로웨이브 패턴 (리듬감 있는)
+        let currentTime = 0;
+        
+        // 도시 야경 (14초)
+        for (let measure = 0; measure < 7; measure++) {
+            const measureStart = measure * measureBeat;
+            
+            // 1, 2, 3.5박 + 때때로 4박
+            beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 2, lane: "sensor2", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 3.5, lane: "both", type: "cooperation" });
+            
+            if (measure % 3 === 2) {
+                beatmap.push({ time: measureStart + wholeBeat * 4, lane: "sensor1", type: "normal" });
+            }
+        }
+        
+        console.log(`🏙️ Neon City 4/4박자: ${beatmap.length}개 노트`);
+        return beatmap;
+    }
+
+    generateThunderStorm44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
+        const beatmap = [];
+        const track = this.tracks[this.currentTrack];
+        
+        // ⛈️ Thunder Storm - 4/4박자 천둥 패턴 (통제된 강력함)
+        let currentTime = 0;
+        
+        // 천둥 번개 (12초)
+        for (let measure = 0; measure < 6; measure++) {
+            const measureStart = measure * measureBeat;
+            
+            // 강력하지만 예측 가능한 패턴
+            beatmap.push({ time: measureStart + wholeBeat, lane: "both", type: "cooperation" });
+            beatmap.push({ time: measureStart + wholeBeat * 2.5, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 3.5, lane: "sensor2", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 4, lane: "both", type: "cooperation" });
+        }
+        
+        console.log(`⛈️ Thunder Storm 4/4박자: ${beatmap.length}개 노트`);
+        return beatmap;
+    }
+
+    generateStarlight44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
+        const beatmap = [];
+        const track = this.tracks[this.currentTrack];
+        
+        // ✨ Starlight - 4/4박자 별빛 패턴 (멜로딕)
+        let currentTime = 0;
+        
+        // 별빛 멜로디 (18초)
+        for (let measure = 0; measure < 9; measure++) {
+            const measureStart = measure * measureBeat;
+            
+            // 아름다운 멜로딕 패턴: 1, 3박 기본 + 가끔 2, 4박
+            beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 3, lane: "sensor2", type: "normal" });
+            
+            if (measure % 4 === 1) {
+                beatmap.push({ time: measureStart + wholeBeat * 2, lane: "both", type: "cooperation" });
+            }
+            if (measure % 4 === 3) {
+                beatmap.push({ time: measureStart + wholeBeat * 4, lane: "both", type: "cooperation" });
+            }
+        }
+        
+        console.log(`✨ Starlight 4/4박자: ${beatmap.length}개 노트`);
+        return beatmap;
+    }
+
+    generateDefault44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
+        const beatmap = [];
+        
+        // 기본 4/4박자 패턴 (16초)
+        for (let measure = 0; measure < 8; measure++) {
+            const measureStart = measure * measureBeat;
+            
+            beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
+            beatmap.push({ time: measureStart + wholeBeat * 3, lane: "sensor2", type: "normal" });
+            
+            if (measure % 2 === 1) {
+                beatmap.push({ time: measureStart + wholeBeat * 4, lane: "both", type: "cooperation" });
+            }
+        }
+        
+        console.log(`🎵 Default 4/4박자: ${beatmap.length}개 노트`);
+        return beatmap;
     }
 }
 
