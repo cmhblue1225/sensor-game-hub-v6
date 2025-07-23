@@ -81,7 +81,7 @@ class AcornBattleGame {
         // 게임 루프 관련
         this.animationId = null;
         this.lastSensorUpdate = 0;
-        this.sensorThrottle = 25; // 40fps로 향상 (33ms → 25ms)
+        this.sensorThrottle = 16; // 60fps로 최대 향상 (25ms → 16ms)
 
         // 센서 데이터 스무딩을 위한 버퍼 (버퍼 크기 증가)
         this.sensorBuffer = {
@@ -334,17 +334,16 @@ class AcornBattleGame {
     }
 
     handleSensorData(data) {
-        // 센서 데이터 throttling
-        const now = Date.now();
-        if (now - this.lastSensorUpdate < this.sensorThrottle) return;
-        this.lastSensorUpdate = now;
+        // 센서 데이터 throttling 완전 제거 (끊김 현상 해결)
+        // const now = Date.now();
+        // if (now - this.lastSensorUpdate < this.sensorThrottle) return;
+        // this.lastSensorUpdate = now;
 
         if (this.gameState.phase !== 'playing') return;
 
-        // 센서 데이터 검증
-        if (!this.validateSensorData(data)) {
-            console.warn('잘못된 센서 데이터:', data);
-            return;
+        // 센서 데이터 검증 (더 관대하게)
+        if (!this.validateSensorDataLoose(data)) {
+            return; // 경고 로그 제거로 성능 향상
         }
 
         this.updatePlayerFromSensor(data);
@@ -360,6 +359,17 @@ class AcornBattleGame {
             data.data.orientation.beta <= 180 &&
             data.data.orientation.gamma >= -90 &&
             data.data.orientation.gamma <= 90;
+    }
+
+    // 더 관대한 센서 데이터 검증 (끊김 현상 해결)
+    validateSensorDataLoose(data) {
+        return data &&
+            data.data &&
+            data.data.orientation &&
+            typeof data.data.orientation.beta === 'number' &&
+            typeof data.data.orientation.gamma === 'number' &&
+            !isNaN(data.data.orientation.beta) &&
+            !isNaN(data.data.orientation.gamma);
     }
 
     updatePlayerFromSensor(data) {
