@@ -81,14 +81,14 @@ class AcornBattleGame {
         // 게임 루프 관련
         this.animationId = null;
         this.lastSensorUpdate = 0;
-        this.sensorThrottle = 16; // 60fps로 최대 향상 (25ms → 16ms)
+        this.sensorThrottle = 8; // 120fps로 향상 (16ms → 8ms) - 더 부드러운 움직임
 
-        // 센서 데이터 스무딩을 위한 버퍼 (버퍼 크기 증가)
+        // 센서 데이터 스무딩을 위한 버퍼 (버퍼 크기 대폭 증가)
         this.sensorBuffer = {
             sensor1: { beta: [], gamma: [] },
             sensor2: { beta: [], gamma: [] }
         };
-        this.bufferSize = 5; // 최근 5개 값의 평균 사용 (더 부드럽게)
+        this.bufferSize = 8; // 최근 8개 값의 평균 사용 (훨씬 더 부드럽게)
 
         // 오디오 시스템 초기화
         this.audioContext = null;
@@ -613,20 +613,20 @@ class AcornBattleGame {
         const smoothedData = this.smoothSensorData(data.sensorId, beta, gamma);
         
         // 적절한 데드존 적용 (튀는 현상 방지)
-        const deadZone = 5; // 3 → 5 (안정성 향상)
+        const deadZone = 3; // 5 → 3 (더 민감한 반응)
         const filteredBeta = Math.abs(smoothedData.beta) > deadZone ? smoothedData.beta : 0;
         const filteredGamma = Math.abs(smoothedData.gamma) > deadZone ? smoothedData.gamma : 0;
 
         // 안정적인 속도 설정
-        const maxTilt = 35; // 30 → 35 (안정성 향상)
-        const maxSpeed = 5; // 6 → 5 (튀는 현상 방지)
+        const maxTilt = 30; // 35 → 30 (더 민감한 반응)
+        const maxSpeed = 6; // 5 → 6 (더 빠른 움직임)
         
         // 부드러운 속도 계산
         const targetVelocityX = (filteredGamma / maxTilt) * maxSpeed;
         const targetVelocityY = (filteredBeta / maxTilt) * maxSpeed;
         
         // 속도 보간으로 부드러운 움직임 (튀는 현상 방지)
-        const smoothing = 0.3; // 보간 강도
+        const smoothing = 0.5; // 0.3 → 0.5 (더 빠른 반응)
         player.velocity.x = this.lerp(player.velocity.x || 0, targetVelocityX, smoothing);
         player.velocity.y = this.lerp(player.velocity.y || 0, targetVelocityY, smoothing);
 
