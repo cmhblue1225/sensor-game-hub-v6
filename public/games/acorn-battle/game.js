@@ -81,18 +81,18 @@ class AcornBattleGame {
         // 게임 루프 관련
         this.animationId = null;
         this.lastSensorUpdate = 0;
-        this.sensorThrottle = 25; // 40fps - 센서 노이즈 감소를 위한 적절한 간격
+        this.sensorThrottle = 16; // 60fps - 반응성과 안정성의 균형
 
         // 고급 센서 데이터 스무딩 시스템
         this.sensorBuffer = {
             sensor1: { beta: [], gamma: [], velocity: { x: 0, y: 0 } },
             sensor2: { beta: [], gamma: [], velocity: { x: 0, y: 0 } }
         };
-        this.bufferSize = 6; // 적절한 버퍼 크기로 노이즈 제거
+        this.bufferSize = 4; // 버퍼 크기 감소로 반응성 향상
         
-        // 관성 및 감속 시스템
-        this.inertiaFactor = 0.85; // 관성 계수 (0.85 = 15% 감속)
-        this.accelerationSmoothing = 0.15; // 가속도 스무딩 강도
+        // 관성 및 감속 시스템 (반응성 향상)
+        this.inertiaFactor = 0.9; // 관성 계수 (0.9 = 10% 감속)
+        this.accelerationSmoothing = 0.3; // 가속도 스무딩 강도 증가
 
         // 오디오 시스템 초기화
         this.audioContext = null;
@@ -617,13 +617,13 @@ class AcornBattleGame {
         const smoothedData = this.smoothSensorData(data.sensorId, beta, gamma);
         
         // 적절한 데드존 적용 (미세한 떨림 제거)
-        const deadZone = 4;
+        const deadZone = 2; // 4 → 2 (더 민감한 반응)
         const filteredBeta = Math.abs(smoothedData.beta) > deadZone ? smoothedData.beta : 0;
         const filteredGamma = Math.abs(smoothedData.gamma) > deadZone ? smoothedData.gamma : 0;
 
         // 관성 기반 움직임 시스템
-        const maxTilt = 30;
-        const sensitivity = 0.8; // 센서 민감도
+        const maxTilt = 25; // 30 → 25 (더 민감한 반응)
+        const sensitivity = 1.2; // 0.8 → 1.2 (민감도 대폭 증가)
         
         // 목표 가속도 계산 (기울기에 비례)
         const targetAccelX = (filteredGamma / maxTilt) * sensitivity;
@@ -637,8 +637,8 @@ class AcornBattleGame {
         player.velocity.x += targetAccelX * this.accelerationSmoothing;
         player.velocity.y += targetAccelY * this.accelerationSmoothing;
         
-        // 최대 속도 제한 (너무 빨라지지 않도록)
-        const maxSpeed = 6;
+        // 최대 속도 제한 (더 빠른 움직임)
+        const maxSpeed = 8; // 6 → 8 (속도 증가)
         const currentSpeed = Math.sqrt(player.velocity.x ** 2 + player.velocity.y ** 2);
         if (currentSpeed > maxSpeed) {
             const scale = maxSpeed / currentSpeed;
