@@ -1443,18 +1443,6 @@ class RhythmBladeDual {
     }
     
     startGame() {
-        // 🔄 게임 상태 완전 초기화
-        this.gameState = {
-            phase: 'playing',
-            score: 0,
-            combo: 0,
-            maxCombo: 0,
-            totalNotes: 0,
-            hitNotes: 0,
-            startTime: Date.now(),
-            endingStartTime: 0
-        };
-        
         // 🗑️ 기존 노트들 모두 제거
         this.notes.forEach(note => {
             this.scene.remove(note);
@@ -1463,7 +1451,19 @@ class RhythmBladeDual {
         
         // 🎼 새 비트맵 생성 (선택된 트랙에 맞게)
         this.beatmap = this.generateRhythmBeatmap();
-        this.noteIndex = 0;  // 노트 인덱스 초기화
+        this.noteSpawnIndex = 0;  // 노트 인덱스 초기화
+        
+        // 🔄 게임 상태 완전 초기화 (비트맵 생성 후)
+        this.gameState = {
+            phase: 'playing',
+            score: 0,
+            combo: 0,
+            maxCombo: 0,
+            totalNotes: this.beatmap.length,  // 새 비트맵 길이 설정
+            hitNotes: 0,
+            startTime: Date.now(),
+            endingStartTime: 0
+        };
         
         // 🎯 협력 시스템 초기화
         this.cooperation = {
@@ -1979,25 +1979,29 @@ class RhythmBladeDual {
     spawnNote() {
         if (this.noteSpawnIndex >= this.beatmap.length) return;
         
-        const now = Date.now();
-        const elapsedTime = (now - this.gameState.startTime) / 1000;
         const noteData = this.beatmap[this.noteSpawnIndex];
         
-        // 🎯 센서 반응 시간을 고려한 예측 스포닝 (음악보다 약간 앞서 노트 생성)
-        const PREDICTIVE_SPAWN_OFFSET = 0.1; // 100ms 미리 스포닝
-        const adjustedNoteTime = Math.max(0, noteData.time - PREDICTIVE_SPAWN_OFFSET);
+        // 🎯 센서 반응 시간을 고려한 예측 스포닝 (3초 앞서 노트 생성하여 화면 뒤에서 앞으로 이동)
+        const VISUAL_APPROACH_TIME = 3.0; // 3초 동안 노트가 화면을 가로질러 접근
+        const targetNoteTime = noteData.time - VISUAL_APPROACH_TIME;
         
-        // 🎵 음악 재생 상태와 동기화 체크
-        const musicCurrentTime = this.musicLoaded && !this.bgMusic.paused ? this.bgMusic.currentTime : elapsedTime;
-        const syncedTime = this.musicLoaded ? musicCurrentTime : elapsedTime; // 음악이 로드되면 음악 시간 우선
+        // 🎵 음악 시간 기준으로 동기화 (음악이 재생 중이면 음악 시간 우선)
+        let currentTime = 0;
+        if (this.musicLoaded && !this.bgMusic.paused) {
+            currentTime = this.bgMusic.currentTime;
+        } else {
+            // 음악이 재생되지 않으면 게임 시작 시간 기준
+            const now = Date.now();
+            currentTime = (now - this.gameState.startTime) / 1000;
+        }
         
-        if (syncedTime >= adjustedNoteTime) {
+        if (currentTime >= targetNoteTime) {
             this.createNote(noteData);
             this.noteSpawnIndex++;
             
-            // 🎯 센서 최적화 로깅 (디버그용)
+            // 🎯 디버그 로깅
             if (this.sdk.options.debug) {
-                console.log(`🎼 노트 생성: 타입=${noteData.type}, 레인=${noteData.lane}, 시간=${noteData.time.toFixed(2)}s, 실제=${syncedTime.toFixed(2)}s`);
+                console.log(`🎼 노트 생성: ${noteData.type}/${noteData.lane}, 목표시간=${noteData.time.toFixed(2)}s, 현재시간=${currentTime.toFixed(2)}s`);
             }
         }
     }
@@ -2221,18 +2225,6 @@ class RhythmBladeDual {
     }
     
     resetGame() {
-        // 🔄 게임 상태 완전 초기화
-        this.gameState = {
-            phase: 'playing',
-            score: 0,
-            combo: 0,
-            maxCombo: 0,
-            totalNotes: 0,
-            hitNotes: 0,
-            startTime: Date.now(),
-            endingStartTime: 0
-        };
-        
         // 🗑️ 기존 노트들 모두 제거
         this.notes.forEach(note => {
             this.scene.remove(note);
@@ -2241,7 +2233,19 @@ class RhythmBladeDual {
         
         // 🎼 새 비트맵 생성 (현재 선택된 트랙에 맞게)
         this.beatmap = this.generateRhythmBeatmap();
-        this.noteIndex = 0;  // 노트 인덱스 초기화
+        this.noteSpawnIndex = 0;  // 노트 인덱스 초기화
+        
+        // 🔄 게임 상태 완전 초기화 (비트맵 생성 후)
+        this.gameState = {
+            phase: 'playing',
+            score: 0,
+            combo: 0,
+            maxCombo: 0,
+            totalNotes: this.beatmap.length,  // 새 비트맵 길이 설정
+            hitNotes: 0,
+            startTime: Date.now(),
+            endingStartTime: 0
+        };
         
         // 🎯 협력 시스템 초기화
         this.cooperation = {
