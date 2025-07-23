@@ -136,19 +136,6 @@ class RhythmBladeDual {
                     'https://www.bensound.com/bensound-music/bensound-energy.mp3'
                 ]
             },
-            'neon-city': {
-                name: 'Neon City',
-                icon: '🏙️',
-                description: 'Retrowave',
-                bpm: 110,
-                style: 'retro',
-                duration: 102, // 1분 42초
-                sources: [
-                    'https://www.bensound.com/bensound-music/bensound-retrosoul.mp3',
-                    'https://www.bensound.com/bensound-music/bensound-nightlife.mp3',
-                    'https://www.bensound.com/bensound-music/bensound-badass.mp3'
-                ]
-            },
             'thunder-storm': {
                 name: 'Thunder Storm',
                 icon: '⛈️',
@@ -355,8 +342,6 @@ class RhythmBladeDual {
                 return this.generateOceanWaves44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             case 'crystal-cave':
                 return this.generateCrystalCave44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
-            case 'neon-city':
-                return this.generateNeonCity44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             case 'thunder-storm':
                 return this.generateThunderStorm44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat);
             case 'starlight':
@@ -2449,30 +2434,6 @@ class RhythmBladeDual {
         return beatmap;
     }
 
-    generateNeonCity44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
-        const beatmap = [];
-        const track = this.tracks[this.currentTrack];
-        
-        // 🏙️ Neon City - 4/4박자 레트로웨이브 패턴 (리듬감 있는)
-        let currentTime = 0;
-        
-        // 도시 야경 (14초)
-        for (let measure = 0; measure < 7; measure++) {
-            const measureStart = measure * measureBeat;
-            
-            // 1, 2, 3.5박 + 때때로 4박
-            beatmap.push({ time: measureStart + wholeBeat, lane: "sensor1", type: "normal" });
-            beatmap.push({ time: measureStart + wholeBeat * 2, lane: "sensor2", type: "normal" });
-            beatmap.push({ time: measureStart + wholeBeat * 3.5, lane: "both", type: "cooperation" });
-            
-            if (measure % 3 === 2) {
-                beatmap.push({ time: measureStart + wholeBeat * 4, lane: "sensor1", type: "normal" });
-            }
-        }
-        
-        console.log(`🏙️ Neon City 4/4박자: ${beatmap.length}개 노트`);
-        return beatmap;
-    }
 
     generateThunderStorm44Beatmap(wholeBeat, halfBeat, quarterBeat, doubleBeat, measureBeat) {
         const beatmap = [];
