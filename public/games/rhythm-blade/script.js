@@ -1387,8 +1387,8 @@ class RhythmBladeDual {
         
         // 2개의 센서가 모두 연결되고 게임이 대기 상태일 때 시작 버튼 표시
         if (connectedCount === 2 && this.gameState.phase === 'waiting') {
-            // 기존 시작 버튼이 있는지 확인하고 없으면 새로 생성
-            const existingStartButton = document.querySelector('.btn-primary');
+            // ID로 게임 시작 버튼이 있는지 확인
+            const existingStartButton = document.getElementById('gameStartButton');
             if (!existingStartButton) {
                 this.showStartButton();
             }
@@ -1420,7 +1420,14 @@ class RhythmBladeDual {
     }
     
     showStartButton() {
+        // 기존 게임 시작 버튼이 있다면 제거
+        const existingButton = document.getElementById('gameStartButton');
+        if (existingButton) {
+            existingButton.remove();
+        }
+        
         const startButton = document.createElement('button');
+        startButton.id = 'gameStartButton';  // 고유 ID 추가
         startButton.className = 'btn btn-primary';
         startButton.style.cssText = 'font-size: 1.2rem; padding: 1rem 2rem; margin-top: 1rem;';
         startButton.innerHTML = '🎵 게임 시작!';
