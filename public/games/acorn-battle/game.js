@@ -120,20 +120,57 @@ class AcornBattleGame {
         }
     }
 
-    // 배경음악 생성
-    createBackgroundMusic() {
+    // 배경음악 생성 (MP3 파일 지원)
+    async createBackgroundMusic() {
         if (!this.audioContext) return;
 
-        // 간단한 배경음악 멜로디 생성
+        // 배경음악 시스템 초기화
         this.backgroundMusic = {
+            audio: null,
             isPlaying: false,
-            oscillators: [],
-            gainNode: null
+            volume: 0.3,
+            loop: true
         };
 
-        // 배경음악 볼륨 조절
+        // MP3 파일 로드 시도
+        try {
+            await this.loadBackgroundMusicFile();
+        } catch (error) {
+            console.warn('MP3 파일 로드 실패, 기본 음악 사용:', error);
+            this.createDefaultBackgroundMusic();
+        }
+    }
+
+    // MP3 파일 로드
+    async loadBackgroundMusicFile() {
+        return new Promise((resolve, reject) => {
+            const audio = new Audio();
+            audio.src = './assets/background-music.mp3';
+            audio.loop = true;
+            audio.volume = this.backgroundMusic.volume;
+            
+            audio.addEventListener('canplaythrough', () => {
+                this.backgroundMusic.audio = audio;
+                console.log('배경음악 MP3 파일 로드 완료');
+                resolve();
+            });
+            
+            audio.addEventListener('error', (e) => {
+                console.warn('MP3 파일 로드 실패:', e);
+                reject(e);
+            });
+            
+            // 로드 시작
+            audio.load();
+        });
+    }
+
+    // 기본 배경음악 생성 (MP3 파일이 없을 때)
+    createDefaultBackgroundMusic() {
+        this.backgroundMusic.useDefault = true;
+        this.backgroundMusic.oscillators = [];
         this.backgroundMusic.gainNode = this.audioContext.createGain();
-        this.backgroundMusic.gainNode.gain.value = 0.1; // 낮은 볼륨
+        this.backgroundMusic.gainNode.gain.value = 0.05; // 더 낮은 볼륨
         this.backgroundMusic.gainNode.connect(this.audioContext.destination);
     }
 
@@ -182,15 +219,32 @@ class AcornBattleGame {
         });
     }
 
-    // 배경음악 시작
+    // 배경음악 시작 (MP3 파일 우선, 없으면 기본 음악)
     startBackgroundMusic() {
-        if (!this.audioContext || this.isMuted || this.backgroundMusic.isPlaying) return;
+        if (this.isMuted || this.backgroundMusic.isPlaying) return;
 
         this.backgroundMusic.isPlaying = true;
-        this.playBackgroundLoop();
+
+        // MP3 파일이 있으면 재생
+        if (this.backgroundMusic.audio) {
+            try {
+                this.backgroundMusic.audio.currentTime = 0;
+                this.backgroundMusic.audio.play().catch(error => {
+                    console.warn('MP3 재생 실패, 기본 음악 사용:', error);
+                    this.playBackgroundLoop();
+                });
+                console.log('MP3 배경음악 재생 시작');
+            } catch (error) {
+                console.warn('MP3 재생 오류, 기본 음악 사용:', error);
+                this.playBackgroundLoop();
+            }
+        } else {
+            // 기본 음악 재생
+            this.playBackgroundLoop();
+        }
     }
 
-    // 배경음악 루프
+    // 배경음악 루프 (기본 음악)
     playBackgroundLoop() {
         if (!this.backgroundMusic.isPlaying || this.isMuted) return;
 
@@ -217,14 +271,28 @@ class AcornBattleGame {
     stopBackgroundMusic() {
         if (this.backgroundMusic) {
             this.backgroundMusic.isPlaying = false;
-            this.backgroundMusic.oscillators.forEach(osc => {
+
+            // MP3 파일 정지
+            if (this.backgroundMusic.audio) {
                 try {
-                    osc.stop();
-                } catch (e) {
-                    // 이미 정지된 oscillator 무시
+                    this.backgroundMusic.audio.pause();
+                    this.backgroundMusic.audio.currentTime = 0;
+                } catch (error) {
+                    console.warn('MP3 정지 오류:', error);
                 }
-            });
-            this.backgroundMusic.oscillators = [];
+            }
+
+            // 기본 음악 정지
+            if (this.backgroundMusic.oscillators) {
+                this.backgroundMusic.oscillators.forEach(osc => {
+                    try {
+                        osc.stop();
+                    } catch (e) {
+                        // 이미 정지된 oscillator 무시
+                    }
+                });
+                this.backgroundMusic.oscillators = [];
+            }
         }
     }
 
