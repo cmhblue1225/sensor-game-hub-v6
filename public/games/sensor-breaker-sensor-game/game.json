@@ -1,0 +1,33 @@
+{
+  "id": "sensor-breaker",
+  "title": "Sensor Breaker",
+  "description": "2D 벽돌깨기 게임을 만들고 싶어.",
+  "gameType": "solo",
+  "difficulty": "medium",
+  "version": "1.0.0",
+  "author": "AI Game Generator",
+  "createdAt": "2025-07-24T04:13:17.268Z",
+  "sensors": [
+    "orientation"
+  ],
+  "controls": "sensor",
+  "category": "arcade",
+  "minPlayers": 1,
+  "maxPlayers": 1,
+  "features": [
+    "mobile-sensors",
+    "real-time-gameplay",
+    "responsive-design"
+  ],
+  "requirements": {
+    "mobile": true,
+    "gyroscope": true,
+    "accelerometer": true,
+    "orientation": true
+  },
+  "integration": {
+    "sessionSDK": true,
+    "autoSession": true,
+    "qrCode": true
+  }
+}
