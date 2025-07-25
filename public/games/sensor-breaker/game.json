@@ -1,12 +1,12 @@
 {
   "id": "sensor-breaker",
   "title": "Sensor Breaker",
-  "description": "2D 벽돌깨기 게임을 만들고 싶어.",
+  "description": "2D 벽돌 깨기 게임을 만들고 싶어.",
   "gameType": "solo",
   "difficulty": "medium",
   "version": "1.0.0",
   "author": "AI Game Generator",
-  "createdAt": "2025-07-24T04:13:17.268Z",
+  "createdAt": "2025-07-25T03:48:27.916Z",
   "sensors": [
     "orientation"
   ],

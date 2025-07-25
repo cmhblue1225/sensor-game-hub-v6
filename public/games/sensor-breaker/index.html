@@ -14,7 +14,6 @@
 
         body {
             margin: 0;
-            padding: 20px;
             background: var(--background);
             color: var(--text);
             font-family: system-ui, sans-serif;
@@ -22,38 +21,35 @@
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
+            padding: 20px;
         }
 
         #gameCanvas {
             border: 2px solid var(--primary);
             border-radius: 8px;
             margin: 20px 0;
-        }
-
-        .game-info {
-            width: 100%;
-            max-width: 600px;
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
+            max-width: 100%;
         }
 
         .session-info {
+            background: rgba(0, 0, 0, 0.5);
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px;
             text-align: center;
-            margin: 20px 0;
         }
 
-        #qrCode {
-            margin: 10px auto;
-            background: white;
-            padding: 10px;
-            border-radius: 8px;
+        .game-stats {
+            display: flex;
+            gap: 20px;
+            margin: 10px;
+            font-size: 1.2em;
         }
 
         .controls {
             display: flex;
             gap: 10px;
-            margin-top: 20px;
+            margin: 10px;
         }
 
         button {
@@ -61,8 +57,9 @@
             color: white;
             border: none;
             padding: 10px 20px;
-            border-radius: 8px;
+            border-radius: 5px;
             cursor: pointer;
+            font-size: 16px;
             min-width: 44px;
             min-height: 44px;
         }
@@ -71,37 +68,31 @@
             background: var(--secondary);
         }
 
-        .status {
-            position: fixed;
-            top: 10px;
-            right: 10px;
+        #qrCode {
+            margin: 10px;
+            background: white;
             padding: 10px;
-            background: rgba(0,0,0,0.5);
             border-radius: 8px;
         }
     </style>
 </head>
 <body>
-    <div class="game-info">
-        <div>Lives: <span id="lives">3</span></div>
-        <div>Score: <span id="score">0</span></div>
-    </div>
-
-    <canvas id="gameCanvas"></canvas>
-
     <div class="session-info">
         <div>Session Code: <span id="sessionCode">-</span></div>
         <div id="qrCode"></div>
     </div>
 
+    <div class="game-stats">
+        <div>Score: <span id="score">0</span></div>
+        <div>Lives: <span id="lives">3</span></div>
+    </div>
+
+    <canvas id="gameCanvas" width="400" height="600"></canvas>
+
     <div class="controls">
         <button id="startBtn">Start</button>
         <button id="pauseBtn">Pause</button>
         <button onclick="location.href='/'">Hub</button>
-    </div>
-
-    <div class="status">
-        <div>Sensor: <span id="sensorStatus">❌</span></div>
     </div>
 
     <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
@@ -113,58 +104,65 @@
                 this.canvas = document.getElementById('gameCanvas');
                 this.ctx = this.canvas.getContext('2d');
                 
-                // 게임 설정
-                this.paddle = {
-                    width: 100,
-                    height: 20,
-                    x: 0,
-                    y: 0
-                };
-                
-                this.ball = {
-                    radius: 10,
-                    x: 0,
-                    y: 0,
-                    dx: 5,
-                    dy: -5
-                };
-
-                this.bricks = [];
-                this.brickRows = 5;
-                this.brickCols = 8;
-                
-                this.score = 0;
-                this.lives = 3;
-                this.gameState = 'ready';
-
-                // SessionSDK 초기화
                 this.sdk = new SessionSDK({
-                    gameId: 'Sensor-Breaker',
+                    gameId: 'sensor-breaker',
                     gameType: 'solo',
                     debug: true
                 });
 
-                this.initGame();
-                this.initEventListeners();
+                this.gameState = 'waiting';
+                this.score = 0;
+                this.lives = 3;
+                
+                // 게임 객체 초기화
+                this.paddle = {
+                    x: this.canvas.width / 2,
+                    width: 80,
+                    height: 10,
+                    speed: 5
+                };
+
+                this.ball = {
+                    x: this.canvas.width / 2,
+                    y: this.canvas.height - 30,
+                    radius: 5,
+                    dx: 0,
+                    dy: -5
+                };
+
+                this.bricks = this.createBricks();
+
+                // 이벤트 리스너 설정
+                this.setupEventListeners();
+                this.initializeSDK();
             }
 
-            initGame() {
-                this.resizeCanvas();
-                this.resetBall();
-                this.createBricks();
-                
-                // 패들 초기 위치
-                this.paddle.x = (this.canvas.width - this.paddle.width) / 2;
-                this.paddle.y = this.canvas.height - this.paddle.height - 10;
+            createBricks() {
+                const bricks = [];
+                const rows = 5;
+                const cols = 8;
+                const padding = 10;
+                const width = (this.canvas.width - padding * (cols + 1)) / cols;
+                const height = 20;
+
+                for (let r = 0; r < rows; r++) {
+                    for (let c = 0; c < cols; c++) {
+                        bricks.push({
+                            x: c * (width + padding) + padding,
+                            y: r * (height + padding) + padding + 50,
+                            width,
+                            height,
+                            active: true
+                        });
+                    }
+                }
+                return bricks;
             }
 
-            initEventListeners() {
-                window.addEventListener('resize', () => this.resizeCanvas());
-                
-                // SessionSDK 이벤트
+            initializeSDK() {
                 this.sdk.on('connected', () => {
-                    console.log('서버 연결됨');
-                    this.sdk.createSession();
+                    console.log('Connected to server');
+                    this.createSession();
                 });
 
                 this.sdk.on('session-created', (event) => {
@@ -172,40 +170,26 @@
                     this.displaySessionInfo(session);
                 });
 
-                this.sdk.on('sensor-connected', (event) => {
-                    const data = event.detail || event;
-                    document.getElementById('sensorStatus').textContent = '✅';
-                });
-
                 this.sdk.on('sensor-data', (event) => {
                     const data = event.detail || event;
                     this.handleSensorData(data);
                 });
-
-                // 게임 컨트롤
-                document.getElementById('startBtn').onclick = () => this.startGame();
-                document.getElementById('pauseBtn').onclick = () => this.togglePause();
             }
 
-            resizeCanvas() {
-                this.canvas.width = Math.min(600, window.innerWidth - 40);
-                this.canvas.height = this.canvas.width * 0.7;
-            }
-
-            createBricks() {
-                const brickWidth = (this.canvas.width - 30) / this.brickCols;
-                const brickHeight = 20;
-
-                for (let r = 0; r < this.brickRows; r++) {
-                    for (let c = 0; c < this.brickCols; c++) {
-                        this.bricks.push({
-                            x: c * (brickWidth + 2) + 15,
-                            y: r * (brickHeight + 2) + 30,
-                            width: brickWidth,
-                            height: brickHeight,
-                            active: true
-                        });
-                    }
+            displaySessionInfo(session) {
+                document.getElementById('sessionCode').textContent = session.sessionCode;
+                
+                try {
+                    QRCode.toCanvas(
+                        document.getElementById('qrCode'),
+                        session.joinURL,
+                        { width: 128 }
+                    );
+                } catch (error) {
+                    console.error('QR Code generation failed:', error);
+                    // 폴백: 텍스트로 표시
+                    const qrDiv = document.getElementById('qrCode');
+                    qrDiv.textContent = `Join URL: ${session.joinURL}`;
                 }
             }
 
@@ -216,15 +200,28 @@
                 if (orientation) {
                     // 감마값(-90~90)을 패들 이동에 활용
                     const moveX = orientation.gamma * 2;
-                    this.paddle.x = Math.max(0,
-                        Math.min(this.canvas.width - this.paddle.width,
-                            this.paddle.x + moveX));
+                    this.paddle.x = Math.max(
+                        0,
+                        Math.min(
+                            this.canvas.width - this.paddle.width,
+                            this.paddle.x + moveX
+                        )
+                    );
                 }
             }
 
+            setupEventListeners() {
+                document.getElementById('startBtn').onclick = () => this.startGame();
+                document.getElementById('pauseBtn').onclick = () => this.togglePause();
+            }
+
             startGame() {
-                if (this.gameState === 'ready' || this.gameState === 'paused') {
+                if (this.gameState === 'waiting' || this.gameState === 'gameover') {
                     this.gameState = 'playing';
+                    this.score = 0;
+                    this.lives = 3;
+                    this.bricks = this.createBricks();
+                    this.updateUI();
                     this.gameLoop();
                 }
             }
@@ -238,129 +235,121 @@
                 }
             }
 
-            resetBall() {
-                this.ball.x = this.canvas.width / 2;
-                this.ball.y = this.canvas.height - 30;
-                this.ball.dx = 5;
-                this.ball.dy = -5;
+            updateUI() {
+                document.getElementById('score').textContent = this.score;
+                document.getElementById('lives').textContent = this.lives;
+            }
+
+            gameLoop() {
+                if (this.gameState !== 'playing') return;
+
+                this.update();
+                this.render();
+                requestAnimationFrame(() => this.gameLoop());
             }
 
             update() {
-                if (this.gameState !== 'playing') return;
-
-                // 공 이동
+                // 볼 이동
                 this.ball.x += this.ball.dx;
                 this.ball.y += this.ball.dy;
 
-                // 벽 충돌
+                // 벽 충돌 체크
                 if (this.ball.x + this.ball.radius > this.canvas.width || 
                     this.ball.x - this.ball.radius < 0) {
                     this.ball.dx = -this.ball.dx;
                 }
+
                 if (this.ball.y - this.ball.radius < 0) {
                     this.ball.dy = -this.ball.dy;
                 }
 
-                // 패들 충돌
-                if (this.ball.y + this.ball.radius > this.paddle.y &&
-                    this.ball.x > this.paddle.x &&
-                    this.ball.x < this.paddle.x + this.paddle.width) {
-                    this.ball.dy = -this.ball.dy;
+                // 패들 충돌 체크
+                if (this.ball.y + this.ball.radius > this.canvas.height - this.paddle.height) {
+                    if (this.ball.x > this.paddle.x && 
+                        this.ball.x < this.paddle.x + this.paddle.width) {
+                        this.ball.dy = -this.ball.dy;
+                    } else if (this.ball.y + this.ball.radius > this.canvas.height) {
+                        this.lives--;
+                        this.updateUI();
+                        
+                        if (this.lives <= 0) {
+                            this.gameState = 'gameover';
+                            return;
+                        }
+
+                        // 볼 리셋
+                        this.ball.x = this.canvas.width / 2;
+                        this.ball.y = this.canvas.height - 30;
+                        this.ball.dx = 0;
+                        this.ball.dy = -5;
+                    }
                 }
 
-                // 벽돌 충돌
+                // 벽돌 충돌 체크
                 this.bricks.forEach(brick => {
                     if (!brick.active) return;
 
-                    if (this.ball.x > brick.x &&
+                    if (this.ball.x > brick.x && 
                         this.ball.x < brick.x + brick.width &&
-                        this.ball.y > brick.y &&
+                        this.ball.y > brick.y && 
                         this.ball.y < brick.y + brick.height) {
+                        
                         brick.active = false;
                         this.ball.dy = -this.ball.dy;
                         this.score += 10;
-                        document.getElementById('score').textContent = this.score;
+                        this.updateUI();
                     }
                 });
-
-                // 바닥 충돌 (생명력 감소)
-                if (this.ball.y + this.ball.radius > this.canvas.height) {
-                    this.lives--;
-                    document.getElementById('lives').textContent = this.lives;
-                    if (this.lives <= 0) {
-                        this.gameState = 'gameOver';
-                    } else {
-                        this.resetBall();
-                    }
-                }
             }
 
             render() {
+                // 화면 클리어
                 this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
                 // 패들 그리기
-                this.ctx.fillStyle = var(--primary);
-                this.ctx.fillRect(this.paddle.x, this.paddle.y,
-                    this.paddle.width, this.paddle.height);
+                this.ctx.fillStyle = 'var(--primary)';
+                this.ctx.fillRect(
+                    this.paddle.x,
+                    this.canvas.height - this.paddle.height,
+                    this.paddle.width,
+                    this.paddle.height
+                );
 
-                // 공 그리기
+                // 볼 그리기
                 this.ctx.beginPath();
-                this.ctx.arc(this.ball.x, this.ball.y,
-                    this.ball.radius, 0, Math.PI * 2);
-                this.ctx.fillStyle = var(--secondary);
+                this.ctx.arc(this.ball.x, this.ball.y, this.ball.radius, 0, Math.PI * 2);
+                this.ctx.fillStyle = 'var(--secondary)';
                 this.ctx.fill();
                 this.ctx.closePath();
 
                 // 벽돌 그리기
                 this.bricks.forEach(brick => {
                     if (!brick.active) return;
-                    this.ctx.fillStyle = var(--primary);
-                    this.ctx.fillRect(brick.x, brick.y,
-                        brick.width, brick.height);
+                    
+                    this.ctx.fillStyle = 'var(--primary)';
+                    this.ctx.fillRect(brick.x, brick.y, brick.width, brick.height);
                 });
 
-                // 게임오버 화면
-                if (this.gameState === 'gameOver') {
-                    this.ctx.fillStyle = 'rgba(0,0,0,0.7)';
-                    this.ctx.fillRect(0, 0,
-                        this.canvas.width, this.canvas.height);
-                    this.ctx.fillStyle = var(--text);
-                    this.ctx.font = '48px system-ui';
+                // 게임오버 상태 표시
+                if (this.gameState === 'gameover') {
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    
+                    this.ctx.font = '30px Arial';
+                    this.ctx.fillStyle = 'var(--text)';
                     this.ctx.textAlign = 'center';
-                    this.ctx.fillText('GAME OVER',
-                        this.canvas.width/2, this.canvas.height/2);
-                }
-            }
-
-            gameLoop() {
-                if (this.gameState === 'playing') {
-                    this.update();
-                    this.render();
-                    requestAnimationFrame(() => this.gameLoop());
-                }
-            }
-
-            displaySessionInfo(session) {
-                document.getElementById('sessionCode').textContent = session.sessionCode;
-                
-                try {
-                    QRCode.toCanvas(
-                        document.getElementById('qrCode'),
-                        session.sessionCode,
-                        { width: 128 }
+                    this.ctx.fillText(
+                        'Game Over',
+                        this.canvas.width / 2,
+                        this.canvas.height / 2
                     );
-                } catch (e) {
-                    console.error('QR 코드 생성 실패:', e);
-                    // QR 코드 폴백 - 텍스트로 표시
-                    const qrDiv = document.getElementById('qrCode');
-                    qrDiv.innerHTML = `<p>Session Code: ${session.sessionCode}</p>`;
                 }
             }
         }
 
-        // 게임 시작
+        // 게임 인스턴스 생성
         document.addEventListener('DOMContentLoaded', () => {
-            new SensorBreaker();
+            const game = new SensorBreaker();
         });
     </script>
 </body>
