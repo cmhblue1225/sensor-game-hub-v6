@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1.0, minimum-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="msapplication-TileColor" content="#6366f1">
+    <meta name="format-detection" content="telephone=no">
+    <title>🏆 Acorn Battle - 도토리 배틀</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    
+    <!-- QR Code Generator -->
+    <script src="https://unpkg.com/qrcode@1.5.3/build/qrcode.min.js"></script>
+    
+    <!-- SessionSDK -->
+    <script src="/js/SessionSDK.js"></script>
+</head>
+
+<body>
+    <div class="game-container">
+        <!-- 세션 정보 오버레이 -->
+        <div class="session-overlay" id="session-panel">
+            <div class="session-info">
+                <h3>게임 세션</h3>
+                <div class="session-code">
+                    <span>세션 코드: </span>
+                    <strong id="session-code-display">-</strong>
+                </div>
+                <div class="qr-container">
+                    <canvas id="qr-canvas"></canvas>
+                    <div id="qr-fallback" class="qr-fallback" style="display: none;"></div>
+                </div>
+            </div>
+            <div class="connection-status">
+                <div class="sensor-status" id="sensor1-container">
+                    <span class="sensor-label">📱 센서1:</span>
+                    <span class="status-indicator waiting" id="sensor1-status">대기중</span>
+                </div>
+                <div class="sensor-status" id="sensor2-container">
+                    <span class="sensor-label">📱 센서2:</span>
+                    <span class="status-indicator waiting" id="sensor2-status">대기중</span>
+                </div>
+            </div>
+            <button id="start-game-btn" class="start-btn" disabled>게임 시작</button>
+        </div>
+
+        <!-- 게임 가이드 패널 -->
+        <div class="game-guide-panel" id="game-guide-panel" style="display: none;">
+            <div class="guide-content">
+                <div class="guide-header">
+                    <h3>🏆 도토리 배틀 - 게임 가이드</h3>
+                    <button id="close-guide-btn" class="close-guide-btn">×</button>
+                </div>
+
+                <div class="guide-sections">
+                    <div class="guide-section">
+                        <h4>🎯 게임 목표</h4>
+                        <p>제한 시간 1분 내에 더 많은 도토리를 수집하여 승리하세요!</p>
+                    </div>
+
+                    <div class="guide-section">
+                        <h4>🎮 조작법</h4>
+                        <div class="controls-grid">
+                            <div class="control-item">
+                                <div class="control-icon">📱</div>
+                                <div class="control-desc">
+                                    <strong>기기 기울이기</strong>
+                                    <p>좌우로 기울여 플레이어 이동</p>
+                                </div>
+                            </div>
+                            <div class="control-item">
+                                <div class="control-icon">🔄</div>
+                                <div class="control-desc">
+                                    <strong>기기 흔들기</strong>
+                                    <p>빠르게 흔들어 가속 이동</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="guide-section">
+                        <h4>🎲 게임 규칙</h4>
+                        <ul class="rules-list">
+                            <li>🌰 맵에 흩어진 도토리를 수집하세요</li>
+                            <li>🏠 자신의 점수 구역(파란색/빨간색)에 도토리를 저장하여 점수 획득</li>
+                            <li>💰 상대방의 점수 구역에서 도토리를 훔칠 수 있습니다</li>
+                            <li>🚧 움직이는 장애물과 충돌하면 잠시 기절합니다</li>
+                            <li>⏰ 1분 후 더 많은 점수를 획득한 플레이어가 승리!</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-section">
+                        <h4>💡 게임 팁</h4>
+                        <ul class="tips-list">
+                            <li>기기를 부드럽게 기울여 정확한 조작을 하세요</li>
+                            <li>상대방이 도토리를 저장하는 순간을 노려 훔치세요</li>
+                            <li>장애물의 움직임 패턴을 파악하여 피하세요</li>
+                            <li>충돌 후 무적 시간을 활용하여 안전하게 이동하세요</li>
+                        </ul>
+                    </div>
+
+                    <div class="guide-section">
+                        <h4>🎨 게임 요소</h4>
+                        <div class="elements-grid">
+                            <div class="element-item">
+                                <span class="element-icon" style="color: #3B82F6;">●</span>
+                                <span>플레이어 1 (파란색)</span>
+                            </div>
+                            <div class="element-item">
+                                <span class="element-icon" style="color: #EF4444;">●</span>
+                                <span>플레이어 2 (빨간색)</span>
+                            </div>
+                            <div class="element-item">
+                                <span class="element-icon" style="color: #8B4513;">🌰</span>
+                                <span>도토리 (수집 아이템)</span>
+                            </div>
+                            <div class="element-item">
+                                <span class="element-icon" style="color: #FF4444;">■</span>
+                                <span>장애물 (충돌 시 기절)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="guide-footer">
+                    <button id="start-tutorial-btn" class="tutorial-btn">튜토리얼 시작</button>
+                    <button id="close-guide-footer-btn" class="guide-close-btn">게임 시작</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 게임 캔버스 -->
+        <div class="game-canvas-container">
+            <canvas id="game-canvas" width="1200" height="800"></canvas>
+            <div class="game-overlay" id="game-overlay">
+                <div class="overlay-content">
+                    <h2 id="overlay-title">플레이어를 기다리는 중...</h2>
+                    <p id="overlay-message">모바일 기기로 QR 코드를 스캔하거나 세션 코드를 입력하세요</p>
+                    <button id="show-guide-btn" class="guide-btn">📖 게임 가이드</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 게임 결과 모달 -->
+        <div class="game-result-modal" id="result-modal" style="display: none;">
+            <div class="modal-content">
+                <h2 id="result-title">게임 종료!</h2>
+                <div class="final-scores">
+                    <div class="final-score">
+                        <span class="player-name">플레이어 1</span>
+                        <span class="final-score-value" id="final-score-p1">0</span>
+                    </div>
+                    <div class="final-score">
+                        <span class="player-name">플레이어 2</span>
+                        <span class="final-score-value" id="final-score-p2">0</span>
+                    </div>
+                </div>
+                <div class="result-buttons">
+                    <button id="restart-btn" class="action-btn primary">다시 시작</button>
+                    <button id="hub-btn" class="action-btn secondary">허브로 돌아가기</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 컨트롤 패널 -->
+        <div class="control-panel">
+            <button id="pause-btn" class="control-btn" disabled>⏸️ 일시정지</button>
+            <button id="restart-game-btn" class="control-btn" disabled>🔄 재시작</button>
+            <a href="/" class="hub-link">🏠 허브로 돌아가기</a>
+        </div>
+    </div>
+
+    <script src="game.js"></script>
+</body>
+
+</html>

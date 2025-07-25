@@ -3,266 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>⚔️ Rhythm Blade Dual</title>
-    <style>
-        :root {
-            --primary: #3b82f6;
-            --secondary: #8b5cf6;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --error: #ef4444;
-            --sensor1-color: #ef4444;  /* Red for left player */
-            --sensor2-color: #3b82f6;  /* Blue for right player */
-            --cooperation-color: #8b5cf6; /* Purple for cooperation */
-            --background: #0f172a;
-            --surface: #1e293b;
-            --text-primary: #f8fafc;
-            --text-secondary: #cbd5e1;
-            --border: #475569;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: var(--background);
-            color: var(--text-primary);
-            overflow: hidden;
-            height: 100vh;
-        }
-        
-        #gameCanvas {
-            display: block;
-            width: 100vw;
-            height: 100vh;
-            background: linear-gradient(135deg, #0f172a, #1e293b);
-        }
-        
-        .game-ui {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            pointer-events: none;
-            z-index: 100;
-        }
-        
-        .ui-panel {
-            position: absolute;
-            background: rgba(30, 41, 59, 0.9);
-            border: 1px solid var(--border);
-            border-radius: 0.75rem;
-            padding: 1.25rem;
-            backdrop-filter: blur(12px);
-            pointer-events: all;
-        }
-        
-        .session-panel {
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            text-align: center;
-            min-width: 500px;
-        }
-        
-        .session-title {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--sensor1-color), var(--sensor2-color));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .session-code {
-            font-size: 3rem;
-            font-weight: 700;
-            font-family: 'Courier New', monospace;
-            color: var(--primary);
-            margin: 1.5rem 0;
-            padding: 1rem;
-            background: rgba(59, 130, 246, 0.1);
-            border: 2px solid var(--primary);
-            border-radius: 0.75rem;
-            letter-spacing: 0.3em;
-        }
-        
-        .qr-container {
-            margin: 1.5rem 0;
-            padding: 1rem;
-            background: white;
-            border-radius: 0.75rem;
-            display: inline-block;
-        }
-        
-        .sensor-status {
-            display: flex;
-            gap: 2rem;
-            justify-content: center;
-            margin: 2rem 0;
-        }
-        
-        .sensor-info {
-            padding: 1rem;
-            border-radius: 0.5rem;
-            min-width: 150px;
-            text-align: center;
-            border: 2px solid;
-        }
-        
-        .sensor1 {
-            border-color: var(--sensor1-color);
-            background: rgba(239, 68, 68, 0.1);
-        }
-        
-        .sensor2 {
-            border-color: var(--sensor2-color);
-            background: rgba(59, 130, 246, 0.1);
-        }
-        
-        .sensor-label {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-        }
-        
-        .sensor-state {
-            font-size: 0.9rem;
-            opacity: 0.8;
-        }
-        
-        .game-stats {
-            position: absolute;
-            top: 1rem;
-            left: 1rem;
-            display: grid;
-            gap: 1rem;
-            min-width: 200px;
-        }
-        
-        .stat-item {
-            background: rgba(30, 41, 59, 0.8);
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            border: 1px solid var(--border);
-            text-align: center;
-        }
-        
-        .stat-label {
-            font-size: 0.8rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.25rem;
-        }
-        
-        .stat-value {
-            font-size: 1.2rem;
-            font-weight: 600;
-            color: var(--primary);
-        }
-        
-        .cooperation-meter {
-            position: absolute;
-            top: 1rem;
-            right: 1rem;
-            width: 200px;
-        }
-        
-        .meter-label {
-            text-align: center;
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: var(--cooperation-color);
-        }
-        
-        .meter-bar {
-            height: 20px;
-            background: rgba(139, 92, 246, 0.2);
-            border-radius: 10px;
-            overflow: hidden;
-            border: 1px solid var(--cooperation-color);
-        }
-        
-        .meter-fill {
-            height: 100%;
-            width: 100%;
-            background: linear-gradient(90deg, var(--sensor1-color), var(--cooperation-color), var(--sensor2-color));
-            transition: width 0.3s ease;
-        }
-        
-        .control-panel {
-            bottom: 1rem;
-            left: 1rem;
-            display: flex;
-            gap: 1rem;
-        }
-        
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-block;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-size: 0.9rem;
-        }
-        
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-        
-        .btn-secondary {
-            background: var(--surface);
-            color: var(--text-primary);
-            border: 1px solid var(--border);
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .hidden {
-            display: none !important;
-        }
-        
-        .game-instructions {
-            position: absolute;
-            bottom: 1rem;
-            right: 1rem;
-            max-width: 300px;
-            font-size: 0.9rem;
-            background: rgba(30, 41, 59, 0.8);
-            padding: 1rem;
-            border-radius: 0.5rem;
-            border: 1px solid var(--border);
-        }
-        
-        .instruction-title {
-            font-weight: 600;
-            margin-bottom: 0.5rem;
-            color: var(--cooperation-color);
-        }
-        
-        .instruction-item {
-            margin-bottom: 0.5rem;
-            padding-left: 1rem;
-            position: relative;
-        }
-        
-        .instruction-item::before {
-            content: "•";
-            position: absolute;
-            left: 0;
-            color: var(--primary);
-        }
-    </style>
+    <title>⚔️ Rhythm Blade</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <canvas id="gameCanvas"></canvas>
@@ -270,10 +12,81 @@
     <div class="game-ui">
         <!-- 세션 대기 패널 -->
         <div class="ui-panel session-panel" id="sessionPanel">
-            <div class="session-title">⚔️ Rhythm Blade Dual</div>
+            <div class="session-title">⚔️ Rhythm Blade</div>
             <div style="color: var(--text-secondary); margin-bottom: 1.5rem; line-height: 1.6;">
                 두 명이 협력하여 플레이하는 3D 리듬 게임!<br>
+                선택한 음악에 맞춘 특별한 비트맵으로 플레이하세요!<br>
                 완벽한 타이밍과 협력으로 최고 점수를 달성하세요!
+            </div>
+            
+            <!-- 🎵 음악 선택 섹션 -->
+            <div class="music-selection" id="musicSelection">
+                <div class="music-title">🎵 음악 선택</div>
+                <div class="music-tracks">
+                    <div class="track-option" data-track="electric-storm" id="track-electric-storm">
+                        <div class="track-icon">⚡</div>
+                        <div class="track-name">Electric Storm</div>
+                        <div class="track-details">Electronic</div>
+                        <div class="track-status">✓</div>
+                    </div>
+                    <div class="track-option" data-track="neon-nights" id="track-neon-nights">
+                        <div class="track-icon">🌙</div>
+                        <div class="track-name">Neon Nights</div>
+                        <div class="track-details">Synthwave</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="cyber-beat" id="track-cyber-beat">
+                        <div class="track-icon">🤖</div>
+                        <div class="track-name">Cyber Beat</div>
+                        <div class="track-details">Techno</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="space-rhythm" id="track-space-rhythm">
+                        <div class="track-icon">🚀</div>
+                        <div class="track-name">Space Rhythm</div>
+                        <div class="track-details">Ambient</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="fire-dance" id="track-fire-dance">
+                        <div class="track-icon">🔥</div>
+                        <div class="track-name">Fire Dance</div>
+                        <div class="track-details">Drum&Bass</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="ocean-waves" id="track-ocean-waves">
+                        <div class="track-icon">🌊</div>
+                        <div class="track-name">Ocean Waves</div>
+                        <div class="track-details">Chill</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="crystal-cave" id="track-crystal-cave">
+                        <div class="track-icon">💎</div>
+                        <div class="track-name">Crystal Cave</div>
+                        <div class="track-details">Progressive</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="neon-city" id="track-neon-city">
+                        <div class="track-icon">🏙️</div>
+                        <div class="track-name">Neon City</div>
+                        <div class="track-details">Retrowave</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="thunder-storm" id="track-thunder-storm">
+                        <div class="track-icon">⛈️</div>
+                        <div class="track-name">Thunder Storm</div>
+                        <div class="track-details">Hardcore</div>
+                        <div class="track-status"></div>
+                    </div>
+                    <div class="track-option" data-track="starlight" id="track-starlight">
+                        <div class="track-icon">✨</div>
+                        <div class="track-name">Starlight</div>
+                        <div class="track-details">Melodic</div>
+                        <div class="track-status"></div>
+                    </div>
+                </div>
+                <div class="selected-track-info" id="selectedTrackInfo">
+                    <span id="selectedTrackName">Electric Storm</span> 선택됨
+                </div>
             </div>
             
             <div class="session-code" id="sessionCode">----</div>
@@ -330,15 +143,24 @@
             <a href="/" class="btn btn-secondary">🏠 허브로</a>
         </div>
         
-        <!-- ✅ 개선된 게임 설명 -->
+        <!-- ✅ 바닥 가이드라인 게임 설명 (탭소닉 스타일) -->
         <div class="game-instructions hidden" id="gameInstructions">
-            <div class="instruction-title">게임 방법</div>
-            <div class="instruction-item">🔴 플레이어1(왼쪽): 빨간 노트, 오른쪽으로 스윙</div>
-            <div class="instruction-item">🔵 플레이어2(오른쪽): 파란 노트, 왼쪽으로 스윙</div>
-            <div class="instruction-item">🤝 보라색: 협력 노트 (500ms내 동시 타격)</div>
+            <div class="instruction-title">🎵 Rhythm Blade 게임 방법</div>
+            <div class="instruction-item">🎯 바닥의 탭소닉 스타일 가이드라인으로 완벽한 타이밍!</div>
+            <div class="instruction-item">🔴 빨간 바닥 패드: 플레이어1, 오른쪽으로 스윙</div>
+            <div class="instruction-item">🔵 파란 바닥 패드: 플레이어2, 왼쪽으로 스윙</div>
+            <div class="instruction-item">🟣 보라 바닥 패드: 협력 노트 (동시 타격)</div>
+            <div class="instruction-item">✨ 노트가 바닥 원형 인디케이터에 도달할 때 타격!</div>
+            <div class="instruction-item">🛤️ 트랙 라인을 따라 다가오는 노트를 추적하세요</div>
+            <div class="instruction-item">🎵 128 BPM 박자에 맞춘 바닥 펄스 효과</div>
             <div class="instruction-item">⌨️ 테스트: Q(왼쪽), E(오른쪽), Space(협력)</div>
         </div>
     </div>
+    
+    <!-- 🎵 배경 음악 - 동적 로드 -->
+    <audio id="bgMusic" loop preload="auto">
+        <!-- 음악 소스는 JavaScript에서 동적으로 로드됩니다 -->
+    </audio>
     
     <!-- Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
@@ -352,786 +174,7 @@
     <!-- SessionSDK -->
     <script src="/js/SessionSDK.js"></script>
     
-    <script>
-        class RhythmBladeDual {
-            constructor() {
-                this.canvas = document.getElementById('gameCanvas');
-                
-                // 캔버스 크기 설정
-                this.resizeCanvas();
-                window.addEventListener('resize', () => this.resizeCanvas());
-                
-                // ✅ 올바른 SDK 초기화 (dual 타입)
-                this.sdk = new SessionSDK({
-                    gameId: 'rhythm-blade',
-                    gameType: 'dual',         // dual 타입으로 설정
-                    debug: true
-                });
-                
-                // 게임 상태
-                this.gameState = {
-                    phase: 'waiting',         // waiting, playing, paused, ended
-                    score: 0,
-                    combo: 0,
-                    totalNotes: 0,
-                    hitNotes: 0,
-                    startTime: 0
-                };
-                
-                // 센서 연결 상태
-                this.sensorStatus = {
-                    sensor1: { connected: false, lastSwing: 0 },
-                    sensor2: { connected: false, lastSwing: 0 }
-                };
-                
-                // 협력 시스템
-                this.cooperation = {
-                    sync: 100,               // 협력 동기화 수치
-                    recentHits: [],          // 최근 히트 기록
-                    cooperationBonus: 1.0    // 협력 보너스 배수
-                };
-                
-                // Three.js 초기화
-                this.initThreeJS();
-                
-                // 게임 데이터
-                this.notes = [];
-                this.noteSpawnIndex = 0;
-                this.particleEffects = [];
-                
-                // 비트맵 (협력 요소 포함)
-                this.beatmap = [
-                    { time: 2, lane: "sensor1", type: "normal" },
-                    { time: 2.5, lane: "sensor2", type: "normal" },
-                    { time: 3, lane: "sensor1", type: "normal" },
-                    { time: 3.5, lane: "sensor2", type: "normal" },
-                    { time: 4, lane: "both", type: "cooperation" },     // 협력 노트
-                    { time: 5, lane: "sensor1", type: "normal" },
-                    { time: 5.25, lane: "sensor2", type: "normal" },
-                    { time: 5.5, lane: "sensor1", type: "normal" },
-                    { time: 5.75, lane: "sensor2", type: "normal" },
-                    { time: 6, lane: "both", type: "cooperation" },     // 협력 노트
-                    { time: 6.5, lane: "sensor1", type: "normal" },
-                    { time: 6.75, lane: "sensor2", type: "normal" },
-                    { time: 7, lane: "sensor1", type: "normal" },
-                    { time: 7.25, lane: "sensor2", type: "normal" },
-                    { time: 7.5, lane: "both", type: "cooperation" },   // 협력 노트
-                    { time: 8, lane: "sensor1", type: "normal" },
-                    { time: 8.5, lane: "sensor2", type: "normal" },
-                    { time: 9, lane: "both", type: "cooperation" }      // 마지막 협력 노트
-                ];
-                
-                this.gameState.totalNotes = this.beatmap.length;
-                
-                this.setupEventListeners();
-                this.gameLoop();
-            }
-            
-            resizeCanvas() {
-                this.canvas.width = window.innerWidth;
-                this.canvas.height = window.innerHeight;
-                
-                if (this.renderer) {
-                    this.renderer.setSize(window.innerWidth, window.innerHeight);
-                }
-                if (this.camera) {
-                    this.camera.aspect = window.innerWidth / window.innerHeight;
-                    this.camera.updateProjectionMatrix();
-                }
-            }
-            
-            initThreeJS() {
-                // Scene 설정
-                this.scene = new THREE.Scene();
-                this.scene.fog = new THREE.Fog(0x0f172a, 10, 50);
-                
-                // Camera 설정
-                this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-                this.camera.position.set(0, 2, 5);
-                this.camera.lookAt(0, 0, 0);
-                
-                // Renderer 설정
-                this.renderer = new THREE.WebGLRenderer({ 
-                    canvas: this.canvas,
-                    antialias: true 
-                });
-                this.renderer.setSize(window.innerWidth, window.innerHeight);
-                this.renderer.setClearColor(0x0f172a);
-                this.renderer.shadowMap.enabled = true;
-                this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-                
-                // 조명 설정
-                const ambientLight = new THREE.AmbientLight(0x404040, 0.3);
-                this.scene.add(ambientLight);
-                
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-                directionalLight.position.set(0, 10, 5);
-                directionalLight.castShadow = true;
-                directionalLight.shadow.mapSize.width = 2048;
-                directionalLight.shadow.mapSize.height = 2048;
-                this.scene.add(directionalLight);
-                
-                // 세이버 생성 (dual용)
-                this.sabers = {
-                    sensor1: this.createSaber(0xff0000, -2),    // 빨간색, 왼쪽
-                    sensor2: this.createSaber(0x0000ff, 2)      // 파란색, 오른쪽
-                };
-                
-                this.scene.add(this.sabers.sensor1);
-                this.scene.add(this.sabers.sensor2);
-                
-                // 배경 환경 생성
-                this.createEnvironment();
-            }
-            
-            createSaber(color, xPosition) {
-                const saberGroup = new THREE.Group();
-                
-                // 세이버 손잡이
-                const hiltGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.6, 8);
-                const hiltMaterial = new THREE.MeshStandardMaterial({ 
-                    color: 0x333333,
-                    metalness: 0.8,
-                    roughness: 0.2
-                });
-                const hilt = new THREE.Mesh(hiltGeometry, hiltMaterial);
-                hilt.position.y = -0.3;
-                
-                // 세이버 날
-                const bladeGeometry = new THREE.CylinderGeometry(0.05, 0.05, 2, 8);
-                const bladeMaterial = new THREE.MeshBasicMaterial({ 
-                    color: color,
-                    transparent: true,
-                    opacity: 0.8
-                });
-                const blade = new THREE.Mesh(bladeGeometry, bladeMaterial);
-                blade.position.y = 1;
-                
-                // 세이버 광선 효과
-                const glowGeometry = new THREE.CylinderGeometry(0.08, 0.08, 2, 8);
-                const glowMaterial = new THREE.MeshBasicMaterial({ 
-                    color: color,
-                    transparent: true,
-                    opacity: 0.3
-                });
-                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-                glow.position.y = 1;
-                
-                saberGroup.add(hilt);
-                saberGroup.add(blade);
-                saberGroup.add(glow);
-                
-                saberGroup.position.set(xPosition, 1.5, 3);
-                saberGroup.rotation.x = THREE.MathUtils.degToRad(-15);
-                
-                saberGroup.userData = { 
-                    swinging: false, 
-                    swingTime: 0,
-                    sensorId: xPosition < 0 ? 'sensor1' : 'sensor2'
-                };
-                
-                return saberGroup;
-            }
-            
-            createEnvironment() {
-                // 바닥
-                const floorGeometry = new THREE.PlaneGeometry(20, 50);
-                const floorMaterial = new THREE.MeshStandardMaterial({ 
-                    color: 0x1e293b,
-                    transparent: true,
-                    opacity: 0.8
-                });
-                const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-                floor.rotation.x = -Math.PI / 2;
-                floor.position.y = -1;
-                floor.receiveShadow = true;
-                this.scene.add(floor);
-                
-                // 사이드 벽
-                for (let i = 0; i < 2; i++) {
-                    const wallGeometry = new THREE.PlaneGeometry(50, 10);
-                    const wallMaterial = new THREE.MeshStandardMaterial({ 
-                        color: 0x334155,
-                        transparent: true,
-                        opacity: 0.5
-                    });
-                    const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-                    wall.position.set(i === 0 ? -10 : 10, 4, 0);
-                    wall.rotation.y = i === 0 ? Math.PI / 2 : -Math.PI / 2;
-                    this.scene.add(wall);
-                }
-            }
-            
-            setupEventListeners() {
-                // ✅ 중요: 서버 연결 완료 후 세션 생성
-                this.sdk.on('connected', () => {
-                    console.log('✅ 서버 연결 완료, 세션 생성 중...');
-                    this.createSession();
-                });
-                
-                // ✅ 중요: CustomEvent 처리 패턴
-                this.sdk.on('session-created', (event) => {
-                    const session = event.detail || event;  // 필수 패턴!
-                    console.log('세션 생성됨:', session);
-                    this.displaySessionInfo(session);
-                });
-                
-                this.sdk.on('sensor-connected', (event) => {
-                    const data = event.detail || event;     // 필수 패턴!
-                    console.log('센서 연결됨:', data);
-                    this.onSensorConnected(data);
-                });
-                
-                this.sdk.on('sensor-data', (event) => {
-                    const data = event.detail || event;     // 필수 패턴!
-                    this.processSensorData(data);
-                });
-                
-                this.sdk.on('game-ready', (event) => {
-                    const data = event.detail || event;     // 필수 패턴!
-                    console.log('게임 준비 완료');
-                    this.startGame();
-                });
-                
-                this.sdk.on('sensor-disconnected', (event) => {
-                    const data = event.detail || event;     // 필수 패턴!
-                    console.log('센서 연결 해제:', data.sensorId);
-                    this.onSensorDisconnected(data);
-                });
-                
-                // ✅ 개선된 키보드 컨트롤 (테스트용)
-                window.addEventListener('keydown', (e) => {
-                    if (this.gameState.phase !== 'playing') return;
-                    
-                    switch(e.key.toLowerCase()) {
-                        case 'q': 
-                            this.triggerSwing('sensor1'); 
-                            console.log('🔴 왼쪽 세이버(sensor1) 스윙 - 오른쪽으로');
-                            break;
-                        case 'e': 
-                            this.triggerSwing('sensor2'); 
-                            console.log('🔵 오른쪽 세이버(sensor2) 스윙 - 왼쪽으로');
-                            break;
-                        case ' ': 
-                            this.triggerCooperationSwing(); 
-                            console.log('🤝 협력 스윙 - 두 세이버 동시 스윙');
-                            break;
-                        case 'a':
-                            // 약간의 딜레이를 두고 협력 테스트
-                            this.triggerSwing('sensor1');
-                            setTimeout(() => this.triggerSwing('sensor2'), 100);
-                            console.log('⏱️ 순차 협력 테스트 (100ms 딜레이)');
-                            break;
-                        case 's':
-                            // 더 긴 딜레이로 실패 테스트
-                            this.triggerSwing('sensor1');
-                            setTimeout(() => this.triggerSwing('sensor2'), 600);
-                            console.log('❌ 협력 실패 테스트 (600ms 딜레이)');
-                            break;
-                    }
-                });
-            }
-            
-            async createSession() {
-                try {
-                    await this.sdk.createSession();
-                } catch (error) {
-                    console.error('세션 생성 실패:', error);
-                }
-            }
-            
-            // ✅ QR 코드 안전한 생성 (폴백 처리 포함)
-            displaySessionInfo(session) {
-                document.getElementById('sessionCode').textContent = session.sessionCode;
-                
-                const qrUrl = `${window.location.origin}/sensor.html?session=${session.sessionCode}`;
-                
-                if (typeof QRCode !== 'undefined') {
-                    QRCode.toCanvas(document.createElement('canvas'), qrUrl, (error, canvas) => {
-                        if (!error) {
-                            canvas.style.width = '200px';
-                            canvas.style.height = '200px';
-                            document.getElementById('qrContainer').innerHTML = '';
-                            document.getElementById('qrContainer').appendChild(canvas);
-                        } else {
-                            console.error('QR 코드 생성 실패:', error);
-                            this.showQRCodeFallback(qrUrl);
-                        }
-                    });
-                } else {
-                    console.warn('QRCode 라이브러리가 로드되지 않았습니다. 폴백 사용.');
-                    this.showQRCodeFallback(qrUrl);
-                }
-            }
-            
-            showQRCodeFallback(qrUrl) {
-                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrUrl)}`;
-                const img = document.createElement('img');
-                img.src = qrApiUrl;
-                img.style.width = '200px';
-                img.style.height = '200px';
-                img.alt = 'QR Code';
-                
-                document.getElementById('qrContainer').innerHTML = '';
-                document.getElementById('qrContainer').appendChild(img);
-            }
-            
-            onSensorConnected(data) {
-                const sensorId = data.sensorId;
-                this.sensorStatus[sensorId].connected = true;
-                
-                // UI 업데이트
-                const statusElement = document.getElementById(`${sensorId}Status`);
-                statusElement.textContent = '연결됨 ✅';
-                statusElement.style.color = '#10b981';
-                
-                console.log(`${sensorId} 연결됨`);
-                
-                // 연결 상태 확인
-                this.updateConnectionStatus();
-            }
-            
-            onSensorDisconnected(data) {
-                const sensorId = data.sensorId;
-                this.sensorStatus[sensorId].connected = false;
-                
-                // UI 업데이트
-                const statusElement = document.getElementById(`${sensorId}Status`);
-                statusElement.textContent = '연결 해제됨 ❌';
-                statusElement.style.color = '#ef4444';
-                
-                console.log(`${sensorId} 연결 해제됨`);
-            }
-            
-            updateConnectionStatus() {
-                const connectedCount = Object.values(this.sensorStatus).filter(s => s.connected).length;
-                console.log(`연결된 센서: ${connectedCount}/2`);
-            }
-            
-            processSensorData(data) {
-                if (this.gameState.phase !== 'playing') return;
-                
-                const sensorId = data.sensorId;
-                const sensorData = data.data;
-                
-                if (sensorData.orientation) {
-                    // 스윙 감지 로직
-                    const rotationSpeed = Math.abs(sensorData.rotationRate?.alpha || 0) + 
-                                         Math.abs(sensorData.rotationRate?.beta || 0) + 
-                                         Math.abs(sensorData.rotationRate?.gamma || 0);
-                    
-                    const swingThreshold = 300;  // 스윙 인식 기준
-                    
-                    if (rotationSpeed > swingThreshold) {
-                        const now = Date.now();
-                        if (now - this.sensorStatus[sensorId].lastSwing > 500) {  // 500ms 쿨다운
-                            this.triggerSwing(sensorId);
-                            this.sensorStatus[sensorId].lastSwing = now;
-                        }
-                    }
-                }
-            }
-            
-            startGame() {
-                this.gameState.phase = 'playing';
-                this.gameState.startTime = Date.now();
-                
-                // UI 전환
-                document.getElementById('sessionPanel').classList.add('hidden');
-                document.getElementById('gameStats').classList.remove('hidden');
-                document.getElementById('cooperationMeter').classList.remove('hidden');
-                document.getElementById('controlPanel').classList.remove('hidden');
-                document.getElementById('gameInstructions').classList.remove('hidden');
-                
-                console.log('🎮 Rhythm Blade Dual 게임 시작!');
-            }
-            
-            triggerSwing(sensorId) {
-                const saber = this.sabers[sensorId];
-                if (!saber.userData.swinging) {
-                    saber.userData.swinging = true;
-                    saber.userData.swingTime = Date.now();
-                    this.checkHit(sensorId);
-                    
-                    // 시각적 효과
-                    this.createSwingEffect(saber);
-                }
-            }
-            
-            triggerCooperationSwing() {
-                // 두 센서 모두 스윙 (테스트용)
-                this.triggerSwing('sensor1');
-                this.triggerSwing('sensor2');
-            }
-            
-            checkHit(sensorId) {
-                const saber = this.sabers[sensorId];
-                let hit = false;
-                
-                for (let i = this.notes.length - 1; i >= 0; i--) {
-                    const note = this.notes[i];
-                    const noteData = note.userData;
-                    
-                    // ✅ 개선된 거리 체크 (협력 노트는 더 넓은 범위)
-                    const hitRange = noteData.type === 'cooperation' ? 2.5 : 2;
-                    const distance = note.position.distanceTo(saber.position);
-                    
-                    if (distance < hitRange) {  
-                        if (noteData.type === 'cooperation') {
-                            // ✅ 개선된 협력 노트 시스템
-                            noteData.hitBy = noteData.hitBy || [];
-                            noteData.hitTimes = noteData.hitTimes || [];
-                            
-                            if (!noteData.hitBy.includes(sensorId)) {
-                                const now = Date.now();
-                                noteData.hitBy.push(sensorId);
-                                noteData.hitTimes.push(now);
-                                
-                                console.log(`🤝 협력 노트 히트: ${sensorId} (${noteData.hitBy.length}/2)`);
-                                
-                                // 두 센서 모두 히트했는지 확인
-                                if (noteData.hitBy.length >= 2) {
-                                    // ✅ 동시성 체크 (500ms 내에 두 히트가 발생해야 함)
-                                    const timeDiff = Math.abs(noteData.hitTimes[1] - noteData.hitTimes[0]);
-                                    const maxSyncTime = 500; // 500ms 동기화 윈도우
-                                    
-                                    if (timeDiff <= maxSyncTime) {
-                                        // 완벽한 협력 히트!
-                                        this.processHit(note, 'cooperation', true);
-                                        hit = true;
-                                        
-                                        // ✅ 특별한 협력 보너스
-                                        const syncBonus = Math.max(1, (maxSyncTime - timeDiff) / maxSyncTime);
-                                        this.cooperation.sync = Math.min(100, this.cooperation.sync + (10 * syncBonus));
-                                        
-                                        console.log(`🌟 완벽한 협력! 동기화: ${timeDiff}ms, 보너스: ${syncBonus.toFixed(2)}`);
-                                    } else {
-                                        // 타이밍이 맞지 않음
-                                        console.log(`⏰ 협력 타이밍 실패: ${timeDiff}ms (최대 ${maxSyncTime}ms)`);
-                                        this.updateCooperation(false);
-                                    }
-                                }
-                            }
-                        } else if (noteData.lane === sensorId) {
-                            // 일반 노트
-                            this.processHit(note, 'normal', false);
-                            hit = true;
-                        }
-                    }
-                }
-                
-                if (hit) {
-                    this.gameState.combo++;
-                    this.updateCooperation(true);
-                } else {
-                    // ✅ 스윙했지만 히트하지 못한 경우
-                    this.gameState.combo = 0;
-                    this.updateCooperation(false);
-                }
-                
-                this.updateUI();
-            }
-            
-            processHit(note, type, isCooperation) {
-                // 점수 계산
-                let score = 100;
-                if (isCooperation) {
-                    score *= 2;  // 협력 보너스
-                    score *= this.cooperation.cooperationBonus;
-                }
-                
-                this.gameState.score += Math.floor(score);
-                this.gameState.hitNotes++;
-                
-                // 이펙트 생성
-                this.createHitEffect(note.position, isCooperation);
-                
-                // 노트 제거
-                this.scene.remove(note);
-                this.notes.splice(this.notes.indexOf(note), 1);
-                
-                console.log(`Hit! Score: +${Math.floor(score)}, Type: ${type}`);
-            }
-            
-            createSwingEffect(saber) {
-                // 세이버 스윙 이펙트
-                const trailGeometry = new THREE.PlaneGeometry(0.1, 2);
-                const trailMaterial = new THREE.MeshBasicMaterial({
-                    color: saber.children[1].material.color,
-                    transparent: true,
-                    opacity: 0.6
-                });
-                const trail = new THREE.Mesh(trailGeometry, trailMaterial);
-                trail.position.copy(saber.position);
-                trail.rotation.copy(saber.rotation);
-                
-                this.scene.add(trail);
-                
-                // 페이드 아웃 애니메이션
-                const fadeOut = () => {
-                    trail.material.opacity -= 0.05;
-                    if (trail.material.opacity <= 0) {
-                        this.scene.remove(trail);
-                    } else {
-                        requestAnimationFrame(fadeOut);
-                    }
-                };
-                fadeOut();
-            }
-            
-            createHitEffect(position, isCooperation) {
-                const particleCount = isCooperation ? 30 : 20;
-                const particles = new THREE.Group();
-                
-                for (let i = 0; i < particleCount; i++) {
-                    const particleGeometry = new THREE.SphereGeometry(0.05, 4, 4);
-                    const particleMaterial = new THREE.MeshBasicMaterial({
-                        color: isCooperation ? 0x8b5cf6 : Math.random() > 0.5 ? 0xff0000 : 0x0000ff,
-                        transparent: true,
-                        opacity: 1
-                    });
-                    const particle = new THREE.Mesh(particleGeometry, particleMaterial);
-                    particle.position.copy(position);
-                    
-                    particle.userData.velocity = new THREE.Vector3(
-                        (Math.random() - 0.5) * 4,
-                        (Math.random() - 0.5) * 4,
-                        (Math.random() - 0.5) * 4
-                    );
-                    particle.userData.life = 1;
-                    
-                    particles.add(particle);
-                }
-                
-                this.particleEffects.push(particles);
-                this.scene.add(particles);
-            }
-            
-            updateCooperation(success) {
-                if (success) {
-                    this.cooperation.sync = Math.min(100, this.cooperation.sync + 5);
-                    this.cooperation.cooperationBonus = 1.0 + (this.cooperation.sync / 200);
-                } else {
-                    this.cooperation.sync = Math.max(0, this.cooperation.sync - 10);
-                    this.cooperation.cooperationBonus = 1.0 + (this.cooperation.sync / 200);
-                }
-                
-                // 협력 미터 업데이트
-                const fillElement = document.getElementById('cooperationFill');
-                fillElement.style.width = `${this.cooperation.sync}%`;
-            }
-            
-            spawnNote() {
-                if (this.noteSpawnIndex >= this.beatmap.length) return;
-                
-                const now = Date.now();
-                const elapsedTime = (now - this.gameState.startTime) / 1000;
-                const noteData = this.beatmap[this.noteSpawnIndex];
-                
-                if (elapsedTime >= noteData.time) {
-                    this.createNote(noteData);
-                    this.noteSpawnIndex++;
-                }
-            }
-            
-            createNote(noteData) {
-                let geometry, material, position;
-                
-                if (noteData.type === 'cooperation') {
-                    // 협력 노트 (보라색, 큰 크기)
-                    geometry = new THREE.SphereGeometry(0.8, 8, 8);
-                    material = new THREE.MeshBasicMaterial({ 
-                        color: 0x8b5cf6,
-                        transparent: true,
-                        opacity: 0.8
-                    });
-                    position = new THREE.Vector3(0, 1.5, -20);
-                } else {
-                    // 일반 노트
-                    geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
-                    const color = noteData.lane === 'sensor1' ? 0xff0000 : 0x0000ff;
-                    material = new THREE.MeshBasicMaterial({ 
-                        color: color,
-                        transparent: true,
-                        opacity: 0.9
-                    });
-                    const x = noteData.lane === 'sensor1' ? -2 : 2;
-                    position = new THREE.Vector3(x, 1.5, -20);
-                }
-                
-                const note = new THREE.Mesh(geometry, material);
-                note.position.copy(position);
-                note.userData = { ...noteData };
-                
-                // 글로우 효과
-                const glowGeometry = geometry.clone();
-                glowGeometry.scale(1.2, 1.2, 1.2);
-                const glowMaterial = new THREE.MeshBasicMaterial({
-                    color: material.color,
-                    transparent: true,
-                    opacity: 0.3
-                });
-                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-                note.add(glow);
-                
-                this.notes.push(note);
-                this.scene.add(note);
-            }
-            
-            update() {
-                if (this.gameState.phase !== 'playing') return;
-                
-                const delta = 0.3;  // 노트 이동 속도
-                
-                // 노트 업데이트
-                for (let i = this.notes.length - 1; i >= 0; i--) {
-                    const note = this.notes[i];
-                    note.position.z += delta;
-                    note.rotation.y += 0.02;  // 회전 효과
-                    
-                    // 놓친 노트 처리
-                    if (note.position.z > 6) {
-                        this.scene.remove(note);
-                        this.notes.splice(i, 1);
-                        this.gameState.combo = 0;
-                        this.updateCooperation(false);
-                    }
-                }
-                
-                // 새 노트 생성
-                this.spawnNote();
-                
-                // 세이버 애니메이션 업데이트
-                this.updateSaber(this.sabers.sensor1);
-                this.updateSaber(this.sabers.sensor2);
-                
-                // 파티클 효과 업데이트
-                this.updateParticles();
-                
-                // 게임 종료 체크
-                this.checkGameEnd();
-            }
-            
-            updateSaber(saber) {
-                if (saber.userData.swinging) {
-                    const now = Date.now();
-                    const swingDuration = 300;
-                    const timeSinceSwing = now - saber.userData.swingTime;
-                    
-                    if (timeSinceSwing < swingDuration) {
-                        const progress = timeSinceSwing / swingDuration;
-                        const baseAngle = Math.sin(progress * Math.PI) * 45;
-                        
-                        // ✅ 센서별 스윙 방향 설정
-                        // sensor1(왼쪽): 오른쪽으로 스윙 (음의 각도)
-                        // sensor2(오른쪽): 왼쪽으로 스윙 (양의 각도)
-                        let angle;
-                        if (saber.userData.sensorId === 'sensor1') {
-                            angle = -baseAngle;  // 왼쪽 세이버는 오른쪽으로 스윙
-                        } else {
-                            angle = baseAngle;   // 오른쪽 세이버는 왼쪽으로 스윙
-                        }
-                        
-                        saber.rotation.z = THREE.MathUtils.degToRad(angle);
-                    } else {
-                        saber.userData.swinging = false;
-                        saber.rotation.z = 0;
-                    }
-                }
-            }
-            
-            updateParticles() {
-                for (let i = this.particleEffects.length - 1; i >= 0; i--) {
-                    const particleGroup = this.particleEffects[i];
-                    let allDead = true;
-                    
-                    particleGroup.children.forEach(particle => {
-                        if (particle.userData.life > 0) {
-                            allDead = false;
-                            particle.position.add(particle.userData.velocity.clone().multiplyScalar(0.02));
-                            particle.userData.life -= 0.02;
-                            particle.material.opacity = particle.userData.life;
-                            particle.scale.setScalar(particle.userData.life);
-                        }
-                    });
-                    
-                    if (allDead) {
-                        this.scene.remove(particleGroup);
-                        this.particleEffects.splice(i, 1);
-                    }
-                }
-            }
-            
-            updateUI() {
-                document.getElementById('scoreValue').textContent = this.gameState.score;
-                document.getElementById('comboValue').textContent = this.gameState.combo;
-                
-                const accuracy = this.gameState.totalNotes > 0 ? 
-                    Math.round((this.gameState.hitNotes / this.noteSpawnIndex) * 100) : 100;
-                document.getElementById('accuracyValue').textContent = `${accuracy}%`;
-            }
-            
-            checkGameEnd() {
-                if (this.noteSpawnIndex >= this.beatmap.length && this.notes.length === 0) {
-                    this.endGame();
-                }
-            }
-            
-            endGame() {
-                this.gameState.phase = 'ended';
-                
-                const accuracy = Math.round((this.gameState.hitNotes / this.gameState.totalNotes) * 100);
-                
-                alert(`게임 완료!\n점수: ${this.gameState.score}\n정확도: ${accuracy}%\n협력도: ${Math.round(this.cooperation.sync)}%`);
-                
-                console.log('🎮 게임 종료');
-            }
-            
-            resetGame() {
-                this.gameState = {
-                    phase: 'playing',
-                    score: 0,
-                    combo: 0,
-                    totalNotes: this.beatmap.length,
-                    hitNotes: 0,
-                    startTime: Date.now()
-                };
-                
-                this.noteSpawnIndex = 0;
-                this.cooperation.sync = 100;
-                this.cooperation.cooperationBonus = 1.0;
-                
-                // 기존 노트들 제거
-                this.notes.forEach(note => this.scene.remove(note));
-                this.notes = [];
-                
-                console.log('🔄 게임 재시작');
-            }
-            
-            togglePause() {
-                if (this.gameState.phase === 'playing') {
-                    this.gameState.phase = 'paused';
-                    console.log('⏸️ 게임 일시정지');
-                } else if (this.gameState.phase === 'paused') {
-                    this.gameState.phase = 'playing';
-                    console.log('▶️ 게임 재개');
-                }
-            }
-            
-            render() {
-                this.renderer.render(this.scene, this.camera);
-            }
-            
-            gameLoop() {
-                requestAnimationFrame(() => this.gameLoop());
-                this.update();
-                this.render();
-            }
-        }
-        
-        // 게임 시작
-        const game = new RhythmBladeDual();
-        window.game = game;  // 디버깅용
-    </script>
+    <!-- Main JavaScript -->
+    <script src="script.js"></script>
 </body>
 </html>

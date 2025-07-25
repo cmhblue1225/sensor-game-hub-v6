@@ -1,0 +1,1555 @@
+:root {
+    --primary-color: #6366f1;
+    --secondary-color: #8b5cf6;
+    --background-color: #0f172a;
+    --text-color: #f1f5f9;
+    --border-radius: 12px;
+    --player1-color: #3B82F6;
+    --player2-color: #EF4444;
+    --acorn-color: #8B4513;
+    --obstacle-color: #FF4444;
+    --success-color: #10b981;
+    --warning-color: #f59e0b;
+    --error-color: #ef4444;
+    
+    /* 반응형 디자인을 위한 변수 */
+    --container-padding: 20px;
+    --header-padding: 15px 25px;
+    --font-size-base: 1rem;
+    --font-size-large: 1.8rem;
+    --font-size-xlarge: 2rem;
+    --gap-base: 20px;
+    --gap-small: 10px;
+}
+
+/* 크로스 브라우저 호환성을 위한 기본 설정 */
+*, *::before, *::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    background: linear-gradient(135deg, var(--background-color) 0%, #1e293b 100%);
+    color: var(--text-color);
+    min-height: 100vh;
+    min-height: 100dvh; /* 동적 뷰포트 높이 지원 */
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* iOS Safari 바운스 효과 방지 */
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+}
+
+.game-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* 게임 헤더 */
+.game-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: var(--border-radius);
+    padding: 15px 25px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.timer-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.timer-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.timer-display {
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--warning-color);
+    font-family: 'Courier New', monospace;
+}
+
+.title-section h1 {
+    font-size: 2rem;
+    text-align: center;
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.score-section {
+    display: flex;
+    gap: 20px;
+}
+
+.player-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.player-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.score-display {
+    font-size: 1.8rem;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+}
+
+#player1-score {
+    color: var(--player1-color);
+}
+
+#player2-score {
+    color: var(--player2-color);
+}
+
+/* 세션 패널 */
+.session-panel {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    align-items: center;
+}
+
+.session-info h3 {
+    margin-bottom: 10px;
+    color: var(--primary-color);
+}
+
+.session-code {
+    margin-bottom: 15px;
+}
+
+.session-code strong {
+    color: var(--success-color);
+    font-family: 'Courier New', monospace;
+    font-size: 1.1rem;
+}
+
+.qr-container {
+    display: flex;
+    justify-content: center;
+}
+
+#qr-canvas {
+    border-radius: 8px;
+    background: white;
+    padding: 10px;
+}
+
+.qr-fallback img {
+    border-radius: 8px;
+    max-width: 150px;
+    height: auto;
+}
+
+.connection-status {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sensor-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sensor-label {
+    font-weight: 500;
+}
+
+.status-indicator {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-indicator.waiting {
+    background: rgba(156, 163, 175, 0.2);
+    color: #9ca3af;
+}
+
+.status-indicator.connected {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success-color);
+}
+
+.status-indicator.disconnected {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--error-color);
+}
+
+.start-btn {
+    padding: 15px 30px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.start-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
+}
+
+.start-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* 게임 캔버스 */
+.game-canvas-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: var(--border-radius);
+    padding: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+#game-canvas {
+    border-radius: 8px;
+    background: #1a202c;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    max-width: 100%;
+    height: auto;
+}
+
+.game-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--border-radius);
+    backdrop-filter: blur(5px);
+}
+
+.overlay-content {
+    text-align: center;
+    padding: 40px;
+}
+
+.overlay-content h2 {
+    font-size: 1.8rem;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+}
+
+.overlay-content p {
+    font-size: 1.1rem;
+    opacity: 0.8;
+    line-height: 1.5;
+}
+
+/* 게임 결과 모달 */
+.game-result-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    backdrop-filter: blur(10px);
+}
+
+.modal-content {
+    background: linear-gradient(135deg, var(--background-color) 0%, #1e293b 100%);
+    border-radius: var(--border-radius);
+    padding: 40px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    max-width: 400px;
+    width: 90%;
+}
+
+#result-title {
+    font-size: 2rem;
+    margin-bottom: 30px;
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.final-scores {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 30px;
+    gap: 20px;
+}
+
+.final-score {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.player-name {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+.final-score-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    font-family: 'Courier New', monospace;
+}
+
+.final-score:first-child .final-score-value {
+    color: var(--player1-color);
+}
+
+.final-score:last-child .final-score-value {
+    color: var(--player2-color);
+}
+
+.result-buttons {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.action-btn {
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.action-btn.primary {
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    color: white;
+}
+
+.action-btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* 컨트롤 패널 */
+.control-panel {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: var(--border-radius);
+    padding: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.control-btn {
+    padding: 10px 20px;
+    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.control-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-1px);
+}
+
+.control-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.hub-link {
+    padding: 10px 20px;
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.hub-link:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
+}
+
+/* 터치 인터페이스 최적화 */
+.start-btn, .control-btn, .action-btn, .hub-link {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    min-height: 44px; /* iOS 권장 터치 타겟 크기 */
+    min-width: 44px;
+}
+
+/* 터치 디바이스에서 호버 효과 비활성화 */
+@media (hover: none) and (pointer: coarse) {
+    .start-btn:hover, .control-btn:hover, .action-btn:hover, .hub-link:hover {
+        transform: none;
+        box-shadow: none;
+    }
+    
+    .start-btn:active, .control-btn:active, .action-btn:active, .hub-link:active {
+        transform: scale(0.98);
+        opacity: 0.8;
+    }
+}
+
+/* 반응형 디자인 - 태블릿 */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .game-container {
+        padding: var(--container-padding);
+        max-width: 900px;
+    }
+    
+    .session-panel {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto;
+    }
+    
+    .start-btn {
+        grid-column: 1 / -1;
+        justify-self: center;
+    }
+    
+    #game-canvas {
+        max-width: 600px;
+        height: 450px;
+    }
+}
+
+/* 반응형 디자인 - 모바일 */
+@media (max-width: 768px) {
+    :root {
+        --container-padding: 15px;
+        --header-padding: 12px 20px;
+        --font-size-base: 0.9rem;
+        --font-size-large: 1.5rem;
+        --font-size-xlarge: 1.8rem;
+        --gap-base: 15px;
+        --gap-small: 8px;
+    }
+    
+    .game-container {
+        padding: var(--container-padding);
+        gap: var(--gap-base);
+    }
+    
+    .game-header {
+        flex-direction: column;
+        gap: var(--gap-base);
+        text-align: center;
+        padding: var(--header-padding);
+    }
+    
+    .timer-display, .score-display {
+        font-size: var(--font-size-large);
+    }
+    
+    .title-section h1 {
+        font-size: var(--font-size-xlarge);
+    }
+    
+    .session-panel {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: var(--gap-base);
+        padding: var(--gap-base);
+    }
+    
+    .score-section {
+        justify-content: center;
+        gap: 30px;
+    }
+    
+    .control-panel {
+        flex-wrap: wrap;
+        gap: var(--gap-small);
+        padding: 12px;
+    }
+    
+    .control-btn, .hub-link {
+        flex: 1;
+        min-width: 120px;
+        text-align: center;
+    }
+    
+    #game-canvas {
+        width: 100%;
+        max-width: 100%;
+        height: auto;
+        aspect-ratio: 4/3;
+    }
+    
+    .game-canvas-container {
+        padding: 15px;
+    }
+    
+    .overlay-content {
+        padding: 20px;
+    }
+    
+    .overlay-content h2 {
+        font-size: 1.5rem;
+    }
+    
+    .overlay-content p {
+        font-size: 1rem;
+    }
+    
+    .qr-container {
+        min-height: 180px;
+    }
+    
+    #qr-canvas, .qr-fallback img {
+        max-width: 150px;
+    }
+}
+
+/* 반응형 디자인 - 소형 모바일 */
+@media (max-width: 480px) {
+    :root {
+        --container-padding: 10px;
+        --header-padding: 10px 15px;
+        --font-size-base: 0.85rem;
+        --font-size-large: 1.3rem;
+        --font-size-xlarge: 1.6rem;
+        --gap-base: 12px;
+        --gap-small: 6px;
+    }
+    
+    .game-header {
+        padding: var(--header-padding);
+    }
+    
+    .timer-display, .score-display {
+        font-size: var(--font-size-large);
+    }
+    
+    .title-section h1 {
+        font-size: var(--font-size-xlarge);
+    }
+    
+    .score-section {
+        gap: 20px;
+    }
+    
+    .final-scores {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .result-buttons {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .action-btn {
+        width: 100%;
+        padding: 15px;
+    }
+    
+    .modal-content {
+        padding: 25px;
+        margin: 20px;
+    }
+    
+    #result-title {
+        font-size: 1.6rem;
+        margin-bottom: 20px;
+    }
+    
+    .final-score-value {
+        font-size: 2rem;
+    }
+    
+    .control-panel {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .control-btn, .hub-link {
+        width: 100%;
+        min-width: auto;
+    }
+    
+    .steal-notification {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        transform: none;
+        font-size: 1rem;
+        padding: 12px 20px;
+    }
+    
+    @keyframes stealNotification {
+        0% {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+        10%, 90% {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        100% {
+            opacity: 0;
+            transform: translateY(-20px);
+        }
+    }
+}
+
+/* 초소형 디바이스 (320px 이하) */
+@media (max-width: 320px) {
+    .game-container {
+        padding: 8px;
+    }
+    
+    .session-panel, .game-canvas-container, .control-panel {
+        padding: 10px;
+    }
+    
+    .title-section h1 {
+        font-size: 1.4rem;
+    }
+    
+    .timer-display, .score-display {
+        font-size: 1.2rem;
+    }
+    
+    .qr-container {
+        min-height: 140px;
+    }
+    
+    #qr-canvas, .qr-fallback img {
+        max-width: 120px;
+    }
+}
+
+/* 가로 모드 최적화 */
+@media (max-height: 500px) and (orientation: landscape) {
+    .game-container {
+        gap: 10px;
+    }
+    
+    .game-header {
+        padding: 8px 15px;
+    }
+    
+    .session-panel {
+        padding: 12px;
+        gap: 12px;
+    }
+    
+    .game-canvas-container {
+        padding: 10px;
+    }
+    
+    #game-canvas {
+        max-height: 250px;
+    }
+    
+    .overlay-content {
+        padding: 15px;
+    }
+    
+    .modal-content {
+        padding: 20px;
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+}
+
+/* 고해상도 디스플레이 최적화 */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    #qr-canvas {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+    
+    .qr-fallback img {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}
+
+/* 애니메이션 */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.status-indicator.waiting {
+    animation: pulse 2s infinite;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.game-result-modal .modal-content {
+    animation: slideIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+}
+
+@keyframes bounce {
+    0%, 20%, 50%, 80%, 100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-10px);
+    }
+    60% {
+        transform: translateY(-5px);
+    }
+}
+
+@keyframes glow {
+    0%, 100% {
+        box-shadow: 0 0 5px rgba(99, 102, 241, 0.5);
+    }
+    50% {
+        box-shadow: 0 0 20px rgba(99, 102, 241, 0.8);
+    }
+}
+
+/* 게임 요소 개선 */
+.game-header {
+    animation: slideIn 0.5s ease-out;
+}
+
+.session-panel {
+    animation: slideIn 0.5s ease-out 0.2s both;
+}
+
+.game-canvas-container {
+    animation: slideIn 0.5s ease-out 0.4s both;
+}
+
+.control-panel {
+    animation: slideIn 0.5s ease-out 0.6s both;
+}
+
+/* 버튼 호버 효과 개선 */
+.start-btn:not(:disabled):hover {
+    animation: glow 2s infinite;
+}
+
+.guide-btn:hover {
+    animation: bounce 0.6s ease-in-out;
+}
+
+/* 점수 애니메이션 개선 */
+.score-display {
+    transition: all 0.3s ease;
+}
+
+.score-display.score-increase {
+    animation: bounce 0.6s ease-in-out;
+    color: var(--success-color) !important;
+}
+
+.score-display.score-decrease {
+    animation: pulse 0.5s ease-in-out;
+    color: var(--error-color) !important;
+}
+
+/* 타이머 경고 애니메이션 */
+.timer-display.warning {
+    animation: pulse 1s infinite;
+}
+
+.timer-display.critical {
+    animation: pulse 0.5s infinite;
+    color: var(--error-color) !important;
+}
+
+/* 연결 상태 애니메이션 */
+.sensor-status.connecting {
+    animation: pulse 1.5s infinite;
+}
+
+.sensor-status.connected {
+    animation: bounce 0.6s ease-in-out;
+}
+
+/* 게임 오버레이 개선 */
+.game-overlay {
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.overlay-content {
+    animation: slideIn 0.5s ease-out;
+}
+
+/* 모달 애니메이션 개선 */
+.game-result-modal {
+    animation: fadeIn 0.3s ease-out;
+}
+
+.modal-content {
+    animation: slideIn 0.5s ease-out;
+}
+
+/* 로딩 상태 */
+.loading {
+    position: relative;
+    overflow: hidden;
+}
+
+.loading::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% {
+        left: -100%;
+    }
+    100% {
+        left: 100%;
+    }
+}
+
+/* 성공/실패 상태 표시 */
+.success-state {
+    border-color: var(--success-color) !important;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.3);
+}
+
+.error-state {
+    border-color: var(--error-color) !important;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+
+/* 게임 상태별 시각적 피드백 */
+.game-container.waiting {
+    opacity: 0.9;
+}
+
+.game-container.ready {
+    opacity: 1;
+}
+
+.game-container.playing {
+    opacity: 1;
+}
+
+.game-container.paused {
+    opacity: 0.7;
+}
+
+.game-container.ended {
+    opacity: 0.8;
+}
+
+/* 훔치기 알림 */
+.steal-notification {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(45deg, var(--error-color), #ff6b6b);
+    color: white;
+    padding: 15px 30px;
+    border-radius: 25px;
+    font-weight: bold;
+    font-size: 1.1rem;
+    z-index: 1001;
+    box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+    animation: stealNotification 3s ease-out forwards;
+}
+
+@keyframes stealNotification {
+    0% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+    }
+    10%, 90% {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateX(-50%) translateY(-20px);
+    }
+}
+
+/* 연결 상태 개선 */
+.status-indicator {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.status-indicator.waiting {
+    background: rgba(156, 163, 175, 0.2);
+    color: #9ca3af;
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.connected {
+    background: rgba(16, 185, 129, 0.2);
+    color: var(--success-color);
+    animation: none;
+}
+
+.status-indicator.disconnected {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--error-color);
+    animation: pulse 1s infinite;
+}
+
+/* QR 코드 컨테이너 개선 */
+.qr-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 220px;
+}
+
+#qr-canvas {
+    border-radius: 8px;
+    background: white;
+    padding: 10px;
+    transition: all 0.3s ease;
+}
+
+.qr-fallback {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.qr-fallback img {
+    border-radius: 8px;
+    max-width: 200px;
+    height: auto;
+    transition: all 0.3s ease;
+}
+
+/* 세션 패널 상태별 스타일 */
+.session-panel.waiting {
+    border-color: rgba(156, 163, 175, 0.3);
+}
+
+.session-panel.ready {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+}
+
+.session-panel.error {
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.2);
+}
+
+/* 게임 오버레이 상태별 스타일 */
+.game-overlay.waiting {
+    background: rgba(0, 0, 0, 0.8);
+}
+
+.game-overlay.ready {
+    background: rgba(16, 185, 129, 0.1);
+    backdrop-filter: blur(5px);
+}
+
+.game-overlay.error {
+    background: rgba(239, 68, 68, 0.1);
+    backdrop-filter: blur(5px);
+}
+
+/* 로딩 애니메이션 */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: var(--primary-color);
+    animation: spin 1s ease-in-out infinite;
+    margin-right: 10px;
+}
+
+/* 연결 상태 표시 개선 */
+.sensor-status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.sensor-status.connected {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: rgba(16, 185, 129, 0.3);
+}
+
+.sensor-status.disconnected {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+/* 세션 코드 표시 개선 */
+.session-code {
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.session-code span {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.session-code strong {
+    color: var(--success-color);
+    font-family: 'Courier New', monospace;
+    font-size: 1.3rem;
+    display: block;
+    margin-top: 5px;
+    letter-spacing: 2px;
+    text-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+/* 게임 상태별 UI 개선 */
+.game-container.waiting .session-panel {
+    border-color: rgba(156, 163, 175, 0.3);
+}
+
+.game-container.ready .session-panel {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 20px rgba(16, 185, 129, 0.2);
+}
+
+.game-container.playing .session-panel {
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+.game-container.ended .session-panel {
+    opacity: 0.5;
+}
+
+/* 연결 진행 상태 표시 */
+.connection-progress {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+}
+
+.connection-progress .progress-bar {
+    flex: 1;
+    height: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.connection-progress .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color));
+    transition: width 0.3s ease;
+}
+
+.connection-progress .progress-text {
+    font-size: 0.85rem;
+    opacity: 0.8;
+    min-width: 80px;
+    text-align: right;
+}
+
+/* 에러 알림 시스템 */
+.error-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    max-width: 400px;
+    min-width: 300px;
+    z-index: 2000;
+    border-radius: var(--border-radius);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    animation: slideInRight 0.3s ease-out;
+}
+
+.error-notification.error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.9), rgba(220, 38, 38, 0.9));
+    border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+.error-notification.network-error {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.9), rgba(217, 119, 6, 0.9));
+    border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+.error-notification.sensor-disconnect {
+    background: linear-gradient(135deg, rgba(168, 85, 247, 0.9), rgba(147, 51, 234, 0.9));
+    border: 1px solid rgba(168, 85, 247, 0.5);
+}
+
+.error-notification.reconnecting {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(37, 99, 235, 0.9));
+    border: 1px solid rgba(59, 130, 246, 0.5);
+}
+
+.error-notification.success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.9), rgba(5, 150, 105, 0.9));
+    border: 1px solid rgba(16, 185, 129, 0.5);
+}
+
+.error-notification.critical-error {
+    background: linear-gradient(135deg, rgba(220, 38, 38, 0.95), rgba(185, 28, 28, 0.95));
+    border: 2px solid rgba(220, 38, 38, 0.8);
+    box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
+}
+
+.error-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 16px 20px;
+    color: white;
+}
+
+.error-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.error-message {
+    flex: 1;
+    font-size: 0.95rem;
+    line-height: 1.4;
+    font-weight: 500;
+}
+
+.error-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+}
+
+.error-close:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* 에러 상태별 추가 스타일 */
+.error-notification.reconnecting .error-icon {
+    animation: spin 1s linear infinite;
+}
+
+.error-notification.critical-error {
+    animation: slideInRight 0.3s ease-out, pulse 2s ease-in-out infinite 0.5s;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        box-shadow: 0 0 20px rgba(220, 38, 38, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(220, 38, 38, 0.6);
+    }
+}
+
+/* 모바일 대응 */
+@media (max-width: 768px) {
+    .error-notification {
+        top: 10px;
+        right: 10px;
+        left: 10px;
+        max-width: none;
+        min-width: auto;
+    }
+}
+
+/* 게임 가이드 패널 */
+.game-guide-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.95);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    animation: fadeIn 0.3s ease-out;
+}
+
+.guide-content {
+    background: linear-gradient(135deg, var(--background-color) 0%, #1e293b 100%);
+    border-radius: var(--border-radius);
+    padding: 30px;
+    max-width: 800px;
+    max-height: 90vh;
+    width: 90%;
+    overflow-y: auto;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.guide-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.guide-header h3 {
+    font-size: 1.8rem;
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin: 0;
+}
+
+.close-guide-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: var(--text-color);
+    font-size: 1.5rem;
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.close-guide-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+    transform: scale(1.1);
+}
+
+.guide-sections {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.guide-section {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.guide-section h4 {
+    font-size: 1.3rem;
+    margin: 0 0 15px 0;
+    color: var(--primary-color);
+}
+
+.guide-section p {
+    margin: 0 0 10px 0;
+    line-height: 1.6;
+    opacity: 0.9;
+}
+
+.controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 15px;
+    margin-top: 15px;
+}
+
+.control-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.control-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.control-desc strong {
+    display: block;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+}
+
+.control-desc p {
+    margin: 0;
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.rules-list, .tips-list {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+}
+
+.rules-list li, .tips-list li {
+    padding: 8px 0;
+    padding-left: 25px;
+    position: relative;
+    line-height: 1.5;
+}
+
+.rules-list li::before {
+    content: "▶";
+    position: absolute;
+    left: 0;
+    color: var(--primary-color);
+}
+
+.tips-list li::before {
+    content: "💡";
+    position: absolute;
+    left: 0;
+}
+
+.elements-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.element-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+}
+
+.element-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.guide-footer {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.tutorial-btn, .guide-close-btn {
+    padding: 12px 24px;
+    font-size: 1rem;
+    font-weight: 500;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tutorial-btn {
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    color: white;
+}
+
+.guide-close-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: var(--text-color);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.tutorial-btn:hover, .guide-close-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.guide-btn {
+    padding: 10px 20px;
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 15px;
+}
+
+.guide-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
+}
+
+/* 가이드 패널 반응형 */
+@media (max-width: 768px) {
+    .guide-content {
+        padding: 20px;
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .guide-header h3 {
+        font-size: 1.5rem;
+    }
+    
+    .controls-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .elements-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .guide-footer {
+        flex-direction: column;
+    }
+    
+    .tutorial-btn, .guide-close-btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .guide-content {
+        padding: 15px;
+    }
+    
+    .guide-section {
+        padding: 15px;
+    }
+    
+    .control-item {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+    }
+}

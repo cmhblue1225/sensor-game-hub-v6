@@ -1,0 +1,29 @@
+{
+  "id": "acorn-battle",
+  "title": "🏆 도토리 배틀",
+  "description": "2명의 플레이어가 센서를 이용해 도토리를 수집하고 상대방의 도토리를 훔치는 실시간 대전 게임",
+  "category": "dual",
+  "icon": "🏆",
+  "version": "1.0.0",
+  "author": "Sensor Game Hub",
+  "created": "2024-01-18T00:00:00Z",
+  "maxPlayers": 2,
+  "difficulty": "medium",
+  "status": "active",
+  "featured": true,
+  "tags": ["battle", "collection", "realtime", "competitive", "acorn"],
+  "sensors": ["orientation", "motion"],
+  "instructions": [
+    "2명의 플레이어가 각각 모바일 센서로 플레이합니다",
+    "기기를 기울여 플레이어를 이동시키세요",
+    "맵에 흩어진 도토리를 수집하세요",
+    "자신의 점수 구역에 도토리를 저장하여 점수를 획득하세요",
+    "상대방의 점수 구역에서 도토리를 훔칠 수 있습니다",
+    "움직이는 장애물을 피하세요",
+    "1분 후 더 많은 점수를 획득한 플레이어가 승리합니다"
+  ],
+  "controls": {
+    "sensor1": "플레이어 1 (파란색) 제어",
+    "sensor2": "플레이어 2 (빨간색) 제어"
+  }
+}
